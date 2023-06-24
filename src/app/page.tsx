@@ -1,8 +1,10 @@
-import Image from 'next/image'
+import Hero1 from "../components/homepage/hero1";
+import Image from "next/image";
 
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <Hero1 />
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
           Get started by editing&nbsp;
@@ -15,7 +17,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            By{' '}
+            By{" "}
             <Image
               src="/vercel.svg"
               alt="Vercel Logo"
@@ -47,7 +49,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
+            Docs{" "}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
@@ -64,7 +66,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
+            Learn{" "}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
@@ -81,7 +83,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
+            Templates{" "}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
@@ -98,7 +100,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
+            Deploy{" "}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
@@ -108,6 +110,75 @@ export default function Home() {
           </p>
         </a>
       </div>
+      <div className="bg-white py-24 sm:py-32">
+        <div className="mx-auto grid max-w-7xl gap-x-8 gap-y-20 px-6 lg:px-8 xl:grid-cols-3">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Meet our leadership
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Libero fames augue nisl porttitor nisi, quis. Id ac elit odio
+              vitae elementum enim vitae ullamcorper suspendisse.
+            </p>
+          </div>
+          <ul
+            role="list"
+            className="grid gap-x-8 gap-y-12 sm:grid-cols-2 sm:gap-y-16 xl:col-span-2"
+          >
+            <li>
+              <div className="flex items-center gap-x-6">
+                <img
+                  className="h-16 w-16 rounded-full"
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                  alt=""
+                />
+                <div>
+                  <h3 className="text-base font-semibold leading-7 tracking-tight text-gray-900">
+                    Leslie Alexander
+                  </h3>
+                  <p className="text-sm font-semibold leading-6 text-indigo-600">
+                    Co-Founder / CEO
+                  </p>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div className="flex items-center gap-x-6">
+                <img
+                  className="h-16 w-16 rounded-full"
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                  alt=""
+                />
+                <div>
+                  <h3 className="text-base font-semibold leading-7 tracking-tight text-gray-900">
+                    Leslie Alexander
+                  </h3>
+                  <p className="text-sm font-semibold leading-6 text-indigo-600">
+                    Co-Founder / CEO
+                  </p>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div className="flex items-center gap-x-6">
+                <img
+                  className="h-16 w-16 rounded-full"
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                  alt=""
+                />
+                <div>
+                  <h3 className="text-base font-semibold leading-7 tracking-tight text-gray-900">
+                    Leslie Alexander
+                  </h3>
+                  <p className="text-sm font-semibold leading-6 text-indigo-600">
+                    Co-Founder / CEO
+                  </p>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
     </main>
-  )
+  );
 }
