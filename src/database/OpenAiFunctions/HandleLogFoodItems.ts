@@ -1,4 +1,4 @@
-import { LoggedFoodItemPayload, User } from "@prisma/client";
+import { User } from "@prisma/client";
 import { prisma } from "../prisma";
 
 export async function HandleLogFoodItems(user: User, parameters: any) {
