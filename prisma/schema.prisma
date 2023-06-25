@@ -10,7 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Message {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -21,11 +20,12 @@ model Message {
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  name    String?  @db.VarChar(255)
-  email   String?   @unique @db.VarChar(255)
-  phone   String?   @unique @db.VarChar(255)
+  id      Int              @id @default(autoincrement())
+  name    String?          @db.VarChar(255)
+  email   String?          @unique @db.VarChar(255)
+  phone   String?          @unique @db.VarChar(255)
   Message Message[]
+  Foods   LoggedFoodItem[]
 }
 
 enum Role {
@@ -33,4 +33,20 @@ enum Role {
   User
   System
   Function
+}
+
+model LoggedFoodItem {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+  consumedOn    DateTime @default(now())
+  name          String
+  unit          String
+  amount        Float
+  fat           Float
+  carbohydrates Float
+  protein       Float
+  calories      Float
+  userId        Int
+  User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

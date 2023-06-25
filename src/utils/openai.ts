@@ -46,5 +46,5 @@ export const logFoodSchema = {
       description: "The total calories in the meal",
     },
   },
-  required: ["ingredients", "total_calories"],
+  required: ["food_items", "total_calories"],
 };

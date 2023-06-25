@@ -1,7 +1,8 @@
 import GetMessagesForUser from "@/database/GetMessagesForUser";
 import GetOrCreateUser from "@/database/GetOrCreateUser";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
-import SendMessageToUser from "@/twilio/SendMessageToUser";
+import { ProcessFunctionCalls } from "@/openai/ProcessFunctionCalls";
+import { SendMessageToUser } from "@/twilio/SendMessageToUser";
 import { logFoodSchema, openai } from "@/utils/openai";
 import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -69,9 +70,9 @@ export async function POST(request: Request) {
   console.log("messages", messages);
 
   const gptRequest = {
-    model: "gpt-4-0613",
+    model: "gpt-3.5-turbo-0613",
     messages,
-    functions: [{ name: "generate_food_log_json", parameters: logFoodSchema }],
+    functions: [{ name: "log_food_items", parameters: logFoodSchema }],
     function_call: "auto",
     temperature: 0,
   };
@@ -92,11 +93,9 @@ export async function POST(request: Request) {
 
   if (completion?.data.choices[0]) {
     console.log(completion.data.choices[0]);
-    const jsonString =
-      completion.data.choices[0].message?.function_call?.arguments;
-    if (jsonString) {
-      const functionCall = JSON.parse(jsonString);
-      console.log("functionCall", JSON.stringify(functionCall, null, 2));
+    const functionCall = completion.data.choices[0].message?.function_call;
+    if (functionCall) {
+      await ProcessFunctionCalls(user, functionCall);
     } else {
       console.log(
         "could not find json to parse. Assume sending message back to user."
@@ -104,7 +103,6 @@ export async function POST(request: Request) {
       const messageBack =
         completion?.data.choices[0].message?.content ||
         "Sorry, I don't understand. Can you try again?";
-      console.log("Message Back to user: ", messageBack);
 
       const savedMessage = await SaveMessageFromUser(
         user,
@@ -114,7 +112,7 @@ export async function POST(request: Request) {
       if (!savedMessage) {
         console.log("Error saving message from assistant");
       }
-      const sentMessage = await SendMessageToUser(user, messageBack, toPhone);
+      const sentMessage = await SendMessageToUser(user, messageBack);
       if (!sentMessage) {
         console.log("Error sending message to user");
       }
@@ -123,20 +121,5 @@ export async function POST(request: Request) {
     console.log("Data is not available");
   }
 
-  // const completion = await openai.createChatCompletion({
-  //   model: "gpt-3.5-turbo",
-  //   messages: [
-  //     {
-  //       role: "system",
-  //       content:
-  //         "You are a weight loss coach. You're doing a daily check-in with your client, Jack. Find out what he's had to eat today.",
-  //     },
-  //     {
-  //       role: "user",
-  //       content: "Hi. My name is Jack. I'd like to lose weight.",
-  //     },
-  //   ],
-  // });
-  // console.log(completion.data.choices[0].message);
   // return NextResponse.json({ text: completion.data.choices[0] });
 }
