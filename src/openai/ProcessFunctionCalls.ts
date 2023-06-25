@@ -1,7 +1,9 @@
+import { HandleLogFoodExercise } from "@/database/OpenAiFunctions/HandleLogExercise";
 import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems";
 import {
   SaveAndSendMessageToUser,
   SendDailyMacrosToUser,
+  SendListOfFoodsTodayToUser,
 } from "@/twilio/SendMessageToUser";
 import { User } from "@prisma/client";
 import { ChatCompletionRequestMessageFunctionCall } from "openai";
@@ -28,6 +30,14 @@ export const ProcessFunctionCalls = async (
       }
       await SaveAndSendMessageToUser(user, resultMessage);
       await SendDailyMacrosToUser(user);
+      return;
+    case "show_daily_food":
+      await SendListOfFoodsTodayToUser(user);
+      await SendDailyMacrosToUser(user);
+      return;
+    case "lot_exercise":
+      await HandleLogFoodExercise(user, parameters);
+      await SaveAndSendMessageToUser(user, "Ok, I've logged your exercise.");
       return;
   }
 };

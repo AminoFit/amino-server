@@ -4,7 +4,6 @@ const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 export const openai = new OpenAIApi(configuration);
-// const response = await openai.listEngines();
 
 export const logFoodSchema = {
   type: "object",
@@ -36,15 +35,101 @@ export const logFoodSchema = {
         ],
       },
     },
-    // instructions: {
-    //   type: "array",
-    //   description: "Steps to prepare the recipe (no numbering)",
-    //   items: { type: "string" },
-    // },
     total_calories: {
       type: "number",
       description: "The total calories in the meal",
     },
   },
   required: ["food_items", "total_calories"],
+};
+
+export const showDailyFoodSummarySchema = {
+  type: "object",
+  properties: {},
+  required: [],
+};
+
+export const logExerciseSchema = {
+  type: "object",
+  properties: {
+    exercises: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          exercise_name: {
+            type: "string",
+            description: "The name of the exercise",
+          },
+          primary_muscle_group: {
+            type: "string",
+            description: "The name of the exercise",
+            enum: [
+              "chest",
+              "back",
+              "shoulders",
+              "legs",
+              "arms",
+              "core",
+              "cardio",
+            ],
+          },
+          weight: {
+            type: "number",
+            description: "The weight that was used for the exercise",
+          },
+          weight_units: {
+            type: "number",
+            description:
+              "The units of the weight that was used for the exercise",
+            enum: ["lbs", "kg"],
+          },
+          reps: {
+            type: "number",
+            description: "The number of reps that were performed",
+          },
+          exercise_time: {
+            type: "number",
+            description: "The number of minutes the exercise was performed for",
+          },
+          total_calories: {
+            type: "number",
+            description: "The total calories in the meal",
+          },
+        },
+      },
+    },
+  },
+  required: ["exercises"],
+};
+
+const exampleSchema = {
+  type: "object",
+  properties: {
+    ingredients: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          unit: {
+            type: "string",
+            enum: ["grams", "ml", "cups", "pieces", "teaspoons"],
+          },
+          amount: { type: "number" },
+        },
+        required: ["name", "unit", "amount"],
+      },
+    },
+    instructions: {
+      type: "array",
+      description: "Steps to prepare the recipe (no numbering)",
+      items: { type: "string" },
+    },
+    time_to_cook: {
+      type: "number",
+      description: "Total time to prepare the recipe in minutes",
+    },
+  },
+  required: ["ingredients", "instructions", "time_to_cook"],
 };

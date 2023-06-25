@@ -56,3 +56,28 @@ export async function SendDailyMacrosToUser(user: User) {
   await SaveAndSendMessageToUser(user, returnMessage);
   return returnMessage;
 }
+
+export async function SendListOfFoodsTodayToUser(user: User) {
+  const foodToday = await prisma.loggedFoodItem.findMany({
+    where: {
+      userId: user.id,
+      consumedOn: {
+        gt: moment().startOf("day").toDate(),
+        lt: moment().endOf("day").toDate(), // We can support historic days later on
+      },
+    },
+    take: 100,
+  });
+
+  let returnMessage = `No foods logged today.`;
+
+  if (foodToday && foodToday.length > 0) {
+    returnMessage = `Here are your macros for today:`;
+    for (const food of foodToday) {
+      returnMessage += `\n${food.name} - ${food.amount} ${food.unit}`;
+    }
+  }
+
+  await SaveAndSendMessageToUser(user, returnMessage);
+  return returnMessage;
+}

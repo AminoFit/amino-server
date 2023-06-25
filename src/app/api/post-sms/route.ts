@@ -3,7 +3,13 @@ import GetOrCreateUser from "@/database/GetOrCreateUser";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 import { ProcessFunctionCalls } from "@/openai/ProcessFunctionCalls";
 import { SendMessageToUser } from "@/twilio/SendMessageToUser";
-import { logFoodSchema, openai } from "@/utils/openai";
+import { SystemStartPrompt } from "@/twilio/SystemPrompt";
+import {
+  logExerciseSchema,
+  logFoodSchema,
+  openai,
+  showDailyFoodSummarySchema,
+} from "@/utils/openai";
 import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -16,13 +22,8 @@ export async function GET() {
   return NextResponse.json({ text: "get ok" });
 }
 export async function POST(request: Request) {
-  // console.log("got a POST request");
-  // console.log("body", request);
-  // console.log("request.url:", request.url);
   const formData = await request.formData();
-  // console.log("message", formData);
   const fromPhone = formData.get("From") as string;
-  const toPhone = formData.get("To") as string;
   const message = formData.get("Body") as string;
 
   if (!fromPhone) {
@@ -41,8 +42,7 @@ export async function POST(request: Request) {
   const messages: ChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content:
-        "You are a fitness and diet coach. You help clients log and track what they eat. The client will reach out soon. Ask them if you can log what they ate. When they do, call the generate_food_log_json function to track it",
+      content: SystemStartPrompt,
     },
   ];
 
@@ -72,7 +72,11 @@ export async function POST(request: Request) {
   const gptRequest = {
     model: "gpt-3.5-turbo-0613",
     messages,
-    functions: [{ name: "log_food_items", parameters: logFoodSchema }],
+    functions: [
+      { name: "log_food_items", parameters: logFoodSchema },
+      { name: "show_daily_food", parameters: showDailyFoodSummarySchema },
+      { name: "lot_exercise", parameters: logExerciseSchema },
+    ],
     function_call: "auto",
     temperature: 0,
   };
@@ -120,6 +124,9 @@ export async function POST(request: Request) {
   } else {
     console.log("Data is not available");
   }
+  console.log(
+    `This request used ${completion.data.usage?.total_tokens || "??"} tokens`
+  );
 
   // return NextResponse.json({ text: completion.data.choices[0] });
 }
