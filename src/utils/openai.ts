@@ -103,6 +103,25 @@ export const logExerciseSchema = {
   required: ["exercises"],
 };
 
+export const updateUserInfoSchema = {
+  type: "object",
+  properties: {
+    users_name: {
+      type: "string",
+      description: "The name we should call the user",
+    },
+    user_date_of_birth: {
+      type: "string",
+      description: "The date of birth of the user. In the format YYYY-MM-DD",
+    },
+    users_weight: {
+      type: "number",
+      description: "The weight of the user in pounds",
+    },
+  },
+  required: [],
+};
+
 const exampleSchema = {
   type: "object",
   properties: {

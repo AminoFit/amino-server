@@ -20,12 +20,14 @@ model Message {
 }
 
 model User {
-  id      Int              @id @default(autoincrement())
-  name    String?          @db.VarChar(255)
-  email   String?          @unique @db.VarChar(255)
-  phone   String?          @unique @db.VarChar(255)
-  Message Message[]
-  Foods   LoggedFoodItem[]
+  id          Int              @id @default(autoincrement())
+  name        String?          @db.VarChar(255)
+  email       String?          @unique @db.VarChar(255)
+  phone       String?          @unique @db.VarChar(255)
+  dateOfBirth DateTime?
+  weightLbs   Float?
+  Message     Message[]
+  Foods       LoggedFoodItem[]
 }
 
 enum Role {
@@ -49,4 +51,28 @@ model LoggedFoodItem {
   calories      Float
   userId        Int
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model FoodDatabaseItem {
+  id                       Int     @id @default(autoincrement())
+  code                     String  @unique
+  product_name             String
+  abbreviated_product_name String?
+  generic_name             String?
+  quantity                 String?
+  countries_en             String?
+  serving_size             String?
+  serving_quantity         String?
+  product_quantity         String?
+  image_url                String?
+  energy_kcal_100g         String?
+  energy_100g              String?
+  fat_100g                 String?
+  saturated_fat_100g       String?
+  carbohydrates_100g       String?
+  sugars_100g              String?
+  fiber_100g               String?
+  proteins_100g            String?
+  salt_100g                String?
+  sodium_100g              String?
 }

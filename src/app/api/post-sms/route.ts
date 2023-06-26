@@ -3,12 +3,13 @@ import GetOrCreateUser from "@/database/GetOrCreateUser";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 import { ProcessFunctionCalls } from "@/openai/ProcessFunctionCalls";
 import { SendMessageToUser } from "@/twilio/SendMessageToUser";
-import { SystemStartPrompt } from "@/twilio/SystemPrompt";
+import { GetSystemStartPrompt } from "@/twilio/SystemPrompt";
 import {
   logExerciseSchema,
   logFoodSchema,
   openai,
   showDailyFoodSummarySchema,
+  updateUserInfoSchema,
 } from "@/utils/openai";
 import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const messages: ChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: SystemStartPrompt,
+      content: GetSystemStartPrompt(user),
     },
   ];
 
@@ -69,13 +70,19 @@ export async function POST(request: Request) {
 
   console.log("messages", messages);
 
+  /* models
+  gpt-3.5-turbo-0613
+  gpt-4-0613
+  */
+
   const gptRequest = {
-    model: "gpt-3.5-turbo-0613",
+    model: "gpt-4-0613",
     messages,
     functions: [
       { name: "log_food_items", parameters: logFoodSchema },
       { name: "show_daily_food", parameters: showDailyFoodSummarySchema },
       { name: "lot_exercise", parameters: logExerciseSchema },
+      { name: "update_user_info", parameters: updateUserInfoSchema },
     ],
     function_call: "auto",
     temperature: 0,

@@ -1,5 +1,6 @@
 import { HandleLogFoodExercise } from "@/database/OpenAiFunctions/HandleLogExercise";
 import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems";
+import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo";
 import {
   SaveAndSendMessageToUser,
   SendDailyMacrosToUser,
@@ -38,6 +39,9 @@ export const ProcessFunctionCalls = async (
     case "lot_exercise":
       await HandleLogFoodExercise(user, parameters);
       await SaveAndSendMessageToUser(user, "Ok, I've logged your exercise.");
+      return;
+    case "update_user_info":
+      await SaveAndSendMessageToUser(user, await HandleUpdateUserInfo(user, parameters));
       return;
   }
 };
