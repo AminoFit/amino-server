@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "migrate:dev": "prisma generate && dotenv -e .env.dev -- npx prisma migrate dev",
+    "migrate:prod": "prisma generate && dotenv -e .env.prod -- npx prisma migrate deploy",
     "start": "next start",
     "lint": "next lint"
   },
