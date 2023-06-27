@@ -1,4 +1,4 @@
-import { HandleLogFoodExercise } from "@/database/OpenAiFunctions/HandleLogExercise";
+import { HandleLogExercise } from "@/database/OpenAiFunctions/HandleLogExercise";
 import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems";
 import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo";
 import {
@@ -12,7 +12,7 @@ import { ChatCompletionRequestMessageFunctionCall } from "openai";
 export const ProcessFunctionCalls = async (
   user: User,
   functionCall: ChatCompletionRequestMessageFunctionCall
-) => {
+): Promise<string> => {
   const functionName = functionCall.name;
   if (!functionCall.arguments) {
     return "We could not find any arguments for this function call.";
@@ -22,26 +22,13 @@ export const ProcessFunctionCalls = async (
   switch (functionName) {
     case "log_food_items":
       const resultMessage = await HandleLogFoodItems(user, parameters);
-      if (!resultMessage) {
-        await SaveAndSendMessageToUser(
-          user,
-          "Sorry, I could not log your food items. Please try again later."
-        );
-        return;
-      }
-      await SaveAndSendMessageToUser(user, resultMessage);
-      await SendDailyMacrosToUser(user);
-      return;
+      return resultMessage;
     case "show_daily_food":
-      await SendListOfFoodsTodayToUser(user);
-      await SendDailyMacrosToUser(user);
-      return;
-    case "lot_exercise":
-      await HandleLogFoodExercise(user, parameters);
-      await SaveAndSendMessageToUser(user, "Ok, I've logged your exercise.");
-      return;
+      return await SendListOfFoodsTodayToUser(user);
+    case "log_exercise":
+      return await HandleLogExercise(user, parameters);
     case "update_user_info":
-      await SaveAndSendMessageToUser(user, await HandleUpdateUserInfo(user, parameters));
-      return;
+      return await HandleUpdateUserInfo(user, parameters);
   }
+  return "Something went wrong. We could not find a function with that name.";
 };

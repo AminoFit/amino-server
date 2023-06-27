@@ -1,139 +1,55 @@
-import GetMessagesForUser from "@/database/GetMessagesForUser";
 import GetOrCreateUser from "@/database/GetOrCreateUser";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
-import { ProcessFunctionCalls } from "@/openai/ProcessFunctionCalls";
-import { SendMessageToUser } from "@/twilio/SendMessageToUser";
-import { GetSystemStartPrompt } from "@/twilio/SystemPrompt";
-import {
-  logExerciseSchema,
-  logFoodSchema,
-  openai,
-  showDailyFoodSummarySchema,
-  updateUserInfoSchema,
-} from "@/utils/openai";
+import { GenerateResponseForUser } from "@/openai/RespondToMessage";
+import { SaveAndSendMessageToUser } from "@/twilio/SendMessageToUser";
 import { Role } from "@prisma/client";
-import { NextRequest, NextResponse } from "next/server";
-import {
-  ChatCompletionRequestMessage,
-  ChatCompletionRequestMessageRoleEnum,
-} from "openai";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   console.log("got a GET request");
   return NextResponse.json({ text: "get ok" });
 }
+
 export async function POST(request: Request) {
   const formData = await request.formData();
   const fromPhone = formData.get("From") as string;
-  const message = formData.get("Body") as string;
+  const body = formData.get("Body") as string;
 
   if (!fromPhone) {
-    return NextResponse.json({ error: "no from phone" });
+    return NextResponse.json({ error: "Missing form 'From' data" });
   }
 
-  if (!message) {
-    return NextResponse.json({ error: "no message" });
+  if (!body) {
+    return NextResponse.json({ error: "Missing form 'Body' data" });
   }
 
   const user = await GetOrCreateUser(fromPhone);
   console.log("user", user);
-  const newMessage = await SaveMessageFromUser(user, message, Role.User);
-  console.log("newMessage", newMessage);
+  await SaveMessageFromUser(user, body, Role.User);
+  console.log("body", body);
 
-  const messages: ChatCompletionRequestMessage[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: GetSystemStartPrompt(user),
-    },
-  ];
+  const responseMessage = await GenerateResponseForUser(user);
 
-  const messagesForUser = await GetMessagesForUser(user);
+  if (responseMessage.responseToFunctionName) {
+    // Save the message to the database
+    await SaveMessageFromUser(
+      user,
+      responseMessage.resultMessage || "",
+      Role.Function,
+      responseMessage.responseToFunctionName
+    );
 
-  messagesForUser.forEach((message) => {
-    let role: ChatCompletionRequestMessageRoleEnum =
-      ChatCompletionRequestMessageRoleEnum.User;
-    if (message.role === Role.User) {
-      role = ChatCompletionRequestMessageRoleEnum.User;
-    }
-    if (message.role === Role.System) {
-      role = ChatCompletionRequestMessageRoleEnum.System;
-    }
-    if (message.role === Role.Assistant) {
-      role = ChatCompletionRequestMessageRoleEnum.Assistant;
-    }
+    // Get a new response with that message now logged
+    const newResponseMessage = await GenerateResponseForUser(user);
 
-    messages.push({
-      role,
-      content: message.content,
-    });
-  });
-
-  console.log("messages", messages);
-
-  /* models
-  gpt-3.5-turbo-0613
-  gpt-4-0613
-  */
-
-  const gptRequest = {
-    model: "gpt-4-0613",
-    messages,
-    functions: [
-      { name: "log_food_items", parameters: logFoodSchema },
-      { name: "show_daily_food", parameters: showDailyFoodSummarySchema },
-      { name: "lot_exercise", parameters: logExerciseSchema },
-      { name: "update_user_info", parameters: updateUserInfoSchema },
-    ],
-    function_call: "auto",
-    temperature: 0,
-  };
-
-  const completion = await openai
-    .createChatCompletion(gptRequest)
-    .catch((err) => {
-      console.log(
-        "Error getting req from OpenAi",
-        err.message,
-        err.response.data
-      );
-      NextResponse.json({ error: err.message });
-    });
-  if (!completion) {
-    return;
-  }
-
-  if (completion?.data.choices[0]) {
-    console.log(completion.data.choices[0]);
-    const functionCall = completion.data.choices[0].message?.function_call;
-    if (functionCall) {
-      await ProcessFunctionCalls(user, functionCall);
-    } else {
-      console.log(
-        "could not find json to parse. Assume sending message back to user."
-      );
-      const messageBack =
-        completion?.data.choices[0].message?.content ||
-        "Sorry, I don't understand. Can you try again?";
-
-      const savedMessage = await SaveMessageFromUser(
-        user,
-        messageBack,
-        Role.Assistant
-      );
-      if (!savedMessage) {
-        console.log("Error saving message from assistant");
-      }
-      const sentMessage = await SendMessageToUser(user, messageBack);
-      if (!sentMessage) {
-        console.log("Error sending message to user");
-      }
-    }
+    const newMessage = await SaveMessageFromUser(
+      user,
+      newResponseMessage.resultMessage || "",
+      Role.Assistant
+    );
+    await SaveAndSendMessageToUser(user, newMessage.content);
   } else {
-    console.log("Data is not available");
+    await SaveAndSendMessageToUser(user, responseMessage.resultMessage);
   }
-  console.log(
-    `This request used ${completion.data.usage?.total_tokens || "??"} tokens`
-  );
-
-  // return NextResponse.json({ text: completion.data.choices[0] });
+  return NextResponse.json({ message: "Success" });
 }

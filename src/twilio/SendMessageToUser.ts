@@ -7,7 +7,7 @@ import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 const from = process.env.TWILIO_PHONE_NUMBER;
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
-  const savedMsg = await SaveMessageFromUser(user, message, Role.Assistant);
+  await SaveMessageFromUser(user, message, Role.Assistant);
   const sentMsg = await SendMessageToUser(user, message);
   return sentMsg;
 }
@@ -53,7 +53,6 @@ export async function SendDailyMacrosToUser(user: User) {
     returnMessage += `\n - ${foodToday._sum.protein}g Protein`;
   }
 
-  await SaveAndSendMessageToUser(user, returnMessage);
   return returnMessage;
 }
 
@@ -69,15 +68,14 @@ export async function SendListOfFoodsTodayToUser(user: User) {
     take: 100,
   });
 
-  let returnMessage = `No foods logged today.`;
-
   if (foodToday && foodToday.length > 0) {
-    returnMessage = `Here are your macros for today:`;
+    let returnMessage = `Here's your list of food logged today:\n\n`;
+
     for (const food of foodToday) {
       returnMessage += `\n${food.name} - ${food.amount} ${food.unit}`;
     }
+    return returnMessage;
   }
 
-  await SaveAndSendMessageToUser(user, returnMessage);
-  return returnMessage;
+  return `No foods logged today.`;
 }

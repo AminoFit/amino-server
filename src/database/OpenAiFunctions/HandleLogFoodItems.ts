@@ -29,7 +29,7 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
         console.log("Error logging food item", err);
       });
     if (!foodItem) {
-      return;
+      return "Sorry, I could not log your food items. Please try again later.";
     }
     result += `\n\n${foodItem.name}\n${foodItem.amount} ${foodItem.unit}\n${foodItem.calories} calories`;
     result += `\n - ${foodItem.fat}g Fat`;

@@ -1,9 +1,11 @@
 import { User } from "@prisma/client";
 import { prisma } from "../prisma";
 
-export async function HandleLogFoodExercise(user: User, parameters: any) {
+export async function HandleLogExercise(user: User, parameters: any) {
   console.log("HandleLogFoodExercise");
   console.log("parameters", parameters);
+
+  return "I've logged your exercise.";
 
   // const foodItems = parameters.food_items;
 

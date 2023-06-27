@@ -11,12 +11,13 @@ datasource db {
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  content   String
-  role      Role
-  userId    Int
-  User      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  content       String
+  function_name String?
+  role          Role
+  userId        Int
+  User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model User {
