@@ -6,7 +6,12 @@ export default async function GetMessagesForUser(user: User) {
     where: {
       userId: user.id,
     },
-    take: 100,
+    take: 10,
+    orderBy: [
+      {
+        createdAt: "desc",
+      },
+    ],
   });
-  return messagesForUser;
+  return messagesForUser.reverse();
 }

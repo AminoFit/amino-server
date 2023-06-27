@@ -36,5 +36,7 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
     result += `\n - ${foodItem.carbohydrates}g Carbs`;
     result += `\n - ${foodItem.protein}g Protein`;
   }
+
+  result += `\n\nRepeat back to the user what they ate, and the macros for each item.`;
   return result;
 }

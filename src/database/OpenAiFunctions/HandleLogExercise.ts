@@ -2,7 +2,7 @@ import { User } from "@prisma/client";
 import { prisma } from "../prisma";
 
 export async function HandleLogExercise(user: User, parameters: any) {
-  console.log("HandleLogFoodExercise");
+  console.log("HandleLogExercise");
   console.log("parameters", parameters);
 
   return "I've logged your exercise.";
