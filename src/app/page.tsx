@@ -365,7 +365,7 @@ export default function Example() {
         </div>
 
         {/* Newsletter section */}
-        <div className="mx-auto mt-32 max-w-7xl sm:mt-56 sm:px-6 lg:px-8">
+        {/* <div className="mx-auto mt-32 max-w-7xl sm:mt-56 sm:px-6 lg:px-8">
           <div className="relative isolate overflow-hidden bg-gray-900 px-6 py-24 shadow-2xl sm:rounded-3xl sm:px-24 xl:py-32">
             <h2 className="mx-auto max-w-2xl text-center text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Get started with your phone number.
@@ -421,7 +421,7 @@ export default function Example() {
               </defs>
             </svg>
           </div>
-        </div>
+        </div> */}
 
         {/* Testimonials section */}
         <div className="relative isolate mt-32 sm:mt-56 sm:pt-32 mb-32">

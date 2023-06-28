@@ -11,7 +11,7 @@ export function PhoneForm() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [modalOpen, setModalOpen] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleSubmit = () => {
     console.log(phoneNumber);
@@ -51,7 +51,7 @@ export function PhoneForm() {
           );
           return;
         }
-        
+
         // Success
         setError("");
         setModalOpen(true);
