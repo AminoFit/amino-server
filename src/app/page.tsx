@@ -189,20 +189,6 @@ export default function Example() {
                 meal plans, recipes, and a community of supportive users.`}
               </p>
               <PhoneForm />
-              <div className="mt-10 flex items-center gap-x-6">
-                <a
-                  href="#"
-                  className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                >
-                  Get started
-                </a>
-                <a
-                  href="#"
-                  className="text-sm font-semibold leading-6 text-gray-900"
-                >
-                  Learn more <span aria-hidden="true">→</span>
-                </a>
-              </div>
             </div>
             <div className="mt-16 sm:mt-24 lg:mt-0 hidden lg:flex lg:flex-shrink-0 lg:flex-grow">
               <svg
