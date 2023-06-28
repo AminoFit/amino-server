@@ -10,15 +10,27 @@ export default async function GetOrCreateUser(phone: string) {
       phone,
     },
   });
+
   if (existingUser) {
+    if (!existingUser.sentContact) {
+      await SendVContactCardToUser(existingUser);
+      await prisma.user.update({
+        where: {
+          id: existingUser.id,
+        },
+        data: {
+          sentContact: true,
+        },
+      });
+    }
     return existingUser;
   }
   const upsertUser = await prisma.user.create({
     data: {
       phone,
+      sentContact: true,
     },
   });
-
   await SendVContactCardToUser(upsertUser);
 
   return upsertUser;
@@ -27,10 +39,10 @@ export default async function GetOrCreateUser(phone: string) {
 async function SendVContactCardToUser(user: User) {
   const msg = await twilioClient.messages
     .create({
-      body: "Hello! Here is my contact card.",
+      body: "This is my contact card, in case you need to reach me.",
       from,
       to: user.phone,
-      mediaUrl: `https://ab5c7598fc4d-259316472161741218.ngrok-free.app/api/v-contact`,
+      mediaUrl: `https://amino.fit/api/v-contact`,
     })
     .then((message: any) => {
       console.log(message.sid);

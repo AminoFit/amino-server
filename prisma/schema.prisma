@@ -27,6 +27,7 @@ model User {
   phone       String?          @unique @db.VarChar(255)
   dateOfBirth DateTime?
   weightLbs   Float?
+  sentContact Boolean          @default(false)
   Message     Message[]
   Foods       LoggedFoodItem[]
 }
