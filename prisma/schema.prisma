@@ -20,6 +20,20 @@ model Message {
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+enum MessageDirection {
+  Inbound
+  Outbound
+}
+
+model SmsMessage {
+  id        Int              @id @default(autoincrement())
+  createdAt DateTime         @default(now())
+  content   String
+  direction MessageDirection
+  userId    Int
+  User      User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
 model User {
   id          Int              @id @default(autoincrement())
   name        String?          @db.VarChar(255)
@@ -30,6 +44,7 @@ model User {
   sentContact Boolean          @default(false)
   Message     Message[]
   Foods       LoggedFoodItem[]
+  SmsMessage  SmsMessage[]
 }
 
 enum Role {

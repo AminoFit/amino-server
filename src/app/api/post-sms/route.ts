@@ -1,8 +1,11 @@
 import GetOrCreateUser from "@/database/GetOrCreateUser";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 import { GenerateResponseForUser } from "@/openai/RespondToMessage";
-import { SaveAndSendMessageToUser } from "@/twilio/SendMessageToUser";
-import { Role } from "@prisma/client";
+import {
+  LogSmsMessage,
+  SaveAndSendMessageToUser,
+} from "@/twilio/SendMessageToUser";
+import { MessageDirection, Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -25,6 +28,9 @@ export async function POST(request: Request) {
 
   const user = await GetOrCreateUser(fromPhone);
   console.log("user", user);
+
+  await LogSmsMessage(user, body, MessageDirection.Inbound);
+
   await SaveMessageFromUser(user, body, Role.User);
   console.log("body", body);
 

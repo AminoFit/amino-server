@@ -1,4 +1,4 @@
-import { Role, User } from "@prisma/client";
+import { MessageDirection, Role, User } from "@prisma/client";
 import { twilioClient } from "./twilio";
 import { prisma } from "@/database/prisma";
 import moment from "moment";
@@ -23,7 +23,24 @@ export async function SendMessageToUser(user: User, message: string) {
       console.log(message.sid);
       return message;
     });
+
+  await LogSmsMessage(user, message, MessageDirection.Outbound);
+
   return msg;
+}
+
+export async function LogSmsMessage(
+  user: User,
+  message: string,
+  direction: MessageDirection
+) {
+  await prisma.smsMessage.create({
+    data: {
+      userId: user.id,
+      content: message,
+      direction: direction,
+    },
+  });
 }
 
 export async function SendDailyMacrosToUser(user: User) {
