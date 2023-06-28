@@ -14,8 +14,10 @@ import { NextResponse } from "next/server";
 import {
   ChatCompletionRequestMessage,
   ChatCompletionRequestMessageRoleEnum,
+  CreateCompletionResponseUsage,
 } from "openai";
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls";
+import { prisma } from "@/database/prisma";
 
 type ResponseForUser = {
   resultMessage: string;
@@ -70,8 +72,10 @@ export async function GenerateResponseForUser(
   gpt-4-0613
   */
 
+  const modelName = "gpt-3.5-turbo-0613";
+
   const gptRequest = {
-    model: "gpt-3.5-turbo-0613",
+    model: modelName,
     messages,
     functions: [
       { name: "log_food_items", parameters: logFoodSchema },
@@ -101,9 +105,14 @@ export async function GenerateResponseForUser(
     };
   }
 
-  console.log(
-    `This request used ${completion?.data.usage?.total_tokens || "??"} tokens`
-  );
+  if (completion?.data.usage) {
+    await LogOpenAiUsage(user, completion.data.usage, modelName);
+  } else {
+    return {
+      resultMessage:
+        "Sorry, we can't read some of the data from OpenAI. Please try again later.",
+    };
+  }
 
   let messageForUser = "";
   let responseToFunction;
@@ -134,4 +143,22 @@ export async function GenerateResponseForUser(
     resultMessage: messageForUser,
     responseToFunctionName: responseToFunction,
   };
+}
+
+async function LogOpenAiUsage(
+  user: User,
+  usage: CreateCompletionResponseUsage,
+  modelName: string
+) {
+  console.log(`This request used ${usage.total_tokens || "??"} tokens`);
+  const data = {
+    promptTokens: usage.prompt_tokens,
+    completionTokens: usage.completion_tokens,
+    totalTokens: usage.total_tokens,
+    userId: user.id,
+    modelName,
+  };
+  return await prisma.openAiUsage.create({
+    data,
+  });
 }

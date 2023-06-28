@@ -34,6 +34,17 @@ model SmsMessage {
   User      User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+model OpenAiUsage {
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now())
+  modelName        String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  userId           Int
+  User             User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
 model User {
   id          Int              @id @default(autoincrement())
   name        String?          @db.VarChar(255)
@@ -45,6 +56,7 @@ model User {
   Message     Message[]
   Foods       LoggedFoodItem[]
   SmsMessage  SmsMessage[]
+  OpenAiUsage OpenAiUsage[]
 }
 
 enum Role {
