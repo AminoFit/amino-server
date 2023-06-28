@@ -182,10 +182,10 @@ export default function Example() {
                 A better way to track your fitness
               </h1>
               <p className="mt-6 text-lg leading-8 text-gray-600">
-                We'll track your calorie intake, exercise, and sleep, and give
+                {`We'll track your calorie intake, exercise, and sleep, and give
                 you personalized recommendations based on your goals. Plus, our
                 app is packed with features to help you stay motivated, like
-                meal plans, recipes, and a community of supportive users.
+                meal plans, recipes, and a community of supportive users.`}
               </p>
               <div>
                 <label
@@ -363,8 +363,8 @@ export default function Example() {
               Reach your health and fitness goals
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Amino can track your progress in real time, so you can see how
-              you're doing and make adjustments as needed
+              {`Amino can track your progress in real time, so you can see how
+              you're doing and make adjustments as needed`}
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
