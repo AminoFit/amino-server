@@ -4,6 +4,7 @@ import { GenerateResponseForUser } from "@/openai/RespondToMessage";
 import {
   LogSmsMessage,
   SaveAndSendMessageToUser,
+  UpdateOptOut,
 } from "@/twilio/SendMessageToUser";
 import { MessageDirection, Role } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
   console.log("user", user);
 
   await LogSmsMessage(user, body, MessageDirection.Inbound);
+
+  const optedOut = await UpdateOptOut(user, body);
+  if (optedOut) {
+    return NextResponse.json({ message: "Success" });
+  }
 
   await SaveMessageFromUser(user, body, Role.User);
   console.log("body", body);

@@ -7,9 +7,12 @@ import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 const from = process.env.TWILIO_PHONE_NUMBER;
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
-  await SaveMessageFromUser(user, message, Role.Assistant);
-  const sentMsg = await SendMessageToUser(user, message);
-  return sentMsg;
+  if (!user.optOut) {
+    await SaveMessageFromUser(user, message, Role.Assistant);
+    const sentMsg = await SendMessageToUser(user, message);
+    return true;
+  }
+  return false;
 }
 
 export async function SendMessageToUser(user: User, message: string) {
@@ -95,4 +98,52 @@ export async function SendListOfFoodsTodayToUser(user: User) {
   }
 
   return `No foods logged today.`;
+}
+
+/*
+  returns true if the user has opted out
+*/
+export async function UpdateOptOut(
+  user: User,
+  message: string
+): Promise<boolean> {
+  // Check if they want to stop
+  if (message.toLowerCase().includes("stop")) {
+    await SendMessageToUser(
+      user,
+      'You have been opted out. Text "start" to resume.'
+    );
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        optOut: true,
+      },
+    });
+    return true;
+  }
+
+  // Check if they want to resume
+  if (
+    message.toLowerCase().includes("start") ||
+    message.toLowerCase().includes("resume")
+  ) {
+    await SendMessageToUser(
+      user,
+      'You have been opted back in. Text "stop" to opt out.'
+    );
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        optOut: false,
+      },
+    });
+
+    return false;
+  }
+  // Otherwise, continue means they are not opted out
+  return user.optOut;
 }

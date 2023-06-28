@@ -53,6 +53,7 @@ model User {
   dateOfBirth DateTime?
   weightLbs   Float?
   sentContact Boolean          @default(false)
+  optOut      Boolean          @default(false)
   Message     Message[]
   Foods       LoggedFoodItem[]
   SmsMessage  SmsMessage[]
