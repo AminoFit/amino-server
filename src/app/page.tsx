@@ -8,6 +8,7 @@ import {
 import Footer from "./Footer";
 import Nav from "./Nav";
 import { PhoneForm } from "./PhoneForms";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 const primaryFeatures = [
   {
