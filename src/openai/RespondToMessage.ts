@@ -80,7 +80,7 @@ export async function GenerateResponseForUser(
       { name: "update_user_info", parameters: updateUserInfoSchema },
     ],
     function_call: "auto",
-    temperature: 0,
+    temperature: 1,
   };
 
   const completion = await openai
