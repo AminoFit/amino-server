@@ -2,6 +2,7 @@ import Head from "next/head";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { MetaTags } from "./MetaTags";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,32 +17,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <Head>
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/apple-touch-icon.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/favicon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/favicon-16x16.png"
-        />
-        <link rel="manifest" href="/site.webmanifest" />
-        <meta name="msapplication-TileColor" content="#da532c" />
-        <meta name="theme-color" content="#ffffff" />
+        <MetaTags />
       </Head>
-      <body className={inter.className}>
-        {children}
-      </body>
+      <body className={`h-full ${inter.className}`}>{children}</body>
     </html>
   );
 }
