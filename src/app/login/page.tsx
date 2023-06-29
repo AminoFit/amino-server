@@ -73,7 +73,7 @@ export default function Example() {
             Sign in with a magic link
           </h2>
           <p className="mt-2 text-center text-sm text-gray-700">
-            We'll text you a link to sign in to your account.
+            {"We'll text you a link to sign in to your account."}
           </p>
         </div>
 

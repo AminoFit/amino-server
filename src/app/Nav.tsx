@@ -29,8 +29,8 @@ export default function Nav() {
             >
               <circle cx={1} cy={1} r={1} />
             </svg>
-            Amino is just getting off the ground. We're testing cool new stuff,
-            but there might be some bugs.
+            {`Amino is just getting off the ground. We're testing cool new stuff,
+            but there might be some bugs.`}
           </p>
           <div className="flex flex-1 justify-end">
             <button
@@ -46,10 +46,12 @@ export default function Nav() {
       )}
 
       {/* Nav portion */}
-      <header className={classNames("absolute inset-x-0 z-50",{
-        'top-10': bannerOpen,
-        'top-0': !bannerOpen,
-      } )}>
+      <header
+        className={classNames("absolute inset-x-0 z-50", {
+          "top-10": bannerOpen,
+          "top-0": !bannerOpen,
+        })}
+      >
         <nav
           className="flex items-center justify-between p-6 lg:px-8"
           aria-label="Global"
