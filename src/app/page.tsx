@@ -10,6 +10,9 @@ import Nav from "./Nav";
 import { PhoneForm } from "./PhoneForms";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "./api/auth/[...nextauth]/auth";
+
 const primaryFeatures = [
   {
     name: "Push to deploy.",
@@ -122,10 +125,14 @@ function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Example() {
+export default async function Example() {
+  const session = await getServerSession(authOptions);
+  console.log(session);
+
   return (
     <div className="bg-white">
       {/* Header */}
+      <pre>{JSON.stringify(session)}</pre>
       <Nav />
       <main>
         {/* Hero section */}

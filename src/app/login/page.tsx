@@ -30,34 +30,6 @@ export default function Example() {
     setError("");
     setSubmitting(true);
 
-    // fetch("/api/post-new-customer", {
-    //   method: "POST",
-    //   headers: {
-    //     Accept: "application/json",
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({ phone: parsedPhone }),
-    // })
-    //   .then(async (res) => {
-    //     setSubmitting(false);
-    //     if (res.status !== 200) {
-    //       const json = await res.json();
-    //       setError(
-    //         json.error ||
-    //           "There was an error processing your request. Please try again later."
-    //       );
-    //       return;
-    //     }
-
-    //     // Success
-    //     setError("");
-    //     setModalOpen(true);
-    //   })
-    //   .catch((err) => {
-    //     setError(
-    //       "There was an error processing your request. Please try again later."
-    //     );
-    //   });
   };
 
   return (
@@ -70,7 +42,7 @@ export default function Example() {
             alt="Amino logo"
           />
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Sign in with a magic link
+            Sign in with a magic text link
           </h2>
           <p className="mt-2 text-center text-sm text-gray-700">
             {"We'll text you a link to sign in to your account."}

@@ -3,6 +3,7 @@
 import { Dialog } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import classNames from "classnames";
+import { useSession } from "next-auth/react";
 
 import { useState } from "react";
 
@@ -15,8 +16,16 @@ const navigation = [
 export default function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bannerOpen, setBannerOpen] = useState(true);
+
+  const { data, status, update } = useSession();
+
   return (
     <>
+      <div>Nav Start</div>
+      <div>{JSON.stringify(data)}</div>
+      <div>{status}</div>
+      <div>Nav nav</div>
+
       {/* Banner */}
       {bannerOpen && (
         <div className="flex items-center gap-x-6 bg-gray-900 px-6 py-2.5 sm:px-3.5 sm:before:flex-1">
