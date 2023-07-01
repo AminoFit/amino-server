@@ -20,18 +20,21 @@ model Message {
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-enum MessageDirection {
-  Inbound
-  Outbound
-}
-
 model SmsMessage {
   id        Int              @id @default(autoincrement())
   createdAt DateTime         @default(now())
   content   String
-  direction MessageDirection
   userId    String
+  direction MessageDirection
   User      User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model SmsAuthCode {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime @default(now())
+  userId    String
+  User      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model OpenAiUsage {
@@ -60,6 +63,7 @@ model User {
   OpenAiUsage   OpenAiUsage[]
   Session       Session[]
   Account       Account[]
+  SmsAuthCode   SmsAuthCode[]
 }
 
 enum Role {
@@ -118,4 +122,9 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+}
+
+enum MessageDirection {
+  Inbound
+  Outbound
 }
