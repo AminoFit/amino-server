@@ -13,7 +13,7 @@ const navigation = [
   { name: "Pricing", href: "/pricing" },
 ];
 
-export default function Nav() {
+export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bannerOpen, setBannerOpen] = useState(true);
 

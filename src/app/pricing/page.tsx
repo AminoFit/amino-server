@@ -6,7 +6,7 @@ import {
   ServerIcon,
 } from "@heroicons/react/20/solid";
 import Footer from "../Footer";
-import Nav from "../Nav";
+import Nav from "../MarketingNav";
 import PricingSection from "./PricingSection";
 
 export default function Example() {
