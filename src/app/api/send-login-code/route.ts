@@ -1,6 +1,7 @@
 import { prisma } from "@/database/prisma";
 import { SendMessageToUser } from "@/twilio/SendMessageToUser";
 import { openai } from "@/utils/openai";
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import path from "path";
 import vCardsJs from "vcards-js";
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
   console.log("userPhone", userPhone);
 
   if (!userPhone) {
+    console.error("user_phone missing");
     return NextResponse.json(
       { error: "Missing 'user_phone' arg" },
       { status: 400 }
@@ -28,20 +30,38 @@ export async function GET(request: Request) {
   });
 
   if (!user) {
+    console.error("user missing");
     return NextResponse.json(
-      { error: "User does not have an account." },
+      { error: "User does not have an account" },
       { status: 400 }
     );
   }
+
+  const newCode = randomUUID()
+    .replaceAll("-", "")
+    .substring(0, 12)
+    .toUpperCase();
 
   const smsCode = await prisma.smsAuthCode.create({
     data: {
       userId: user.id,
       expiresAt: new Date(Date.now() + 1000 * 60 * 30), // 30 minutes
+      code: newCode,
     },
   });
 
-  await SendMessageToUser(user, `Your Amino SMS Code is ${smsCode.id}`);
+  const rootDomain = process.env.NEXTAUTH_URL;
 
+  if (!rootDomain) {
+    console.error("NEXTAUTH_URL missing");
+    return NextResponse.json({ error: "NEXTAUTH_URL missing", status: 500 });
+  }
+
+  await SendMessageToUser(
+    user,
+    `Your Amino SMS Code is ${rootDomain}/login-code?code=${smsCode.code}`
+  );
+
+  console.log("Success sending SMS Code");
   return NextResponse.json({ message: "Success" });
 }

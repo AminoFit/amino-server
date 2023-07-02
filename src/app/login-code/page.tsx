@@ -58,8 +58,8 @@ export default function SignInCode() {
           validationSchema={Yup.object({
             code: Yup.string()
               .required("Please enter your code")
-              .min(8, "Must be 8 characters")
-              .max(8, "Must be 8 characters"),
+              .min(12, "Must be 12 characters")
+              .max(12, "Must be 12 characters"),
           })}
           onSubmit={async (values, { setSubmitting }) => {
             const res = await signIn("credentials", {

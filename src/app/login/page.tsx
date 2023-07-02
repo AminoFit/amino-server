@@ -8,7 +8,6 @@ export default function Example() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
 
   const handleSubmit = () => {
@@ -35,6 +34,11 @@ export default function Example() {
       .then((res) => res.json())
       .then((json) => {
         console.log("The json", json);
+        if (json.error) {
+          setError(json.error);
+          setSubmitting(false);
+          return;
+        }
         setCodeSent(true);
         setSubmitting(false);
       });

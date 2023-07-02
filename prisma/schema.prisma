@@ -33,6 +33,7 @@ model SmsAuthCode {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   expiresAt DateTime @default(now())
+  code      String   @unique @db.VarChar(64)
   userId    String
   User      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

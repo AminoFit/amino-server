@@ -29,8 +29,38 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         console.log("Running authorize() credentials", credentials);
-        const user = { id: "1", name: "Admin", email: "admin@admin.com" };
-        return user;
+
+        if (!credentials || !credentials.code) {
+          console.log("No credentials passed in. Returning null.");
+          return null;
+        }
+
+        const smsCode = await prisma.smsAuthCode.findUnique({
+          where: {
+            code: credentials.code,
+          },
+        });
+
+        if (smsCode) {
+          console.log("Found smsCode", smsCode);
+          if (smsCode.expiresAt < new Date()) {
+            console.log("Code expired");
+            return null;
+          }
+          const user = await prisma.user.findUnique({
+            where: {
+              id: smsCode.userId,
+            },
+          });
+          if (!user) {
+            console.log("User not found");
+            return null;
+          }
+          console.log("Found user", user);
+          return user;
+        }
+        console.log("Code not found");
+        return null;
       },
     }),
   ],
