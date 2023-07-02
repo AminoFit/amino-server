@@ -126,13 +126,10 @@ function classNames(...classes: any[]) {
 }
 
 export default async function Example() {
-  const session = await getServerSession(authOptions);
-  console.log(session);
 
   return (
     <div className="bg-white">
       {/* Header */}
-      <pre>{JSON.stringify(session)}</pre>
       <Nav />
       <main>
         {/* Hero section */}
