@@ -56,7 +56,7 @@ export default function Example() {
           {codeSent ? (
             <>
               <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-                We've sent your login code!
+                We&apos;ve sent your login code!
               </h2>
               <p className="mt-2 text-center text-sm text-gray-700">
                 {"Check your text messages for a a link to login"}

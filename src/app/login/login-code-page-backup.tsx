@@ -113,7 +113,7 @@ export default function SignInCode() {
             </form>
 
             <p className="mt-10 text-center text-sm text-gray-500">
-              Don't have a code yet?{" "}
+              Don&apos;t have a code yet?{" "}
               <a
                 href="/"
                 className="font-semibold leading-6 text-blue-600 hover:text-blue-500"
