@@ -32,7 +32,7 @@ CREATE TABLE "SmsAuthCode" (
     "id" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "code" TEXT NOT NULL,
+    "code" VARCHAR(64) NOT NULL,
     "userId" TEXT NOT NULL,
 
     CONSTRAINT "SmsAuthCode_pkey" PRIMARY KEY ("id")
@@ -117,6 +117,9 @@ CREATE TABLE "Account" (
 
     CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SmsAuthCode_code_key" ON "SmsAuthCode"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

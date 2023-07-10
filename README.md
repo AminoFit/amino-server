@@ -25,3 +25,17 @@ Reach out to Chris or Seb to get a copy of the local `.env.local` stuff that you
 - Production: `+1 844 495 1001`
 - Coudron: `+1 855 650 0610`
 - Grubb: `+1 567 292 1010`
+
+
+## Setup postgres locally
+### Install Postgres and Run via Docker
+`brew install --cask docker`
+`docker pull postgres`
+`docker run -p 5432:5432 --name amino-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres`
+
+Url to import into [TablePlus](https://tableplus.com/). This should be in your .env.local file"
+`DATABASE_URL=postgresql://postgres:mysecretpassword@127.0.0.1/postgres?statusColor=005392&env=development&name=Amino%20Localhost&tLSMode=1&usePrivateKey=false&safeModeLevel=0&advancedSafeModeLevel=0&driverVersion=0`
+
+###
+After running docker postgres, 
+`npm run migrate:dev`
