@@ -43,7 +43,7 @@ export default function MarketingNav() {
         href="/login"
         className="text-sm font-semibold leading-6 text-gray-900"
       >
-        Log in 2<span aria-hidden="true">&rarr;</span>
+        Log in<span aria-hidden="true">&rarr;</span>
       </a>
     );
   };
