@@ -6,9 +6,12 @@ import {
   ServerIcon,
 } from "@heroicons/react/20/solid";
 import Footer from "./Footer";
-import Nav from "./Nav";
+import Nav from "./MarketingNav";
 import { PhoneForm } from "./PhoneForms";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+
+import { getServerSession } from "next-auth";
+import { authOptions } from "./api/auth/[...nextauth]/auth";
 
 const primaryFeatures = [
   {
@@ -122,7 +125,8 @@ function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Example() {
+export default async function Example() {
+
   return (
     <div className="bg-white">
       {/* Header */}

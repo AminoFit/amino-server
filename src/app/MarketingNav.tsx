@@ -3,6 +3,7 @@
 import { Dialog } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import classNames from "classnames";
+import { useSession } from "next-auth/react";
 
 import { useState } from "react";
 
@@ -12,11 +13,48 @@ const navigation = [
   { name: "Pricing", href: "/pricing" },
 ];
 
-export default function Nav() {
+export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bannerOpen, setBannerOpen] = useState(true);
+
+  const { data, status, update } = useSession();
+
+  const renderLogin = () => {
+    if (status === "loading") {
+      return (
+        <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
+          Loading...
+        </a>
+      );
+    }
+    if (status === "authenticated") {
+      return (
+        <a
+          href="/account"
+          className="text-sm font-semibold leading-6 text-gray-900"
+        >
+          My Account
+        </a>
+      );
+    }
+
+    return (
+      <a
+        href="/login"
+        className="text-sm font-semibold leading-6 text-gray-900"
+      >
+        Log in 2<span aria-hidden="true">&rarr;</span>
+      </a>
+    );
+  };
+
   return (
     <>
+      <div>Nav Start</div>
+      <div>{JSON.stringify(data)}</div>
+      <div>{status}</div>
+      <div>Nav nav</div>
+
       {/* Banner */}
       {bannerOpen && (
         <div className="flex items-center gap-x-6 bg-gray-900 px-6 py-2.5 sm:px-3.5 sm:before:flex-1">
@@ -84,12 +122,7 @@ export default function Nav() {
             ))}
           </div>
           <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-            <a
-              href="/login"
-              className="text-sm font-semibold leading-6 text-gray-900"
-            >
-              Log in <span aria-hidden="true">&rarr;</span>
-            </a>
+            {renderLogin()}
           </div>
         </nav>
         <Dialog
@@ -131,14 +164,7 @@ export default function Nav() {
                     </a>
                   ))}
                 </div>
-                <div className="py-6">
-                  <a
-                    href="#"
-                    className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                  >
-                    Log in
-                  </a>
-                </div>
+                <div className="py-6">{renderLogin()}</div>
               </div>
             </div>
           </Dialog.Panel>

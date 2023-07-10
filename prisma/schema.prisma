@@ -16,22 +16,26 @@ model Message {
   content       String
   function_name String?
   role          Role
-  userId        Int
+  userId        String
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-enum MessageDirection {
-  Inbound
-  Outbound
 }
 
 model SmsMessage {
   id        Int              @id @default(autoincrement())
   createdAt DateTime         @default(now())
   content   String
+  userId    String
   direction MessageDirection
-  userId    Int
   User      User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model SmsAuthCode {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime @default(now())
+  code      String   @unique @db.VarChar(64)
+  userId    String
+  User      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model OpenAiUsage {
@@ -41,22 +45,26 @@ model OpenAiUsage {
   promptTokens     Int
   completionTokens Int
   totalTokens      Int
-  userId           Int
+  userId           String
   User             User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model User {
-  id          Int              @id @default(autoincrement())
-  name        String?          @db.VarChar(255)
-  email       String?          @unique @db.VarChar(255)
-  phone       String?          @unique @db.VarChar(255)
-  dateOfBirth DateTime?
-  weightLbs   Float?
-  sentContact Boolean          @default(false)
-  Message     Message[]
-  Foods       LoggedFoodItem[]
-  SmsMessage  SmsMessage[]
-  OpenAiUsage OpenAiUsage[]
+  id            String           @id @default(cuid())
+  name          String?          @db.VarChar(255)
+  email         String?          @unique @db.VarChar(255)
+  emailVerified DateTime?
+  phone         String?          @unique @db.VarChar(255)
+  dateOfBirth   DateTime?
+  weightLbs     Float?
+  sentContact   Boolean          @default(false)
+  Message       Message[]
+  Foods         LoggedFoodItem[]
+  SmsMessage    SmsMessage[]
+  OpenAiUsage   OpenAiUsage[]
+  Session       Session[]
+  Account       Account[]
+  SmsAuthCode   SmsAuthCode[]
 }
 
 enum Role {
@@ -78,30 +86,46 @@ model LoggedFoodItem {
   carbohydrates Float
   protein       Float
   calories      Float
-  userId        Int
+  userId        String
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model FoodDatabaseItem {
-  id                       Int     @id @default(autoincrement())
-  code                     String  @unique
-  product_name             String
-  abbreviated_product_name String?
-  generic_name             String?
-  quantity                 String?
-  countries_en             String?
-  serving_size             String?
-  serving_quantity         String?
-  product_quantity         String?
-  image_url                String?
-  energy_kcal_100g         String?
-  energy_100g              String?
-  fat_100g                 String?
-  saturated_fat_100g       String?
-  carbohydrates_100g       String?
-  sugars_100g              String?
-  fiber_100g               String?
-  proteins_100g            String?
-  salt_100g                String?
-  sodium_100g              String?
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+enum MessageDirection {
+  Inbound
+  Outbound
 }

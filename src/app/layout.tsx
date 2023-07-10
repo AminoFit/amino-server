@@ -1,8 +1,8 @@
-import Head from "next/head";
-import "./globals.css";
 import { Inter } from "next/font/google";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import Head from "next/head";
 import { MetaTags } from "./MetaTags";
+import "./globals.css";
+import { NextAuthProvider } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +21,10 @@ export default function RootLayout({
       <Head>
         <MetaTags />
       </Head>
-      <body className={`h-full ${inter.className}`}>{children}</body>
+
+      <body className={`h-full ${inter.className}`}>
+        <NextAuthProvider>{children}</NextAuthProvider>
+      </body>
     </html>
   );
 }
