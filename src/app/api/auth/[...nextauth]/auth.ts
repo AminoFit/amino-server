@@ -69,14 +69,22 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  // callbacks: {
-  //   session: async ({ session, user }) => {
-  //     if (session?.user) {
-  //       session.user.id = user.id;
-  //     }
-  //     return session;
-  //   },
-  // },
+  callbacks: {
+    jwt: async ({ token, user, account, profile }) => {
+      if (user) {
+        token.uid = user.id;
+      }
+      return Promise.resolve(token);
+    },
+    session: async ({ session, user, token }) => {
+      session.user = {
+        ...session.user,
+        userId: token.uid as string,
+      };
+
+      return Promise.resolve(session);
+    },
+  },
 };
 
 // CredentialsProvider({

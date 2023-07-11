@@ -20,20 +20,27 @@ import {
 import classNames from "classnames";
 import { prisma } from "@/database/prisma";
 import { getServerSession } from "next-auth";
+import { authOptions } from "../api/auth/[...nextauth]/auth";
 
 async function getFoods() {
-  const session = await getServerSession();
-  console.log("User session", session)
+  const session = await getServerSession(authOptions);
+  console.log("User session", session);
 
-  if (session){
+  if (session) {
     let userFoods = await prisma.loggedFoodItem.findMany({
       where: {
-        // userId: session.id,
+        userId: session.user.userId,
       },
     });
     return userFoods;
   }
   return [];
+}
+async function getUser() {
+  const session = await getServerSession(authOptions);
+  console.log("User session", session);
+
+  return session;
 }
 
 const days = [
@@ -95,9 +102,9 @@ const days = [
 ];
 
 export default async function Example() {
-
-  const foods  = await getFoods()
-  console.log("foods", foods)
+  const foods = await getFoods();
+  const userInfo = await getUser();
+  console.log("foods", foods);
   return (
     <>
       <div className="lg:flex lg:items-center lg:justify-between mb-10">
@@ -105,6 +112,7 @@ export default async function Example() {
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
             Daily Food Overview
           </h2>
+          <p>{JSON.stringify(userInfo)}</p>
           <div className="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
             <div className="mt-2 flex items-center text-sm text-gray-500">
               <BriefcaseIcon
@@ -236,42 +244,44 @@ export default async function Example() {
                   </tr>
                 </thead>
                 <tbody>
-                    <Fragment>
-                      <tr className="text-sm leading-6 text-gray-900">
-                        <th
-                          scope="colgroup"
-                          colSpan={3}
-                          className="relative isolate py-2 font-semibold"
-                        >
-                          <time dateTime={new Date().getDate().toString()}>{new Date().getDate().toString()}</time>
-                          <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-gray-200 bg-gray-50" />
-                          <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-gray-200 bg-gray-50" />
-                        </th>
-                      </tr>
-                      {foods.map((foodItem) => (
-                        <tr key={foodItem.id}>
-                          <td className="relative py-5 pr-6">
-                            <div className="flex gap-x-6">
-                              <div className="flex-auto">
-                                <div className="flex items-start gap-x-3">
-                                  <div className="text-sm font-medium leading-6 text-gray-900">
-                                    {foodItem.name}
-                                  </div>
+                  <Fragment>
+                    <tr className="text-sm leading-6 text-gray-900">
+                      <th
+                        scope="colgroup"
+                        colSpan={3}
+                        className="relative isolate py-2 font-semibold"
+                      >
+                        <time dateTime={new Date().getDate().toString()}>
+                          {new Date().getDate().toString()}
+                        </time>
+                        <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-gray-200 bg-gray-50" />
+                        <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-gray-200 bg-gray-50" />
+                      </th>
+                    </tr>
+                    {foods.map((foodItem) => (
+                      <tr key={foodItem.id}>
+                        <td className="relative py-5 pr-6">
+                          <div className="flex gap-x-6">
+                            <div className="flex-auto">
+                              <div className="flex items-start gap-x-3">
+                                <div className="text-sm font-medium leading-6 text-gray-900">
+                                  {foodItem.name}
                                 </div>
                               </div>
                             </div>
-                            <div className="absolute bottom-0 right-full h-px w-screen bg-gray-100" />
-                            <div className="absolute bottom-0 left-0 h-px w-screen bg-gray-100" />
-                          </td>
-                          <td className="hidden py-5 pr-6 sm:table-cell">
-                            <div className="text-sm leading-6 text-gray-900">
-                              {foodItem.amount}
-                            </div>
-                            <div className="mt-1 text-xs leading-5 text-gray-500">
-                              {foodItem.calories}
-                            </div>
-                          </td>
-                          {/* <td className="py-5 text-right">
+                          </div>
+                          <div className="absolute bottom-0 right-full h-px w-screen bg-gray-100" />
+                          <div className="absolute bottom-0 left-0 h-px w-screen bg-gray-100" />
+                        </td>
+                        <td className="hidden py-5 pr-6 sm:table-cell">
+                          <div className="text-sm leading-6 text-gray-900">
+                            {foodItem.amount}
+                          </div>
+                          <div className="mt-1 text-xs leading-5 text-gray-500">
+                            {foodItem.calories}
+                          </div>
+                        </td>
+                        {/* <td className="py-5 text-right">
                             <div className="flex justify-end">
                               <a
                                 href={transaction.href}
@@ -295,9 +305,9 @@ export default async function Example() {
                               </span>
                             </div>
                           </td> */}
-                        </tr>
-                      ))}
-                    </Fragment>
+                      </tr>
+                    ))}
+                  </Fragment>
                 </tbody>
               </table>
             </div>
