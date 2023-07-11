@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
 import GetMessagesForUser from '../../../../database/GetMessagesForUser';
 import { Message } from "@prisma/client";
+import { getServerSession } from "next-auth";
 
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId');
+  const session = await getServerSession(authOptions);
+  
+  if (!session) {
+    return new Response(
+      JSON.stringify({ error: 'Not authenticated' }),
+      {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+  }
+
+  const userId = session.user.userId;
 
   try {
     let messages: Message[] = [];
