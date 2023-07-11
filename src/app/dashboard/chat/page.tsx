@@ -13,7 +13,9 @@ async function getMessages() {
         userId: session.user.userId,
       },
     });
-    return userMessages;
+    return userMessages.filter(
+      (message) => message.role === "User" || message.role === "Assistant"
+    );
   }
   return [];
 }
