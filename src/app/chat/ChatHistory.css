@@ -1,7 +1,0 @@
-.chat-message {
-    display: flex;
-    justify-content: flex-start;
-}
-.chat-message.justify-end {
-    justify-content: flex-end;
-}

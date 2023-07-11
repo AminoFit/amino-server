@@ -1,3 +1,5 @@
+"use client";
+
 import { Message } from "@prisma/client";
 import classNames from "classnames";
 import moment from "moment";

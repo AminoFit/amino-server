@@ -1,8 +1,8 @@
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
 import { prisma } from "@/database/prisma";
 import { getServerSession } from "next-auth";
-import { ChatMessage } from "./ChatMessage";
-import ChatBox from "./ChatBox";
+import { ChatMessage } from "../../../components/chat/ChatMessage";
+import ChatBox from "../../../components/chat/ChatBox";
 
 async function getMessages() {
   const session = await getServerSession(authOptions);
