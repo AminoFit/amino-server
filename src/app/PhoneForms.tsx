@@ -104,7 +104,7 @@ export function PhoneForm() {
       </div>
 
       {/* Complete Modal */}
-      <Transition.Root show={modalOpen} as={Fragment}>
+      {/* <Transition.Root show={modalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-10" onClose={setModalOpen}>
           <Transition.Child
             as={Fragment}
@@ -166,7 +166,7 @@ export function PhoneForm() {
             </div>
           </div>
         </Dialog>
-      </Transition.Root>
+      </Transition.Root> */}
     </div>
   );
 }

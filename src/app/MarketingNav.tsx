@@ -120,7 +120,7 @@ export default function MarketingNav() {
             {renderLogin()}
           </div>
         </nav>
-        <Dialog
+        {/* <Dialog
           as="div"
           className="lg:hidden"
           open={mobileMenuOpen}
@@ -163,7 +163,7 @@ export default function MarketingNav() {
               </div>
             </div>
           </Dialog.Panel>
-        </Dialog>
+        </Dialog> */}
       </header>
     </>
   );

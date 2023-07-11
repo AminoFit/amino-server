@@ -173,7 +173,7 @@ export default function Example() {
               />
             </Menu.Button>
 
-            <Transition
+            {/* <Transition
               as={Fragment}
               enter="transition ease-out duration-200"
               enterFrom="transform opacity-0 scale-95"
@@ -210,7 +210,7 @@ export default function Example() {
                   )}
                 </Menu.Item>
               </Menu.Items>
-            </Transition>
+            </Transition> */}
           </Menu>
         </div>
       </div>

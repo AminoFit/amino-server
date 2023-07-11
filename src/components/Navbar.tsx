@@ -88,7 +88,7 @@ export default function Example() {
             <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
-        <Popover.Group className="hidden lg:flex lg:gap-x-12">
+        {/* <Popover.Group className="hidden lg:flex lg:gap-x-12">
           <Popover className="relative">
             <Popover.Button className="flex items-center gap-x-1 text-sm font-semibold leading-6 text-gray-900">
               Product
@@ -161,14 +161,14 @@ export default function Example() {
           <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
             Company
           </a>
-        </Popover.Group>
+        </Popover.Group> */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end">
           <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
             Log in <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
       </nav>
-      <Dialog
+      {/* <Dialog
         as="div"
         className="lg:hidden"
         open={mobileMenuOpen}
@@ -255,7 +255,7 @@ export default function Example() {
             </div>
           </div>
         </Dialog.Panel>
-      </Dialog>
+      </Dialog> */}
     </header>
   );
 }

@@ -18,10 +18,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <Head>
-        <MetaTags />
-      </Head>
-
       <body className={`h-full ${inter.className}`}>
         <NextAuthProvider>{children}</NextAuthProvider>
       </body>
