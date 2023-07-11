@@ -76,7 +76,7 @@ export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
 
 export function FoodRow({ foodItem }: { foodItem: LoggedFoodItem }) {
   return (
-    <tr key={foodItem.name}>
+    <tr key={foodItem.id}>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
         <div className="text-xs font-light text-gray-500">
           {foodItem.amount} {foodItem.unit}

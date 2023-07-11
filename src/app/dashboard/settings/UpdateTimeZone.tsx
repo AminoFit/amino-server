@@ -49,10 +49,14 @@ export default function UpdateTimeZone({ user }: { user: User }) {
             >
               {tzData.map((tz) => {
                 const options = [];
-                options.push(<option value={tz.utc[0]}>{tz.text}</option>);
+                options.push(
+                  <option value={tz.utc[0]} key={tz.text}>
+                    {tz.text}
+                  </option>
+                );
                 tz.utc.forEach((child) => {
                   options.push(
-                    <option value={child}>
+                    <option value={child} key={child}>
                       &nbsp;&nbsp;&nbsp;&nbsp;{child}
                     </option>
                   );
