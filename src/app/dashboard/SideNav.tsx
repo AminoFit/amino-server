@@ -30,6 +30,12 @@ export default function SideNav() {
       icon: UsersIcon,
       current: pathname === "/dashboard/chat",
     },
+    {
+      name: "Settings",
+      href: "/dashboard/settings",
+      icon: Cog6ToothIcon,
+      current: pathname === "/dashboard/settings",
+    },
   ];
 
   return (
