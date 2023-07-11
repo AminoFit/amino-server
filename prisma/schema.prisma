@@ -58,6 +58,7 @@ model User {
   dateOfBirth   DateTime?
   weightLbs     Float?
   sentContact   Boolean          @default(false)
+  tzIdentifier  String           @default("America/New_York")
   Message       Message[]
   Foods         LoggedFoodItem[]
   SmsMessage    SmsMessage[]
