@@ -6,11 +6,10 @@ export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
 
   try {
-    let messages: Message[] = []; // replace 'YourMessageType' with the actual type of your messages
+    let messages: Message[] = [];
     console.log('userId', userId);
     if (userId) {
       messages = await GetMessagesForUser(userId);
-      console.log('messages', messages);
     }
     return new Response(JSON.stringify(messages), {
       status: 200,
@@ -20,8 +19,9 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    const err = error as Error;
     return new Response(
-      JSON.stringify({ error: 'Unable to fetch messages' }),
+      JSON.stringify({ error: err.message || 'Unable to fetch messages' }),
       {
         status: 500,
         headers: {
