@@ -30,10 +30,10 @@ export default function MarketingNav() {
     if (status === "authenticated") {
       return (
         <a
-          href="/account"
+          href="/dashboard"
           className="text-sm font-semibold leading-6 text-gray-900"
         >
-          My Account
+          My Dashboard
         </a>
       );
     }
@@ -43,18 +43,13 @@ export default function MarketingNav() {
         href="/login"
         className="text-sm font-semibold leading-6 text-gray-900"
       >
-        Log in 2<span aria-hidden="true">&rarr;</span>
+        Log in<span aria-hidden="true">&rarr;</span>
       </a>
     );
   };
 
   return (
     <>
-      <div>Nav Start</div>
-      <div>{JSON.stringify(data)}</div>
-      <div>{status}</div>
-      <div>Nav nav</div>
-
       {/* Banner */}
       {bannerOpen && (
         <div className="flex items-center gap-x-6 bg-gray-900 px-6 py-2.5 sm:px-3.5 sm:before:flex-1">

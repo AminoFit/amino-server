@@ -1,9 +1,14 @@
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/database/prisma";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { Adapter } from "next-auth/adapters";
+
+// interface ExtendedUser extends User {
+//   id: string;
+//   roles: string[];
+// }
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter<boolean>,
@@ -64,6 +69,22 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  callbacks: {
+    jwt: async ({ token, user, account, profile }) => {
+      if (user) {
+        token.uid = user.id;
+      }
+      return Promise.resolve(token);
+    },
+    session: async ({ session, user, token }) => {
+      session.user = {
+        ...session.user,
+        userId: token.uid as string,
+      };
+
+      return Promise.resolve(session);
+    },
+  },
 };
 
 // CredentialsProvider({
