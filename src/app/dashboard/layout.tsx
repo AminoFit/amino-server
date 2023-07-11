@@ -1,11 +1,18 @@
 import SideNav from "./SideNav";
+import { getUser } from "./settings/actions";
 
-const userNavigation = [
-  { name: "Your profile", href: "#" },
-  { name: "Sign out", href: "#" },
-];
+import { TimeZoneBanner } from "./TimeZoneBanner";
 
-export default function Example({ children }: { children: React.ReactNode }) {
+export default async function Example({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getUser();
+
+  if (!user) {
+    return <div className="">No user found</div>;
+  }
 
   return (
     <>
@@ -18,6 +25,7 @@ export default function Example({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      <TimeZoneBanner user={user} />
     </>
   );
 }
