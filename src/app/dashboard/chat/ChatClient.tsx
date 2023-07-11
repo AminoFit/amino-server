@@ -44,7 +44,7 @@ export default function ChatClient() {
             </div>
           ) : (
             messages.map((message: Message) => (
-              <ChatMessage message={message} key={message.id} />
+              message.role === 'User' || message.role === 'Assistant' ? <ChatMessage message={message} key={message.id} /> : null
             ))
           )}
         </div>
