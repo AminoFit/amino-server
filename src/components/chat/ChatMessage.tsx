@@ -12,7 +12,7 @@ export function ChatMessage({ message }: { message: Message }) {
   return (
     <div
       className={`flex flex-fill ${
-        message.role === "User" ? "justify-end" : ""
+        message.role === "User" ? "justify-end pl-20" : ""
       }`}
       key={message.id}
     >
@@ -21,16 +21,18 @@ export function ChatMessage({ message }: { message: Message }) {
           className={`space-y-2 text-xs max-w-4/5 mx-2 mb-3 ${
             message.role === "User"
               ? "order-1 items-end"
-              : "order-2 items-start"
+              : "order-2 items-start pr-20"
           }`}
         >
-<span
-  className={`px-4 py-2 rounded-lg inline-block ${
-    message.role === "User"
-      ? (message.userId === 'pending' ? "bg-blue-200 text-white rounded-br-none" : "bg-blue-600 text-white rounded-br-none")
-      : "bg-gray-300 text-gray-600 rounded-bl-none"
-  }`}
->
+          <span
+            className={`px-4 py-2 rounded-lg inline-block ${
+              message.role === "User"
+                ? message.userId === "pending"
+                  ? "bg-blue-400 text-white rounded-br-none"
+                  : "bg-blue-600 text-white rounded-br-none"
+                : "bg-gray-300 text-gray-600 rounded-bl-none"
+            }`}
+          >
             {message.content.split("\n").map((item, key) => {
               return (
                 <Fragment key={key}>
@@ -42,11 +44,11 @@ export function ChatMessage({ message }: { message: Message }) {
           </span>
         </div>
         <div
-  className={classNames("text-xs text-gray-400 mx-2 mb-1", {
-    "text-right": message.role === "User",
-  })}
-  style={{ marginTop: '-10px' }}  // Adjust this value to your needs
->
+          className={classNames("text-xs text-gray-400 mx-2 mb-1", {
+            "text-right": message.role === "User",
+          })}
+          style={{ marginTop: "-10px" }}
+        >
           {message.userId === "pending"
             ? "Sending"
             : timeDiff > 24 * 60 * 60 * 1000
