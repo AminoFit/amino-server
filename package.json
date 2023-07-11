@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "migrate:dev": "npx dotenv -e .env.local -- npx prisma migrate dev",
+    "migrate:new": "npx dotenv -e .env.local -- npx prisma migrate dev",
+    "migrate:dev": "npx dotenv -e .env.local -- npx prisma migrate deploy",
     "migrate:stage": "npx dotenv -e .env.stage -- npx prisma migrate deploy",
     "migrate:prod": "npx dotenv -e .env.prod -- npx prisma migrate deploy",
     "migrate:reset-dev": "npx dotenv -e .env.local -- npx prisma db push --force-reset",
