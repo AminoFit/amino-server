@@ -1,10 +1,9 @@
-import { User, Role } from "@prisma/client";
 import { prisma } from "./prisma";
 
-export default async function GetMessagesForUser(user: User) {
+export default async function GetMessagesForUser(userId: string) {
   const messagesForUser = await prisma.message.findMany({
     where: {
-      userId: user.id,
+      userId: userId,
     },
     take: 10,
     orderBy: [
