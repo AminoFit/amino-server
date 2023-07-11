@@ -50,16 +50,16 @@ export async function GET(request: Request) {
     },
   });
 
-  const rootDomain = process.env.NEXTAUTH_URL;
+  const rootDomain = process.env.VERCEL_URL;
 
   if (!rootDomain) {
-    console.error("NEXTAUTH_URL missing");
-    return NextResponse.json({ error: "NEXTAUTH_URL missing", status: 500 });
+    console.error("VERCEL_URL missing");
+    return NextResponse.json({ error: "VERCEL_URL missing", status: 500 });
   }
 
   await SendMessageToUser(
     user,
-    `Your Amino SMS Code is ${rootDomain}/login-code?code=${smsCode.code}`
+    `Your Amino SMS Code is http://${rootDomain}/login-code?code=${smsCode.code}`
   );
 
   console.log("Success sending SMS Code");
