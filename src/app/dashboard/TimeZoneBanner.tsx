@@ -26,8 +26,10 @@ export function TimeZoneBanner({ user }: { user: User }) {
   }, [user.tzIdentifier, tz]);
 
   const handleUpdate = async () => {
+    setSubmitting(true);
     await updateTimeZone(tz);
     setShowing(false);
+    setSubmitting(false);
   };
 
   if (!showing) return;
