@@ -37,7 +37,7 @@ export async function GenerateResponseForUser(
     },
   ];
 
-  const messagesForUser = await GetMessagesForUser(user);
+  const messagesForUser = await GetMessagesForUser(user.id);
 
   messagesForUser.forEach((message) => {
     let role: ChatCompletionRequestMessageRoleEnum =

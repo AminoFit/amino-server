@@ -5,16 +5,7 @@ import React, { useState, useEffect, useRef } from "react";
 import TimeAgo, { Formatter } from "react-timeago";
 import "./ChatHistory.css"; // Make sure to create a corresponding CSS file
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
-
-// Define the Message type
-interface Message {
-  id: number;
-  createdAt: string;
-  content: string;
-  function_name: string | null;
-  role: "User" | "Assistant";
-  userId: number;
-}
+import { Message } from "@prisma/client";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
