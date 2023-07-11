@@ -1,38 +1,59 @@
 import { Message } from "@prisma/client";
+import classNames from "classnames";
+import moment from "moment";
+import { Fragment } from "react";
 
 export function ChatMessage({ message }: { message: Message }) {
-  if (message.role === "User") {
-    return (
-      <div className="message me mb-4 flex text-right">
-        <div className="flex-1 px-2">
-          <div className="inline-block bg-blue-600 rounded-full p-2 px-6 text-white">
-            <span>{message.content}</span>
-          </div>
-          <div className="pr-4">
-            <small className="text-gray-500">15 April</small>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const messageDate = new Date(message.createdAt);
+  const now = new Date();
+  const timeDiff = now.getTime() - messageDate.getTime(); // in milliseconds
   return (
-    <div className="message mb-4 flex">
-      <div className="flex-2">
-        <div className="w-12 h-12 relative">
-          <img
-            className="w-12 h-12 rounded-full mx-auto"
-            src="https://tailwindcss-chat.vercel.app/resources/profile-image.png"
-            alt="chat-user"
-          />
-          <span className="absolute w-4 h-4 bg-gray-400 rounded-full right-0 bottom-0 border-2 border-white"></span>
+    <div
+      className={`flex flex-fill ${
+        message.role === "User" ? "justify-end" : ""
+      }`}
+      key={message.id}
+    >
+      <div>
+        <div
+          className={classNames("text-xs text-gray-400 mx-2 mb-1", {
+            "text-right": message.role === "User",
+          })}
+        >
+          {timeDiff > 24 * 60 * 60 * 1000
+            ? new Intl.DateTimeFormat("en-US", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              }).format(messageDate)
+            : moment(message.createdAt).fromNow()}
         </div>
-      </div>
-      <div className="flex-1 px-2">
-        <div className="inline-block bg-gray-300 rounded-full p-2 px-6 text-gray-700">
-          <span>{message.content}</span>
-        </div>
-        <div className="pl-4">
-          <small className="text-gray-500">15 April</small>
+        <div
+          className={`space-y-2 text-xs max-w-4/5 mx-2 mb-3 ${
+            message.role === "User"
+              ? "order-1 items-end"
+              : "order-2 items-start"
+          }`}
+        >
+          <span
+            className={`px-4 py-2 rounded-lg inline-block ${
+              message.role === "User"
+                ? "bg-blue-600 text-white rounded-br-none"
+                : "bg-gray-300 text-gray-600 rounded-bl-none"
+            }`}
+          >
+            {message.content.split("\n").map((item, key) => {
+              return (
+                <Fragment key={key}>
+                  {item}
+                  <br />
+                </Fragment>
+              );
+            })}
+          </span>
         </div>
       </div>
     </div>
