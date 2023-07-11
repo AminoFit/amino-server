@@ -53,6 +53,22 @@ export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
         {foods.map((foodItem) => (
           <FoodRow foodItem={foodItem} key={foodItem.id} />
         ))}
+        <tr className="border-t border-gray-200 text-left bg-gray-50 ">
+          <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
+          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            {foods.reduce((a, b) => a + b.fat, 0).toLocaleString()}g Fat
+          </th>
+          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            {foods.reduce((a, b) => a + b.carbohydrates, 0).toLocaleString()}g Carbs
+          </th>
+          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            {foods.reduce((a, b) => a + b.protein, 0).toLocaleString()}g Protein
+          </th>
+          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            {foods.reduce((a, b) => a + b.calories, 0).toLocaleString()}g Calories
+          </th>
+          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"></th>
+        </tr>
       </tbody>
     </table>
   );
@@ -70,16 +86,16 @@ export function FoodRow({ foodItem }: { foodItem: LoggedFoodItem }) {
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.fat}g Fat
+        {foodItem.fat.toLocaleString()}g Fat
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.carbohydrates}g Carb
+        {foodItem.carbohydrates.toLocaleString()}g Carb
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.protein}g Protein
+        {foodItem.protein.toLocaleString()}g Protein
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.calories} Calories
+        {foodItem.calories.toLocaleString()} Calories
       </td>
       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
         <a href="#" className="text-indigo-600 hover:text-indigo-900">
