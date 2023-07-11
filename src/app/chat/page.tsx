@@ -18,7 +18,7 @@ const buildFormatter =
 
 const ChatHistory: React.FC = () => {
   const [messageText, setMessageText] = useState("");
-  const userId = "cljt2w6cz0000lzxgrzrlr3v0";
+  const userId = "cljxpo5r30000xe91cdtswb6m";
   const { data, error, mutate } = useSWR(
     `/api/chat/getMessages?userId=${userId}`,
     fetcher
