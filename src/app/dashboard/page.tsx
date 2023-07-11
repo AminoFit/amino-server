@@ -1,32 +1,12 @@
-import {
-  ArrowDownCircleIcon,
-  ArrowPathIcon,
-  ArrowUpCircleIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/20/solid";
-import { Fragment } from "react";
 
-import { Menu, Transition } from "@headlessui/react";
-import {
-  BriefcaseIcon,
-  CalendarIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  CurrencyDollarIcon,
-  LinkIcon,
-  MapPinIcon,
-  PencilIcon,
-} from "@heroicons/react/20/solid";
-import classNames from "classnames";
 import { prisma } from "@/database/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/auth";
-import { FoodTable } from "./FoodRow";
 import { FoodLogHeader } from "./FoodLogHeader";
+import { FoodTable } from "./FoodRow";
 
 async function getFoods() {
   const session = await getServerSession(authOptions);
-  console.log("User session", session);
 
   if (session) {
     let userFoods = await prisma.loggedFoodItem.findMany({
