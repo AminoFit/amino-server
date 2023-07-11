@@ -50,16 +50,14 @@ export async function GET(request: Request) {
     },
   });
 
-  const rootDomain = process.env.VERCEL_URL;
-
-  if (!rootDomain) {
-    console.error("VERCEL_URL missing");
-    return NextResponse.json({ error: "VERCEL_URL missing", status: 500 });
+  let rootDomain = "http://localhost:3000";
+  if (process.env.VERCEL_URL) {
+    rootDomain = `https://${process.env.VERCEL_URL}`;
   }
 
   await SendMessageToUser(
     user,
-    `Your Amino SMS Code is http://${rootDomain}/login-code?code=${smsCode.code}`
+    `Your Amino SMS Code is ${rootDomain}/login-code?code=${smsCode.code}`
   );
 
   console.log("Success sending SMS Code");
