@@ -48,12 +48,7 @@ export async function POST(request: Request) {
     // Get a new response with that message now logged
     const newResponseMessage = await GenerateResponseForUser(user);
 
-    const newMessage = await SaveMessageFromUser(
-      user,
-      newResponseMessage.resultMessage || "",
-      Role.Assistant
-    );
-    await SaveAndSendMessageToUser(user, newMessage.content);
+    await SaveAndSendMessageToUser(user, newResponseMessage.resultMessage || "");
   } else {
     await SaveAndSendMessageToUser(user, responseMessage.resultMessage);
   }
