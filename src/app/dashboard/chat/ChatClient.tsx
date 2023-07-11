@@ -14,7 +14,7 @@ async function fetcher(url: string) {
 }
 
 export default function ChatClient() {
-  const { data: messages, error } = useSWR("/api/chat/getMessages", fetcher);
+  const { data: messages, mutate, error } = useSWR("/api/chat/getMessages", fetcher);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (messagesEndRef.current) {
@@ -51,7 +51,7 @@ export default function ChatClient() {
       </div>
       <div className="sticky bottom-0 bg-white z-10">
         <div className="px-4 py-4 sm:px-6 bg-white">
-          <ChatBox />
+          <ChatBox messages={messages} mutate={mutate} />
         </div>
       </div>
     </div>
