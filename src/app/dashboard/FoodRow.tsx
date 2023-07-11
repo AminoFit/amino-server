@@ -41,6 +41,15 @@ export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200 bg-white">
+        <tr className="border-t border-gray-200 ">
+          <th
+            colSpan={6}
+            scope="colgroup"
+            className="bg-gray-50 py-1 pl-4 pr-3 sm:pl-6 text-left text-sm font-light text-gray-900"
+          >
+            Morning
+          </th>
+        </tr>
         {foods.map((foodItem) => (
           <FoodRow foodItem={foodItem} key={foodItem.id} />
         ))}
@@ -53,8 +62,12 @@ export function FoodRow({ foodItem }: { foodItem: LoggedFoodItem }) {
   return (
     <tr key={foodItem.name}>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
-        <div className="text-md font-medium text-gray-900 capitalize">{foodItem.name}</div>
-        <div className="text-sm font-medium text-gray-500">{foodItem.amount} {foodItem.unit}</div>
+        <div className="text-xs font-light text-gray-500">
+          {foodItem.amount} {foodItem.unit}
+        </div>
+        <div className="text-md font-medium text-gray-900 capitalize">
+          {foodItem.name}
+        </div>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {foodItem.fat}g Fat

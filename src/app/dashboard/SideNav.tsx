@@ -34,13 +34,8 @@ const teams = [
   { id: 3, name: "Workcation", href: "#", initial: "W", current: false },
 ];
 
-export default function SideNav({
-  sidebarOpen,
-  setSidebarOpen,
-}: {
-  sidebarOpen: boolean;
-  setSidebarOpen: (arg0: boolean) => void;
-}) {
+export default function SideNav() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   return (
     <>
       {/* Sidebar for Mobile */}

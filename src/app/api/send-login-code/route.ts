@@ -50,11 +50,9 @@ export async function GET(request: Request) {
     },
   });
 
-  const rootDomain = process.env.NEXTAUTH_URL;
-
-  if (!rootDomain) {
-    console.error("NEXTAUTH_URL missing");
-    return NextResponse.json({ error: "NEXTAUTH_URL missing", status: 500 });
+  let rootDomain = "http://localhost:3000";
+  if (process.env.VERCEL_URL) {
+    rootDomain = `https://${process.env.VERCEL_URL}`;
   }
 
   await SendMessageToUser(
