@@ -51,8 +51,8 @@ export async function GET(request: Request) {
   });
 
   let rootDomain = "http://localhost:3000";
-  if (process.env.VERCEL_URL) {
-    rootDomain = `https://${process.env.VERCEL_URL}`;
+  if (process.env.HOSTED_URL) {
+    rootDomain = `https://${process.env.HOSTED_URL}`;
   }
 
   await SendMessageToUser(
