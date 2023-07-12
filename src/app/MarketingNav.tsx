@@ -1,6 +1,5 @@
 "use client";
 
-import { Dialog } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import classNames from "classnames";
 import { useSession } from "next-auth/react";

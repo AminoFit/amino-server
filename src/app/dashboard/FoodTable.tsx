@@ -1,10 +1,51 @@
-import { LoggedFoodItem } from "@prisma/client";
+import { LoggedFoodItem, User } from "@prisma/client";
+import moment from "moment-timezone";
 
-export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
+import _ from "underscore";
+
+export function FoodTable({
+  foods,
+  user,
+}: {
+  foods: LoggedFoodItem[];
+  user: User;
+}) {
+  // TODO Filter by day?
+
+  const groups = _.chain(foods)
+    .filter((food) => {
+      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier);
+      const today = moment().tz(user.tzIdentifier);
+      return consumptionTime.isSame(today, "day");
+    })
+    .groupBy((food) => {
+      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier);
+      if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
+        return "midnight snack";
+      }
+      if (consumptionTime.hour() < 11) {
+        return "breakfast";
+      }
+      if (consumptionTime.hour() < 15) {
+        return "lunch";
+      }
+      return "dinner";
+    })
+    .value();
+  console.log("groups", groups);
+
+  const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"];
+
   return (
     <table className="min-w-full divide-y divide-gray-300">
       <thead className="bg-gray-50">
         <tr>
+          <th
+            scope="col"
+            className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+          >
+            Time
+          </th>
           <th
             scope="col"
             className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
@@ -41,31 +82,40 @@ export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200 bg-white">
-        <tr className="border-t border-gray-200 ">
-          <th
-            colSpan={6}
-            scope="colgroup"
-            className="bg-gray-50 py-1 pl-4 pr-3 sm:pl-6 text-left text-sm font-light text-gray-900"
-          >
-            Morning
-          </th>
-        </tr>
-        {foods.map((foodItem) => (
-          <FoodRow foodItem={foodItem} key={foodItem.id} />
-        ))}
+        {foodGroups.map((foodGroup) => {
+          if (!groups[foodGroup]) return null;
+          return (
+            <>
+              <tr className="border-t border-gray-200 ">
+                <th
+                  colSpan={7}
+                  scope="colgroup"
+                  className="bg-gray-50 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-gray-500"
+                >
+                  {foodGroup.toUpperCase()}
+                </th>
+              </tr>
+              {groups[foodGroup].map((foodItem) => (
+                <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
+              ))}
+            </>
+          );
+        })}
         <tr className="border-t border-gray-200 text-left bg-gray-50 ">
           <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
             {foods.reduce((a, b) => a + b.fat, 0).toLocaleString()}g Fat
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.carbohydrates, 0).toLocaleString()}g Carbs
+            {foods.reduce((a, b) => a + b.carbohydrates, 0).toLocaleString()}g
+            Carbs
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
             {foods.reduce((a, b) => a + b.protein, 0).toLocaleString()}g Protein
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.calories, 0).toLocaleString()}g Calories
+            {foods.reduce((a, b) => a + b.calories, 0).toLocaleString()}g
+            Calories
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"></th>
         </tr>
@@ -74,9 +124,23 @@ export function FoodTable({ foods }: { foods: LoggedFoodItem[] }) {
   );
 }
 
-export function FoodRow({ foodItem }: { foodItem: LoggedFoodItem }) {
+export function FoodRow({
+  foodItem,
+  user,
+}: {
+  foodItem: LoggedFoodItem;
+  user: User;
+}) {
   return (
     <tr key={foodItem.id}>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+        <div className="text-gray-700">
+          {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
+        </div>
+        <div className="text-xs">
+          {moment(foodItem.consumedOn).tz(user.tzIdentifier).fromNow()}
+        </div>
+      </td>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
         <div className="text-xs font-light text-gray-500">
           {foodItem.amount} {foodItem.unit}

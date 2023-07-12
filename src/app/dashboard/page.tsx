@@ -1,9 +1,22 @@
-
 import { prisma } from "@/database/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/auth";
 import { FoodLogHeader } from "./FoodLogHeader";
-import { FoodTable } from "./FoodRow";
+import { FoodTable } from "./FoodTable";
+
+async function getUser() {
+  const session = await getServerSession(authOptions);
+
+  if (session) {
+    let user = await prisma.user.findUnique({
+      where: {
+        id: session.user.userId,
+      },
+    });
+    return user;
+  }
+  return;
+}
 
 async function getFoods() {
   const session = await getServerSession(authOptions);
@@ -21,7 +34,11 @@ async function getFoods() {
 
 export default async function FoodLog() {
   const foods = await getFoods();
-  console.log("foods", foods);
+  const user = await getUser();
+
+  if (!user) {
+    return <>No user found</>;
+  }
 
   return (
     <>
@@ -38,7 +55,7 @@ export default async function FoodLog() {
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
               <div className="shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                <FoodTable foods={foods} />
+                <FoodTable foods={foods} user={user} />
               </div>
             </div>
           </div>
