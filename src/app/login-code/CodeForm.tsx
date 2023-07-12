@@ -24,7 +24,7 @@ export function CodeForm({ csrfToken }: { csrfToken: string }) {
     const res = await signIn("credentials", {
       redirect: false,
       code: values.code,
-      callbackUrl: `${window.location.origin}`,
+      callbackUrl: `${window.location.origin}/dashboard`,
     });
     if (res?.error) {
       setErrorMessage(res.error);
