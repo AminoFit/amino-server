@@ -10,11 +10,13 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
   const goalFats = 250;
   const goalCarbs = 250;
   const goalProtein = 250;
+
+  const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow";
   return (
     <div>
       <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
-        <div className="overflow-hidden rounded-lg bg-white px-4 pt-5 shadow sm:px-6 sm:pt-6">
-          <div className="text-lg font-bold text-pink-500">Daily Calories</div>
+        <div className={cardClasses}>
+          <div className="text-lg font-bold text-pink-500">Calories</div>
           <div className="text-sm text-gray-500">
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
@@ -25,8 +27,8 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
             label={"Calories"}
           />
         </div>
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <div className="text-lg font-bold text-emerald-500">Daily Fats</div>
+        <div className={cardClasses}>
+          <div className="text-lg font-bold text-emerald-500">Fats</div>
           <div className="text-sm text-gray-500">
             {totalFats.toLocaleString("en-us")}/
             {goalFats.toLocaleString("en-us")}
@@ -37,8 +39,8 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
             label={"Fats"}
           />
         </div>
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <div className="text-lg font-bold text-sky-500">Daily Carbs</div>
+        <div className={cardClasses}>
+          <div className="text-lg font-bold text-sky-500">Carbs</div>
           <div className="text-sm text-gray-500">
             {totalCarbs.toLocaleString("en-us")}/
             {goalCarbs.toLocaleString("en-us")}
@@ -49,8 +51,8 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
             label={"Carbs"}
           />
         </div>
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <div className="text-lg font-bold text-purple-500">Daily Protein</div>
+        <div className={cardClasses}>
+          <div className="text-lg font-bold text-purple-500">Protein</div>
           <div className="text-sm text-gray-500">
             {totalProtein.toLocaleString("en-us")}/
             {goalProtein.toLocaleString("en-us")}
