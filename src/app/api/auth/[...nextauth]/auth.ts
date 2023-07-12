@@ -36,8 +36,8 @@ export const authOptions: NextAuthOptions = {
         console.log("Running authorize() credentials", credentials);
 
         if (!credentials || !credentials.code) {
-          console.log("No credentials passed in. Returning null.");
-          return null;
+          console.log("No code provided");
+          throw new Error("No code provided");
         }
 
         const smsCode = await prisma.smsAuthCode.findUnique({
@@ -50,7 +50,7 @@ export const authOptions: NextAuthOptions = {
           console.log("Found smsCode", smsCode);
           if (smsCode.expiresAt < new Date()) {
             console.log("Code expired");
-            return null;
+            throw new Error("Code is expired. Please request a new one.");
           }
           const user = await prisma.user.findUnique({
             where: {
@@ -59,13 +59,13 @@ export const authOptions: NextAuthOptions = {
           });
           if (!user) {
             console.log("User not found");
-            return null;
+            throw new Error("User not found.");
           }
           console.log("Found user", user);
           return user;
         }
         console.log("Code not found");
-        return null;
+        throw new Error("Invalid code. Please request a new one.");
       },
     }),
   ],
