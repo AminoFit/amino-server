@@ -51,7 +51,8 @@ model OpenAiUsage {
 
 model User {
   id            String           @id @default(cuid())
-  name          String?          @db.VarChar(255)
+  firstName     String?          @db.VarChar(255)
+  lastName      String?          @db.VarChar(255)
   email         String?          @unique @db.VarChar(255)
   emailVerified DateTime?
   phone         String?          @unique @db.VarChar(255)

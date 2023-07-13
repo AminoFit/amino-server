@@ -4,7 +4,7 @@ import { XMarkIcon } from "@heroicons/react/20/solid";
 import { User } from "@prisma/client";
 import moment from "moment-timezone";
 import { useEffect, useState } from "react";
-import { updateTimeZone } from "./settings/actions";
+import { updateUserSettings } from "./settings/actions";
 import classNames from "classnames";
 
 export function TimeZoneBanner({ user }: { user: User }) {
@@ -27,7 +27,7 @@ export function TimeZoneBanner({ user }: { user: User }) {
 
   const handleUpdate = async () => {
     setSubmitting(true);
-    await updateTimeZone(tz);
+    await updateUserSettings({ tzIdentifier: tz });
     setShowing(false);
     setSubmitting(false);
   };

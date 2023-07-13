@@ -1,4 +1,4 @@
-import UpdateTimeZone from "./UpdateTimeZone";
+import UpdateUserSettings from "./UpdateTimeZone";
 import { getUser } from "./actions";
 import tzData from "./timezones.json";
 
@@ -9,7 +9,7 @@ export default async function Settings() {
   }
   return (
     <div className="">
-      <UpdateTimeZone user={user} />
+      <UpdateUserSettings user={user} />
     </div>
   );
 }

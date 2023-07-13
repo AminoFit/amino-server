@@ -16,7 +16,14 @@ export async function getUser() {
   }
   return;
 }
-export async function updateTimeZone(newTimeZone: string) {
+
+export type UserSettingsProps = {
+  tzIdentifier?: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+export async function updateUserSettings(updatedSettings: UserSettingsProps) {
   const session = await getServerSession(authOptions);
 
   if (session) {
@@ -25,7 +32,7 @@ export async function updateTimeZone(newTimeZone: string) {
         id: session.user.userId,
       },
       data: {
-        tzIdentifier: newTimeZone,
+        ...updatedSettings,
       },
     });
     return user;

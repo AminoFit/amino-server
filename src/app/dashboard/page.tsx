@@ -41,7 +41,7 @@ export default async function FoodLog() {
   }
 
   return (
-    <>
+    <div className="p-8">
       <div className="lg:flex lg:items-center lg:justify-between mb-10">
         <FoodLogHeader foods={foods} />
       </div>
@@ -61,6 +61,6 @@ export default async function FoodLog() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

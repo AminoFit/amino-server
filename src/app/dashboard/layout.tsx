@@ -20,8 +20,8 @@ export default async function Example({
         <SideNav />
 
         <div className="lg:pl-72">
-          <main className="py-10">
-            <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+          <main className="">
+            <div className="">{children}</div>
           </main>
         </div>
       </div>
