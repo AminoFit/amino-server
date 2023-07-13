@@ -21,10 +21,10 @@ export default function FoodStats({
   const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow";
   return (
     <div>
-      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-5">
+      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
         <div className={cardClasses}>
           <div className="text-lg font-bold text-pink-500">Calories</div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 bg-sky-400">
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
           </div>
@@ -58,7 +58,7 @@ export default function FoodStats({
             label={"Carbs"}
           />
         </div>
-        <div className={cardClasses}>
+        {/* <div className={cardClasses}>
           <div className="text-lg font-bold text-purple-500">Protein</div>
           <div className="text-sm text-gray-500">
             {totalProtein.toLocaleString("en-us")}/
@@ -69,7 +69,7 @@ export default function FoodStats({
             color="#A755F7"
             label={"Protein"}
           />
-        </div>
+        </div> */}
         <div>
           <FoodCalendar foods={foods} user={user} />
         </div>
