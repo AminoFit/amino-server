@@ -1,35 +1,39 @@
 "use client";
 import { User } from "@prisma/client";
+import classNames from "classnames";
 import { useState } from "react";
 import { updateUserSettings } from "./actions";
 import tzData from "./timezones.json";
-import classNames from "classnames";
 
 const secondaryNavigation = [
   { name: "Account", href: "#", current: true },
-  { name: "Notifications", href: "#", current: false },
-  { name: "Billing", href: "#", current: false },
-  { name: "Teams", href: "#", current: false },
-  { name: "Integrations", href: "#", current: false },
+  { name: "Notifications", href: "#", current: false, disabled: true },
+  { name: "Billing", href: "#", current: false, disabled: true },
+  { name: "Teams", href: "#", current: false, disabled: true },
+  { name: "Integrations", href: "#", current: false, disabled: true },
 ];
 
 export default function UpdateUserSettings({ user }: { user: User }) {
-  // console.log("messages", messages);
+  const [tzIdentifier, setTxIdentifier] = useState(user.tzIdentifier);
+  const [firstName, setFirstName] = useState(user.firstName || "");
+  const [lastName, setLastName] = useState(user.lastName || "");
 
-  const [tzIdentifier, setTz] = useState(user.tzIdentifier);
-  const [firstName, setFirstName] = useState(user.firstName);
-  const [lastName, setLastName] = useState(user.lastName);
+  const [submittingPersonal, setSubmittingPersonal] = useState(false);
+  const [successMessagePersonal, setSuccessMessagePersonal] = useState("");
 
-  const [submitting, setSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    console.log("submit");
-    setSuccessMessage("");
-    setSubmitting(true);
-    await updateUserSettings({ tzIdentifier });
-    setSubmitting(false);
-    setSuccessMessage("Timezone Update to " + tzIdentifier);
+  const handleSubmitPersonalInfo = async () => {
+    setSuccessMessagePersonal("");
+    setSubmittingPersonal(true);
+    await updateUserSettings({ tzIdentifier, firstName, lastName })
+      .then(() => {
+        setSubmittingPersonal(false);
+        setSuccessMessagePersonal(
+          "Successfully updated your personal information"
+        );
+      })
+      .catch(() => {
+        setSuccessMessagePersonal("Error updating your personal information");
+      });
   };
 
   return (
@@ -49,7 +53,8 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                     item.current
                       ? "bg-gray-50 text-indigo-600"
                       : "text-gray-700 hover:text-indigo-600 hover:bg-gray-50",
-                    "group flex gap-x-3 rounded-md py-2 pl-2 pr-3 text-sm leading-6 font-semibold"
+                    "group flex gap-x-3 rounded-md py-2 pl-2 pr-3 text-sm leading-6 font-semibold",
+                    { "pointer-events-none opacity-30": item.disabled }
                   )}
                 >
                   {item.name}
@@ -72,7 +77,7 @@ export default function UpdateUserSettings({ user }: { user: User }) {
             </p>
           </div>
 
-          <form className="md:col-span-2">
+          <div className="md:col-span-2">
             <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-6">
               {/* <div className="col-span-full flex items-center gap-x-8">
                 <img
@@ -105,6 +110,8 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                     type="text"
                     name="first-name"
                     id="first-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     autoComplete="given-name"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
@@ -123,6 +130,8 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                     type="text"
                     name="last-name"
                     id="last-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     autoComplete="family-name"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
@@ -146,7 +155,6 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                   />
                 </div>
               </div> */}
-
               <div className="col-span-full">
                 <label
                   htmlFor="timezone"
@@ -154,32 +162,61 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                 >
                   Timezone
                 </label>
-                <div className="mt-2">
-                  <select
-                    id="timezone"
-                    name="timezone"
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  >
-                    <option>Pacific Standard Time</option>
-                    <option>Eastern Standard Time</option>
-                    <option>Greenwich Mean Time</option>
-                  </select>
-                </div>
+                <div className="mt-2"></div>
+                <select
+                  value={tzIdentifier}
+                  onChange={(e) => setTxIdentifier(e.target.value)}
+                  id="timezone"
+                  name="timezone"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                >
+                  {tzData.map((tz) => {
+                    const options = [];
+                    options.push(
+                      <option
+                        value={tz.utc[0]}
+                        key={tz.text + "space"}
+                        disabled
+                      >
+                        &nbsp;
+                      </option>
+                    );
+                    options.push(
+                      <option value={tz.utc[0]} key={tz.text} disabled>
+                        {tz.text}
+                      </option>
+                    );
+                    tz.utc.forEach((child) => {
+                      options.push(
+                        <option value={child} key={child}>
+                          {child}
+                        </option>
+                      );
+                    });
+                    return options;
+                  })}
+                </select>
               </div>
             </div>
 
             <div className="mt-8 flex">
               <button
-                type="submit"
-                className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                disabled={submittingPersonal}
+                onClick={handleSubmitPersonalInfo}
+                className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-70"
               >
-                Save
+                {submittingPersonal ? "Saving..." : "Save"}
               </button>
             </div>
-          </form>
+            {successMessagePersonal && (
+              <div className="mt-8 flex text-sm text-green-600">
+                {successMessagePersonal}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8">
+        <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8 opacity-20 pointer-events-none">
           <div>
             <h2 className="text-base font-semibold leading-7 text-grey">
               Change password
@@ -257,7 +294,7 @@ export default function UpdateUserSettings({ user }: { user: User }) {
           </form>
         </div>
 
-        <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8">
+        <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8 opacity-20 pointer-events-none">
           <div>
             <h2 className="text-base font-semibold leading-7 text-grey">
               Delete account

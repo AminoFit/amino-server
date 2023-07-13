@@ -1,4 +1,4 @@
-import UpdateUserSettings from "./UpdateTimeZone";
+import UpdateUserSettings from "./UpdateUserSettings";
 import { getUser } from "./actions";
 import tzData from "./timezones.json";
 
