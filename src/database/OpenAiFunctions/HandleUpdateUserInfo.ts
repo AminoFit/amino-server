@@ -13,7 +13,7 @@ export async function HandleUpdateUserInfo(user: User, parameters: any) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        name: parameters.users_name,
+        firstName: parameters.users_name,
       },
     });
     updates.push(`I updated your name, ${parameters.users_name}.`);
