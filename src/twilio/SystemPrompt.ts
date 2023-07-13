@@ -1,9 +1,9 @@
 import { User } from "@prisma/client";
 
 export const GetSystemStartPrompt = (user: User) => {
-  let askForNameString
-  if (user.name) {
-    askForNameString = `You can call the user by their name: "${user.name}".`;
+  let askForNameString;
+  if (user.firstName) {
+    askForNameString = `You can call the user by their name: "${user.firstName}".`;
   } else {
     askForNameString = `The user has not told you their name yet. You should ask for it immediately.`;
   }
@@ -17,6 +17,6 @@ export const GetSystemStartPrompt = (user: User) => {
  They can ask you what they ate today. When they do, call the show_daily_food function to show them.
  They can ask you to log an exercise. When they do, call the log_exercise function to log it. If you need to, ask more detail about the exercise to log it correctly.
  You can also update their name. When they ask you to, call the update_user_info function to update their name.`;
- 
+
   return prompt;
 };
