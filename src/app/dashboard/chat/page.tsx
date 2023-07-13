@@ -3,7 +3,7 @@ import ChatClient from "./ChatClient";
 
 export default function Chat() {
   return (
-    <div className="m-8">
+    <div className="h-full">
       <ChatClient />
     </div>
   );

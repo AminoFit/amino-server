@@ -16,12 +16,10 @@ export function ChatMessage({ message }: { message: Message }) {
       }`}
       key={message.id}
     >
-      <div>
+      <div className="flex-col items-end">
         <div
-          className={`space-y-2 text-xs max-w-4/5 mx-2 mb-3 ${
-            message.role === "User"
-              ? "order-1 items-end"
-              : "order-2 items-start pr-20"
+          className={`space-y-2 text-xs max-w-4/5 mb-3 ${
+            message.role === "User" ? "order-1 text-right" : "order-2 pr-20"
           }`}
         >
           <span
@@ -44,7 +42,7 @@ export function ChatMessage({ message }: { message: Message }) {
           </span>
         </div>
         <div
-          className={classNames("text-xs text-gray-400 mx-2 mb-1", {
+          className={classNames("text-xs text-gray-400 mb-1", {
             "text-right": message.role === "User",
           })}
           style={{ marginTop: "-10px" }}

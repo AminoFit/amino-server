@@ -16,12 +16,12 @@ export default async function Example({
 
   return (
     <>
-      <div>
+      <div className="h-full">
         <SideNav />
 
-        <div className="lg:pl-72">
-          <main className="">
-            <div className="">{children}</div>
+        <div className="lg:pl-72 h-full">
+          <main className="h-full">
+            <div className="h-full">{children}</div>
           </main>
         </div>
       </div>
