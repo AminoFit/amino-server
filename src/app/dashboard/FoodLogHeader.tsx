@@ -1,10 +1,21 @@
-import { LoggedFoodItem } from "@prisma/client";
+import { LoggedFoodItem, User } from "@prisma/client";
 
-import { BriefcaseIcon, CalendarDaysIcon, CurrencyDollarIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import {
+  BriefcaseIcon,
+  CalendarDaysIcon,
+  CurrencyDollarIcon,
+  MapPinIcon,
+} from "@heroicons/react/24/outline";
 import moment from "moment";
 import FoodStats from "./FoodStats";
 
-export function FoodLogHeader({ foods }: { foods: LoggedFoodItem[] }) {
+export function FoodLogHeader({
+  foods,
+  user,
+}: {
+  foods: LoggedFoodItem[];
+  user: User;
+}) {
   return (
     <>
       <div className="min-w-0 flex-1">
@@ -21,7 +32,7 @@ export function FoodLogHeader({ foods }: { foods: LoggedFoodItem[] }) {
         </div>
 
         <div>
-          <FoodStats foods={foods} />
+          <FoodStats foods={foods} user={user} />
         </div>
       </div>
     </>

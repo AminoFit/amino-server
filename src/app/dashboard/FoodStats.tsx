@@ -1,7 +1,14 @@
-import { LoggedFoodItem } from "@prisma/client";
+import { LoggedFoodItem, User } from "@prisma/client";
 import { CalGraph } from "./CalGraph";
+import { FoodCalendar } from "./FoodCalendar";
 
-export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
+export default function FoodStats({
+  foods,
+  user,
+}: {
+  foods: LoggedFoodItem[];
+  user: User;
+}) {
   const totalCalories = foods.reduce((a, b) => a + b.calories, 0);
   const totalCarbs = foods.reduce((a, b) => a + b.carbohydrates, 0);
   const totalFats = foods.reduce((a, b) => a + b.fat, 0);
@@ -14,7 +21,7 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
   const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow";
   return (
     <div>
-      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
+      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-5">
         <div className={cardClasses}>
           <div className="text-lg font-bold text-pink-500">Calories</div>
           <div className="text-sm text-gray-500">
@@ -62,6 +69,9 @@ export default function FoodStats({ foods }: { foods: LoggedFoodItem[] }) {
             color="#A755F7"
             label={"Protein"}
           />
+        </div>
+        <div>
+          <FoodCalendar foods={foods} user={user} />
         </div>
       </dl>
     </div>

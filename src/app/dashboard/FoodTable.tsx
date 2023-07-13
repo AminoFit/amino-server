@@ -90,7 +90,7 @@ export function FoodTable({
                 <th
                   colSpan={7}
                   scope="colgroup"
-                  className="bg-gray-50 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-gray-500"
+                  className="bg-slate-300 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-slate-800"
                 >
                   {foodGroup.toUpperCase()}
                 </th>
