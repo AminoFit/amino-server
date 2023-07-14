@@ -24,7 +24,7 @@ export default function FoodStats({
       <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
         <div className={cardClasses}>
           <div className="text-lg font-bold text-pink-500">Calories</div>
-          <div className="text-sm text-gray-500 bg-sky-400">
+          <div className="text-sm text-gray-500">
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
           </div>
