@@ -161,10 +161,13 @@ export function FoodCalendar({
               type="button"
               onClick={() => onClickDay(day)}
               className={classNames(
-                "py-1.5 hover:bg-gray-100 focus:z-10",
-                isCurrentMonth ? "bg-white" : "bg-gray-50",
-                (isSelected || isToday) && "font-bold",
+                "py-1.5 focus:z-10",
+                isCurrentMonth && !isSelected && "bg-white hover:bg-gray-100",
+                !isCurrentMonth &&
+                  !isSelected &&
+                  "bg-gray-50 hover:bg-gray-100",
                 isSelected && "bg-slate-700 hover:bg-slate-800 text-white",
+                (isSelected || isToday) && "font-bold",
                 isToday &&
                   "outline outline-offset-1 outline-2 z-50 outline-blue-500",
                 // !isSelected && isCurrentMonth && !isToday && "text-gray-900",
