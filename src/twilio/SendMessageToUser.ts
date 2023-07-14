@@ -1,7 +1,7 @@
 import { MessageDirection, Role, User } from "@prisma/client";
 import { twilioClient } from "./twilio";
 import { prisma } from "@/database/prisma";
-import moment from "moment";
+import moment from "moment-timezone";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 
 const from = process.env.TWILIO_PHONE_NUMBER;

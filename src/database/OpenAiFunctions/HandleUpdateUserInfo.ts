@@ -1,6 +1,6 @@
 import { User } from "@prisma/client";
 import { prisma } from "../prisma";
-import moment from "moment";
+import moment from "moment-timezone";
 
 export async function HandleUpdateUserInfo(user: User, parameters: any) {
   console.log("HandleUpdateUserInfo");

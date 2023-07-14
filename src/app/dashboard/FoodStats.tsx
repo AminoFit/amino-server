@@ -1,6 +1,10 @@
+"use client"
+
 import { LoggedFoodItem, User } from "@prisma/client"
-import { CalGraph } from "./CalGraph"
+import { GraphSemiCircle } from "./GraphSemiCircle"
 import { FoodCalendar } from "./FoodCalendar"
+import { useSearchParams } from "next/navigation"
+import moment from "moment-timezone"
 
 export default function FoodStats({
   foods,
@@ -9,10 +13,21 @@ export default function FoodStats({
   foods: LoggedFoodItem[]
   user: User
 }) {
-  const totalCalories = foods.reduce((a, b) => a + b.calories, 0)
-  const totalCarbs = foods.reduce((a, b) => a + b.carbohydrates, 0)
-  const totalFats = foods.reduce((a, b) => a + b.fat, 0)
-  const totalProtein = foods.reduce((a, b) => a + b.protein, 0)
+  const searchParams = useSearchParams()
+  let selectedDate = moment().tz(user.tzIdentifier)
+
+  if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
+    selectedDate = moment(searchParams.get("date"))
+  }
+
+  const filteredFood = foods.filter((food) => {
+    return moment(food.consumedOn).isSame(selectedDate, "date")
+  })
+
+  const totalCalories = filteredFood.reduce((a, b) => a + b.calories, 0)
+  const totalCarbs = filteredFood.reduce((a, b) => a + b.carbohydrates, 0)
+  const totalFats = filteredFood.reduce((a, b) => a + b.fat, 0)
+  const totalProtein = filteredFood.reduce((a, b) => a + b.protein, 0)
   const goalCalories = 3500
   const goalFats = 250
   const goalCarbs = 250
@@ -29,7 +44,7 @@ export default function FoodStats({
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalCalories / goalCalories) * 100}
             color="#EC4899"
             label={"Calories"}
@@ -41,7 +56,7 @@ export default function FoodStats({
             {totalFats.toLocaleString("en-us")}/
             {goalFats.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalFats / goalFats) * 100}
             color="#11B981"
             label={"Fats"}
@@ -53,7 +68,7 @@ export default function FoodStats({
             {totalCarbs.toLocaleString("en-us")}/
             {goalCarbs.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalCarbs / goalCarbs) * 100}
             color="#0BA5E9"
             label={"Carbs"}
@@ -65,7 +80,7 @@ export default function FoodStats({
             {totalProtein.toLocaleString("en-us")}/
             {goalProtein.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalProtein / goalProtein) * 100}
             color="#A755F7"
             label={"Protein"}
