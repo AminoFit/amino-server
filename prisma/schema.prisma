@@ -62,6 +62,7 @@ model User {
   tzIdentifier  String           @default("America/New_York")
   Message       Message[]
   Foods         LoggedFoodItem[]
+  CustomFood    FoodItem[]
   SmsMessage    SmsMessage[]
   OpenAiUsage   OpenAiUsage[]
   Session       Session[]
@@ -81,15 +82,13 @@ model LoggedFoodItem {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
   consumedOn    DateTime @default(now())
-  name          String
-  unit          String
-  amount        Float
-  fat           Float
-  carbohydrates Float
-  protein       Float
-  calories      Float
+  foodItemId    Int
+  grams         Float 
+  loggedUnit    String?
+  servingAmount Float?
   userId        String
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  FoodItem      FoodItem @relation(fields: [foodItemId], references: [id])
 }
 
 model Session {
@@ -130,4 +129,47 @@ model Account {
 enum MessageDirection {
   Inbound
   Outbound
+}
+
+model FoodItem {
+  id                        Int      @id @default(autoincrement())
+  name                      String
+  brand                     String?  @db.VarChar(255)
+  knownAs                   String[]
+  description               String?
+  defaultServingSize        Int
+  defaultServingUnit        String
+  defaultServingWeightGram  Int?     
+  kcalPerServing            Float
+  totalFatPerServing        Float
+  satFatPerServing          Float?
+  transFatPerServing        Float?
+  carbPerServing            Float
+  sugarPerServing           Float?
+  addedSugarPerServing      Float?
+  proteinPerServing         Float
+  lastUpdated               DateTime @default(now())
+  verified                  Boolean  @default(false)
+  Servings                  Serving[]
+  Nutrients                 Nutrient[]
+  userId                    String?
+  User                      User?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  LoggedFoodItems           LoggedFoodItem[]
+}
+
+model Serving {
+  id                Int     @id @default(autoincrement())
+  servingWeightGram Float
+  servingName       String
+  foodItemId        Int
+  FoodItem          FoodItem @relation(fields: [foodItemId], references: [id])
+}
+
+model Nutrient {
+  id                     Int    @id @default(autoincrement())
+  nutrientName           String
+  nutrientUnit           String
+  nutrientAmountPerGram  Float
+  foodItemId             Int
+  FoodItem               FoodItem @relation(fields: [foodItemId], references: [id])
 }

@@ -16,45 +16,21 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          name: { type: "string" },
+          name: { type: "string",
+            description: "The name of the food item, used to search in food databse" },
           unit: {
             type: "string",
-            enum: ["grams", "ml", "cups", "pieces", "teaspoons"]
+            enum: ["g", "ml", "cups", "piece", "tbsp", "tsp"],
           },
-          category: {
-            type: "string",
-            enum: [
-              "grains",
-              "protein foods",
-              "fruits",
-              "vegetables",
-              "dairy",
-              "fats and oils",
-              "sugars and sweets",
-              "beverages",
-              "seafood",
-              "herbs and spices"
-            ]
-          },
-          amount: { type: "number" },
-          fat: { type: "number" },
-          carbohydrates: { type: "number" },
-          protein: { type: "number" },
-          calories: { type: "number" },
-          timeEaten: {
-            type: "string",
-            description:
-              "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
-          }
+          serving_amount: { type: "number",
+            description: "The serving amount (ideally grams) of the food item that was eaten" },
+          calories: { type: "number",
+            description: "The number of calories in the food item" },
         },
         required: [
           "name",
           "unit",
-          "amount",
-          "fat",
-          "carbohydrates",
-          "protein",
-          "calories"
+          "serving_amount",
         ]
       }
     },
