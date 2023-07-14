@@ -15,7 +15,21 @@ export function FoodTable({
 }) {
   const searchParams = useSearchParams()
 
-  const groups = _.chain(foods)
+  const filteredFood = _.filter(foods, (food) => {
+    const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
+
+    let selectedDate = moment().tz(user.tzIdentifier)
+    if (
+      searchParams.get("date") &&
+      moment(searchParams.get("date")).isValid()
+    ) {
+      selectedDate = moment(searchParams.get("date"))
+    }
+
+    return consumptionTime.isSame(selectedDate, "day")
+  })
+
+  const groups = _.chain(filteredFood)
     .filter((food) => {
       const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
 
@@ -92,6 +106,7 @@ export function FoodTable({
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200 bg-white">
+        {filteredFood.length === 0 && <FoodRowEmpty />}
         {foodGroups.map((foodGroup) => {
           if (!groups[foodGroup]) return null
           return (
@@ -100,7 +115,7 @@ export function FoodTable({
                 <th
                   colSpan={7}
                   scope="colgroup"
-                  className="bg-slate-300 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-slate-800"
+                  className="bg-slate-100 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-slate-800"
                 >
                   {foodGroup.toUpperCase()}
                 </th>
@@ -111,37 +126,39 @@ export function FoodTable({
             </>
           )
         })}
-        <tr className="border-t border-gray-200 text-left bg-gray-50 ">
-          <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
-          <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
-          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.fat, 0).toLocaleString()}g Fat
-          </th>
-          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.carbohydrates, 0).toLocaleString()}g
-            Carbs
-          </th>
-          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.protein, 0).toLocaleString()}g Protein
-          </th>
-          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foods.reduce((a, b) => a + b.calories, 0).toLocaleString()}g
-            Calories
-          </th>
-          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"></th>
-        </tr>
+        {filteredFood.length !== 0 && (
+          <tr className="border-t border-gray-200 text-left bg-gray-50 ">
+            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
+            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              {filteredFood.reduce((a, b) => a + b.fat, 0).toLocaleString()}g
+              Fat
+            </th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              {filteredFood
+                .reduce((a, b) => a + b.carbohydrates, 0)
+                .toLocaleString()}
+              g Carbs
+            </th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              {filteredFood.reduce((a, b) => a + b.protein, 0).toLocaleString()}
+              g Protein
+            </th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              {filteredFood
+                .reduce((a, b) => a + b.calories, 0)
+                .toLocaleString()}
+              g Calories
+            </th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"></th>
+          </tr>
+        )}
       </tbody>
     </table>
   )
 }
 
-export function FoodRow({
-  foodItem,
-  user
-}: {
-  foodItem: LoggedFoodItem
-  user: User
-}) {
+function FoodRow({ foodItem, user }: { foodItem: LoggedFoodItem; user: User }) {
   return (
     <tr key={foodItem.id}>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
@@ -176,6 +193,19 @@ export function FoodRow({
         <a href="#" className="text-indigo-600 hover:text-indigo-900">
           Edit<span className="sr-only">, {foodItem.name}</span>
         </a>
+      </td>
+    </tr>
+  )
+}
+
+function FoodRowEmpty() {
+  return (
+    <tr>
+      <td
+        className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center"
+        colSpan={7}
+      >
+        <div className="text-gray-700">No food logged for this day</div>
       </td>
     </tr>
   )

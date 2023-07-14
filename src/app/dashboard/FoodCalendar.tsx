@@ -4,7 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
 import { LoggedFoodItem, User } from "@prisma/client"
 import classNames from "classnames"
 import moment from "moment-timezone"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 
 const meetings = [
@@ -79,9 +79,12 @@ export function FoodCalendar({
     moment().tz(user.tzIdentifier).year()
   )
 
-  const [selectedDate, setSelectedDate] = useState(
-    moment().tz(user.tzIdentifier).format("YYYY-MM-DD")
-  )
+  const searchParams = useSearchParams()
+
+  let selectedDate = moment().tz(user.tzIdentifier)
+  if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
+    selectedDate = moment(searchParams.get("date"))
+  }
 
   const router = useRouter()
   const pathname = usePathname()
@@ -160,11 +163,13 @@ export function FoodCalendar({
               className={classNames(
                 "py-1.5 hover:bg-gray-100 focus:z-10",
                 isCurrentMonth ? "bg-white" : "bg-gray-50",
-                (isSelected || isToday) && "font-semibold",
-                isSelected && "text-white",
-                !isSelected && isCurrentMonth && !isToday && "text-gray-900",
-                !isSelected && !isCurrentMonth && !isToday && "text-gray-400",
-                isToday && !isSelected && "text-indigo-600",
+                (isSelected || isToday) && "font-bold",
+                isSelected && "bg-slate-700 hover:bg-slate-800 text-white",
+                isToday &&
+                  "outline outline-offset-1 outline-2 z-50 outline-blue-500",
+                // !isSelected && isCurrentMonth && !isToday && "text-gray-900",
+                // !isSelected && !isCurrentMonth && !isToday && "text-gray-400",
+                // isToday && !isSelected && "text-indigo-600",
                 index === 0 && "rounded-tl-lg",
                 index === 6 && "rounded-tr-lg",
                 index === days.length - 7 && "rounded-bl-lg",
@@ -174,12 +179,10 @@ export function FoodCalendar({
               <div
                 className={classNames(
                   "mx-auto flex h-7 w-7 items-center justify-center rounded-full",
-                  isSelected && isToday && "bg-emerald-600",
-                  isSelected && !isToday && "bg-gray-900",
-                  !isSelected &&
-                    !isToday &&
-                    bgColor > 0 &&
-                    `border-2 border-emerald-${bgColor}`
+                  // isSelected && isToday && "bg-emerald-600",
+                  // isSelected && !isToday && "bg-gray-900",
+                  // isSelected && "bg-gray-900",
+                  bgColor > 0 && `border-2 border-emerald-${bgColor}`
                 )}
               >
                 {day.date()}
