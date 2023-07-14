@@ -1,15 +1,16 @@
-import { User } from "@prisma/client";
-import { prisma } from "../prisma";
+import { User } from "@prisma/client"
+import { prisma } from "../prisma"
+import moment from "moment"
 
 export async function HandleLogFoodItems(user: User, parameters: any) {
-  console.log("parameters", parameters);
+  console.log("parameters", parameters)
 
-  const foodItems = parameters.food_items;
+  const foodItems = parameters.food_items
 
-  let result = "I've logged your food:";
+  let result = "I've logged your food:"
 
   for (let food of foodItems) {
-    console.log("foodItem", food);
+    console.log("foodItem", food)
 
     const data: any = {
       name: food.name,
@@ -19,23 +20,31 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
       carbohydrates: food.carbohydrates,
       protein: food.protein,
       calories: food.calories,
-      userId: user.id,
-    };
+      userId: user.id
+    }
+
+    if (food.timeEaten) {
+      const consumedDate = moment(food.timeEaten)
+      if (consumedDate.isValid()) {
+        data.consumedOn = consumedDate.toDate()
+      }
+    }
+
     const foodItem = await prisma.loggedFoodItem
       .create({
-        data,
+        data
       })
       .catch((err) => {
-        console.log("Error logging food item", err);
-      });
+        console.log("Error logging food item", err)
+      })
     if (!foodItem) {
-      return "Sorry, I could not log your food items. Please try again later.";
+      return "Sorry, I could not log your food items. Please try again later."
     }
-    result += `\n\n${foodItem.name}\n${foodItem.amount} ${foodItem.unit}\n${foodItem.calories} calories`;
-    result += `\n - ${foodItem.fat}g Fat`;
-    result += `\n - ${foodItem.carbohydrates}g Carbs`;
-    result += `\n - ${foodItem.protein}g Protein`;
+    result += `\n\n${foodItem.name}\n${foodItem.amount} ${foodItem.unit}\n${foodItem.calories} calories`
+    result += `\n - ${foodItem.fat}g Fat`
+    result += `\n - ${foodItem.carbohydrates}g Carbs`
+    result += `\n - ${foodItem.protein}g Protein`
   }
 
-  return result;
+  return result
 }

@@ -1,4 +1,4 @@
-import { openai } from "@/utils/openai";
+import { openai } from "@/utils/openaiFunctionSchemas";
 import { NextResponse } from "next/server";
 
 export async function GET() {

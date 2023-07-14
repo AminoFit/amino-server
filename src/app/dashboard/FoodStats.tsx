@@ -1,24 +1,24 @@
-import { LoggedFoodItem, User } from "@prisma/client";
-import { CalGraph } from "./CalGraph";
-import { FoodCalendar } from "./FoodCalendar";
+import { LoggedFoodItem, User } from "@prisma/client"
+import { CalGraph } from "./CalGraph"
+import { FoodCalendar } from "./FoodCalendar"
 
 export default function FoodStats({
   foods,
-  user,
+  user
 }: {
-  foods: LoggedFoodItem[];
-  user: User;
+  foods: LoggedFoodItem[]
+  user: User
 }) {
-  const totalCalories = foods.reduce((a, b) => a + b.calories, 0);
-  const totalCarbs = foods.reduce((a, b) => a + b.carbohydrates, 0);
-  const totalFats = foods.reduce((a, b) => a + b.fat, 0);
-  const totalProtein = foods.reduce((a, b) => a + b.protein, 0);
-  const goalCalories = 3500;
-  const goalFats = 250;
-  const goalCarbs = 250;
-  const goalProtein = 250;
+  const totalCalories = foods.reduce((a, b) => a + b.calories, 0)
+  const totalCarbs = foods.reduce((a, b) => a + b.carbohydrates, 0)
+  const totalFats = foods.reduce((a, b) => a + b.fat, 0)
+  const totalProtein = foods.reduce((a, b) => a + b.protein, 0)
+  const goalCalories = 3500
+  const goalFats = 250
+  const goalCarbs = 250
+  const goalProtein = 250
 
-  const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow";
+  const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow"
   return (
     <div>
       <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
@@ -70,10 +70,10 @@ export default function FoodStats({
             label={"Protein"}
           />
         </div> */}
-        <div>
+        <div className="row-span-2">
           <FoodCalendar foods={foods} user={user} />
         </div>
       </dl>
     </div>
-  );
+  )
 }

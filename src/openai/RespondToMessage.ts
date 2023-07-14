@@ -8,7 +8,7 @@ import {
   openai,
   showDailyFoodSummarySchema,
   updateUserInfoSchema,
-} from "@/utils/openai";
+} from "@/utils/openaiFunctionSchemas";
 import { Role, User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {

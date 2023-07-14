@@ -1,6 +1,6 @@
 import { prisma } from "@/database/prisma";
 import { SendMessageToUser } from "@/twilio/SendMessageToUser";
-import { openai } from "@/utils/openai";
+import { openai } from "@/utils/openaiFunctionSchemas";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import path from "path";
