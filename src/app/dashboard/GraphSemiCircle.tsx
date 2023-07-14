@@ -3,7 +3,7 @@
 import { ApexOptions } from "apexcharts";
 import Chart from "react-apexcharts";
 
-export function CalGraph({
+export function GraphSemiCircle({
   percentage,
   color,
   label,

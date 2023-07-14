@@ -1,7 +1,7 @@
 "use client"
 
 import { LoggedFoodItem, User } from "@prisma/client"
-import { CalGraph } from "./CalGraph"
+import { GraphSemiCircle } from "./CalGraph"
 import { FoodCalendar } from "./FoodCalendar"
 import { useSearchParams } from "next/navigation"
 import moment from "moment-timezone"
@@ -44,7 +44,7 @@ export default function FoodStats({
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalCalories / goalCalories) * 100}
             color="#EC4899"
             label={"Calories"}
@@ -56,7 +56,7 @@ export default function FoodStats({
             {totalFats.toLocaleString("en-us")}/
             {goalFats.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalFats / goalFats) * 100}
             color="#11B981"
             label={"Fats"}
@@ -68,7 +68,7 @@ export default function FoodStats({
             {totalCarbs.toLocaleString("en-us")}/
             {goalCarbs.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalCarbs / goalCarbs) * 100}
             color="#0BA5E9"
             label={"Carbs"}
@@ -80,7 +80,7 @@ export default function FoodStats({
             {totalProtein.toLocaleString("en-us")}/
             {goalProtein.toLocaleString("en-us")}
           </div>
-          <CalGraph
+          <GraphSemiCircle
             percentage={(totalProtein / goalProtein) * 100}
             color="#A755F7"
             label={"Protein"}
