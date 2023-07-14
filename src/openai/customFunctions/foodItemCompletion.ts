@@ -1,38 +1,40 @@
-import { error } from "console";
-import { chatCompletion } from "./chatCompletion";
-import {
-  ChatCompletionRequestMessage,
-  ChatCompletionFunctions
-} from "openai";
+import { error } from "console"
+import { chatCompletion } from "./chatCompletion"
+import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
+import { FoodInfo } from "./foodItemInterface"
 
 function checkType(actual: any, expected: any) {
-    if (expected === "array") return Array.isArray(actual);
-    else if (expected === "object") return actual !== null && typeof actual === "object";
-    else if (expected === "integer") return Number.isInteger(actual) || Number.isInteger(parseFloat(actual));
-    else return typeof actual === expected;
-  }  
+  if (expected === "array") return Array.isArray(actual)
+  else if (expected === "object")
+    return actual !== null && typeof actual === "object"
+  else if (expected === "integer")
+    return Number.isInteger(actual) || Number.isInteger(parseFloat(actual))
+  else return typeof actual === expected
+}
 
 export function checkCompliesWithSchema(
   schema: { [key: string]: any },
   obj: any
 ) {
   if (!schema || typeof obj !== "object" || obj === null) {
-    console.error(`The input object is either null or not an object.`);
-    return false;
+    console.error(`The input object is either null or not an object.`)
+    return false
   }
 
   // Check if required fields are in the object and they have the correct types
   for (const field of schema.required || []) {
     if (!(field in obj)) {
-      console.error(`The required field ${field} is missing from the object.`);
-      return false;
+      console.error(`The required field ${field} is missing from the object.`)
+      return false
     }
 
     if (!checkType(obj[field], schema.properties[field].type)) {
       console.error(
-        `The field ${field} is of incorrect type (${typeof(obj[field])}). Expected ${schema.properties[field].type}.`
-      );
-      return false;
+        `The field ${field} is of incorrect type (${typeof obj[
+          field
+        ]}). Expected ${schema.properties[field].type}.`
+      )
+      return false
     }
 
     // If it's an object or an array, do a recursive check
@@ -44,30 +46,32 @@ export function checkCompliesWithSchema(
           obj[field]
         )
       ) {
-        console.error(`The object ${field} does not comply with its schema.`);
-        return false;
+        console.error(`The object ${field} does not comply with its schema.`)
+        return false
       }
     } else if (schema.properties[field].type === "array") {
       // Check each object in the array
       for (const item of obj[field]) {
         if (!checkCompliesWithSchema(schema.properties[field].items, item)) {
-          console.error(`An item in the array ${field} does not comply with its schema.`);
-          return false;
+          console.error(
+            `An item in the array ${field} does not comply with its schema.`
+          )
+          return false
         }
       }
     }
   }
 
-  return true;
+  return true
 }
 
-export async function foodItemCompletion(inquiry: string) {
+export async function foodItemCompletion(inquiry: string): Promise<FoodInfo[]> {
   if (!inquiry) {
-    throw new Error("Bad prompt");
+    throw new Error("Bad prompt")
   }
 
   const system =
-    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond using grams as default unit, unless not possible.";
+    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond using grams as default unit, unless not possible."
 
   const functions: ChatCompletionFunctions[] = [
     {
@@ -83,71 +87,71 @@ export async function foodItemCompletion(inquiry: string) {
               properties: {
                 name: {
                   type: "string",
-                  description: "Food item name",
+                  description: "Food item name"
                 },
                 brand: {
                   type: "string",
                   nullable: true,
-                  description: "Brand name, if applicable",
+                  description: "Brand name, if applicable"
                 },
                 known_as: {
                   type: "array",
                   items: { type: "string" },
-                  description: "Other names for the food",
+                  description: "Other names for the food"
                 },
                 food_description: {
                   type: "string",
                   nullable: true,
-                  description: "Food description",
+                  description: "Food description"
                 },
                 default_serving_size: {
                   type: "integer",
-                  description: "Default serving size (100g recommended)",
+                  description: "Default serving size (100g recommended)"
                 },
                 default_serving_unit: {
                   type: "string",
-                  description: "Default serving unit (g recommended)",
+                  description: "Default serving unit (g recommended)"
                 },
                 default_serving_weight_g: {
                   type: "integer",
                   nullable: true,
-                  description: "Serving weight in g if not in g",
+                  description: "Serving weight in g if not in g"
                 },
                 kcal_per_serving: {
                   type: "number",
-                  description: "Calories (g)/serving",
+                  description: "Calories (g)/serving"
                 },
                 total_fat_per_serving: {
                   type: "number",
-                  description: "Total fat (g)/serving",
+                  description: "Total fat (g)/serving"
                 },
                 sat_fat_per_serving: {
                   type: "number",
                   nullable: true,
-                  description: "Saturated fat (g)/serving",
+                  description: "Saturated fat (g)/serving"
                 },
                 trans_fat_per_serving: {
                   type: "number",
                   nullable: true,
-                  description: "Trans fat (g)/serving",
+                  description: "Trans fat (g)/serving"
                 },
                 carb_per_serving: {
                   type: "number",
-                  description: "Carb (g)/serving",
+                  description: "Carb (g)/serving"
                 },
                 sugar_per_serving: {
                   type: "number",
                   nullable: true,
-                  description: "Sugar (g)/serving",
+                  description: "Sugar (g)/serving"
                 },
                 added_sugar_per_serving: {
                   type: "number",
                   nullable: true,
-                  description: "Added sugar (g)/serving",
+                  description: "Added sugar (g)/serving"
                 },
                 protein_per_serving: {
                   type: "number",
-                  description: "Protein (g)/serving",
+                  description: "Protein (g)/serving"
                 },
                 nutrients: {
                   type: "array",
@@ -157,19 +161,19 @@ export async function foodItemCompletion(inquiry: string) {
                       nutrient_name: {
                         type: "string",
                         description:
-                          "Nutrient name (e.g. Sodium, Potassium, Vitamin C)",
+                          "Nutrient name (e.g. Sodium, Potassium, Vitamin C)"
                       },
                       nutrient_unit: {
                         type: "string",
-                        description: "Nutrient unit (mg, mcg, IU, etc.)",
+                        description: "Nutrient unit (mg, mcg, IU, etc.)"
                       },
                       nutrient_amount_per_g: {
                         type: "number",
-                        description: "Nutrient amount/g of food",
-                      },
-                    },
+                        description: "Nutrient amount/g of food"
+                      }
+                    }
                   },
-                  description: "Nutrient information",
+                  description: "Nutrient information"
                 },
                 servings: {
                   type: "array",
@@ -178,16 +182,16 @@ export async function foodItemCompletion(inquiry: string) {
                     properties: {
                       serving_weight_g: {
                         type: "number",
-                        description: "Serving weight in grams",
+                        description: "Serving weight in grams"
                       },
                       serving_name: {
                         type: "string",
-                        description: "Serving description e.g. 1 large banana",
-                      },
-                    },
+                        description: "Serving description e.g. 1 large banana"
+                      }
+                    }
                   },
-                  description: "Serving sizes & descriptions",
-                },
+                  description: "Serving sizes & descriptions"
+                }
               },
               required: [
                 "name",
@@ -196,25 +200,25 @@ export async function foodItemCompletion(inquiry: string) {
                 "kcal_per_serving",
                 "protein_per_serving",
                 "carb_per_serving",
-                "total_fat_per_serving",
-              ],
-            },
-          },
+                "total_fat_per_serving"
+              ]
+            }
+          }
         },
-        required: ["food_info"],
-      },
-    },
-  ];
+        required: ["food_info"]
+      }
+    }
+  ]
 
-  let result: any = {};
+  let result: any = {}
 
   let messages: ChatCompletionRequestMessage[] = [
     { role: "system", content: system },
-    { role: "user", content: inquiry },
-  ];
-  let model = "gpt-3.5-turbo-0613";
-  let max_tokens = 2048;
-  let temperature = 0.0;
+    { role: "user", content: inquiry }
+  ]
+  let model = "gpt-3.5-turbo-0613"
+  let max_tokens = 2048
+  let temperature = 0.0
 
   try {
     result = await chatCompletion({
@@ -223,9 +227,9 @@ export async function foodItemCompletion(inquiry: string) {
       model,
       temperature,
       max_tokens
-    });
-    console.log("Schema", functions[0].parameters);
-    console.log("Result Args", JSON.parse(result.function_call.arguments));
+    })
+    console.log("Schema", functions[0].parameters)
+    console.log("Result Args", JSON.parse(result.function_call.arguments))
 
     if (
       !checkCompliesWithSchema(
@@ -233,9 +237,9 @@ export async function foodItemCompletion(inquiry: string) {
         JSON.parse(result.function_call.arguments)
       )
     ) {
-      temperature = 1.0; // Update temperature
-      model = "gpt-3.5-turbo-0613"; // Update model
-      max_tokens = 2048; // Update max tokens
+      temperature = 1.0 // Update temperature
+      model = "gpt-3.5-turbo-0613" // Update model
+      max_tokens = 2048 // Update max tokens
       // Retry chatCompletion with updated temperature
       result = await chatCompletion({
         messages,
@@ -243,7 +247,7 @@ export async function foodItemCompletion(inquiry: string) {
         model,
         temperature,
         max_tokens
-      });
+      })
     }
     if (
       !checkCompliesWithSchema(
@@ -251,10 +255,10 @@ export async function foodItemCompletion(inquiry: string) {
         JSON.parse(result.function_call.arguments)
       )
     ) {
-      return error("Could not find food item");
+      throw error("Could not find food item")
     }
-    return result.function_call.arguments;
+    return result.function_call.arguments as FoodInfo[]
   } catch (error) {
-    return error;
+    throw error
   }
 }
