@@ -1,6 +1,10 @@
+"use client"
+
 import { LoggedFoodItem, User } from "@prisma/client"
 import { CalGraph } from "./CalGraph"
 import { FoodCalendar } from "./FoodCalendar"
+import { useSearchParams } from "next/navigation"
+import moment from "moment-timezone"
 
 export default function FoodStats({
   foods,
@@ -9,10 +13,21 @@ export default function FoodStats({
   foods: LoggedFoodItem[]
   user: User
 }) {
-  const totalCalories = foods.reduce((a, b) => a + b.calories, 0)
-  const totalCarbs = foods.reduce((a, b) => a + b.carbohydrates, 0)
-  const totalFats = foods.reduce((a, b) => a + b.fat, 0)
-  const totalProtein = foods.reduce((a, b) => a + b.protein, 0)
+  const searchParams = useSearchParams()
+  let selectedDate = moment().tz(user.tzIdentifier)
+
+  if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
+    selectedDate = moment(searchParams.get("date"))
+  }
+
+  const filteredFood = foods.filter((food) => {
+    return moment(food.consumedOn).isSame(selectedDate, "date")
+  })
+
+  const totalCalories = filteredFood.reduce((a, b) => a + b.calories, 0)
+  const totalCarbs = filteredFood.reduce((a, b) => a + b.carbohydrates, 0)
+  const totalFats = filteredFood.reduce((a, b) => a + b.fat, 0)
+  const totalProtein = filteredFood.reduce((a, b) => a + b.protein, 0)
   const goalCalories = 3500
   const goalFats = 250
   const goalCarbs = 250
