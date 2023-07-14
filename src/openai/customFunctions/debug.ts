@@ -2,8 +2,6 @@ import {
   foodItemCompletion,
   checkCompliesWithSchema,
 } from "./foodItemCompletion"; // replace 'yourFile' with the name of the file that contains messageHandlingFunction
-import { chatCompletion } from "./chatCompletion";
-import { ChatCompletionRequestMessage } from "openai";
 
 async function main() {
   const outputSchema = {
@@ -235,7 +233,7 @@ async function main() {
   console.log(checkCompliesWithSchema(outputSchema, objectotest2));
 
   try {
-    const result = await foodItemCompletion("Starbucks Latte, Ground Turkey");
+    const result = await foodItemCompletion("Flank Steak");
     console.log(result);
     //await messageHandlingFunction(system, inquiry);
   } catch (error) {

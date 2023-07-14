@@ -134,7 +134,7 @@ enum MessageDirection {
 model FoodItem {
   id                        Int      @id @default(autoincrement())
   name                      String
-  brand                     String?  @db.VarChar(255)
+  brand                     String? 
   knownAs                   String[]
   description               String?
   defaultServingSize        Int

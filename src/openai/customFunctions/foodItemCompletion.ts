@@ -65,7 +65,7 @@ export function checkCompliesWithSchema(
   return true
 }
 
-export async function foodItemCompletion(inquiry: string): Promise<FoodInfo[]> {
+export async function foodItemCompletion(inquiry: string): Promise<any> {
   if (!inquiry) {
     throw new Error("Bad prompt")
   }
@@ -228,8 +228,8 @@ export async function foodItemCompletion(inquiry: string): Promise<FoodInfo[]> {
       temperature,
       max_tokens
     })
-    console.log("Schema", functions[0].parameters)
-    console.log("Result Args", JSON.parse(result.function_call.arguments))
+    // console.log("Schema", functions[0].parameters)
+    //console.log("Result Args", JSON.parse(result.function_call.arguments))
 
     if (
       !checkCompliesWithSchema(
@@ -238,8 +238,8 @@ export async function foodItemCompletion(inquiry: string): Promise<FoodInfo[]> {
       )
     ) {
       temperature = 1.0 // Update temperature
-      model = "gpt-3.5-turbo-0613" // Update model
-      max_tokens = 2048 // Update max tokens
+      model = "gpt-4-0613" // Update model
+      max_tokens = 4096 // Update max tokens
       // Retry chatCompletion with updated temperature
       result = await chatCompletion({
         messages,
@@ -257,7 +257,7 @@ export async function foodItemCompletion(inquiry: string): Promise<FoodInfo[]> {
     ) {
       throw error("Could not find food item")
     }
-    return result.function_call.arguments as FoodInfo[]
+    return JSON.parse(result.function_call.arguments)
   } catch (error) {
     throw error
   }

@@ -17,7 +17,9 @@ export const logFoodSchema = {
         description: "A food item",
         properties: {
           name: { type: "string",
-            description: "The name of the food item, used to search in food databse" },
+            description: "The name of the food item" },
+          database_search_term: { type: "string",
+            description: "Basic terms to search for in a database (e.g. apple instead of large apple)" },
           unit: {
             type: "string",
             enum: ["g", "ml", "cups", "piece", "tbsp", "tsp"],
