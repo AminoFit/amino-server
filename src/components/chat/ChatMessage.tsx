@@ -2,7 +2,7 @@
 
 import { Message } from "@prisma/client";
 import classNames from "classnames";
-import moment from "moment";
+import moment from "moment-timezone";
 import { Fragment } from "react";
 
 export function ChatMessage({ message }: { message: Message }) {

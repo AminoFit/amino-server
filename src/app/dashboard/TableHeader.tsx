@@ -1,7 +1,7 @@
 'use client'
 import { CalendarDaysIcon } from "@heroicons/react/24/outline"
 import { User } from "@prisma/client"
-import moment from "moment"
+import moment from "moment-timezone"
 import { useSearchParams } from "next/navigation"
 
 export function TableHeader({ user }: { user: User }) {
