@@ -4,6 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
 import { LoggedFoodItem, User } from "@prisma/client"
 import classNames from "classnames"
 import moment from "moment-timezone"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 
 const meetings = [
@@ -82,6 +83,9 @@ export function FoodCalendar({
     moment().tz(user.tzIdentifier).format("YYYY-MM-DD")
   )
 
+  const router = useRouter()
+  const pathname = usePathname()
+
   const handleNextMonth = () => {
     const curDate = moment(`${currentMonth} ${currentYear}`, "MM YYYY").utc(
       true
@@ -102,6 +106,11 @@ export function FoodCalendar({
   }
 
   const days = getDaysForMonth(currentMonth, currentYear)
+
+  const onClickDay = (day: moment.Moment) => {
+    console.log(day.format("YYYY-MM-DD"))
+    router.push(`${pathname}?date=${day.format("YYYY-MM-DD")}`)
+  }
 
   return (
     <div className="text-center">
@@ -147,6 +156,7 @@ export function FoodCalendar({
             <button
               key={day.format()}
               type="button"
+              onClick={() => onClickDay(day)}
               className={classNames(
                 "py-1.5 hover:bg-gray-100 focus:z-10",
                 isCurrentMonth ? "bg-white" : "bg-gray-50",

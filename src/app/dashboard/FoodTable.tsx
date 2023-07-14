@@ -1,40 +1,50 @@
-import { LoggedFoodItem, User } from "@prisma/client";
-import moment from "moment-timezone";
+"use client"
 
-import _ from "underscore";
+import { LoggedFoodItem, User } from "@prisma/client"
+import moment from "moment-timezone"
+import { useSearchParams } from "next/navigation"
+
+import _ from "underscore"
 
 export function FoodTable({
   foods,
-  user,
+  user
 }: {
-  foods: LoggedFoodItem[];
-  user: User;
+  foods: LoggedFoodItem[]
+  user: User
 }) {
-  // TODO Filter by day?
+  const searchParams = useSearchParams()
 
   const groups = _.chain(foods)
     .filter((food) => {
-      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier);
-      const today = moment().tz(user.tzIdentifier);
-      return consumptionTime.isSame(today, "day");
+      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
+
+      let selectedDate = moment().tz(user.tzIdentifier)
+      if (
+        searchParams.get("date") &&
+        moment(searchParams.get("date")).isValid()
+      ) {
+        selectedDate = moment(searchParams.get("date"))
+      }
+
+      return consumptionTime.isSame(selectedDate, "day")
     })
     .groupBy((food) => {
-      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier);
+      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
       if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
-        return "midnight snack";
+        return "midnight snack"
       }
       if (consumptionTime.hour() < 11) {
-        return "breakfast";
+        return "breakfast"
       }
       if (consumptionTime.hour() < 15) {
-        return "lunch";
+        return "lunch"
       }
-      return "dinner";
+      return "dinner"
     })
-    .value();
-  console.log("groups", groups);
+    .value()
 
-  const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"];
+  const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
     <table className="min-w-full divide-y divide-gray-300">
@@ -83,7 +93,7 @@ export function FoodTable({
       </thead>
       <tbody className="divide-y divide-gray-200 bg-white">
         {foodGroups.map((foodGroup) => {
-          if (!groups[foodGroup]) return null;
+          if (!groups[foodGroup]) return null
           return (
             <>
               <tr className="border-t border-gray-200 ">
@@ -99,9 +109,10 @@ export function FoodTable({
                 <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
               ))}
             </>
-          );
+          )
         })}
         <tr className="border-t border-gray-200 text-left bg-gray-50 ">
+          <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
           <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
             {foods.reduce((a, b) => a + b.fat, 0).toLocaleString()}g Fat
@@ -121,15 +132,15 @@ export function FoodTable({
         </tr>
       </tbody>
     </table>
-  );
+  )
 }
 
 export function FoodRow({
   foodItem,
-  user,
+  user
 }: {
-  foodItem: LoggedFoodItem;
-  user: User;
+  foodItem: LoggedFoodItem
+  user: User
 }) {
   return (
     <tr key={foodItem.id}>
@@ -167,5 +178,5 @@ export function FoodRow({
         </a>
       </td>
     </tr>
-  );
+  )
 }

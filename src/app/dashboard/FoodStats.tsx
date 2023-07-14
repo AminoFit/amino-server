@@ -18,10 +18,11 @@ export default function FoodStats({
   const goalCarbs = 250
   const goalProtein = 250
 
-  const cardClasses = "overflow-hidden rounded-lg bg-white p-3 shadow"
+  const cardClasses =
+    "row-span-1 overflow-hidden rounded-lg bg-white p-3 shadow"
   return (
     <div>
-      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
+      <dl className="grid grid-cols-6 gap-6 mt-5">
         <div className={cardClasses}>
           <div className="text-lg font-bold text-pink-500">Calories</div>
           <div className="text-sm text-gray-500">
@@ -58,7 +59,7 @@ export default function FoodStats({
             label={"Carbs"}
           />
         </div>
-        {/* <div className={cardClasses}>
+        <div className={cardClasses}>
           <div className="text-lg font-bold text-purple-500">Protein</div>
           <div className="text-sm text-gray-500">
             {totalProtein.toLocaleString("en-us")}/
@@ -69,9 +70,24 @@ export default function FoodStats({
             color="#A755F7"
             label={"Protein"}
           />
-        </div> */}
-        <div className="row-span-2">
+        </div>
+
+        <div className="row-span-2 col-span-2">
           <FoodCalendar foods={foods} user={user} />
+        </div>
+
+        <div
+          className={
+            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow"
+          }
+        >
+          <div className="text-lg font-bold text-slate-500">
+            Some other info here
+          </div>
+          <div className="text-sm text-gray-500">
+            {totalCarbs.toLocaleString("en-us")}/
+            {goalCarbs.toLocaleString("en-us")}
+          </div>
         </div>
       </dl>
     </div>
