@@ -152,14 +152,16 @@ export function FoodCalendar({
           const isCurrentMonth = moment(currentMonth, "M").isSame(day, "month")
           const isToday = moment().isSame(day, "day")
           const isSelected = moment(selectedDate).isSame(day, "day")
+          const isFuture = day.isAfter(moment().tz(user.tzIdentifier), "day")
 
-          const bgColor = getDarknessForFood(foods, day)
+          const bgColorDarkness = getDarknessForFood(foods, day)
 
           return (
             <button
               key={day.format()}
               type="button"
               onClick={() => onClickDay(day)}
+              disabled={isFuture}
               className={classNames(
                 "py-1.5 focus:z-10",
                 isCurrentMonth && !isSelected && "bg-white hover:bg-gray-100",
@@ -168,8 +170,9 @@ export function FoodCalendar({
                   "bg-gray-50 hover:bg-gray-100",
                 isSelected && "bg-slate-700 hover:bg-slate-800 text-white",
                 (isSelected || isToday) && "font-bold",
+                isFuture && "text-gray-400 font-light",
                 isToday &&
-                  "outline outline-offset-1 outline-2 z-50 outline-blue-500",
+                  "outline outline-offset-1 outline z-50 outline-slate-700/70",
                 // !isSelected && isCurrentMonth && !isToday && "text-gray-900",
                 // !isSelected && !isCurrentMonth && !isToday && "text-gray-400",
                 // isToday && !isSelected && "text-indigo-600",
@@ -185,7 +188,8 @@ export function FoodCalendar({
                   // isSelected && isToday && "bg-emerald-600",
                   // isSelected && !isToday && "bg-gray-900",
                   // isSelected && "bg-gray-900",
-                  bgColor > 0 && `border-2 border-emerald-${bgColor}`
+                  bgColorDarkness > 0 &&
+                    `border-2 border-emerald-${bgColorDarkness}`
                 )}
               >
                 {day.date()}
