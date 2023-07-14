@@ -1,7 +1,7 @@
 "use client"
 
 import { LoggedFoodItem, User } from "@prisma/client"
-import { GraphSemiCircle } from "./CalGraph"
+import { GraphSemiCircle } from "./GraphSemiCircle"
 import { FoodCalendar } from "./FoodCalendar"
 import { useSearchParams } from "next/navigation"
 import moment from "moment-timezone"
