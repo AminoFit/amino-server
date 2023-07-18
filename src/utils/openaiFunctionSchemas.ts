@@ -7,7 +7,7 @@ export const openai = new OpenAIApi(configuration)
 
 export const logFoodSchema = {
   type: "object",
-  description: "A function that logs the food items that were eaten by a user",
+  description: "Food items that were eaten by a user",
   properties: {
     food_items: {
       type: "array",
@@ -16,24 +16,43 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          name: { type: "string",
-            description: "The name of the food item" },
-          database_search_term: { type: "string",
-            description: "Basic terms to search for in a database (e.g. apple instead of large apple)" },
-          unit: {
+          name: { type: "string", description: "The name of the food item" },
+          brand: { type: "string", description: "The brand of the food item" },
+          basic_database_search_term: {
             type: "string",
-            enum: ["g", "ml", "cups", "piece", "tbsp", "tsp"],
+            description:
+              "Basic terms to search for in a database (e.g. apple instead of large apple)"
           },
-          serving_amount: { type: "number",
-            description: "The serving amount (ideally grams) of the food item that was eaten" },
-          calories: { type: "number",
-            description: "The number of calories in the food item" },
+          user_serving_name: {
+            type: "string",
+            description: "What the user calls the serving size, e.g. 1 large apple"
+          },
+          serving_amount: {
+            type: "number",
+            description:
+              "The serving amount (ideally in grams) of the food item that was eaten"
+          },
+          serving_unit_name: {
+            type: "string",
+            enum: ["g", "ml", "cup", "piece", "tbsp", "tsp", "plate", "bottle", "can", "slice","small","medium","large","serving"],
+            description: "The serving unit that serving_amount is in"
+          },
+          total_serving_weight_grams: {
+            type: "number",
+            description:
+              "The weight of the serving in grams if default unit is not grams"
+          },
+          calories: {
+            type: "number",
+            description: "The number of calories in the food item"
+          },
+          timeEaten: {
+            type: "string",
+            description:
+              "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
+          }
         },
-        required: [
-          "name",
-          "unit",
-          "serving_amount",
-        ]
+        required: ["name", "user_serving_name", "serving_unit_name", "serving_amount", "total_serving_weight_grams", "basic_database_search_term"]
       }
     },
     total_calories: {

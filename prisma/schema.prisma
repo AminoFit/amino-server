@@ -84,11 +84,13 @@ model LoggedFoodItem {
   consumedOn    DateTime @default(now())
   foodItemId    Int
   grams         Float 
-  loggedUnit    String?
+  servingId     Int?     
   servingAmount Float?
+  loggedUnit    String?
   userId        String
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   FoodItem      FoodItem @relation(fields: [foodItemId], references: [id])
+  Serving       Serving? @relation(fields: [servingId], references: [id])
 }
 
 model Session {
@@ -158,11 +160,12 @@ model FoodItem {
 }
 
 model Serving {
-  id                Int     @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   servingWeightGram Float
   servingName       String
   foodItemId        Int
-  FoodItem          FoodItem @relation(fields: [foodItemId], references: [id])
+  FoodItem          FoodItem        @relation(fields: [foodItemId], references: [id])
+  LoggedFoodItems   LoggedFoodItem[]
 }
 
 model Nutrient {

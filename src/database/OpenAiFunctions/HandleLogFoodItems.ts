@@ -5,12 +5,17 @@ import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import moment from "moment"
 
 interface FoodItemToLog {
-  name: string // The name of the food item, used to search in food database
-  unit: "g" | "ml" | "cups" | "piece" | "tbsp" | "tsp"
-  database_search_term?: string
-  serving_amount: number // The serving amount (ideally grams) of the food item that was eaten
-  calories?: number // The number of calories in the food item
+  name: string; // The name of the food item, used to search in food database
+  brand?: string; // The brand of the food item
+  user_serving_name?: string; // What the user calls the serving size, e.g. 1 large apple
+  basic_database_search_term?: string; // Basic terms to search for in a database (e.g. apple instead of large apple)
+  serving_unit_name: string; // The serving unit of the food item
+  total_serving_weight_grams?: number; // The weight of the serving in grams if default unit is not grams
+  serving_amount: number; // The serving amount (ideally grams) of the food item that was eaten
+  calories?: number; // The number of calories in the food item
+  timeEaten?: string; // Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)
 }
+
 
 export async function HandleLogFoodItems(user: User, parameters: any) {
   console.log("parameters", parameters)
@@ -22,7 +27,7 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
   let matches = []
 
   for (let food of foodItems) {
-    console.log("foodItem db helper word", food.database_search_term)
+    console.log("foodItem db helper word", food.basic_database_search_term)
     // common words that are not useful for searching
     let sizeWords = ["large", "medium", "small", "slice", "scoop", "cup", "spoon"];
     // remove these words from the search term
@@ -50,6 +55,8 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
         where: {
           OR: [
             { name: { in: searchChunks, mode: "insensitive" } },
+            { name: { in: foodName, mode: "insensitive" } },
+            { name: { in: food.basic_database_search_term , mode: "insensitive" } },
             { brand: { in: searchChunks, mode: "insensitive" } },
             { knownAs: { hasSome: searchTerms } }
           ]
@@ -76,11 +83,37 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
     //let bestMatch = getBestMatch(matches)
     let bestMatch: FoodItem = matches[0]
 
+    // Let's find the serving
+    // split the string into an array and filter out the serving unit
+    const servingUnitEnum = ["g", "ml", "cup", "piece", "tbsp", "tsp", "plate", "bottle", "can", "slice","small","medium","large","serving"];
+    let foodArray = food.serving_unit_name.split(" "); 
+    let servingSize = foodArray.filter(word => servingUnitEnum.includes(word)); 
+
+    // Search servings table for the best match
+    let serving = await prisma.serving.findFirst({
+      where: {
+        foodItemId: bestMatch.id,
+        servingName: {
+          contains: servingSize[0],
+          mode: 'insensitive', 
+        },
+      },
+      orderBy: {
+        servingWeightGram: 'asc', 
+      },
+    })
+    if (!serving) {
+      console.log(`No serving found for food item id ${bestMatch.id} and serving size ${servingSize[0]}`);
+    }
+    
+    console.log("user serving name:", food.user_serving_name)
     // Proceed with original logging process with some modifications
     const data: any = {
       foodItemId: bestMatch.id, // use the best match's ID
-      grams: food.serving_amount,
-      loggedUnit: food.unit,
+      servingId: serving?.id,  // use the serving id, if a serving was found
+      servingAmount: food.serving_amount,
+      loggedUnit: food.user_serving_name,
+      grams: food.total_serving_weight_grams,
       userId: user.id
     }
 
@@ -106,13 +139,13 @@ async function addFoodItemToDatabase(
   console.log("food", foodToLog)
 
   try {
-    let foodItemInfo = await foodItemCompletion(foodToLog.name)
+    const foodItemRequestString = (foodToLog.brand ? foodToLog.brand + " " : "") + foodToLog.name + " (" + foodToLog.serving_amount + " " + foodToLog.serving_unit_name + " - "+foodToLog.total_serving_weight_grams+"g)";
+
+    let foodItemInfo = await foodItemCompletion(foodItemRequestString)
     let newFood: FoodItem
 
     let food: FoodInfo = foodItemInfo.food_info[0]
-    console.log("food", food)
-    console.log("foodItemInfo", foodItemInfo)
-    console.log("food.name", food.name)
+    console.log("food req string:", foodItemRequestString)
 
     newFood = await prisma.foodItem.create({
       data: {

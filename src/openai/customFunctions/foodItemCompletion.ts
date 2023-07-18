@@ -71,7 +71,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
   }
 
   const system =
-    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond using grams as default unit, unless not possible."
+    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond normalising everything to 100 grams (e.g. calories per 100g), unless not possible. You will include the standard servings in the appropriate array."
 
   const functions: ChatCompletionFunctions[] = [
     {
@@ -114,8 +114,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
                 },
                 default_serving_weight_g: {
                   type: "integer",
-                  nullable: true,
-                  description: "Serving weight in g if not in g"
+                  description: "Serving weight in g"
                 },
                 kcal_per_serving: {
                   type: "number",
@@ -197,6 +196,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
                 "name",
                 "default_serving_size",
                 "default_serving_unit",
+                "default_serving_weight_g",
                 "kcal_per_serving",
                 "protein_per_serving",
                 "carb_per_serving",
