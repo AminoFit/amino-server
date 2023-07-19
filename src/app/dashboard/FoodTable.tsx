@@ -151,7 +151,7 @@ export function FoodTable({
             g Fat
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-            {foodsFiltered.reduce((a, b) => a + getNormalizedValue(b, "carbPerServing"), 0).toLocaleString()}sg Carbs
+            {foodsFiltered.reduce((a, b) => a + getNormalizedValue(b, "carbPerServing"), 0).toLocaleString()}g Carbs
           </th>
           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
             {foodsFiltered.reduce((a, b) => a + getNormalizedValue(b, "proteinPerServing"),0).toLocaleString()}g Protein

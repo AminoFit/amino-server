@@ -18,14 +18,14 @@ export const logFoodSchema = {
         properties: {
           name: { type: "string", description: "The name of the food item" },
           brand: { type: "string", description: "The brand of the food item" },
-          basic_database_search_term: {
+          lemmatized_database_search_term: {
             type: "string",
             description:
-              "Basic terms to search for in a database (e.g. apple instead of large apple)"
+              "Basic terms to search for in a database (e.g. apple instead of large apple, egg instead of eggs), ideally the lemmatized version"
           },
           user_serving_name: {
             type: "string",
-            description: "What the user calls the serving size, e.g. 1 large apple"
+            description: "What the user calls the serving size, e.g. large"
           },
           serving_amount: {
             type: "number",
@@ -52,7 +52,7 @@ export const logFoodSchema = {
               "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
           }
         },
-        required: ["name", "user_serving_name", "serving_unit_name", "serving_amount", "total_serving_weight_grams", "basic_database_search_term"]
+        required: ["name", "serving_unit_name", "serving_amount", "total_serving_weight_grams", "basic_database_search_term"]
       }
     },
     total_calories: {

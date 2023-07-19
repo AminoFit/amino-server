@@ -87,7 +87,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
               properties: {
                 name: {
                   type: "string",
-                  description: "Food item name"
+                  description: "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
                 },
                 brand: {
                   type: "string",

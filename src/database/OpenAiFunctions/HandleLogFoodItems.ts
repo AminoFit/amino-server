@@ -8,12 +8,17 @@ interface FoodItemToLog {
   name: string; // The name of the food item, used to search in food database
   brand?: string; // The brand of the food item
   user_serving_name?: string; // What the user calls the serving size, e.g. 1 large apple
-  basic_database_search_term?: string; // Basic terms to search for in a database (e.g. apple instead of large apple)
+  lemmatized_database_search_term?: string; // Basic terms to search for in a database (e.g. apple instead of large apple)
   serving_unit_name: string; // The serving unit of the food item
   total_serving_weight_grams?: number; // The weight of the serving in grams if default unit is not grams
   serving_amount: number; // The serving amount (ideally grams) of the food item that was eaten
   calories?: number; // The number of calories in the food item
   timeEaten?: string; // Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)
+}
+
+function sanitizeServingName(name: string) {
+  // Remove any leading digit optionally followed by alphanumeric characters and spaces
+  return name.replace(/^\d+\w*\s*/, '').trim();
 }
 
 
@@ -27,7 +32,7 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
   let matches = []
 
   for (let food of foodItems) {
-    console.log("foodItem db helper word", food.basic_database_search_term)
+    console.log("foodItem db helper word", food.lemmatized_database_search_term)
     // common words that are not useful for searching
     let sizeWords = ["large", "medium", "small", "slice", "scoop", "cup", "spoon"];
     // remove these words from the search term
@@ -49,14 +54,21 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
       }
     }
 
+    // setup where clause
+    const whereClause = searchChunks.map(term => ({
+      name: {
+        contains: term.toLowerCase()
+      }
+    }));
+
     // Search for matches in food database
     matches = await prisma.foodItem
       .findMany({
         where: {
           OR: [
-            { name: { in: searchChunks, mode: "insensitive" } },
-            { name: { in: foodName, mode: "insensitive" } },
-            { name: { in: food.basic_database_search_term , mode: "insensitive" } },
+            { name: { contains: foodName, mode: "insensitive" } },
+            ...whereClause,
+            { name: { in: food.lemmatized_database_search_term , mode: "insensitive" } },
             { brand: { in: searchChunks, mode: "insensitive" } },
             { knownAs: { hasSome: searchTerms } }
           ]
@@ -112,9 +124,10 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
       foodItemId: bestMatch.id, // use the best match's ID
       servingId: serving?.id,  // use the serving id, if a serving was found
       servingAmount: food.serving_amount,
-      loggedUnit: food.user_serving_name,
+      loggedUnit: sanitizeServingName(food.user_serving_name || ''),
       grams: food.total_serving_weight_grams,
-      userId: user.id
+      userId: user.id,
+      consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date()
     }
 
     const foodItem = await prisma.loggedFoodItem
