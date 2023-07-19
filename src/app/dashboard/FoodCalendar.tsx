@@ -4,7 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
 import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
 import classNames from "classnames"
 import moment from "moment-timezone"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 
 type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
@@ -89,9 +89,12 @@ export function FoodCalendar({foods,user}: {foods: LoggedFoodItemWithFoodItem[],
     moment().tz(user.tzIdentifier).year()
   )
 
-  const [selectedDate, setSelectedDate] = useState(
-    moment().tz(user.tzIdentifier).format("YYYY-MM-DD")
-  )
+  const searchParams = useSearchParams()
+
+  let selectedDate = moment().tz(user.tzIdentifier)
+  if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
+    selectedDate = moment(searchParams.get("date"))
+  }
 
   const router = useRouter()
   const pathname = usePathname()
@@ -159,22 +162,30 @@ export function FoodCalendar({foods,user}: {foods: LoggedFoodItemWithFoodItem[],
           const isCurrentMonth = moment(currentMonth, "M").isSame(day, "month")
           const isToday = moment().isSame(day, "day")
           const isSelected = moment(selectedDate).isSame(day, "day")
+          const isFuture = day.isAfter(moment().tz(user.tzIdentifier), "day")
 
-          const bgColor = getDarknessForFood(foods, day)
+          const bgColorDarkness = getDarknessForFood(foods, day)
 
           return (
             <button
               key={day.format()}
               type="button"
               onClick={() => onClickDay(day)}
+              disabled={isFuture}
               className={classNames(
-                "py-1.5 hover:bg-gray-100 focus:z-10",
-                isCurrentMonth ? "bg-white" : "bg-gray-50",
-                (isSelected || isToday) && "font-semibold",
-                isSelected && "text-white",
-                !isSelected && isCurrentMonth && !isToday && "text-gray-900",
-                !isSelected && !isCurrentMonth && !isToday && "text-gray-400",
-                isToday && !isSelected && "text-indigo-600",
+                "py-1.5 focus:z-10",
+                isCurrentMonth && !isSelected && "bg-white hover:bg-gray-100",
+                !isCurrentMonth &&
+                  !isSelected &&
+                  "bg-gray-50 hover:bg-gray-100",
+                isSelected && "bg-slate-700 hover:bg-slate-800 text-white",
+                (isSelected || isToday) && "font-bold",
+                isFuture && "text-gray-400 font-light",
+                isToday &&
+                  "outline outline-offset-1 outline z-50 outline-slate-700/70",
+                // !isSelected && isCurrentMonth && !isToday && "text-gray-900",
+                // !isSelected && !isCurrentMonth && !isToday && "text-gray-400",
+                // isToday && !isSelected && "text-indigo-600",
                 index === 0 && "rounded-tl-lg",
                 index === 6 && "rounded-tr-lg",
                 index === days.length - 7 && "rounded-bl-lg",
@@ -184,12 +195,11 @@ export function FoodCalendar({foods,user}: {foods: LoggedFoodItemWithFoodItem[],
               <div
                 className={classNames(
                   "mx-auto flex h-7 w-7 items-center justify-center rounded-full",
-                  isSelected && isToday && "bg-emerald-600",
-                  isSelected && !isToday && "bg-gray-900",
-                  !isSelected &&
-                    !isToday &&
-                    bgColor > 0 &&
-                    `border-2 border-emerald-${bgColor}`
+                  // isSelected && isToday && "bg-emerald-600",
+                  // isSelected && !isToday && "bg-gray-900",
+                  // isSelected && "bg-gray-900",
+                  bgColorDarkness > 0 &&
+                    `border-2 border-emerald-${bgColorDarkness}`
                 )}
               >
                 {day.date()}
