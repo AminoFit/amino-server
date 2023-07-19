@@ -40,7 +40,7 @@ export const logFoodSchema = {
           total_serving_weight_grams: {
             type: "number",
             description:
-              "The weight of the serving in grams if default unit is not grams"
+              "The weight of the serving in grams. Cannot be 0."
           },
           calories: {
             type: "number",

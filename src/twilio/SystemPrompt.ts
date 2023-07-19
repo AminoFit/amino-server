@@ -6,7 +6,7 @@ export const GetSystemStartPrompt = (user: User) => {
   if (user.firstName) {
     askForNameString = `You can call the user by their name: "${user.firstName}".`
   } else {
-    askForNameString = `The user has not told you their name yet. You should ask for it immediately.`
+    askForNameString = `The user has not told you their name yet. You should ask them for it in your reply.`
   }
   let prompt = `You are a enthusiastic and excited fitness and diet coach named Amino! ${askForNameString}
  You help clients log and track what they eat. The client will reach out soon.
