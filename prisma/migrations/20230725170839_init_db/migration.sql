@@ -54,13 +54,15 @@ CREATE TABLE "OpenAiUsage" (
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "name" VARCHAR(255),
+    "firstName" VARCHAR(255),
+    "lastName" VARCHAR(255),
     "email" VARCHAR(255),
     "emailVerified" TIMESTAMP(3),
     "phone" VARCHAR(255),
     "dateOfBirth" TIMESTAMP(3),
     "weightLbs" DOUBLE PRECISION,
     "sentContact" BOOLEAN NOT NULL DEFAULT false,
+    "tzIdentifier" TEXT NOT NULL DEFAULT 'America/New_York',
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -71,13 +73,11 @@ CREATE TABLE "LoggedFoodItem" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "consumedOn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "name" TEXT NOT NULL,
-    "unit" TEXT NOT NULL,
-    "amount" DOUBLE PRECISION NOT NULL,
-    "fat" DOUBLE PRECISION NOT NULL,
-    "carbohydrates" DOUBLE PRECISION NOT NULL,
-    "protein" DOUBLE PRECISION NOT NULL,
-    "calories" DOUBLE PRECISION NOT NULL,
+    "foodItemId" INTEGER NOT NULL,
+    "grams" DOUBLE PRECISION NOT NULL,
+    "servingId" INTEGER,
+    "servingAmount" DOUBLE PRECISION,
+    "loggedUnit" TEXT,
     "userId" TEXT NOT NULL,
 
     CONSTRAINT "LoggedFoodItem_pkey" PRIMARY KEY ("id")
@@ -118,6 +118,52 @@ CREATE TABLE "Account" (
     CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "FoodItem" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "brand" TEXT,
+    "knownAs" TEXT[],
+    "description" TEXT,
+    "defaultServingSize" INTEGER NOT NULL,
+    "defaultServingUnit" TEXT NOT NULL,
+    "defaultServingWeightGram" INTEGER,
+    "kcalPerServing" DOUBLE PRECISION NOT NULL,
+    "totalFatPerServing" DOUBLE PRECISION NOT NULL,
+    "satFatPerServing" DOUBLE PRECISION,
+    "transFatPerServing" DOUBLE PRECISION,
+    "carbPerServing" DOUBLE PRECISION NOT NULL,
+    "sugarPerServing" DOUBLE PRECISION,
+    "addedSugarPerServing" DOUBLE PRECISION,
+    "proteinPerServing" DOUBLE PRECISION NOT NULL,
+    "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "userId" TEXT,
+
+    CONSTRAINT "FoodItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Serving" (
+    "id" SERIAL NOT NULL,
+    "servingWeightGram" DOUBLE PRECISION NOT NULL,
+    "servingName" TEXT NOT NULL,
+    "foodItemId" INTEGER NOT NULL,
+
+    CONSTRAINT "Serving_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Nutrient" (
+    "id" SERIAL NOT NULL,
+    "nutrientName" TEXT NOT NULL,
+    "nutrientUnit" TEXT NOT NULL,
+    "nutrientAmountPerGram" DOUBLE PRECISION NOT NULL,
+    "foodItemId" INTEGER NOT NULL,
+
+    CONSTRAINT "Nutrient_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "SmsAuthCode_code_key" ON "SmsAuthCode"("code");
 
@@ -155,7 +201,22 @@ ALTER TABLE "OpenAiUsage" ADD CONSTRAINT "OpenAiUsage_userId_fkey" FOREIGN KEY (
 ALTER TABLE "LoggedFoodItem" ADD CONSTRAINT "LoggedFoodItem_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
+ALTER TABLE "LoggedFoodItem" ADD CONSTRAINT "LoggedFoodItem_foodItemId_fkey" FOREIGN KEY ("foodItemId") REFERENCES "FoodItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LoggedFoodItem" ADD CONSTRAINT "LoggedFoodItem_servingId_fkey" FOREIGN KEY ("servingId") REFERENCES "Serving"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FoodItem" ADD CONSTRAINT "FoodItem_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "Serving" ADD CONSTRAINT "Serving_foodItemId_fkey" FOREIGN KEY ("foodItemId") REFERENCES "FoodItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Nutrient" ADD CONSTRAINT "Nutrient_foodItemId_fkey" FOREIGN KEY ("foodItemId") REFERENCES "FoodItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
