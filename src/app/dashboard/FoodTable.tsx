@@ -1,19 +1,40 @@
 "use client"
 
-import { LoggedFoodItem, User } from "@prisma/client"
+import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
 import moment from "moment-timezone"
 import { useSearchParams } from "next/navigation"
 
 import _ from "underscore"
 
-export function FoodTable({
-  foods,
-  user
-}: {
-  foods: LoggedFoodItem[]
-  user: User
-}) {
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
+
+function getNormalizedValue(
+  LoggedFoodItem: LoggedFoodItemWithFoodItem,
+  value: string
+) {
+  const nutrientPerServing =
+    (LoggedFoodItem.FoodItem[
+      value as keyof typeof LoggedFoodItem.FoodItem
+    ] as number) || 0
+  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
+  const grams = LoggedFoodItem.grams || 1
+  return (nutrientPerServing / gramsPerServing) * grams
+}
+
+export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], user: User}) {
   const searchParams = useSearchParams()
+
+  //filter foods by date
+  let selectedDate = moment().tz(user.tzIdentifier)
+  if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
+    selectedDate = moment(searchParams.get("date"))
+  }
+
+  // make object that only has for the selected date
+  const foodsFiltered = (foods || []).filter((food) => {
+    const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
+    return consumptionTime.isSame(selectedDate, "day")
+  })
 
   const filteredFood = _.filter(foods, (food) => {
     const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
@@ -131,22 +152,38 @@ export function FoodTable({
             <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
             <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-              {filteredFood.reduce((a, b) => a + b.fat, 0).toLocaleString()}g
-              Fat
+              {filteredFood
+                .reduce(
+                  (a, b) => a + getNormalizedValue(b, "totalFatPerServing"),
+                  0
+                )
+                .toLocaleString()}
+              g Fat
             </th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
-                .reduce((a, b) => a + b.carbohydrates, 0)
+                .reduce(
+                  (a, b) => a + getNormalizedValue(b, "carbPerServing"),
+                  0
+                )
                 .toLocaleString()}
               g Carbs
             </th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-              {filteredFood.reduce((a, b) => a + b.protein, 0).toLocaleString()}
+              {filteredFood
+                .reduce(
+                  (a, b) => a + getNormalizedValue(b, "proteinPerServing"),
+                  0
+                )
+                .toLocaleString()}
               g Protein
             </th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
-                .reduce((a, b) => a + b.calories, 0)
+                .reduce(
+                  (a, b) => a + getNormalizedValue(b, "kcalPerServing"),
+                  0
+                )
                 .toLocaleString()}
               g Calories
             </th>
@@ -158,7 +195,7 @@ export function FoodTable({
   )
 }
 
-function FoodRow({ foodItem, user }: { foodItem: LoggedFoodItem; user: User }) {
+function FoodRow({foodItem, user}: { foodItem: LoggedFoodItemWithFoodItem, user: User}) {
   return (
     <tr key={foodItem.id}>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
@@ -171,27 +208,39 @@ function FoodRow({ foodItem, user }: { foodItem: LoggedFoodItem; user: User }) {
       </td>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
         <div className="text-xs font-light text-gray-500">
-          {foodItem.amount} {foodItem.unit}
+          {foodItem.servingAmount} {foodItem.loggedUnit}
         </div>
         <div className="text-md font-medium text-gray-900 capitalize">
-          {foodItem.name}
+          {foodItem.FoodItem.name}
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.fat.toLocaleString()}g Fat
+        {Math.round(
+          getNormalizedValue(foodItem, "totalFatPerServing")
+        ).toLocaleString()}
+        g Fat
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.carbohydrates.toLocaleString()}g Carb
+        {Math.round(
+          getNormalizedValue(foodItem, "carbPerServing")
+        ).toLocaleString()}
+        g Carb
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.protein.toLocaleString()}g Protein
+        {Math.round(
+          getNormalizedValue(foodItem, "proteinPerServing")
+        ).toLocaleString()}
+        g Protein
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {foodItem.calories.toLocaleString()} Calories
+        {Math.round(
+          getNormalizedValue(foodItem, "kcalPerServing")
+        ).toLocaleString()}{" "}
+        Calories
       </td>
       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
         <a href="#" className="text-indigo-600 hover:text-indigo-900">
-          Edit<span className="sr-only">, {foodItem.name}</span>
+          Edit<span className="sr-only">, {foodItem.FoodItem.name}</span>
         </a>
       </td>
     </tr>
@@ -203,8 +252,7 @@ function FoodRowEmpty() {
     <tr>
       <td
         className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center"
-        colSpan={7}
-      >
+        colSpan={7}>
         <div className="text-gray-700">No food logged for this day</div>
       </td>
     </tr>

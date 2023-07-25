@@ -1,10 +1,26 @@
 import { MessageDirection, Role, User } from "@prisma/client";
 import { twilioClient } from "./twilio";
 import { prisma } from "@/database/prisma";
+import { FoodItem, LoggedFoodItem } from "@prisma/client";
 import moment from "moment-timezone";
 import SaveMessageFromUser from "@/database/SaveMessageFromUser";
 
 const from = process.env.TWILIO_PHONE_NUMBER;
+
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
+
+function getNormalizedValue(
+  LoggedFoodItem: LoggedFoodItemWithFoodItem,
+  value: string
+) {
+  const nutrientPerServing =
+    (LoggedFoodItem.FoodItem[
+      value as keyof typeof LoggedFoodItem.FoodItem
+    ] as number) || 0
+  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
+  const grams = LoggedFoodItem.grams || 1
+  return (nutrientPerServing / gramsPerServing) * grams
+}
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
   await SaveMessageFromUser(user, message, Role.Assistant);
@@ -44,30 +60,36 @@ export async function LogSmsMessage(
 }
 
 export async function SendDailyMacrosToUser(user: User) {
-  const foodToday = await prisma.loggedFoodItem.aggregate({
+  const foodToday = await prisma.loggedFoodItem.findMany({
     where: {
       userId: user.id,
       consumedOn: {
         gt: moment().startOf("day").toDate(),
-        lt: moment().endOf("day").toDate(), // We can support historic days later on
+        lt: moment().endOf("day").toDate(),
       },
     },
-    _sum: {
-      calories: true,
-      protein: true,
-      carbohydrates: true,
-      fat: true,
+    include: {
+      FoodItem: true,
     },
   });
 
+  let macrosToday = {calories: 0, protein: 0, carbohydrates: 0, fat: 0};
+
+  for (const food of foodToday) {
+    macrosToday.calories += getNormalizedValue(food, "kcalPerServing");
+    macrosToday.protein += getNormalizedValue(food, "proteinPerServing");
+    macrosToday.carbohydrates += getNormalizedValue(food, "carbPerServing");
+    macrosToday.fat += getNormalizedValue(food, "totalFatPerServing");
+  }
+
   let returnMessage = `No foods logged today.`;
 
-  if (foodToday) {
+  if (macrosToday.calories > 0) {
     returnMessage = `Here are your macros for today:`;
-    returnMessage += `\n\n${foodToday._sum.calories} calories`;
-    returnMessage += `\n - ${foodToday._sum.fat}g Fat`;
-    returnMessage += `\n - ${foodToday._sum.carbohydrates}g Carbs`;
-    returnMessage += `\n - ${foodToday._sum.protein}g Protein`;
+    returnMessage += `\n\n${macrosToday.calories} calories`;
+    returnMessage += `\n - ${macrosToday.fat}g Fat`;
+    returnMessage += `\n - ${macrosToday.carbohydrates}g Carbs`;
+    returnMessage += `\n - ${macrosToday.protein}g Protein`;
   }
 
   return returnMessage;
@@ -79,8 +101,11 @@ export async function SendListOfFoodsTodayToUser(user: User) {
       userId: user.id,
       consumedOn: {
         gt: moment().startOf("day").toDate(),
-        lt: moment().endOf("day").toDate(), // We can support historic days later on
+        lt: moment().endOf("day").toDate(),
       },
+    },
+    include: {
+      FoodItem: true,
     },
     take: 100,
   });
@@ -89,10 +114,11 @@ export async function SendListOfFoodsTodayToUser(user: User) {
     let returnMessage = `Here's your list of food logged today:\n\n`;
 
     for (const food of foodToday) {
-      returnMessage += `\n${food.name} - ${food.amount} ${food.unit}`;
+      returnMessage += `\n${food.FoodItem.name} - ${food.servingAmount} ${food.loggedUnit}`;
     }
     return returnMessage;
   }
 
   return `No foods logged today.`;
 }
+

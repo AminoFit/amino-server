@@ -7,7 +7,7 @@ export const openai = new OpenAIApi(configuration)
 
 export const logFoodSchema = {
   type: "object",
-  description: "A function that logs the food items that were eaten by a user",
+  description: "Food items that were eaten by a user",
   properties: {
     food_items: {
       type: "array",
@@ -16,46 +16,43 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          name: { type: "string" },
-          unit: {
+          name: { type: "string", description: "The name of the food item" },
+          brand: { type: "string", description: "The brand of the food item" },
+          lemmatized_database_search_term: {
             type: "string",
-            enum: ["grams", "ml", "cups", "pieces", "teaspoons"]
+            description:
+              "Basic terms to search for in a database (e.g. apple instead of large apple, egg instead of eggs), ideally the lemmatized version"
           },
-          category: {
+          user_serving_name: {
             type: "string",
-            enum: [
-              "grains",
-              "protein foods",
-              "fruits",
-              "vegetables",
-              "dairy",
-              "fats and oils",
-              "sugars and sweets",
-              "beverages",
-              "seafood",
-              "herbs and spices"
-            ]
+            description: "What the user calls the serving size, e.g. large"
           },
-          amount: { type: "number" },
-          fat: { type: "number" },
-          carbohydrates: { type: "number" },
-          protein: { type: "number" },
-          calories: { type: "number" },
+          serving_amount: {
+            type: "number",
+            description:
+              "The serving amount (ideally in grams) of the food item that was eaten"
+          },
+          serving_unit_name: {
+            type: "string",
+            enum: ["g", "ml", "cup", "piece", "tbsp", "tsp", "plate", "bottle", "can", "slice","small","medium","large","serving"],
+            description: "The serving unit that serving_amount is in"
+          },
+          total_serving_weight_grams: {
+            type: "number",
+            description:
+              "The weight of the serving in grams. Cannot be 0."
+          },
+          calories: {
+            type: "number",
+            description: "The number of calories in the food item"
+          },
           timeEaten: {
             type: "string",
             description:
               "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
           }
         },
-        required: [
-          "name",
-          "unit",
-          "amount",
-          "fat",
-          "carbohydrates",
-          "protein",
-          "calories"
-        ]
+        required: ["name", "serving_unit_name", "serving_amount", "total_serving_weight_grams", "basic_database_search_term"]
       }
     },
     total_calories: {

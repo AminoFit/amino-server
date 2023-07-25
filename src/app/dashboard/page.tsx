@@ -32,8 +32,11 @@ async function getFoods() {
     let userFoods = await prisma.loggedFoodItem.findMany({
       where: {
         userId: session.user.userId
+      },
+      include: {
+        FoodItem: true
       }
-    })
+    });
     return userFoods
   }
   return []

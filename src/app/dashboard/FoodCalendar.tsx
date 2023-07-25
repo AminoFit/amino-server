@@ -1,11 +1,26 @@
 "use client"
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
-import { LoggedFoodItem, User } from "@prisma/client"
+import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
 import classNames from "classnames"
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
+
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
+
+function getNormalizedValue(
+  LoggedFoodItem: LoggedFoodItemWithFoodItem,
+  value: string
+) {
+  const nutrientPerServing =
+    (LoggedFoodItem.FoodItem[
+      value as keyof typeof LoggedFoodItem.FoodItem
+    ] as number) || 0
+  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
+  const grams = LoggedFoodItem.grams || 1
+  return (nutrientPerServing / gramsPerServing) * grams
+}
 
 const meetings = [
   {
@@ -65,12 +80,7 @@ const days = [
   { date: "2022-02-06" }
 ]
 
-export function FoodCalendar({
-  foods,
-  user
-}: {
-  foods: LoggedFoodItem[]
-  user: User
+export function FoodCalendar({foods,user}: {foods: LoggedFoodItemWithFoodItem[], user: User
 }) {
   const [currentMonth, setCurrentMonth] = useState(
     moment().tz(user.tzIdentifier).month() + 1
@@ -236,13 +246,13 @@ function getDaysForMonth(month: number, year: number) {
   return days
 }
 
-function getDarknessForFood(foods: LoggedFoodItem[], day: moment.Moment) {
+function getDarknessForFood(foods: LoggedFoodItemWithFoodItem[], day: moment.Moment) {
   const dayFoods = foods.filter((food) => {
     return moment(food.consumedOn).isSame(day, "day")
   })
 
   const totalCalories = dayFoods.reduce((acc, food) => {
-    return acc + food.calories
+    return acc + getNormalizedValue(food, 'kcalPerServing')
   }, 0)
 
   return Math.round(Math.min(totalCalories / 3500, 1) * 10) * 100

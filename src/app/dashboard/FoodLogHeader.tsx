@@ -1,12 +1,14 @@
-import { LoggedFoodItem, User } from "@prisma/client"
+import { LoggedFoodItem,FoodItem, User } from "@prisma/client"
 
 import FoodStats from "./FoodStats"
+
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
 
 export function FoodLogHeader({
   foods,
   user
 }: {
-  foods: LoggedFoodItem[]
+  foods: LoggedFoodItemWithFoodItem[]
   user: User
 }) {
   return (

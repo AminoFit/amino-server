@@ -1,16 +1,31 @@
 "use client"
 
-import { LoggedFoodItem, User } from "@prisma/client"
+import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
 import { GraphSemiCircle } from "./GraphSemiCircle"
 import { FoodCalendar } from "./FoodCalendar"
 import { useSearchParams } from "next/navigation"
 import moment from "moment-timezone"
 
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
+
+function getNormalizedValue(
+  LoggedFoodItem: LoggedFoodItemWithFoodItem,
+  value: string
+) {
+  const nutrientPerServing =
+    (LoggedFoodItem.FoodItem[
+      value as keyof typeof LoggedFoodItem.FoodItem
+    ] as number) || 0
+  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
+  const grams = LoggedFoodItem.grams || 1
+  return (nutrientPerServing / gramsPerServing) * grams
+}
+
 export default function FoodStats({
   foods,
   user
 }: {
-  foods: LoggedFoodItem[]
+  foods: LoggedFoodItemWithFoodItem[]
   user: User
 }) {
   const searchParams = useSearchParams()
@@ -24,10 +39,10 @@ export default function FoodStats({
     return moment(food.consumedOn).isSame(selectedDate, "date")
   })
 
-  const totalCalories = filteredFood.reduce((a, b) => a + b.calories, 0)
-  const totalCarbs = filteredFood.reduce((a, b) => a + b.carbohydrates, 0)
-  const totalFats = filteredFood.reduce((a, b) => a + b.fat, 0)
-  const totalProtein = filteredFood.reduce((a, b) => a + b.protein, 0)
+  const totalCalories = filteredFood.reduce((a, b) => a + getNormalizedValue(b, 'kcalPerServing'), 0)
+  const totalCarbs = filteredFood.reduce((a, b) => a + getNormalizedValue(b, 'carbPerServing'), 0)
+  const totalFats = filteredFood.reduce((a, b) => a + getNormalizedValue(b, 'totalFatPerServing'), 0)
+  const totalProtein = filteredFood.reduce((a, b) => a + getNormalizedValue(b, 'proteinPerServing'), 0)
   const goalCalories = 3500
   const goalFats = 250
   const goalCarbs = 250
