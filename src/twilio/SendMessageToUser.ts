@@ -1,11 +1,11 @@
-import { MessageDirection, Role, User } from "@prisma/client";
-import { twilioClient } from "./twilio";
-import { prisma } from "@/database/prisma";
-import { FoodItem, LoggedFoodItem } from "@prisma/client";
-import moment from "moment-timezone";
-import SaveMessageFromUser from "@/database/SaveMessageFromUser";
+import { MessageDirection, Role, User } from "@prisma/client"
+import { twilioClient } from "./twilio"
+import { prisma } from "@/database/prisma"
+import { FoodItem, LoggedFoodItem } from "@prisma/client"
+import moment from "moment-timezone"
+import SaveMessageFromUser from "@/database/SaveMessageFromUser"
 
-const from = process.env.TWILIO_PHONE_NUMBER;
+const from = process.env.TWILIO_PHONE_NUMBER
 
 type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
 
@@ -23,9 +23,12 @@ function getNormalizedValue(
 }
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
-  await SaveMessageFromUser(user, message, Role.Assistant);
-  const sentMsg = await SendMessageToUser(user, message);
-  return sentMsg;
+  await SaveMessageFromUser(user, message, Role.Assistant)
+  const sentMsg = await SendMessageToUser(user, message)
+  return sentMsg
+}
+export async function SaveMessageToUser(user: User, message: string) {
+  return await SaveMessageFromUser(user, message, Role.Assistant)
 }
 
 export async function SendMessageToUser(user: User, message: string) {
@@ -33,16 +36,16 @@ export async function SendMessageToUser(user: User, message: string) {
     .create({
       body: message,
       from,
-      to: user.phone,
+      to: user.phone
     })
     .then((message: any) => {
-      console.log(message.sid);
-      return message;
-    });
+      console.log(message.sid)
+      return message
+    })
 
-  await LogSmsMessage(user, message, MessageDirection.Outbound);
+  await LogSmsMessage(user, message, MessageDirection.Outbound)
 
-  return msg;
+  return msg
 }
 
 export async function LogSmsMessage(
@@ -54,9 +57,9 @@ export async function LogSmsMessage(
     data: {
       userId: user.id,
       content: message,
-      direction: direction,
-    },
-  });
+      direction: direction
+    }
+  })
 }
 
 export async function SendDailyMacrosToUser(user: User) {
@@ -65,34 +68,34 @@ export async function SendDailyMacrosToUser(user: User) {
       userId: user.id,
       consumedOn: {
         gt: moment().startOf("day").toDate(),
-        lt: moment().endOf("day").toDate(),
-      },
+        lt: moment().endOf("day").toDate()
+      }
     },
     include: {
-      FoodItem: true,
-    },
-  });
+      FoodItem: true
+    }
+  })
 
-  let macrosToday = {calories: 0, protein: 0, carbohydrates: 0, fat: 0};
+  let macrosToday = { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }
 
   for (const food of foodToday) {
-    macrosToday.calories += getNormalizedValue(food, "kcalPerServing");
-    macrosToday.protein += getNormalizedValue(food, "proteinPerServing");
-    macrosToday.carbohydrates += getNormalizedValue(food, "carbPerServing");
-    macrosToday.fat += getNormalizedValue(food, "totalFatPerServing");
+    macrosToday.calories += getNormalizedValue(food, "kcalPerServing")
+    macrosToday.protein += getNormalizedValue(food, "proteinPerServing")
+    macrosToday.carbohydrates += getNormalizedValue(food, "carbPerServing")
+    macrosToday.fat += getNormalizedValue(food, "totalFatPerServing")
   }
 
-  let returnMessage = `No foods logged today.`;
+  let returnMessage = `No foods logged today.`
 
   if (macrosToday.calories > 0) {
-    returnMessage = `Here are your macros for today:`;
-    returnMessage += `\n\n${macrosToday.calories} calories`;
-    returnMessage += `\n - ${macrosToday.fat}g Fat`;
-    returnMessage += `\n - ${macrosToday.carbohydrates}g Carbs`;
-    returnMessage += `\n - ${macrosToday.protein}g Protein`;
+    returnMessage = `Here are your macros for today:`
+    returnMessage += `\n\n${macrosToday.calories} calories`
+    returnMessage += `\n - ${macrosToday.fat}g Fat`
+    returnMessage += `\n - ${macrosToday.carbohydrates}g Carbs`
+    returnMessage += `\n - ${macrosToday.protein}g Protein`
   }
 
-  return returnMessage;
+  return returnMessage
 }
 
 export async function SendListOfFoodsTodayToUser(user: User) {
@@ -101,24 +104,23 @@ export async function SendListOfFoodsTodayToUser(user: User) {
       userId: user.id,
       consumedOn: {
         gt: moment().startOf("day").toDate(),
-        lt: moment().endOf("day").toDate(),
-      },
+        lt: moment().endOf("day").toDate()
+      }
     },
     include: {
-      FoodItem: true,
+      FoodItem: true
     },
-    take: 100,
-  });
+    take: 100
+  })
 
   if (foodToday && foodToday.length > 0) {
-    let returnMessage = `Here's your list of food logged today:\n\n`;
+    let returnMessage = `Here's your list of food logged today:\n\n`
 
     for (const food of foodToday) {
-      returnMessage += `\n${food.FoodItem.name} - ${food.servingAmount} ${food.loggedUnit}`;
+      returnMessage += `\n${food.FoodItem.name} - ${food.servingAmount} ${food.loggedUnit}`
     }
-    return returnMessage;
+    return returnMessage
   }
 
-  return `No foods logged today.`;
+  return `No foods logged today.`
 }
-
