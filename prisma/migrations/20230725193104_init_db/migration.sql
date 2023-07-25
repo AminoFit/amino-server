@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "UnitPreference" AS ENUM ('IMPERIAL', 'METRIC');
+
+-- CreateEnum
 CREATE TYPE "Role" AS ENUM ('Assistant', 'User', 'System', 'Function');
 
 -- CreateEnum
@@ -60,7 +63,15 @@ CREATE TABLE "User" (
     "emailVerified" TIMESTAMP(3),
     "phone" VARCHAR(255),
     "dateOfBirth" TIMESTAMP(3),
-    "weightLbs" DOUBLE PRECISION,
+    "weightKg" DOUBLE PRECISION,
+    "heightCm" INTEGER,
+    "calorieGoal" INTEGER,
+    "proteinGoal" INTEGER,
+    "carbsGoal" INTEGER,
+    "fatGoal" INTEGER,
+    "fitnessGoal" TEXT,
+    "unitPreference" "UnitPreference" DEFAULT 'IMPERIAL',
+    "setupCompleted" BOOLEAN NOT NULL DEFAULT false,
     "sentContact" BOOLEAN NOT NULL DEFAULT false,
     "tzIdentifier" TEXT NOT NULL DEFAULT 'America/New_York',
 
@@ -73,12 +84,12 @@ CREATE TABLE "LoggedFoodItem" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "consumedOn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "foodItemId" INTEGER NOT NULL,
-    "grams" DOUBLE PRECISION NOT NULL,
+    "foodItemId" INTEGER NOT NULL DEFAULT 0,
+    "grams" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "servingId" INTEGER,
     "servingAmount" DOUBLE PRECISION,
     "loggedUnit" TEXT,
-    "userId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL DEFAULT '0',
 
     CONSTRAINT "LoggedFoodItem_pkey" PRIMARY KEY ("id")
 );
@@ -121,21 +132,21 @@ CREATE TABLE "Account" (
 -- CreateTable
 CREATE TABLE "FoodItem" (
     "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" TEXT NOT NULL DEFAULT '',
     "brand" TEXT,
-    "knownAs" TEXT[],
+    "knownAs" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "description" TEXT,
-    "defaultServingSize" INTEGER NOT NULL,
-    "defaultServingUnit" TEXT NOT NULL,
+    "defaultServingSize" INTEGER NOT NULL DEFAULT 1,
+    "defaultServingUnit" TEXT NOT NULL DEFAULT 'g',
     "defaultServingWeightGram" INTEGER,
-    "kcalPerServing" DOUBLE PRECISION NOT NULL,
-    "totalFatPerServing" DOUBLE PRECISION NOT NULL,
+    "kcalPerServing" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalFatPerServing" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "satFatPerServing" DOUBLE PRECISION,
     "transFatPerServing" DOUBLE PRECISION,
-    "carbPerServing" DOUBLE PRECISION NOT NULL,
+    "carbPerServing" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "sugarPerServing" DOUBLE PRECISION,
     "addedSugarPerServing" DOUBLE PRECISION,
-    "proteinPerServing" DOUBLE PRECISION NOT NULL,
+    "proteinPerServing" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "verified" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT,
