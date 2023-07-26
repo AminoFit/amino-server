@@ -11,21 +11,24 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     where: {
-      // Message: {
-      //   none: {
-      //     createdAt: {
-      //       gt: new Date(Date.now() - delaySinceLastMessage)
-      //     }
-      //   }
-      // },
+      Message: {
+        none: {
+          createdAt: {
+            gt: new Date(Date.now() - delaySinceLastMessage)
+          }
+        }
+      },
       sendCheckins: true
+    }
+    ,include: {
+      Message: true
     }
   })
 
   // await Promise.all(users.map((user) => sendCheckinText(user)))
 
   //
-  return NextResponse.json({ ok: true, users })
+  return NextResponse.json({ ok: true, users, now: Date.now() })
 }
 
 async function sendCheckinText(user: User) {
