@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/send-checkin-texts",
+      "path": "/api/cron/send-checkin-texts",
       "schedule": "0 * * * *"
     }
   ]
