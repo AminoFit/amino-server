@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/send-checkin-text",
+      "path": "/api/send-checkin-texts",
       "schedule": "0 * * * *"
     }
   ]
