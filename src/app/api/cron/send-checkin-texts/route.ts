@@ -22,9 +22,8 @@ export async function GET() {
     }
   })
 
-  // await Promise.all(users.map((user) => sendCheckinText(user)))
+  await Promise.all(users.map((user) => sendCheckinText(user)))
 
-  //
   return NextResponse.json({ ok: true, users, now: Date.now() })
 }
 
