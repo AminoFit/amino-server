@@ -72,6 +72,7 @@ model User {
   unitPreference UnitPreference?  @default(IMPERIAL)
   setupCompleted Boolean          @default(false)
   sentContact    Boolean          @default(false)
+  sendCheckins   Boolean          @default(false)
   tzIdentifier   String           @default("America/New_York")
   Message        Message[]
   Foods          LoggedFoodItem[]
