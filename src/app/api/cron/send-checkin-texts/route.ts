@@ -20,9 +20,6 @@ export async function GET() {
       },
       sendCheckins: true
     }
-    ,include: {
-      Message: true
-    }
   })
 
   // await Promise.all(users.map((user) => sendCheckinText(user)))
