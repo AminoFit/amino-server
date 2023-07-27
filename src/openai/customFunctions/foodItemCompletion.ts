@@ -1,7 +1,7 @@
 import { error } from "console"
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
-import { FoodInfo } from "./foodItemInterface"
+import { FoodInfo, FoodItems } from "./foodItemInterface"
 
 function checkType(actual: any, expected: any) {
   if (expected === "array") return Array.isArray(actual)
@@ -10,6 +10,61 @@ function checkType(actual: any, expected: any) {
   else if (expected === "integer")
     return Number.isInteger(actual) || Number.isInteger(parseFloat(actual))
   else return typeof actual === expected
+}
+
+const SPECIAL_CASES = ["water", "diet", "tea"];
+
+function isSpecialCase(name: string): boolean {
+  const lowerCaseName = name.toLowerCase();
+  return SPECIAL_CASES.some(caseItem => lowerCaseName.includes(caseItem));
+}
+
+function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
+  for (let food of food_items.food_info) {
+
+    // Check if all values are zero
+    if (
+      food.default_serving_weight_g === 0 &&
+      food.kcal_per_serving === 0 &&
+      food.total_fat_per_serving === 0 &&
+      food.carb_per_serving === 0 &&
+      food.protein_per_serving === 0
+    ) {
+      console.log("Invalid food entry due to all zero values:", food.name);
+      return false;
+    }
+
+    // If there are macros but no calories (or vice versa)
+    if ((food.total_fat_per_serving > 0 || food.carb_per_serving > 0 || food.protein_per_serving > 0) &&
+        food.kcal_per_serving === 0) {
+      console.log("Invalid food entry due to non-zero macros but zero calories:", food.name);
+      return false;
+    }
+
+    // If there are calories but no macros
+    if (food.kcal_per_serving > 0 &&
+        food.total_fat_per_serving === 0 &&
+        food.carb_per_serving === 0 &&
+        food.protein_per_serving === 0) {
+      console.log("Invalid food entry due to calories but zero macros:", food.name);
+      return false;
+    }
+
+    // If the food has grams but all its macros and calories are 0 (and it's not a special case)
+    if (
+      food.default_serving_weight_g! > 0 &&
+      !isSpecialCase(food.name) &&
+      food.kcal_per_serving === 0 &&
+      food.total_fat_per_serving === 0 &&
+      food.carb_per_serving === 0 &&
+      food.protein_per_serving === 0
+    ) {
+      console.log("Invalid food entry due to 0 macros & calories with grams:", food.name);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function checkCompliesWithSchema(
@@ -71,12 +126,12 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
   }
 
   const system =
-    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond normalising everything to 100 grams (e.g. calories per 100g), unless not possible. You will include the standard servings in the appropriate array."
+    "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond normalising everything to 100 grams (e.g. calories per 100g), unless not possible. You will include the standard servings in the appropriate array. Kcal, Carb, Fat, Protein and Gram values cannot be 0 unless it is a calorie free item"
 
   const functions: ChatCompletionFunctions[] = [
     {
       name: "get_food_info",
-      description: "Get food info, normalized to 100g if possible.",
+      description: "Food info, use 100g if no standard serving size.",
       parameters: {
         type: "object",
         properties: {
@@ -92,29 +147,21 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
                 brand: {
                   type: "string",
                   nullable: true,
-                  description: "Brand name, if applicable"
+                  description: "Brand name, if applicable. Leave empty if unknown"
                 },
                 known_as: {
                   type: "array",
                   items: { type: "string" },
-                  description: "Other names for the food"
+                  description: "Other names for the food, array of strings"
                 },
                 food_description: {
                   type: "string",
                   nullable: true,
                   description: "Food description"
                 },
-                default_serving_size: {
-                  type: "integer",
-                  description: "Default serving size (100g recommended)"
-                },
-                default_serving_unit: {
-                  type: "string",
-                  description: "Default serving unit (g recommended)"
-                },
                 default_serving_weight_g: {
                   type: "integer",
-                  description: "Serving weight in g"
+                  description: "Weight of standard in g, 100g otherwise"
                 },
                 kcal_per_serving: {
                   type: "number",
@@ -185,7 +232,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
                       },
                       serving_name: {
                         type: "string",
-                        description: "Serving description e.g. 1 large banana"
+                        description: "Serving description e.g. large, scoop, plate"
                       }
                     }
                   },
@@ -194,13 +241,12 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
               },
               required: [
                 "name",
-                "default_serving_size",
-                "default_serving_unit",
                 "default_serving_weight_g",
                 "kcal_per_serving",
                 "protein_per_serving",
                 "carb_per_serving",
-                "total_fat_per_serving"
+                "total_fat_per_serving",
+                "servings"
               ]
             }
           }
@@ -218,7 +264,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
   ]
   let model = "gpt-3.5-turbo-0613"
   let max_tokens = 2048
-  let temperature = 0.0
+  let temperature = 0.05
 
   try {
     result = await chatCompletion({
@@ -231,15 +277,23 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
 
-    if (
-      !checkCompliesWithSchema(
-        functions[0].parameters!,
-        JSON.parse(result.function_call.arguments)
-      )
-    ) {
-      temperature = 1.0 // Update temperature
+    let has_valid_schema = checkCompliesWithSchema(functions[0].parameters!,JSON.parse(result.function_call.arguments))
+    let has_valid_data = checkFoodHasNonZeroValues(JSON.parse(result.function_call.arguments))
+      
+
+    if (!has_valid_data || !has_valid_schema) {
+      console.log("Invalid food item, retrying with different parameters")
+      temperature = 0.1 // Update temperature
       model = "gpt-4-0613" // Update model
       max_tokens = 4096 // Update max tokens
+
+      // add extra text to prompt
+      const new_inquiry = inquiry + "\nOld result may have contained invalid structure such as missing fields or missing nutritional values. Double check yourself."
+      messages = [
+        { role: "system", content: system },
+        { role: "user", content: new_inquiry }
+      ]
+
       // Retry chatCompletion with updated temperature
       result = await chatCompletion({
         messages,
@@ -249,12 +303,10 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
         max_tokens
       })
     }
-    if (
-      !checkCompliesWithSchema(
-        functions[0].parameters!,
-        JSON.parse(result.function_call.arguments)
-      )
-    ) {
+    // check again for schema and data
+    has_valid_data = checkFoodHasNonZeroValues(JSON.parse(result.function_call.arguments))
+    has_valid_schema = checkCompliesWithSchema(functions[0].parameters!,JSON.parse(result.function_call.arguments))
+    if (!has_valid_data || !has_valid_schema) {
       throw error("Could not find food item")
     }
     return JSON.parse(result.function_call.arguments)

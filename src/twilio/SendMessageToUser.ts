@@ -4,23 +4,9 @@ import { prisma } from "@/database/prisma"
 import { FoodItem, LoggedFoodItem } from "@prisma/client"
 import moment from "moment-timezone"
 import SaveMessageFromUser from "@/database/SaveMessageFromUser"
+import { getNormalizedFoodValue } from "@/app/dashboard/utils/FoodHelper"
 
 const from = process.env.TWILIO_PHONE_NUMBER
-
-type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
-
-function getNormalizedValue(
-  LoggedFoodItem: LoggedFoodItemWithFoodItem,
-  value: string
-) {
-  const nutrientPerServing =
-    (LoggedFoodItem.FoodItem[
-      value as keyof typeof LoggedFoodItem.FoodItem
-    ] as number) || 0
-  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
-  const grams = LoggedFoodItem.grams || 1
-  return (nutrientPerServing / gramsPerServing) * grams
-}
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
   await SaveMessageFromUser(user, message, Role.Assistant)
@@ -79,10 +65,10 @@ export async function SendDailyMacrosToUser(user: User) {
   let macrosToday = { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }
 
   for (const food of foodToday) {
-    macrosToday.calories += getNormalizedValue(food, "kcalPerServing")
-    macrosToday.protein += getNormalizedValue(food, "proteinPerServing")
-    macrosToday.carbohydrates += getNormalizedValue(food, "carbPerServing")
-    macrosToday.fat += getNormalizedValue(food, "totalFatPerServing")
+    macrosToday.calories += getNormalizedFoodValue(food, "kcalPerServing")
+    macrosToday.protein += getNormalizedFoodValue(food, "proteinPerServing")
+    macrosToday.carbohydrates += getNormalizedFoodValue(food, "carbPerServing")
+    macrosToday.fat += getNormalizedFoodValue(food, "totalFatPerServing")
   }
 
   let returnMessage = `No foods logged today.`

@@ -153,9 +153,7 @@ model FoodItem {
   brand                    String?
   knownAs                  String[]         @default([])
   description              String?
-  defaultServingSize       Int              @default(1)
-  defaultServingUnit       String           @default("g")
-  defaultServingWeightGram Int?
+  defaultServingWeightGram Int
   kcalPerServing           Float            @default(0)
   totalFatPerServing       Float            @default(0)
   satFatPerServing         Float?

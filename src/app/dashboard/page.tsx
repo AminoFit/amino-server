@@ -38,7 +38,7 @@ async function getFoods() {
           include: { FoodImage: true }
         }
       }
-    })
+    }) 
     return userFoods
   }
   return []

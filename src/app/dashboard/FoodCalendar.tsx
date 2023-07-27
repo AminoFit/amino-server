@@ -6,21 +6,7 @@ import classNames from "classnames"
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-
-type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
-
-function getNormalizedValue(
-  LoggedFoodItem: LoggedFoodItemWithFoodItem,
-  value: string
-) {
-  const nutrientPerServing =
-    (LoggedFoodItem.FoodItem[
-      value as keyof typeof LoggedFoodItem.FoodItem
-    ] as number) || 0
-  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
-  const grams = LoggedFoodItem.grams || 1
-  return (nutrientPerServing / gramsPerServing) * grams
-}
+import { getNormalizedFoodValue, LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
 const meetings = [
   {
@@ -252,7 +238,7 @@ function getDarknessForFood(foods: LoggedFoodItemWithFoodItem[], day: moment.Mom
   })
 
   const totalCalories = dayFoods.reduce((acc, food) => {
-    return acc + getNormalizedValue(food, 'kcalPerServing')
+    return acc + getNormalizedFoodValue(food, 'kcalPerServing')
   }, 0)
 
   return Math.round(Math.min(totalCalories / 3500, 1) * 10) * 100

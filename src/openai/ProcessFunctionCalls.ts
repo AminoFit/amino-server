@@ -1,5 +1,5 @@
 import { HandleLogExercise } from "@/database/OpenAiFunctions/HandleLogExercise"
-import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { HandleLogFoodItems, VerifyHandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo"
 import { SendListOfFoodsTodayToUser } from "@/twilio/SendMessageToUser"
 import { User } from "@prisma/client"
