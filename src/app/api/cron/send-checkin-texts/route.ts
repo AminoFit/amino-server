@@ -22,15 +22,19 @@ export async function GET() {
 
   await Promise.all(users.map((user) => sendCheckinText(user)))
 
-  return NextResponse.json({
-    ok: true,
-    users,
-    now: Date.now(),
-    Headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "s-maxage=0,max-age=0"
+  // const response = new NextApiResponse()
+
+  return NextResponse.json(
+    { users },
+    {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, s-maxage=1",
+        "CDN-Cache-Control": "public, s-maxage=1",
+        "Vercel-CDN-Cache-Control": "public, s-maxage=1"
+      }
     }
-  })
+  )
 }
 
 async function sendCheckinText(user: User) {
