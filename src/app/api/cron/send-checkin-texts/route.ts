@@ -22,7 +22,15 @@ export async function GET() {
 
   await Promise.all(users.map((user) => sendCheckinText(user)))
 
-  return NextResponse.json({ ok: true, users, now: Date.now() })
+  return NextResponse.json({
+    ok: true,
+    users,
+    now: Date.now(),
+    Headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "s-maxage=0,max-age=0"
+    }
+  })
 }
 
 async function sendCheckinText(user: User) {
@@ -36,5 +44,3 @@ async function sendCheckinText(user: User) {
   return await SaveAndSendMessageToUser(user, message)
   // }
 }
-
-
