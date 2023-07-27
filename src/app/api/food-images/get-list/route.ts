@@ -1,4 +1,4 @@
-export const runtime = "edge"
+export const runtime = "nodejs"
 
 import { prisma } from "@/database/prisma"
 import { NextResponse } from "next/server"
