@@ -5,8 +5,6 @@ import moment from "moment-timezone"
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  // Query all users who have no message in the past N time?
-
   const delaySinceLastMessage = 1000 * 60 // 60 seconds
 
   const users = await prisma.user.findMany({
