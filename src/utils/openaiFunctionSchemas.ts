@@ -16,43 +16,50 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          name: { type: "string", description: "The name of the food item" },
+          full_name: { type: "string", description: "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc." },
           brand: { type: "string", description: "The brand of the food item" },
+          // cooked: { type: "boolean", description: "If the item is cooked or not" },
           lemmatized_database_search_term: {
             type: "string",
             description:
-              "Basic terms to search for in a database (e.g. apple instead of large apple, egg instead of eggs), ideally the lemmatized version"
+              "Basic terms to search for in a database, ideally the lemmatized version"
           },
-          user_serving_name: {
+          user_food_descriptive_name: {
             type: "string",
-            description: "What the user calls the serving size, e.g. large"
-          },
-          serving_amount: {
-            type: "number",
-            description:
-              "The serving amount (ideally in grams) of the food item that was eaten"
-          },
-          serving_unit_name: {
-            type: "string",
-            enum: ["g", "ml", "cup", "piece", "tbsp", "tsp", "plate", "bottle", "can", "slice","small","medium","large","serving"],
-            description: "The serving unit that serving_amount is in"
-          },
-          total_serving_weight_grams: {
-            type: "number",
-            description:
-              "The weight of the serving in grams. Cannot be 0."
-          },
-          calories: {
-            type: "number",
-            description: "The number of calories in the food item"
+            description: "What the user calls the food"
           },
           timeEaten: {
             type: "string",
             description:
               "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
+          },
+          serving: {
+              type: "object",
+              properties: {
+                serving_amount: {
+                  type: "number",
+                  description: "Amount of the serving",
+                },
+                serving_name: {
+                  type: "string",
+                  description:
+                    "Description of the serving, e.g. large, cup, piece",
+                },
+                total_serving_grams: {
+                  type: "number",
+                  description:
+                    "The weight of the item eaten in grams. CANNOT BE 0"
+                },
+                total_serving_calories: {
+                  type: "number",
+                  description: "The number of calories in the food item"
+                },
+              },
+            required: ["serving_amount", "serving_name", "total_serving_grams", "total_serving_calories"],
+            description: "Serving size and description of food item",
           }
         },
-        required: ["name", "serving_unit_name", "serving_amount", "total_serving_weight_grams", "basic_database_search_term"]
+        required: ["full_name", "total_weight_grams", "lemmatized_database_search_term", "serving"]
       }
     },
     total_calories: {

@@ -1,28 +1,12 @@
 "use client"
 
-import { LoggedFoodItem, FoodItem, User, FoodImage } from "@prisma/client"
+import { User } from "@prisma/client"
 import moment from "moment-timezone"
 import Image from "next/image"
 import { useSearchParams } from "next/navigation"
+import { getNormalizedFoodValue, LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
 import _ from "underscore"
-
-type LoggedFoodItemWithFoodItem = LoggedFoodItem & {
-  FoodItem: FoodItem & { FoodImage?: FoodImage[] }
-}
-
-function getNormalizedValue(
-  LoggedFoodItem: LoggedFoodItemWithFoodItem,
-  value: string
-) {
-  const nutrientPerServing =
-    (LoggedFoodItem.FoodItem[
-      value as keyof typeof LoggedFoodItem.FoodItem
-    ] as number) || 0
-  const gramsPerServing = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
-  const grams = LoggedFoodItem.grams || 1
-  return (nutrientPerServing / gramsPerServing) * grams
-}
 
 export function FoodTable({
   foods,
@@ -165,7 +149,7 @@ export function FoodTable({
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
                 .reduce(
-                  (a, b) => a + getNormalizedValue(b, "totalFatPerServing"),
+                  (a, b) => a + getNormalizedFoodValue(b, "totalFatPerServing"),
                   0
                 )
                 .toLocaleString()}
@@ -174,7 +158,7 @@ export function FoodTable({
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
                 .reduce(
-                  (a, b) => a + getNormalizedValue(b, "carbPerServing"),
+                  (a, b) => a + getNormalizedFoodValue(b, "carbPerServing"),
                   0
                 )
                 .toLocaleString()}
@@ -183,7 +167,7 @@ export function FoodTable({
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
                 .reduce(
-                  (a, b) => a + getNormalizedValue(b, "proteinPerServing"),
+                  (a, b) => a + getNormalizedFoodValue(b, "proteinPerServing"),
                   0
                 )
                 .toLocaleString()}
@@ -192,7 +176,7 @@ export function FoodTable({
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               {filteredFood
                 .reduce(
-                  (a, b) => a + getNormalizedValue(b, "kcalPerServing"),
+                  (a, b) => a + getNormalizedFoodValue(b, "kcalPerServing"),
                   0
                 )
                 .toLocaleString()}
@@ -246,25 +230,25 @@ function FoodRow({
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {Math.round(
-          getNormalizedValue(foodItem, "totalFatPerServing")
+          getNormalizedFoodValue(foodItem, "totalFatPerServing")
         ).toLocaleString()}
         g Fat
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {Math.round(
-          getNormalizedValue(foodItem, "carbPerServing")
+          getNormalizedFoodValue(foodItem, "carbPerServing")
         ).toLocaleString()}
         g Carb
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {Math.round(
-          getNormalizedValue(foodItem, "proteinPerServing")
+          getNormalizedFoodValue(foodItem, "proteinPerServing")
         ).toLocaleString()}
         g Protein
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {Math.round(
-          getNormalizedValue(foodItem, "kcalPerServing")
+          getNormalizedFoodValue(foodItem, "kcalPerServing")
         ).toLocaleString()}{" "}
         Calories
       </td>
