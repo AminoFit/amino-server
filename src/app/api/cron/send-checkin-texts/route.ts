@@ -33,8 +33,10 @@ async function sendCheckinText(user: User) {
 
   // Between 9am and 8pm local time for the user
   // if (userTime.hour() > 9 && userTime.hour() < 20) {
-    const message = `Hi there. Amino here. How are you doing? Any food you want to log?`
+  const message = `Hi there. Amino here. How are you doing? Any food you want to log?`
 
-    return await SaveAndSendMessageToUser(user, message)
+  return await SaveAndSendMessageToUser(user, message)
   // }
 }
+
+
