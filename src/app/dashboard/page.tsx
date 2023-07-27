@@ -34,9 +34,11 @@ async function getFoods() {
         userId: session.user.userId
       },
       include: {
-        FoodItem: true
+        FoodItem: {
+          include: { FoodImage: true }
+        }
       }
-    });
+    })
     return userFoods
   }
   return []

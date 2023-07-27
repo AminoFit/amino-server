@@ -1,12 +1,15 @@
 "use client"
 
-import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
+import { LoggedFoodItem, FoodItem, User, FoodImage } from "@prisma/client"
 import moment from "moment-timezone"
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 
 import _ from "underscore"
 
-type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
+type LoggedFoodItemWithFoodItem = LoggedFoodItem & {
+  FoodItem: FoodItem & { FoodImage?: FoodImage[] }
+}
 
 function getNormalizedValue(
   LoggedFoodItem: LoggedFoodItemWithFoodItem,
@@ -21,7 +24,13 @@ function getNormalizedValue(
   return (nutrientPerServing / gramsPerServing) * grams
 }
 
-export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], user: User}) {
+export function FoodTable({
+  foods,
+  user
+}: {
+  foods: LoggedFoodItemWithFoodItem[]
+  user: User
+}) {
   const searchParams = useSearchParams()
 
   //filter foods by date
@@ -85,9 +94,10 @@ export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], us
     <table className="min-w-full divide-y divide-gray-300">
       <thead className="bg-gray-50">
         <tr>
+          <th scope="col"></th>
           <th
             scope="col"
-            className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+            className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900 sm:pl-6"
           >
             Time
           </th>
@@ -134,7 +144,7 @@ export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], us
             <>
               <tr className="border-t border-gray-200 ">
                 <th
-                  colSpan={7}
+                  colSpan={8}
                   scope="colgroup"
                   className="bg-slate-100 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-slate-800"
                 >
@@ -149,6 +159,7 @@ export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], us
         })}
         {filteredFood.length !== 0 && (
           <tr className="border-t border-gray-200 text-left bg-gray-50 ">
+            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
             <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
             <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
@@ -195,10 +206,29 @@ export function FoodTable({foods,user}: {foods: LoggedFoodItemWithFoodItem[], us
   )
 }
 
-function FoodRow({foodItem, user}: { foodItem: LoggedFoodItemWithFoodItem, user: User}) {
+function FoodRow({
+  foodItem,
+  user
+}: {
+  foodItem: LoggedFoodItemWithFoodItem
+  user: User
+}) {
   return (
     <tr key={foodItem.id}>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+        {foodItem.FoodItem.FoodImage &&
+          foodItem.FoodItem.FoodImage.length > 0 && (
+            <div className="inline-block">
+              <Image
+                src={foodItem.FoodItem.FoodImage[0].pathToImage}
+                width={50}
+                height={50}
+                alt="Food image"
+              />
+            </div>
+          )}
+      </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center">
         <div className="text-gray-700">
           {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
         </div>
@@ -252,7 +282,8 @@ function FoodRowEmpty() {
     <tr>
       <td
         className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center"
-        colSpan={7}>
+        colSpan={8}
+      >
         <div className="text-gray-700">No food logged for this day</div>
       </td>
     </tr>

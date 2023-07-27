@@ -171,6 +171,7 @@ model FoodItem {
   userId                   String?
   User                     User?            @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   LoggedFoodItems          LoggedFoodItem[]
+  FoodImage                FoodImage[]
 }
 
 model Serving {
@@ -189,4 +190,12 @@ model Nutrient {
   nutrientAmountPerGram Float
   foodItemId            Int
   FoodItem              FoodItem @relation(fields: [foodItemId], references: [id])
+}
+
+model FoodImage {
+  id          Int      @id @default(autoincrement())
+  pathToImage String
+  priority    Int      @default(10)
+  foodItemId  Int
+  FoodItem    FoodItem @relation(fields: [foodItemId], references: [id])
 }
