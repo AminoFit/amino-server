@@ -17,5 +17,15 @@ export async function GET(request: Request) {
     }
   })
 
-  return NextResponse.json({ message: "Success", now: Date.now(), foods })
+  return NextResponse.json(
+    { message: "Success", now: Date.now(), foods },
+    {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, s-maxage=1",
+        "CDN-Cache-Control": "public, s-maxage=1",
+        "Vercel-CDN-Cache-Control": "public, s-maxage=1"
+      }
+    }
+  )
 }
