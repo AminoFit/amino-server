@@ -22,7 +22,6 @@ export async function GET() {
 
   await Promise.all(users.map((user) => sendCheckinText(user)))
 
-  // const response = new NextApiResponse()
 
   return NextResponse.json(
     { users, now: Date.now() },
