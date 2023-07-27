@@ -25,7 +25,7 @@ export async function GET() {
   // const response = new NextApiResponse()
 
   return NextResponse.json(
-    { users },
+    { users, now: Date.now() },
     {
       status: 200,
       headers: {
