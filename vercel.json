@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/send-checkin-texts",
-      "schedule": "0 * * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }
