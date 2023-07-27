@@ -1,3 +1,5 @@
+const runtime = "edge"; 
+
 import { prisma } from "@/database/prisma"
 import { NextResponse } from "next/server"
 
