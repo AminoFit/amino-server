@@ -29,11 +29,12 @@ export async function GET() {
 
 async function sendCheckinText(user: User) {
   const userTime = moment().tz(user.tzIdentifier)
+  console.log("userTime", userTime.format())
 
   // Between 9am and 8pm local time for the user
-  if (userTime.hour() > 9 && userTime.hour() < 20) {
+  // if (userTime.hour() > 9 && userTime.hour() < 20) {
     const message = `Hi there. Amino here. How are you doing? Any food you want to log?`
 
-    return SaveAndSendMessageToUser(user, message)
-  }
+    return await SaveAndSendMessageToUser(user, message)
+  // }
 }
