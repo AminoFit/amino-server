@@ -4,9 +4,14 @@ import { User } from "@prisma/client"
 import moment from "moment-timezone"
 import Image from "next/image"
 import { useSearchParams } from "next/navigation"
-import { getNormalizedFoodValue, LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import {
+  getNormalizedFoodValue,
+  LoggedFoodItemWithFoodItem
+} from "./utils/FoodHelper"
 
 import _ from "underscore"
+import { useState } from "react"
+import EditFoodModal from "./EditFoodModal"
 
 export function FoodTable({
   foods,
@@ -197,6 +202,8 @@ function FoodRow({
   foodItem: LoggedFoodItemWithFoodItem
   user: User
 }) {
+  const [modalOpen, setModalOpen] = useState(false)
+
   return (
     <tr key={foodItem.id}>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
@@ -205,9 +212,10 @@ function FoodRow({
             <div className="inline-block">
               <Image
                 src={foodItem.FoodItem.FoodImage[0].pathToImage}
-                width={50}
-                height={50}
+                width={65}
+                height={65}
                 alt="Food image"
+                className="border-solid border border-slate-800/10 rounded-lg"
               />
             </div>
           )}
@@ -253,7 +261,11 @@ function FoodRow({
         Calories
       </td>
       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-        <a href="#" className="text-indigo-600 hover:text-indigo-900">
+        <a
+          href="#"
+          className="text-indigo-600 hover:text-indigo-900"
+          onClick={() => setModalOpen(true)}
+        >
           Edit<span className="sr-only">, {foodItem.FoodItem.name}</span>
         </a>
       </td>
