@@ -11,5 +11,6 @@ export function getNormalizedFoodValue(
         value as keyof typeof LoggedFoodItem.FoodItem
       ] as number) || 0
     const grams = LoggedFoodItem.grams || 1
-    return (nutrientPerServing / 100.0) * grams
+    const defaultServingSize = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
+    return (nutrientPerServing / defaultServingSize) * grams
   }

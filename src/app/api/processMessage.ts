@@ -20,7 +20,7 @@ export default async function ProcessMessage(
 ) {
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  await SaveMessageFromUser(user, body, Role.User)
+  const message = await SaveMessageFromUser(user, body, Role.User)
   console.log("body", body)
 
   let responseMessage = await GenerateResponseForUser(user)

@@ -11,13 +11,15 @@ datasource db {
 }
 
 model Message {
-  id            Int      @id @default(autoincrement())
-  createdAt     DateTime @default(now())
-  content       String
-  function_name String?
-  role          Role
-  userId        String
-  User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id              Int              @id @default(autoincrement())
+  createdAt       DateTime         @default(now())
+  content         String
+  function_name   String?
+  role            Role
+  userId          String
+  User            User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  FoodItems       FoodItem[]
+  LoggedFoodItems LoggedFoodItem[]
 }
 
 model SmsMessage {
@@ -105,6 +107,8 @@ model LoggedFoodItem {
   User          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   FoodItem      FoodItem @relation(fields: [foodItemId], references: [id])
   Serving       Serving? @relation(fields: [servingId], references: [id])
+  messageId     Int?
+  Message       Message? @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 }
 
 model Session {
@@ -146,7 +150,14 @@ enum MessageDirection {
   Inbound
   Outbound
 }
-
+enum FoodInfoSource {
+  User
+  Online
+  GPT3
+  GPT4
+  LLAMA
+  LLAMA2
+}
 model FoodItem {
   id                       Int              @id @default(autoincrement())
   name                     String           @default("")
@@ -170,6 +181,9 @@ model FoodItem {
   User                     User?            @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   LoggedFoodItems          LoggedFoodItem[]
   FoodImage                FoodImage[]
+  foodInfoSource           FoodInfoSource   @default(User) //where the foodinfo comes from
+  messageId                Int?
+  Message                  Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 }
 
 model Serving {
