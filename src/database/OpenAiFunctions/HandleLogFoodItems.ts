@@ -1,9 +1,20 @@
-import { User, FoodItem, LoggedFoodItem } from "@prisma/client"
+import { User, FoodItem, Message, FoodInfoSource } from "@prisma/client"
 import { prisma } from "../prisma"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
 import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 
+function mapModelToEnum(model: string): FoodInfoSource {
+  if (model.startsWith('gpt-4')) {
+    return FoodInfoSource.GPT4;
+  }
+
+  if (model.startsWith('gpt-3.5')) {
+    return FoodInfoSource.GPT3;
+  }
+  
+  return FoodInfoSource.User;  // Default to 'User'
+}
 
 function sanitizeServingName(name: string) {
   // Regular expressions to match numeric and word-based quantities
@@ -72,7 +83,7 @@ export async function VerifyHandleLogFoodItems(parameters: any) {
   }
 }
 
-export async function HandleLogFoodItems(user: User, parameters: any) {
+export async function HandleLogFoodItems(user: User, parameters: any, lastUserMessage: Message) {
   console.log("parameters", parameters)
 
   const foodItems: FoodItemToLog[] = parameters.food_items
@@ -154,7 +165,7 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
     if (matches.length === 0) {
       console.log("No matches found for food item", food.full_name)
 
-      const newFood = await addFoodItemToDatabase(food)
+      const newFood = await addFoodItemToDatabase(food, lastUserMessage)
       matches = [newFood]
     }
 
@@ -209,7 +220,8 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
       loggedUnit: sanitizeServingName(food.serving.serving_name || ""),
       grams: food.serving.total_serving_grams,
       userId: user.id,
-      consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date()
+      consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+      messageId: lastUserMessage.id
     }
 
     const foodItem = await prisma.loggedFoodItem
@@ -229,7 +241,8 @@ export async function HandleLogFoodItems(user: User, parameters: any) {
 }
 
 async function addFoodItemToDatabase(
-  foodToLog: FoodItemToLog
+  foodToLog: FoodItemToLog,
+  lastUserMessage: Message
 ): Promise<FoodItem> {
   console.log("food", foodToLog)
 
@@ -237,7 +250,8 @@ async function addFoodItemToDatabase(
     // create string name for food request
     const foodItemRequestString: string = constructFoodRequestString(foodToLog)
 
-    let foodItemInfo = await foodItemCompletion(foodItemRequestString)
+    const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString);
+
     let newFood: FoodItem
 
     let food: FoodInfo = foodItemInfo.food_info[0]
@@ -258,6 +272,8 @@ async function addFoodItemToDatabase(
         sugarPerServing: food.sugar_per_serving ?? 0,
         addedSugarPerServing: food.added_sugar_per_serving ?? 0,
         proteinPerServing: food.protein_per_serving,
+        messageId: lastUserMessage.id,
+        foodInfoSource: mapModelToEnum(model),
         Servings: {
           create:
             food.servings?.map((serving) => ({

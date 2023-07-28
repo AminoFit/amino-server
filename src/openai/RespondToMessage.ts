@@ -1,6 +1,4 @@
 import GetMessagesForUser from "@/database/GetMessagesForUser";
-import SaveMessageFromUser from "@/database/SaveMessageFromUser";
-import { SendMessageToUser } from "@/twilio/SendMessageToUser";
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt";
 import {
   logExerciseSchema,
@@ -9,7 +7,7 @@ import {
   showDailyFoodSummarySchema,
   updateUserInfoSchema,
 } from "@/utils/openaiFunctionSchemas";
-import { Role, User } from "@prisma/client";
+import { Message, Role, User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   ChatCompletionRequestMessage,
@@ -42,7 +40,11 @@ export async function GenerateResponseForUser(user: User): Promise<ResponseForUs
     },
   ];
 
+  // Get user messages
   const messagesForUser = await GetMessagesForUser(user.id);
+
+  // Get the id of last message from user
+  const lastUserMessage = messagesForUser.slice().reverse().find(message => message.role === 'User') as Message;
 
   for (const message of messagesForUser) {
     const msg: ChatCompletionRequestMessage = {
@@ -126,7 +128,7 @@ export async function GenerateResponseForUser(user: User): Promise<ResponseForUs
 
     // We should call a function
     if (functionCall) {
-      messageForUser = await ProcessFunctionCalls(user, functionCall);
+      messageForUser = await ProcessFunctionCalls(user, functionCall, lastUserMessage);
       responseToFunction = functionCall.name;
 
       // We should call just return a message

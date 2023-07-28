@@ -1,7 +1,7 @@
 import { error } from "console"
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
-import { FoodInfo, FoodItems } from "./foodItemInterface"
+import { FoodItems } from "./foodItemInterface"
 
 function checkType(actual: any, expected: any) {
   if (expected === "array") return Array.isArray(actual)
@@ -302,6 +302,7 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
         temperature,
         max_tokens
       })
+      console.log("Second retry", result.function_call.arguments)
     }
     // check again for schema and data
     has_valid_data = checkFoodHasNonZeroValues(JSON.parse(result.function_call.arguments))
@@ -309,7 +310,10 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
     if (!has_valid_data || !has_valid_schema) {
       throw error("Could not find food item")
     }
-    return JSON.parse(result.function_call.arguments)
+    return {
+      foodItemInfo: JSON.parse(result.function_call.arguments),
+      model: model
+  };
   } catch (error) {
     throw error
   }
