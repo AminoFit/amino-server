@@ -1,68 +1,88 @@
-import GetMessagesForUser from "@/database/GetMessagesForUser";
-import { GetSystemStartPrompt } from "@/twilio/SystemPrompt";
+import GetMessagesForUser from "@/database/GetMessagesForUser"
+import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import {
   logExerciseSchema,
   logFoodSchema,
   openai,
   showDailyFoodSummarySchema,
-  updateUserInfoSchema,
-} from "@/utils/openaiFunctionSchemas";
-import { Message, Role, User } from "@prisma/client";
-import { NextResponse } from "next/server";
+  updateUserInfoSchema
+} from "@/utils/openaiFunctionSchemas"
+import { Message, Role, User } from "@prisma/client"
+import { NextResponse } from "next/server"
 import {
   ChatCompletionRequestMessage,
   ChatCompletionRequestMessageRoleEnum,
-  CreateCompletionResponseUsage,
-} from "openai";
-import { ProcessFunctionCalls } from "./ProcessFunctionCalls";
-import { prisma } from "@/database/prisma";
-import { FoodItemToLog } from "@/utils/loggedFoodItemInterface";
+  CreateCompletionResponseUsage
+} from "openai"
+import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
+import { prisma } from "@/database/prisma"
+import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 const ROLE_MAPPING = {
   [Role.User]: ChatCompletionRequestMessageRoleEnum.User,
   [Role.System]: ChatCompletionRequestMessageRoleEnum.System,
   [Role.Assistant]: ChatCompletionRequestMessageRoleEnum.Assistant,
-  [Role.Function]: ChatCompletionRequestMessageRoleEnum.Function,
-};
+  [Role.Function]: ChatCompletionRequestMessageRoleEnum.Function
+}
 type ResponseForUser = {
-  resultMessage: string;
-  responseToFunctionName?: string;
-};
+  resultMessage: string
+  responseToFunctionName?: string
+}
 
 /*
 Loads the messages for the user and gets a new response from OpenAI
 */
-export async function GenerateResponseForUser(user: User): Promise<ResponseForUser> {
+export async function GenerateResponseForUser(
+  user: User
+): Promise<ResponseForUser> {
   const messages: ChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: GetSystemStartPrompt(user),
-    },
-  ];
+      content: GetSystemStartPrompt(user)
+    }
+  ]
 
   // Get user messages
-  const messagesForUser = await GetMessagesForUser(user.id);
+  const messagesForUser = await GetMessagesForUser(user.id)
 
   // Get the id of last message from user
-  const lastUserMessage = messagesForUser.slice().reverse().find(message => message.role === 'User') as Message;
+  const lastUserMessage = messagesForUser
+    .slice()
+    .reverse()
+    .find((message) => message.role === "User") as Message
 
+  let prevMessage: ChatCompletionRequestMessage | undefined = undefined
+  const tempProcessedMessage: ChatCompletionRequestMessage = {
+    role: ROLE_MAPPING.Assistant,
+    content: "ok! got it."
+  }
   for (const message of messagesForUser) {
     const msg: ChatCompletionRequestMessage = {
       role: ROLE_MAPPING[message.role],
-      content: message.content,
-    };
-    if (message.function_name) msg.name = message.function_name;
-    messages.push(msg);
+      content: message.content
+    }
+    if (message.function_name) msg.name = message.function_name
+
+    // We don't want to send two user messages in a row, so we add a temp message in between that says the previous message was processed.
+    if (
+      prevMessage &&
+      prevMessage.role === ROLE_MAPPING.User &&
+      msg.role === ROLE_MAPPING.User
+    ) {
+      messages.push(tempProcessedMessage)
+    }
+    messages.push(msg)
+    prevMessage = msg
   }
 
-  console.log("messages", messages);
+  console.log("messages", messages)
 
   /* models
   gpt-3.5-turbo-0613
   gpt-4-0613
   */
 
-  const modelName = "gpt-3.5-turbo-0613";
+  const modelName = "gpt-3.5-turbo-0613"
 
   const gptRequest = {
     model: modelName,
@@ -71,93 +91,101 @@ export async function GenerateResponseForUser(user: User): Promise<ResponseForUs
       { name: "log_food_items", parameters: logFoodSchema },
       { name: "show_daily_food", parameters: showDailyFoodSummarySchema },
       { name: "log_exercise", parameters: logExerciseSchema },
-      { name: "update_user_info", parameters: updateUserInfoSchema },
+      { name: "update_user_info", parameters: updateUserInfoSchema }
     ],
     function_call: "auto",
-    temperature: 0.05,
-  };
+    temperature: 0.05
+  }
 
-  const maxRetries = 1;  // You can adjust this value as needed.
-  let retries = 0;
-  let completion;
+  const maxRetries = 1 // You can adjust this value as needed.
+  let retries = 0
+  let completion
 
   while (retries < maxRetries) {
     try {
       // get completion from OpenAI
-      completion = await openai.createChatCompletion(gptRequest);
+      completion = await openai.createChatCompletion(gptRequest)
 
       // log the usage
       if (completion?.data.usage) {
-        await LogOpenAiUsage(user, completion.data.usage, gptRequest.model);
+        await LogOpenAiUsage(user, completion.data.usage, gptRequest.model)
       } else {
         return {
           resultMessage:
-            "Sorry, we can't read some of the data from OpenAI. Please try again later.",
-        };
+            "Sorry, we can't read some of the data from OpenAI. Please try again later."
+        }
       }
 
       // Ensure output looks good
-      if (checkOutput(completion)) break; 
-
+      if (checkOutput(completion)) break
     } catch (err) {
-      const error = err as { message: string; response?: { data: any } };
-      console.error("Error getting req from OpenAi", error.message, error.response?.data);
+      const error = err as { message: string; response?: { data: any } }
+      console.error(
+        "Error getting req from OpenAi",
+        error.message,
+        error.response?.data
+      )
     }
 
     // Adjust parameters for next retry to a better model.
-    if (retries === 0) {  // This checks for the first try.
-      gptRequest.model = "gpt-4-0613";
-      gptRequest.temperature = 0.1;
+    if (retries === 0) {
+      // This checks for the first try.
+      gptRequest.model = "gpt-4-0613"
+      gptRequest.temperature = 0.1
     }
-    retries++;
+    retries++
   }
 
   if (!completion || retries === maxRetries) {
     return {
-      resultMessage: "Sorry, We're having problems right now. Please try again later.",
-    };
+      resultMessage:
+        "Sorry, We're having problems right now. Please try again later."
+    }
   }
 
-  let messageForUser = "";
-  let responseToFunction;
+  let messageForUser = ""
+  let responseToFunction
 
   if (completion?.data.choices[0]) {
-    console.log("completion choices: ", completion.data.choices[0]);
+    console.log("completion choices: ", completion.data.choices[0])
 
-    const functionCall = completion.data.choices[0].message?.function_call;
+    const functionCall = completion.data.choices[0].message?.function_call
 
     // We should call a function
     if (functionCall) {
-      messageForUser = await ProcessFunctionCalls(user, functionCall, lastUserMessage);
-      responseToFunction = functionCall.name;
+      messageForUser = await ProcessFunctionCalls(
+        user,
+        functionCall,
+        lastUserMessage
+      )
+      responseToFunction = functionCall.name
 
       // We should call just return a message
     } else {
       messageForUser =
         completion?.data.choices[0].message?.content ||
-        "Sorry, I don't understand. Can you try again?";
+        "Sorry, I don't understand. Can you try again?"
     }
   } else {
     messageForUser =
-      "Sorry, we're having problems right now. Please try again later. Could not parse the response from OpenAI.";
-    console.log("Data is not available");
+      "Sorry, we're having problems right now. Please try again later. Could not parse the response from OpenAI."
+    console.log("Data is not available")
   }
-
 
   return {
     resultMessage: messageForUser,
-    responseToFunctionName: responseToFunction,
-  };
+    responseToFunctionName: responseToFunction
+  }
 }
 
 function checkOutput(completion: any): boolean {
   if (completion?.data.choices[0]) {
-    const functionCall = completion.data.choices[0].message?.function_call;
+    const functionCall = completion.data.choices[0].message?.function_call
 
     if (functionCall) {
-      const parameters = JSON.parse(functionCall.arguments);
+      const parameters = JSON.parse(functionCall.arguments)
       if (functionCall.name === "log_food_items") {
-        const foodItems: FoodItemToLog[] = parameters.food_items;
+        const foodItems: FoodItemToLog[] = parameters.food_items
 
         // Check if any food item has total_serving_grams as 0 and serving_amount is non-zero
         for (const item of foodItems) {
@@ -165,13 +193,13 @@ function checkOutput(completion: any): boolean {
             item.serving.total_serving_grams === 0 &&
             item.serving.serving_amount !== 0
           ) {
-            return false;  // This means the completion is not valid
+            return false // This means the completion is not valid
           }
         }
       }
-    } 
+    }
   }
-  return true;  // Default to true if no issues are found
+  return true // Default to true if no issues are found
 }
 
 async function LogOpenAiUsage(
@@ -179,15 +207,15 @@ async function LogOpenAiUsage(
   usage: CreateCompletionResponseUsage,
   modelName: string
 ) {
-  console.log(`This request used ${usage.total_tokens || "??"} tokens`);
+  console.log(`This request used ${usage.total_tokens || "??"} tokens`)
   const data = {
     promptTokens: usage.prompt_tokens,
     completionTokens: usage.completion_tokens,
     totalTokens: usage.total_tokens,
     userId: user.id,
-    modelName,
-  };
+    modelName
+  }
   return await prisma.openAiUsage.create({
-    data,
-  });
+    data
+  })
 }
