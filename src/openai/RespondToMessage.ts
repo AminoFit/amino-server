@@ -3,20 +3,16 @@ import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import {
   logExerciseSchema,
   logFoodSchema,
-  openai,
   showDailyFoodSummarySchema,
   updateUserInfoSchema
 } from "@/utils/openaiFunctionSchemas"
 import { Message, Role, User } from "@prisma/client"
-import { NextResponse } from "next/server"
+import { getOpenAICompletion } from "./utils/openAiHelper"
 import {
   ChatCompletionRequestMessage,
-  ChatCompletionRequestMessageRoleEnum,
-  CreateCompletionResponseUsage
+  ChatCompletionRequestMessageRoleEnum
 } from "openai"
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
-import { prisma } from "@/database/prisma"
-import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 const ROLE_MAPPING = {
   [Role.User]: ChatCompletionRequestMessageRoleEnum.User,
@@ -35,6 +31,8 @@ Loads the messages for the user and gets a new response from OpenAI
 export async function GenerateResponseForUser(
   user: User
 ): Promise<ResponseForUser> {
+
+  // Get messages
   const messages: ChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
@@ -57,11 +55,16 @@ export async function GenerateResponseForUser(
     content: "ok! got it."
   }
   for (const message of messagesForUser) {
-    const msg: ChatCompletionRequestMessage = {
+    let msg: ChatCompletionRequestMessage = {
       role: ROLE_MAPPING[message.role],
       content: message.content
     }
     if (message.function_name) msg.name = message.function_name
+
+    // make it ask the user for their name
+    if (message.id == lastUserMessage.id && !user.firstName) {
+      msg.content += "\nAsk me for my name. You don't know it so don't assume any names."
+    }
 
     // We don't want to send two user messages in a row, so we add a temp message in between that says the previous message was processed.
     if (
@@ -74,6 +77,7 @@ export async function GenerateResponseForUser(
     messages.push(msg)
     prevMessage = msg
   }
+
 
   console.log("messages", messages)
 
@@ -98,45 +102,17 @@ export async function GenerateResponseForUser(
   }
 
   const maxRetries = 1 // You can adjust this value as needed.
-  let retries = 0
-  let completion
 
-  while (retries < maxRetries) {
-    try {
-      // get completion from OpenAI
-      completion = await openai.createChatCompletion(gptRequest)
+  const completion = await getOpenAICompletion(
+    gptRequest,
+    user,
+    maxRetries,
+    "gpt-4-0613",
+    0.1
+  )
 
-      // log the usage
-      if (completion?.data.usage) {
-        await LogOpenAiUsage(user, completion.data.usage, gptRequest.model)
-      } else {
-        return {
-          resultMessage:
-            "Sorry, we can't read some of the data from OpenAI. Please try again later."
-        }
-      }
-
-      // Ensure output looks good
-      if (checkOutput(completion)) break
-    } catch (err) {
-      const error = err as { message: string; response?: { data: any } }
-      console.error(
-        "Error getting req from OpenAi",
-        error.message,
-        error.response?.data
-      )
-    }
-
-    // Adjust parameters for next retry to a better model.
-    if (retries === 0) {
-      // This checks for the first try.
-      gptRequest.model = "gpt-4-0613"
-      gptRequest.temperature = 0.1
-    }
-    retries++
-  }
-
-  if (!completion || retries === maxRetries) {
+  // Check if there was a successful completion
+  if (!completion) {
     return {
       resultMessage:
         "Sorry, We're having problems right now. Please try again later."
@@ -176,46 +152,4 @@ export async function GenerateResponseForUser(
     resultMessage: messageForUser,
     responseToFunctionName: responseToFunction
   }
-}
-
-function checkOutput(completion: any): boolean {
-  if (completion?.data.choices[0]) {
-    const functionCall = completion.data.choices[0].message?.function_call
-
-    if (functionCall) {
-      const parameters = JSON.parse(functionCall.arguments)
-      if (functionCall.name === "log_food_items") {
-        const foodItems: FoodItemToLog[] = parameters.food_items
-
-        // Check if any food item has total_serving_grams as 0 and serving_amount is non-zero
-        for (const item of foodItems) {
-          if (
-            item.serving.total_serving_grams === 0 &&
-            item.serving.serving_amount !== 0
-          ) {
-            return false // This means the completion is not valid
-          }
-        }
-      }
-    }
-  }
-  return true // Default to true if no issues are found
-}
-
-async function LogOpenAiUsage(
-  user: User,
-  usage: CreateCompletionResponseUsage,
-  modelName: string
-) {
-  console.log(`This request used ${usage.total_tokens || "??"} tokens`)
-  const data = {
-    promptTokens: usage.prompt_tokens,
-    completionTokens: usage.completion_tokens,
-    totalTokens: usage.total_tokens,
-    userId: user.id,
-    modelName
-  }
-  return await prisma.openAiUsage.create({
-    data
-  })
 }

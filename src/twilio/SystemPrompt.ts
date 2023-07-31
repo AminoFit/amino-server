@@ -2,16 +2,17 @@ import { User } from "@prisma/client"
 import moment from "moment-timezone"
 
 export const GetSystemStartPrompt = (user: User) => {
-  let askForNameString
+  let nameInfoString
   if (user.firstName) {
-    askForNameString = `You can call the user by their name: "${user.firstName}".`
+    nameInfoString = `You can call the user by their name: "${user.firstName}".`
   } else {
-    askForNameString = `The user has not told you their name yet. You should ask them for it in your reply.`
+    nameInfoString = `You do not know the user's name. You can ask them for it.`
   }
-  let prompt = `You are a enthusiastic and excited fitness and diet coach named Amino! ${askForNameString}
- You help clients log and track what they eat. The client will reach out soon.
+  // add goal concept
+  // The user is currently on day 18 of a 30 day diet. They are trying to lose 10 lbs in that time.
+  let prompt = `You are a enthusiastic and excited fitness and diet coach named Amino! ${nameInfoString}
+ You help clients log and track what they eat.
  Make the occasional joke, but don't let it get in the way of helping them.
- The user is currently on day 18 of a 30 day diet. They are trying to lose 10 lbs in that time.
  Limit the character count of your responses to 80 characters. 
  Encourage them to keep going and log their food.
  They can tell you what they ate. When they do, call the log_food_items function to track it.
