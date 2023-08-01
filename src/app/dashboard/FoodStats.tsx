@@ -5,7 +5,12 @@ import { GraphSemiCircle } from "./GraphSemiCircle"
 import { FoodCalendar } from "./FoodCalendar"
 import { useSearchParams } from "next/navigation"
 import moment from "moment-timezone"
-import { getNormalizedFoodValue, LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import {
+  getNormalizedFoodValue,
+  LoggedFoodItemWithFoodItem
+} from "./utils/FoodHelper"
+import { useState } from "react"
+import GoalsDialog from "./EditUserGoals"
 
 export default function FoodStats({
   foods,
@@ -14,6 +19,9 @@ export default function FoodStats({
   foods: LoggedFoodItemWithFoodItem[]
   user: User
 }) {
+  // set up modal state
+  const [goalModalOpen, setGoalModalOpen] = useState(false)
+
   const searchParams = useSearchParams()
   let selectedDate = moment().tz(user.tzIdentifier)
 
@@ -25,10 +33,22 @@ export default function FoodStats({
     return moment(food.consumedOn).isSame(selectedDate, "date")
   })
 
-  const totalCalories = filteredFood.reduce((a, b) => a + getNormalizedFoodValue(b, 'kcalPerServing'), 0)
-  const totalCarbs = filteredFood.reduce((a, b) => a + getNormalizedFoodValue(b, 'carbPerServing'), 0)
-  const totalFats = filteredFood.reduce((a, b) => a + getNormalizedFoodValue(b, 'totalFatPerServing'), 0)
-  const totalProtein = filteredFood.reduce((a, b) => a + getNormalizedFoodValue(b, 'proteinPerServing'), 0)
+  const totalCalories = filteredFood.reduce(
+    (a, b) => a + getNormalizedFoodValue(b, "kcalPerServing"),
+    0
+  )
+  const totalCarbs = filteredFood.reduce(
+    (a, b) => a + getNormalizedFoodValue(b, "carbPerServing"),
+    0
+  )
+  const totalFats = filteredFood.reduce(
+    (a, b) => a + getNormalizedFoodValue(b, "totalFatPerServing"),
+    0
+  )
+  const totalProtein = filteredFood.reduce(
+    (a, b) => a + getNormalizedFoodValue(b, "proteinPerServing"),
+    0
+  )
   const goalCalories = 3500
   const goalFats = 250
   const goalCarbs = 250
@@ -94,18 +114,29 @@ export default function FoodStats({
 
         <div
           className={
-            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow"
+            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow relative"
           }
         >
-          <div className="text-lg font-bold text-slate-500">
-            Some other info here
+          <div className="absolute top-3 right-3">
+            <button
+              className="absolute top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+              onClick={(e) => {
+                e.preventDefault()
+                console.log("Edit goals button clicked!"); // Console log for debugging
+                setGoalModalOpen(true);
+              }}
+            >
+              Edit
+            </button>
           </div>
-          <div className="text-sm text-gray-500">
-            {totalCarbs.toLocaleString("en-us")}/
-            {goalCarbs.toLocaleString("en-us")}
-          </div>
+          <div className="text-lg font-bold text-slate-500">Your goals</div>
+          <div className="text-sm text-gray-500"></div>
         </div>
       </dl>
+      <GoalsDialog
+        isOpen={goalModalOpen}
+        onRequestClose={() => setGoalModalOpen(false)}
+      />
     </div>
   )
 }

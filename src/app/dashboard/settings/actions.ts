@@ -39,3 +39,27 @@ export async function updateUserSettings(updatedSettings: UserSettingsProps) {
   }
   return;
 }
+
+
+type UnitPreference = "IMPERIAL" | "METRIC";
+
+export type UserPreferencesProps = {
+  unitPreference?: UnitPreference;
+};
+
+export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
+  const session = await getServerSession(authOptions);
+
+  if (session) {
+    let user = await prisma.user.update({
+      where: {
+        id: session.user.userId,
+      },
+      data: {
+        ...updatedSettings,
+      },
+    });
+    return user;
+  }
+  return;
+}

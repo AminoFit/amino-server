@@ -1,9 +1,11 @@
 "use client";
 import { User } from "@prisma/client";
 import classNames from "classnames";
-import { useState } from "react";
-import { updateUserSettings } from "./actions";
+import { Fragment, useState } from "react";
+import { updateUserSettings, updateUserPreferences } from "./actions";
+import { Transition, Listbox } from '@headlessui/react';
 import tzData from "./timezones.json";
+import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/solid';
 
 const secondaryNavigation = [
   { name: "Account", href: "#", current: true },
@@ -17,6 +19,16 @@ export default function UpdateUserSettings({ user }: { user: User }) {
   const [tzIdentifier, setTxIdentifier] = useState(user.tzIdentifier);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
+
+  // Unit preference variables
+  const [unitPreference, setUnitPreference] = useState(user.unitPreference || "IMPERIAL");
+  const unitOptions = [
+    { name: "Imperial (U.S.)", value: "IMPERIAL" },
+    { name: "Metric", value: "METRIC" }
+  ];
+
+  const [submittingPreferences, setSubmittingPreferences] = useState(false);
+  const [successMessagePreferences, setSuccessMessagePreferences] = useState("");
 
   const [submittingPersonal, setSubmittingPersonal] = useState(false);
   const [successMessagePersonal, setSuccessMessagePersonal] = useState("");
@@ -33,6 +45,21 @@ export default function UpdateUserSettings({ user }: { user: User }) {
       })
       .catch(() => {
         setSuccessMessagePersonal("Error updating your personal information");
+      });
+  };
+
+  const handleSavePreferences = async () => {
+    setSuccessMessagePreferences("");
+    setSubmittingPreferences(true);
+    await updateUserPreferences({ unitPreference })
+      .then(() => {
+        setSubmittingPreferences(false);
+        setSuccessMessagePreferences(
+          "Successfully updated your preferences"
+        );
+      })
+      .catch(() => {
+        setSuccessMessagePreferences("Error updating your preferences");
       });
   };
 
@@ -211,6 +238,91 @@ export default function UpdateUserSettings({ user }: { user: User }) {
             {successMessagePersonal && (
               <div className="mt-8 flex text-sm text-green-600">
                 {successMessagePersonal}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8">
+          <div>
+            <h2 className="text-base font-semibold leading-7 text-grey">
+              Preferences
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-gray-400">
+              Choose your unit preferences.
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-6">
+              <div className="col-span-full">
+                <label htmlFor="unit-preference" className="block text-sm font-medium leading-6 text-grey">
+                  Unit Preference
+                </label>
+                <div className="top-16 w-72">
+                  <Listbox value={unitPreference} onChange={setUnitPreference}>
+                    <div className="relative mt-1">
+                      <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white py-2 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm">
+                        <span className="block truncate">{unitOptions.find(option => option.value === unitPreference)?.name || unitPreference}</span>
+                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                          <ChevronUpDownIcon
+                            className="h-5 w-5 text-gray-400"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </Listbox.Button>
+                      <Transition
+                        as={Fragment}
+                        leave="transition ease-in duration-100"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                      >
+                        <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                          {unitOptions.map((option) => (
+                            <Listbox.Option
+                              key={option.value}
+                              className={({ active }) =>
+                                `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                                }`
+                              }
+                              value={option.value}
+                            >
+                              {({ selected }) => (
+                                <>
+                                  <span
+                                    className={`block truncate ${selected ? 'font-medium' : 'font-normal'
+                                      }`}
+                                  >
+                                    {option.name}
+                                  </span>
+                                  {selected ? (
+                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
+                                      <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                    </span>
+                                  ) : null}
+                                </>
+                              )}
+                            </Listbox.Option>
+                          ))}
+                        </Listbox.Options>
+                      </Transition>
+                    </div>
+                  </Listbox>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 flex">
+              <button
+                disabled={submittingPreferences}
+                onClick={handleSavePreferences}
+                className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-70"
+              >
+                {submittingPreferences ? "Saving..." : "Save"}
+              </button>
+            </div>
+            {successMessagePreferences && (
+              <div className="mt-8 flex text-sm text-green-600">
+                {successMessagePreferences}
               </div>
             )}
           </div>
