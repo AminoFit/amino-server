@@ -21,7 +21,12 @@ export type UserSettingsProps = {
   tzIdentifier?: string;
   firstName?: string;
   lastName?: string;
+  dateOfBirth?: Date;
+  weightKg?: number | null;
+  heightCm?: number | null;
 };
+
+
 
 export async function updateUserSettings(updatedSettings: UserSettingsProps) {
   const session = await getServerSession(authOptions);

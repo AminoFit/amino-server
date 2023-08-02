@@ -136,6 +136,7 @@ export default function FoodStats({
       <GoalsDialog
         isOpen={goalModalOpen}
         onRequestClose={() => setGoalModalOpen(false)}
+        user={user}
       />
     </div>
   )
