@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 /*
   This example requires some changes to your config:
@@ -19,8 +19,12 @@ import { Disclosure, Menu, Transition } from "@headlessui/react"
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid"
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import classNames from "classnames"
+import { signOut } from "next-auth/react"
+import { usePathname } from "next/navigation"
 
 export default function DashNav() {
+  const pathname = usePathname()
+
   return (
     <Disclosure as="nav" className="bg-white">
       {({ open }) => (
@@ -39,27 +43,36 @@ export default function DashNav() {
                   {/* Current: "border-indigo-500 text-gray-900", Default: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700" */}
                   <a
                     href="/dashboard"
-                    className="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+                    className={classNames(
+                      "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
+                      pathname === "/dashboard"
+                        ? "border-indigo-500 text-gray-900"
+                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    )}
                   >
                     Food Log
                   </a>
                   <a
                     href="/dashboard/chat"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    className={classNames(
+                      "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
+                      pathname === "/dashboard/chat"
+                        ? "border-indigo-500 text-gray-900"
+                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    )}
                   >
                     Chat
                   </a>
                   <a
                     href="/dashboard/settings"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    className={classNames(
+                      "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
+                      pathname === "/dashboard/settings"
+                        ? "border-indigo-500 text-gray-900"
+                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    )}
                   >
                     Settings
-                  </a>
-                  <a
-                    href="/dashboard"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
-                    Calendar
                   </a>
                 </div>
               </div>
@@ -160,6 +173,7 @@ export default function DashNav() {
                         {({ active }) => (
                           <a
                             href="#"
+                            onClick={() => signOut({ callbackUrl: "/" })}
                             className={classNames(
                               active ? "bg-gray-100" : "",
                               "block px-4 py-2 text-sm text-gray-700"
@@ -250,8 +264,7 @@ export default function DashNav() {
                   Settings
                 </Disclosure.Button>
                 <Disclosure.Button
-                  as="a"
-                  href="#"
+                  onClick={() => signOut({ callbackUrl: "/" })}
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 >
                   Sign out
