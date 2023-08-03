@@ -11,6 +11,7 @@ import {
 } from "./utils/FoodHelper"
 import { useState } from "react"
 import GoalsDialog from "./EditUserGoals"
+import { PencilSquareIcon } from "@heroicons/react/24/outline"
 
 export default function FoodStats({
   foods,
@@ -49,42 +50,35 @@ export default function FoodStats({
     (a, b) => a + getNormalizedFoodValue(b, "proteinPerServing"),
     0
   )
-  const [goalCalories, setGoalCalories] = useState(user.calorieGoal || 3500);
-  const [goalFats, setGoalFats] = useState(user.fatGoal || 250);
-  const [goalCarbs, setGoalCarbs] = useState(user.carbsGoal || 250);
-  const [goalProtein, setGoalProtein] = useState(user.proteinGoal || 250);
+  const [goalCalories, setGoalCalories] = useState(user.calorieGoal || 3500)
+  const [goalFats, setGoalFats] = useState(user.fatGoal || 250)
+  const [goalCarbs, setGoalCarbs] = useState(user.carbsGoal || 250)
+  const [goalProtein, setGoalProtein] = useState(user.proteinGoal || 250)
 
   const cardClasses =
     "row-span-1 overflow-hidden rounded-lg bg-white p-3 shadow"
   return (
     <div>
       <dl className="grid grid-cols-6 gap-6 mt-5">
-      <div
-          className={
-            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow relative"
-          }
-        >
-          <div className="absolute top-3 right-3">
-            <button
-              className="top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-              onClick={(e) => {
-                e.preventDefault()
-                console.log("Edit goals button clicked!"); // Console log for debugging
-                setGoalModalOpen(true);
-              }}
-            >
-              Edit Goals
-            </button>
-          </div>
-          <div className="text-lg font-bold text-slate-500">Your goals</div>
-        </div>
-
-        <div className="row-span-2 col-span-2">
-          <FoodCalendar foods={foods} user={user} />
-        </div>
-        
         <div className={cardClasses}>
-          <div className="text-lg font-bold" style={{color: '#ef470c'}}>Calories</div>
+          <div className="flex justify-between">
+            <div className="text-lg font-bold" style={{ color: "#ef470c" }}>
+              Calories
+            </div>
+            <div>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log("Edit goals button clicked!") // Console log for debugging
+                  setGoalModalOpen(true)
+                }}
+              >
+                <PencilSquareIcon className="mt-1 h-4 w-4 text-stone-700/50" />
+              </a>
+            </div>
+          </div>
+
           <div className="text-sm text-gray-500">
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
@@ -96,7 +90,23 @@ export default function FoodStats({
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold" style={{color: '#92ba3a'}}>Fats</div>
+          <div className="flex justify-between">
+            <div className="text-lg font-bold" style={{ color: "#92ba3a" }}>
+              Fats
+            </div>
+            <div>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log("Edit goals button clicked!") // Console log for debugging
+                  setGoalModalOpen(true)
+                }}
+              >
+                <PencilSquareIcon className="mt-1 h-4 w-4 text-stone-700/50" />
+              </a>
+            </div>
+          </div>
           <div className="text-sm text-gray-500">
             {totalFats.toLocaleString("en-us")}/
             {goalFats.toLocaleString("en-us")}
@@ -108,7 +118,24 @@ export default function FoodStats({
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold" style={{color: '#384147'}}>Carbs</div>
+          <div className="flex justify-between">
+            <div className="text-lg font-bold" style={{ color: "#384147" }}>
+              Carbs
+            </div>
+            <div>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log("Edit goals button clicked!") // Console log for debugging
+                  setGoalModalOpen(true)
+                }}
+              >
+                <PencilSquareIcon className="mt-1 h-4 w-4 text-stone-700/50" />
+              </a>
+            </div>
+          </div>
+
           <div className="text-sm text-gray-500">
             {totalCarbs.toLocaleString("en-us")}/
             {goalCarbs.toLocaleString("en-us")}
@@ -120,7 +147,24 @@ export default function FoodStats({
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold" style={{color: '#899384'}}>Protein</div>
+          <div className="flex justify-between">
+            <div className="text-lg font-bold" style={{ color: "#899384" }}>
+              Protein
+            </div>
+            <div>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log("Edit goals button clicked!") // Console log for debugging
+                  setGoalModalOpen(true)
+                }}
+              >
+                <PencilSquareIcon className="mt-1 h-4 w-4 text-stone-700/50" />
+              </a>
+            </div>
+          </div>
+
           <div className="text-sm text-gray-500">
             {totalProtein.toLocaleString("en-us")}/
             {goalProtein.toLocaleString("en-us")}
@@ -131,15 +175,44 @@ export default function FoodStats({
             label={"Protein"}
           />
         </div>
+
+        <div className="row-span-2 col-span-2">
+          <FoodCalendar foods={foods} user={user} />
+        </div>
+
+        <div className={"col-span-4 overflow-hidden rounded-lg bg-white"}>
+          <div className="flex text-sm leading-7 text-gray-600">
+            Current Goal{" "}
+            <a
+              className="ml-2"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                console.log("Edit goals button clicked!") // Console log for debugging
+                setGoalModalOpen(true)
+              }}
+            >
+              <PencilSquareIcon className="mt-1 h-4 w-4 text-stone-700/50" />
+            </a>
+          </div>
+          <div className="text-2xl font-bold leading-9 tracking-tight text-gray-900">
+            {user.fitnessGoal}
+          </div>
+        </div>
       </dl>
       <GoalsDialog
         isOpen={goalModalOpen}
-        onRequestClose={(calorieGoal: number, fatGoal: number, carbsGoal: number, proteinGoal: number) => {
-          setGoalModalOpen(false);
-          setGoalCalories(calorieGoal || 3500);
-          setGoalFats(fatGoal || 250);
-          setGoalCarbs(carbsGoal || 250);
-          setGoalProtein(proteinGoal || 250);
+        onRequestClose={(
+          calorieGoal: number,
+          fatGoal: number,
+          carbsGoal: number,
+          proteinGoal: number
+        ) => {
+          setGoalModalOpen(false)
+          setGoalCalories(calorieGoal || 3500)
+          setGoalFats(fatGoal || 250)
+          setGoalCarbs(carbsGoal || 250)
+          setGoalProtein(proteinGoal || 250)
         }}
         user={user}
       />

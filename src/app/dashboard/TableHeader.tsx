@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import { CalendarDaysIcon } from "@heroicons/react/24/outline"
 import { User } from "@prisma/client"
 import moment from "moment-timezone"
@@ -13,8 +13,7 @@ export function TableHeader({ user }: { user: User }) {
   }
 
   return (
-    <div className="flex">
-      <CalendarDaysIcon className="h-6 w-6 me-2" />
+    <div className="flex justify-center text-center">
       <div>
         <h2 className="text-md font-bold leading-7 text-gray-900">
           {moment(selectedDate).tz(user.tzIdentifier).format("dddd, MMMM Do")}
