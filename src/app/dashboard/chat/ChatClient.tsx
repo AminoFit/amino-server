@@ -29,13 +29,13 @@ export default function ChatClient() {
   if (error) return <div>Failed to load</div>;
 
   return (
-    <div className="flex flex-col h-full justify-between border divide-y divide-gray-200 overflow-hidden">
+    <div className="flex flex-col h-full border divide-y divide-gray-200">
       <div className="p-4">
         <h3 className="text-lg leading-6 font-medium text-gray-900">
           Chat with Amino
         </h3>
       </div>
-      <div className="overflow-y-auto grow flex flex-col p-4" ref={messagesEndRef}>
+      <div className="flex-grow overflow-y-auto p-4" ref={messagesEndRef}>
         {!messages ? (
           <div className="flex items-center justify-center h-full">
             Loading...
