@@ -1,16 +1,51 @@
-import { User } from "@prisma/client"
-import moment from "moment-timezone"
+import { User, UnitPreference } from "@prisma/client";
+import moment from "moment-timezone";
 
 export const GetSystemStartPrompt = (user: User) => {
-  let nameInfoString
-  if (user.firstName) {
-    nameInfoString = `You can call the user by their name: "${user.firstName}".`
-  } else {
-    nameInfoString = `You do not know the user's name. You can ask them for it.`
+  let nameInfoString = user.firstName 
+    ? `You can call the user by their name: "${user.firstName}".`
+    : `You do not know the user's name. You can ask them for it.`;
+
+  let ageString = "";
+  if (user.dateOfBirth) {
+    const age = moment().diff(moment(user.dateOfBirth), 'years');
+    ageString = `They are ${age} years old.`;
   }
-  // add goal concept
-  // The user is currently on day 18 of a 30 day diet. They are trying to lose 10 lbs in that time.
-  let prompt = `You are a enthusiastic and excited fitness and diet coach named Amino! ${nameInfoString}
+
+  // let genderString = user.gender ? `They identify as ${user.gender}.` : "";
+
+  let heightString = "";
+  if (user.heightCm) {
+    heightString = (user.unitPreference === UnitPreference.IMPERIAL) 
+      ? `They are ${Math.round(user.heightCm * 0.0328084)} feet tall.` // cm to feet 
+      : `They are ${user.heightCm} cm tall.`;
+  }
+
+  let weightString = user.weightKg 
+    ? (user.unitPreference === UnitPreference.IMPERIAL) 
+      ? `They weigh ${Math.round(user.weightKg * 2.20462)} lbs.` // kg to lbs
+      : `They weigh ${user.weightKg} kg.`
+    : "";
+
+  let fitnessGoalString = user.fitnessGoal 
+    ? `They are on a journey to ${user.fitnessGoal}.` : "";
+
+  let macroGoalsString = "";
+  if (user.proteinGoal || user.carbsGoal || user.fatGoal) {
+    macroGoalsString += `Their macro goals are: `;
+    if (user.proteinGoal) macroGoalsString += `Protein: ${user.proteinGoal}g, `;
+    if (user.carbsGoal) macroGoalsString += `Carbs: ${user.carbsGoal}g, `;
+    if (user.fatGoal) macroGoalsString += `Fat: ${user.fatGoal}g.`;
+  }
+
+  let calorieGoalString = user.calorieGoal 
+    ? `They aim to consume ${user.calorieGoal} calories per day.` : "";
+
+  let unitPreferenceString = (user.unitPreference === UnitPreference.IMPERIAL) 
+    ? `They prefer imperial units.` 
+    : `They prefer metric units.`;
+
+  let prompt = `You are an enthusiastic and excited fitness and diet coach named Amino! ${nameInfoString}
  You help clients log and track what they eat.
  Make the occasional joke, but don't let it get in the way of helping them.
  Limit the character count of your responses to 80 characters. 
@@ -19,9 +54,11 @@ export const GetSystemStartPrompt = (user: User) => {
  They can ask you what they ate today. When they do, call the show_daily_food function to show them.
  They can ask you to log an exercise. When they do, call the log_exercise function to log it. If you need to, ask more detail about the exercise to log it correctly.
  You can also update their name. When they ask you to, call the update_user_info function to update their name.`
+  
   prompt += `\nThe current time for the user is now ${moment()
     .tz(user.tzIdentifier)
-    .format()}`
+    .format()}\n${ageString}\n${heightString}\n${weightString}\n${fitnessGoalString}\n${macroGoalsString}\n${calorieGoalString}\n${unitPreferenceString}`;
 
-  return prompt
+  console.log("prompt", prompt);
+  return prompt.trim(); // trim to remove any potential starting or ending new lines
 }

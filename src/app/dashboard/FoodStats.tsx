@@ -49,10 +49,10 @@ export default function FoodStats({
     (a, b) => a + getNormalizedFoodValue(b, "proteinPerServing"),
     0
   )
-  const goalCalories = 3500
-  const goalFats = 250
-  const goalCarbs = 250
-  const goalProtein = 250
+  const [goalCalories, setGoalCalories] = useState(user.calorieGoal || 3500);
+  const [goalFats, setGoalFats] = useState(user.fatGoal || 250);
+  const [goalCarbs, setGoalCarbs] = useState(user.carbsGoal || 250);
+  const [goalProtein, setGoalProtein] = useState(user.proteinGoal || 250);
 
   const cardClasses =
     "row-span-1 overflow-hidden rounded-lg bg-white p-3 shadow"
@@ -119,7 +119,7 @@ export default function FoodStats({
         >
           <div className="absolute top-3 right-3">
             <button
-              className="absolute top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+              className="top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
               onClick={(e) => {
                 e.preventDefault()
                 console.log("Edit goals button clicked!"); // Console log for debugging
@@ -135,7 +135,13 @@ export default function FoodStats({
       </dl>
       <GoalsDialog
         isOpen={goalModalOpen}
-        onRequestClose={() => setGoalModalOpen(false)}
+        onRequestClose={(calorieGoal: number, fatGoal: number, carbsGoal: number, proteinGoal: number) => {
+          setGoalModalOpen(false);
+          setGoalCalories(calorieGoal || 3500);
+          setGoalFats(fatGoal || 250);
+          setGoalCarbs(carbsGoal || 250);
+          setGoalProtein(proteinGoal || 250);
+        }}
         user={user}
       />
     </div>

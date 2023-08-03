@@ -339,12 +339,15 @@ export default function UpdateUserSettings({ user }: { user: User }) {
 
               <div className="sm:col-span-6 col-span-full">
                 <label className="block text-sm font-medium leading-6 text-grey">
-                  Date of Birth
+                  Date of Birth 
                 </label>
-                <div className="mt-2 flex gap-x-2">
+                <label className="block text-xs font-light leading-6 text-gray-600">
+                (MM/DD/YYYY)
+                  </label>
+                <div className="mt-2 flex gap-x-2 items-center">
                   <input
                     type="text"
-                    placeholder="MM"
+                    placeholder="02"
                     value={birthMonth}
                     onChange={(e) => {
                       if (validateDateInput(e.target.value, 2) && validateMonth(e.target.value)) {
@@ -353,9 +356,10 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                     }}
                     className="block w-12 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
+                  <span className="text-xs text-gray-600">/</span>
                   <input
                     type="text"
-                    placeholder="DD"
+                    placeholder="01"
                     value={birthDay}
                     onChange={(e) => {
                       if (validateDateInput(e.target.value, 2) && validateDay(e.target.value)) {
@@ -364,9 +368,10 @@ export default function UpdateUserSettings({ user }: { user: User }) {
                     }}
                     className="block w-12 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
+                  <span className="text-xs text-gray-600">/</span>
                   <input
                     type="text"
-                    placeholder="YYYY"
+                    placeholder="1934"
                     value={birthYear}
                     onChange={(e) => {
                       if (validateDateInput(e.target.value, 4)) {
