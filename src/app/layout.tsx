@@ -20,7 +20,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={`h-full ${inter.className}`}>
-        <DashNav />
         <NextAuthProvider>{children}</NextAuthProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@ import SideNav from "./SideNav"
 import { getUser } from "./settings/actions"
 
 import { TimeZoneBanner } from "./TimeZoneBanner"
+import DashNav from "@/components/DashNav"
 
 export default async function Example({
   children
@@ -16,15 +17,7 @@ export default async function Example({
 
   return (
     <>
-      {/* <div className="h-full">
-        <SideNav />
-
-        <div className="lg:pl-72 h-full">
-          <main className="h-full">
-            <div className="h-full">{children}</div>
-          </main>
-        </div>
-      </div> */}
+      <DashNav />
 
       <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
         {/* We've used 3xl here, but feel free to try other max-widths based on your needs */}
