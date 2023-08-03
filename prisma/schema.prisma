@@ -10,12 +10,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MessageStatus {
+  RECEIVED
+  PROCESSING
+  RESOLVED
+  FAILED
+}
+
+enum MessageType {
+  CONVERSATION
+  ASSISTANT
+  FOOD_LOG_REQUEST
+  SHOW_FOOD_LOG
+  LOG_EXERCISE
+  UPDATE_USER_INFO
+}
+
 model Message {
   id              Int              @id @default(autoincrement())
   createdAt       DateTime         @default(now())
+  resolvedAt      DateTime? // This will be updated once processing is complete
   content         String
   function_name   String?
   role            Role
+  status          MessageStatus    @default(RECEIVED)
+  messageType     MessageType      @default(CONVERSATION)
+  itemsToProcess  Int?             @default(0) // Used for debug and progress display
+  itemsProcessed  Int?             @default(0)
   userId          String
   User            User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   FoodItems       FoodItem[]
@@ -150,6 +171,7 @@ enum MessageDirection {
   Inbound
   Outbound
 }
+
 enum FoodInfoSource {
   User
   Online
@@ -158,6 +180,7 @@ enum FoodInfoSource {
   LLAMA
   LLAMA2
 }
+
 model FoodItem {
   id                       Int              @id @default(autoincrement())
   name                     String           @default("")

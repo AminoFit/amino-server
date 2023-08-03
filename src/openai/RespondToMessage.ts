@@ -1,12 +1,13 @@
 import GetMessagesForUser from "@/database/GetMessagesForUser"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
+import UpdateMessage from "@/database/UpdateMessage"
 import {
   logExerciseSchema,
   logFoodSchema,
   showDailyFoodSummarySchema,
   updateUserInfoSchema
 } from "@/utils/openaiFunctionSchemas"
-import { Message, Role, User } from "@prisma/client"
+import { Message, Role, User, MessageStatus, MessageType } from "@prisma/client"
 import { getOpenAICompletion } from "./utils/openAiHelper"
 import {
   ChatCompletionRequestMessage,
@@ -24,6 +25,15 @@ type ResponseForUser = {
   resultMessage: string
   responseToFunctionName?: string
 }
+
+// Define a mapping from function_call name to MessageType enum
+const functionToMessageTypeMap: { [key: string]: MessageType } = {
+  log_food_items: MessageType.FOOD_LOG_REQUEST,
+  show_daily_food: MessageType.SHOW_FOOD_LOG,
+  log_exercise: MessageType.LOG_EXERCISE,
+  update_user_info: MessageType.UPDATE_USER_INFO,
+};
+
 
 /*
 Loads the messages for the user and gets a new response from OpenAI
@@ -48,6 +58,8 @@ export async function GenerateResponseForUser(
     .slice()
     .reverse()
     .find((message) => message.role === "User") as Message
+
+  UpdateMessage({id : lastUserMessage.id, status : MessageStatus.PROCESSING})
 
   let prevMessage: ChatCompletionRequestMessage | undefined = undefined
   const tempProcessedMessage: ChatCompletionRequestMessage = {
@@ -113,6 +125,7 @@ export async function GenerateResponseForUser(
 
   // Check if there was a successful completion
   if (!completion) {
+    UpdateMessage({id : lastUserMessage.id, status : MessageStatus.FAILED, resolvedAt : new Date()})
     return {
       resultMessage:
         "Sorry, We're having problems right now. Please try again later."
@@ -129,6 +142,9 @@ export async function GenerateResponseForUser(
 
     // We should call a function
     if (functionCall) {
+      const messageType = functionToMessageTypeMap[functionCall.name];
+      UpdateMessage({id : lastUserMessage.id, messageType : messageType})
+
       messageForUser = await ProcessFunctionCalls(
         user,
         functionCall,
@@ -146,8 +162,13 @@ export async function GenerateResponseForUser(
     messageForUser =
       "Sorry, we're having problems right now. Please try again later. Could not parse the response from OpenAI."
     console.log("Data is not available")
+    UpdateMessage({id : lastUserMessage.id, status : MessageStatus.FAILED, resolvedAt : new Date()})
+    return {
+      resultMessage: messageForUser
+    }
   }
 
+  UpdateMessage({id : lastUserMessage.id, status : MessageStatus.RESOLVED, resolvedAt : new Date()})
   return {
     resultMessage: messageForUser,
     responseToFunctionName: responseToFunction

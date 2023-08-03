@@ -1,4 +1,5 @@
 import { User, FoodItem, Message, FoodInfoSource } from "@prisma/client"
+import UpdateMessage from "@/database/UpdateMessage"
 import { prisma } from "../prisma"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
 import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
@@ -98,6 +99,9 @@ export async function HandleLogFoodItems(
   console.log("parameters", parameters)
 
   const foodItems: FoodItemToLog[] = parameters.food_items
+
+  UpdateMessage({id : lastUserMessage.id, itemsToProcess : foodItems.length})
+  lastUserMessage.itemsToProcess = foodItems.length
 
   const foodAddResultsPromises = []
   for (let food of foodItems) {
@@ -254,6 +258,8 @@ async function HandleLogFoodItem(
   if (!foodItem) {
     return "Sorry, I could not log your food items. Please try again later."
   }
+
+  await UpdateMessage({ id: lastUserMessage.id, incrementItemsProcessedBy: 1 });
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }
