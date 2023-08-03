@@ -10,7 +10,7 @@ import {
 } from "./utils/FoodHelper"
 
 import _ from "underscore"
-import { useState } from "react"
+import React, { useState } from "react"
 import EditFoodModal from "./EditFoodModal"
 import DeleteFoodModal from "./DeleteFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
@@ -132,8 +132,8 @@ export function FoodTable({
         {foodGroups.map((foodGroup) => {
           if (!groups[foodGroup]) return null
           return (
-            <>
-              <tr className="border-t border-gray-200 ">
+            <React.Fragment key={foodGroup}>
+              <tr className="border-t border-gray-200">
                 <th
                   colSpan={8}
                   scope="colgroup"
@@ -145,7 +145,7 @@ export function FoodTable({
               {groups[foodGroup].map((foodItem) => (
                 <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
               ))}
-            </>
+            </React.Fragment>
           )
         })}
         {filteredFood.length !== 0 && (
