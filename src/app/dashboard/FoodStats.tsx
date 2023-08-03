@@ -73,11 +73,10 @@ export default function FoodStats({
                 setGoalModalOpen(true);
               }}
             >
-              Edit
+              Edit Goals
             </button>
           </div>
           <div className="text-lg font-bold text-slate-500">Your goals</div>
-          <div className="text-sm text-gray-500"></div>
         </div>
 
         <div className="row-span-2 col-span-2">
