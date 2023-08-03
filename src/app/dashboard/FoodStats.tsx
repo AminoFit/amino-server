@@ -59,6 +59,31 @@ export default function FoodStats({
   return (
     <div>
       <dl className="grid grid-cols-6 gap-6 mt-5">
+      <div
+          className={
+            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow relative"
+          }
+        >
+          <div className="absolute top-3 right-3">
+            <button
+              className="top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+              onClick={(e) => {
+                e.preventDefault()
+                console.log("Edit goals button clicked!"); // Console log for debugging
+                setGoalModalOpen(true);
+              }}
+            >
+              Edit
+            </button>
+          </div>
+          <div className="text-lg font-bold text-slate-500">Your goals</div>
+          <div className="text-sm text-gray-500"></div>
+        </div>
+
+        <div className="row-span-2 col-span-2">
+          <FoodCalendar foods={foods} user={user} />
+        </div>
+        
         <div className={cardClasses}>
           <div className="text-lg font-bold text-pink-500">Calories</div>
           <div className="text-sm text-gray-500">
@@ -106,31 +131,6 @@ export default function FoodStats({
             color="#A755F7"
             label={"Protein"}
           />
-        </div>
-
-        <div className="row-span-2 col-span-2">
-          <FoodCalendar foods={foods} user={user} />
-        </div>
-
-        <div
-          className={
-            "col-span-4 overflow-hidden rounded-lg bg-white p-3 shadow relative"
-          }
-        >
-          <div className="absolute top-3 right-3">
-            <button
-              className="top-3 right-3 text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-              onClick={(e) => {
-                e.preventDefault()
-                console.log("Edit goals button clicked!"); // Console log for debugging
-                setGoalModalOpen(true);
-              }}
-            >
-              Edit
-            </button>
-          </div>
-          <div className="text-lg font-bold text-slate-500">Your goals</div>
-          <div className="text-sm text-gray-500"></div>
         </div>
       </dl>
       <GoalsDialog
