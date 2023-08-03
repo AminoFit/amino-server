@@ -59,7 +59,7 @@ export default function FoodStats({
     "row-span-1 overflow-hidden rounded-lg bg-white p-3 shadow"
   return (
     <div>
-      <dl className="grid grid-cols-6 gap-6 mt-5">
+      <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-6 mt-5">
         <div className={cardClasses}>
           <div className="flex justify-between">
             <div className="text-lg font-bold" style={{ color: "#ef470c" }}>
@@ -176,11 +176,11 @@ export default function FoodStats({
           />
         </div>
 
-        <div className="row-span-2 col-span-2">
+        <div className="hidden lg:block lg:row-span-2 lg:col-span-2">
           <FoodCalendar foods={foods} user={user} />
         </div>
 
-        <div className={"col-span-4 overflow-hidden rounded-lg bg-white"}>
+        <div className={"col-span-2 md:col-span-4 overflow-hidden rounded-lg bg-white"}>
           <div className="flex text-sm leading-7 text-gray-600">
             Current Goal{" "}
             <a
