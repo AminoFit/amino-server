@@ -60,50 +60,50 @@ export default function FoodStats({
     <div>
       <dl className="grid grid-cols-6 gap-6 mt-5">
         <div className={cardClasses}>
-          <div className="text-lg font-bold text-pink-500">Calories</div>
+          <div className="text-lg font-bold" style={{color: '#ef470c'}}>Calories</div>
           <div className="text-sm text-gray-500">
             {totalCalories.toLocaleString("en-us")}/
             {goalCalories.toLocaleString("en-us")}
           </div>
           <GraphSemiCircle
             percentage={(totalCalories / goalCalories) * 100}
-            color="#EC4899"
+            color="#ef470c"
             label={"Calories"}
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold text-emerald-500">Fats</div>
+          <div className="text-lg font-bold" style={{color: '#92ba3a'}}>Fats</div>
           <div className="text-sm text-gray-500">
             {totalFats.toLocaleString("en-us")}/
             {goalFats.toLocaleString("en-us")}
           </div>
           <GraphSemiCircle
             percentage={(totalFats / goalFats) * 100}
-            color="#11B981"
+            color="#92ba3a"
             label={"Fats"}
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold text-sky-500">Carbs</div>
+          <div className="text-lg font-bold" style={{color: '#384147'}}>Carbs</div>
           <div className="text-sm text-gray-500">
             {totalCarbs.toLocaleString("en-us")}/
             {goalCarbs.toLocaleString("en-us")}
           </div>
           <GraphSemiCircle
             percentage={(totalCarbs / goalCarbs) * 100}
-            color="#0BA5E9"
+            color="#384147"
             label={"Carbs"}
           />
         </div>
         <div className={cardClasses}>
-          <div className="text-lg font-bold text-purple-500">Protein</div>
+          <div className="text-lg font-bold" style={{color: '#899384'}}>Protein</div>
           <div className="text-sm text-gray-500">
             {totalProtein.toLocaleString("en-us")}/
             {goalProtein.toLocaleString("en-us")}
           </div>
           <GraphSemiCircle
             percentage={(totalProtein / goalProtein) * 100}
-            color="#A755F7"
+            color="#899384"
             label={"Protein"}
           />
         </div>
