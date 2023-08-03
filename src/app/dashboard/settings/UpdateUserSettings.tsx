@@ -82,15 +82,6 @@ export default function UpdateUserSettings({ user }: { user: User }) {
     }
     return Number((lbs / 2.20462).toFixed(1));
   };
-  const toImperialHeight = (cm: number) => cm / 2.54;
-  const [weightKg, setWeightKg] = useState(user.weightKg);
-  const [weightLbs, setWeightLbs] = useState(toImperialWeight(user.weightKg));
-  const [heightCm, setHeightCm] = useState(user.heightCm);
-  const [heightFeet, setHeightFeet] = useState('');
-  const [heightInches, setHeightInches] = useState('');
-
-
-
   const cmToFeetInches = (cm: number | null) => {
     if (cm === null) return { feet: '', inches: '' };
     const totalInches = Math.round(cm / 2.54);
@@ -98,6 +89,13 @@ export default function UpdateUserSettings({ user }: { user: User }) {
     const inches = totalInches % 12;
     return { feet: feet.toString(), inches: inches.toString() };
   };
+
+  const toImperialHeight = (cm: number) => cm / 2.54;
+  const [weightKg, setWeightKg] = useState(user.weightKg);
+  const [weightLbs, setWeightLbs] = useState(toImperialWeight(user.weightKg));
+  const [heightCm, setHeightCm] = useState(user.heightCm);
+  const [heightFeet, setHeightFeet] = useState(cmToFeetInches(user.heightCm).feet);
+  const [heightInches, setHeightInches] = useState(cmToFeetInches(user.heightCm).inches);
 
   const feetInchesToCm = (feet: string | null, inches: string | null): number | null => {
     if (feet === null || inches === null) {
