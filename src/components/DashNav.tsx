@@ -31,8 +31,8 @@ export default function DashNav() {
                 <div className="flex flex-shrink-0 items-center">
                   <img
                     className="h-8 w-auto"
-                    src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600"
-                    alt="Your Company"
+                    src="/logos/logo.svg"
+                    alt="Amino Fit Logo"
                   />
                 </div>
                 <div className="hidden lg:ml-6 lg:flex lg:space-x-8">
@@ -44,19 +44,19 @@ export default function DashNav() {
                     Food Log
                   </a>
                   <a
-                    href="#"
+                    href="/dashboard/chat"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
                     Chat
                   </a>
                   <a
-                    href="/dashboard/chat"
+                    href="/dashboard/settings"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
                     Settings
                   </a>
                   <a
-                    href="/dashboard/settings"
+                    href="/dashboard"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
                     Calendar
