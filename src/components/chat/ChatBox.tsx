@@ -66,12 +66,6 @@ export default function ChatBox({messages, mutate}: {messages: Message[], mutate
 
   return (
     <div>
-      <label
-        htmlFor="message"
-        className="block text-sm font-medium leading-6 text-gray-900"
-      >
-        Message Amino
-      </label>
       <form onSubmit={onSubmit}>
         <div className="flex mt-2">
           <div className="grow">
