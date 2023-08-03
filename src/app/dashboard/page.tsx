@@ -3,12 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "../api/auth/[...nextauth]/auth"
 import { FoodLogHeader } from "./FoodLogHeader"
 import { FoodTable } from "./FoodTable"
-import {
-  CalendarDaysIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon
-} from "@heroicons/react/24/outline"
-import moment from "moment-timezone"
 import { TableHeader } from "./TableHeader"
 
 async function getUser() {
