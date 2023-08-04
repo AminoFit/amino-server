@@ -178,35 +178,7 @@ export default function UpdateUserSettings({ user }: { user: User }) {
 
   return (
     <main>
-      <header className="border-b border-grey/5">
-        {/* Secondary navigation */}
-        <nav className="flex overflow-x-auto py-4">
-          <ul
-            role="list"
-            className="flex min-w-full flex-none gap-x-6 px-4 text-sm font-semibold leading-6 text-gray-400 sm:px-6 lg:px-8"
-          >
-            {secondaryNavigation.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className={classNames(
-                    item.current
-                      ? "bg-gray-50 text-indigo-600"
-                      : "text-gray-700 hover:text-indigo-600 hover:bg-gray-50",
-                    "group flex gap-x-3 rounded-md py-2 pl-2 pr-3 text-sm leading-6 font-semibold",
-                    { "pointer-events-none opacity-30": item.disabled }
-                  )}
-                >
-                  {item.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-
       {/* Settings forms */}
-
       <div className="divide-y divide-grey/5">
         <div className="grid max-w-7xl grid-cols-1 gap-x-8 gap-y-10 px-4 py-16 sm:px-6 md:grid-cols-3 lg:px-8">
           <div>
