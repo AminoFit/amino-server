@@ -15,7 +15,7 @@ import EditFoodModal from "./EditFoodModal"
 import DeleteFoodModal from "./DeleteFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
 
-export function FoodTable({
+export function FoodTableDesktop({
   foods,
   user
 }: {
@@ -82,7 +82,7 @@ export function FoodTable({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <table className="min-w-full divide-y divide-gray-300">
+    <table className="hidden lg:table min-w-full divide-y divide-gray-300">
       <thead className="bg-gray-50">
         <tr>
           <th scope="col"></th>
