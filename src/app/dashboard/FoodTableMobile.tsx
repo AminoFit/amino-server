@@ -127,7 +127,7 @@ function FoodRow({
         <div className="flex mb-3">
           <div
             style={{
-              "mix-blend-mode": "multiply"
+              mixBlendMode: "multiply"
             }}
           >
             <Image
