@@ -53,7 +53,7 @@ interface NutritionixCommonItem {
 
 const NUTRITIONIX_API_URL = "https://trackapi.nutritionix.com/v2/search/instant"
 
-async function searchFood(
+async function searchFoodIds(
   params: NutritionixSearchInstantParams
 ): Promise<NutritionixSearchInstantResponse> {
   const url = new URL(NUTRITIONIX_API_URL)
@@ -70,9 +70,6 @@ async function searchFood(
     }
   })
 
-  console.log("app id", process.env.NUTRITIONIX_APP_ID)
-  console.log("app key", process.env.NUTRITIONIX_API_KEY)
-
   const response = await axios.get(url.toString(), {
     headers: {
       "x-app-id": process.env.NUTRITIONIX_APP_ID,
@@ -87,7 +84,7 @@ async function searchFood(
   return response.data as NutritionixSearchInstantResponse
 }
 
-searchFood({
+searchFoodIds({
   query: "Starbucks latte",
   branded: true
 })
@@ -98,7 +95,7 @@ searchFood({
     console.error(`Error: ${error}`)
   })
 
-  searchFood({
+  searchFoodIds({
     query: "Apple",
     branded: false
   })

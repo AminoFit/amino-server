@@ -76,11 +76,9 @@ interface FoodQuery {
   timezone?: string
 }
 
-async function getFoodNutrients(
+async function getNonBrandedFoodInfo(
   foodQuery: FoodQuery
 ): Promise<NutrientResponse> {
-  console.log("x-app-id", process.env.NUTRITIONIX_APP_ID)
-  console.log("x-app-key", process.env.NUTRITIONIX_API_KEY)
   const response = await axios.post<NutrientResponse>(
     NUTRITIONIX_ENDPOINT,
     foodQuery,
@@ -96,4 +94,4 @@ async function getFoodNutrients(
   return response.data as NutrientResponse
 }
 
-getFoodNutrients({ query: "apple" }).then((res) => console.log(res))
+getNonBrandedFoodInfo({ query: "apple" }).then((res) => console.log(JSON.stringify(res)))
