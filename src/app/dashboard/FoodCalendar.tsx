@@ -1,12 +1,12 @@
 "use client"
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
-import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
+import { User } from "@prisma/client"
 import classNames from "classnames"
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-import { getNormalizedFoodValue, LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import { LoggedFoodItemWithFoodItem, getNormalizedFoodValue } from "./utils/FoodHelper"
 
 const meetings = [
   {

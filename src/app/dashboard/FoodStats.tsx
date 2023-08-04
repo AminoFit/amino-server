@@ -180,7 +180,7 @@ export default function FoodStats({
           <FoodCalendar foods={foods} user={user} />
         </div>
 
-        <div className={"col-span-2 md:col-span-4 overflow-hidden rounded-lg bg-white"}>
+        <div className={"hidden lg:block col-span-2 md:col-span-4 overflow-hidden rounded-lg bg-white"}>
           <div className="flex text-sm leading-7 text-gray-600">
             Current Goal{" "}
             <a

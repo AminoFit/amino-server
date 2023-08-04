@@ -125,26 +125,29 @@ function FoodRow({
 
       <div className="p-3 border border-slate-800/30 mb-3 rounded-lg">
         <div className="flex mb-3">
-          <div
-            style={{
-              mixBlendMode: "multiply"
-            }}
-          >
-            <Image
-              src={
-                (foodItem.FoodItem.FoodImage &&
-                  foodItem.FoodItem.FoodImage.length &&
-                  foodItem.FoodItem.FoodImage[0].pathToImage) ||
-                ""
-              }
+          <div className="bg-green-500 rounded-full">
+            <div
               style={{
-                filter: "grayscale(100%)"
+                // mixBlendMode: "lighten"
               }}
-              width={60}
-              height={60}
-              alt="Food image"
-              className=""
-            />
+              className="rounded-full bg-red-500"
+            >
+              <Image
+                src={
+                  (foodItem.FoodItem.FoodImage &&
+                    foodItem.FoodItem.FoodImage.length &&
+                    foodItem.FoodItem.FoodImage[0].pathToImage) ||
+                  ""
+                }
+                style={{
+                  // filter: "grayscale(100%)"
+                }}
+                width={60}
+                height={60}
+                alt="Food image"
+                className="rounded-full"
+              />
+            </div>
           </div>
           <div className="ml-4">
             <div className="text-xs text-gray-800">
@@ -169,7 +172,7 @@ function FoodRow({
             </div>
           </div> */}
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between text-center">
           <div>
             <div className="text-sm text-red-500">Carbs</div>
             <div>
