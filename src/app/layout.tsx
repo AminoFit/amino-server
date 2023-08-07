@@ -1,11 +1,12 @@
-import { Inter } from "next/font/google"
+import { Outfit } from "next/font/google"
 import Head from "next/head"
 import { MetaTags } from "./MetaTags"
 import "./globals.css"
 import { NextAuthProvider } from "./providers"
 import DashNav from "@/components/DashNav"
 
-const inter = Inter({ subsets: ["latin"] })
+const outfit = Outfit({ subsets: ["latin"] })
+
 
 export const metadata = {
   title: "Amino Fitness Tracker",
@@ -19,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`h-full ${inter.className}`}>
+      <body className={`h-full ${outfit.className}`}>
         <NextAuthProvider>{children}</NextAuthProvider>
       </body>
     </html>
