@@ -16,7 +16,7 @@ export function FoodLogHeader({
       <div className="min-w-0 flex-1">
         <div className="flex">
           <div>
-            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+            <h2 className="text-2xl font-bold leading-7 text-zinc-50 sm:truncate sm:text-3xl sm:tracking-tight">
               Dashboard
             </h2>
             <div className="text-sm font-light text-gray-500 mb-4">
@@ -26,7 +26,7 @@ export function FoodLogHeader({
         </div>
 
         <div>
-          <FoodStats foods={foods} user={user} />
+          {/* <FoodStats foods={foods} user={user} /> */}
         </div>
       </div>
     </>

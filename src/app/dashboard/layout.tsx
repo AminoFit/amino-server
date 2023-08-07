@@ -19,7 +19,7 @@ export default async function Example({
     <>
       <DashNav />
 
-      <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
+      <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8 bg-zinc-800">
         {/* We've used 3xl here, but feel free to try other max-widths based on your needs */}
         <div className="">{children}</div>
       </div>
