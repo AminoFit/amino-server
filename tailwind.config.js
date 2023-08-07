@@ -25,6 +25,7 @@ module.exports = {
           800: '#395B0B',
           900: '#1D2D06',
         },
+        'amino-logo': '#B0EB5F'
       }
     },
   },

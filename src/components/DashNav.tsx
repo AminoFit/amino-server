@@ -100,7 +100,7 @@ export default function DashNav() {
               </div>
               <div className="flex items-center lg:hidden">
                 {/* Mobile menu button */}
-                <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-black-900 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amino-500/20">
                   <span className="absolute -inset-0.5" />
                   <span className="sr-only">Open main menu</span>
                   {open ? (
@@ -157,15 +157,14 @@ export default function DashNav() {
 
           <Disclosure.Panel className="lg:hidden">
             <div className="space-y-1 pb-3 pt-2">
-              {/* Current: "bg-indigo-50 border-indigo-500 text-indigo-700", Default: "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800" */}
               <Disclosure.Button
                 as="a"
                 href="/dashboard"
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Dashboard
@@ -176,8 +175,8 @@ export default function DashNav() {
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard/chat"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Chat
@@ -188,8 +187,8 @@ export default function DashNav() {
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard/settings"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Settings

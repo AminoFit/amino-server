@@ -49,7 +49,7 @@ export default async function FoodLog() {
 
   return (
     <>
-      <div className="py-8">
+      <div className="py-3">
         <div className="lg:flex lg:items-center lg:justify-between mb-10">
           <FoodLogHeader foods={foods} user={user} />
         </div>
