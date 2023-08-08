@@ -24,7 +24,7 @@ export const logFoodSchema = {
         properties: {
           full_name: { type: "string", description: "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc." },
           brand: { type: "string", description: "The brand of the food item" },
-          // cooked: { type: "boolean", description: "If the item is cooked or not" },
+          branded: { type: "boolean", description: "If item is branded or not" },
           lemmatized_database_search_term: {
             type: "string",
             description:

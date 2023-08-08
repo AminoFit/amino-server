@@ -8,7 +8,7 @@ export interface Serving {
 export interface FoodItemToLog {
     full_name: string; // Comprehensive name of the food item. For certain items, mention if it is cooked or not.
     brand?: string; // The brand of the food item
-    // cooked?: boolean; // If the item is cooked or not
+    branded: boolean;
     lemmatized_database_search_term?: string; // Basic terms to search for in a database, ideally the lemmatized version
     user_food_descriptive_name?: string; // What the user calls the food
     //total_weight_grams: number; // The weight of the serving in grams. CANNOT BE 0

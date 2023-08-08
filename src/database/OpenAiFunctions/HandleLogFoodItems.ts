@@ -4,6 +4,27 @@ import { prisma } from "../prisma"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
 import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { FoodQuery, findNxFoodInfo, NxFoodItemResponse } from '../../FoodDbThirdPty/nutritionix/findNxFoodInfo';
+
+type FoodItemPropertiesToRemove = 'id' | 'knownAs' | 'description' | 'transFatPerServing' | 'addedSugarPerServing' | 'lastUpdated' | 'verified' | 'userId';
+
+function stringifyFoodItem(foodItem: NxFoodItemResponse): string {
+  // Create a new object excluding the properties you want to remove
+  const result: Partial<NxFoodItemResponse> = { ...foodItem };
+  (['id', 'knownAs', 'description', 'transFatPerServing', 'addedSugarPerServing', 'lastUpdated', 'verified', 'userId'] as Array<FoodItemPropertiesToRemove>).forEach(prop => {
+    delete result[prop];
+  });
+
+  // Clean up any properties with value 0 or null
+  for (const key in result) {
+    if (result[key as keyof NxFoodItemResponse] === 0 || result[key as keyof NxFoodItemResponse] === null) {
+      delete result[key as keyof NxFoodItemResponse];
+    }
+  }
+
+  // Convert the result object to a JSON string
+  return JSON.stringify(result);
+}
 
 function mapModelToEnum(model: string): FoodInfoSource {
   if (model.startsWith("gpt-4")) {
@@ -208,7 +229,7 @@ async function HandleLogFoodItem(
   if (matches.length === 0) {
     console.log("No matches found for food item", food.full_name)
 
-    const newFood = await addFoodItemToDatabase(food, lastUserMessage)
+    const newFood = await addFoodItemToDatabase(food, user, lastUserMessage)
     matches = [newFood]
   }
 
@@ -285,16 +306,36 @@ async function HandleLogFoodItem(
 
 async function addFoodItemToDatabase(
   foodToLog: FoodItemToLog,
+  user: User,
   lastUserMessage: Message
 ): Promise<FoodItem> {
   console.log("food", foodToLog)
 
   try {
+    // Construct the query for findNxFoodInfo
+    const foodQuery: FoodQuery = {
+      food_name: foodToLog.full_name,
+      user_food_descriptive_name: foodToLog.user_food_descriptive_name || foodToLog.full_name, 
+      branded: foodToLog.branded || false,
+    }
+
+    // Query the findNxFoodInfo function
+    const nxFoodInfoResponse = await findNxFoodInfo(foodQuery)
+
     // create string name for food request
-    const foodItemRequestString: string = constructFoodRequestString(foodToLog)
+    let foodItemRequestString: string = constructFoodRequestString(foodToLog)
+
+    if ((nxFoodInfoResponse != null) && (nxFoodInfoResponse.length > 0)) {
+      // If we have a match, use the first one
+      const food = nxFoodInfoResponse[0]
+
+      // Construct the request string for the OpenAI foodItemCompletion function
+      foodItemRequestString = foodItemRequestString +"\n Some food info that may be relevant\n"+ stringifyFoodItem(food)
+    }
 
     const { foodItemInfo, model } = await foodItemCompletion(
-      foodItemRequestString
+      foodItemRequestString,
+      user
     )
 
     let newFood: FoodItem
