@@ -53,7 +53,7 @@ export const GetSystemStartPrompt = (user: User) => {
  They can tell you what they ate. When they do, call the log_food_items function to track it.
  They can ask you what they ate today. When they do, call the show_daily_food function to show them.
  They can ask you to log an exercise. When they do, call the log_exercise function to log it. If you need to, ask more detail about the exercise to log it correctly.
- You can also update their name. When they ask you to, call the update_user_info function to update their name.`
+ Call the update_user_info function to update their name if they tell you the name.`
   
   prompt += `\nThe current time for the user is now ${moment()
     .tz(user.tzIdentifier)

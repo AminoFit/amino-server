@@ -31,9 +31,8 @@ const functionToMessageTypeMap: { [key: string]: MessageType } = {
   log_food_items: MessageType.FOOD_LOG_REQUEST,
   show_daily_food: MessageType.SHOW_FOOD_LOG,
   log_exercise: MessageType.LOG_EXERCISE,
-  update_user_info: MessageType.UPDATE_USER_INFO,
-};
-
+  update_user_info: MessageType.UPDATE_USER_INFO
+}
 
 /*
 Loads the messages for the user and gets a new response from OpenAI
@@ -41,7 +40,6 @@ Loads the messages for the user and gets a new response from OpenAI
 export async function GenerateResponseForUser(
   user: User
 ): Promise<ResponseForUser> {
-
   // Get messages
   const messages: ChatCompletionRequestMessage[] = [
     {
@@ -59,7 +57,7 @@ export async function GenerateResponseForUser(
     .reverse()
     .find((message) => message.role === "User") as Message
 
-  UpdateMessage({id : lastUserMessage.id, status : MessageStatus.PROCESSING})
+  UpdateMessage({ id: lastUserMessage.id, status: MessageStatus.PROCESSING })
 
   let prevMessage: ChatCompletionRequestMessage | undefined = undefined
   const tempProcessedMessage: ChatCompletionRequestMessage = {
@@ -73,9 +71,13 @@ export async function GenerateResponseForUser(
     }
     if (message.function_name) msg.name = message.function_name
 
-    // make it ask the user for their name
-    if (message.id == lastUserMessage.id && !user.firstName) {
-      msg.content += "\nAsk me for my name. You don't know it so don't assume any names."
+    // Check if the message ID matches and the user's first name is not known or is an empty string
+    if (
+      message.id === lastUserMessage.id &&
+      (!user.firstName || user.firstName.trim() === "")
+    ) {
+      msg.content +=
+        "\nIf you don't know my name as for it. Be sure to call update_user_info whenever I tell you my name."
     }
 
     // We don't want to send two user messages in a row, so we add a temp message in between that says the previous message was processed.
@@ -90,7 +92,6 @@ export async function GenerateResponseForUser(
     prevMessage = msg
   }
 
-
   console.log("messages", messages)
 
   /* models
@@ -104,13 +105,29 @@ export async function GenerateResponseForUser(
     model: modelName,
     messages,
     functions: [
-      { name: "log_food_items", parameters: logFoodSchema },
-      { name: "show_daily_food", parameters: showDailyFoodSummarySchema },
-      { name: "log_exercise", parameters: logExerciseSchema },
-      { name: "update_user_info", parameters: updateUserInfoSchema }
+      {
+        name: "log_food_items",
+        // description: "Call this function to log food items when the user says what they ate.",
+        parameters: logFoodSchema
+      },
+      {
+        name: "show_daily_food",
+        // description: "Call this function when the user asks what they ate today.",
+        parameters: showDailyFoodSummarySchema
+      },
+      {
+        name: "update_user_info",
+        // description: "Call this function when the user tells you their name.",
+        parameters: updateUserInfoSchema
+      },
+      {
+        name: "log_exercise",
+        // description: "Call this function to log user reported exercise.",
+        parameters: logExerciseSchema
+      }
     ],
     function_call: "auto",
-    temperature: 0.05
+    temperature: 0.0
   }
 
   const maxRetries = 1 // You can adjust this value as needed.
@@ -125,7 +142,11 @@ export async function GenerateResponseForUser(
 
   // Check if there was a successful completion
   if (!completion) {
-    UpdateMessage({id : lastUserMessage.id, status : MessageStatus.FAILED, resolvedAt : new Date()})
+    UpdateMessage({
+      id: lastUserMessage.id,
+      status: MessageStatus.FAILED,
+      resolvedAt: new Date()
+    })
     return {
       resultMessage:
         "Sorry, We're having problems right now. Please try again later."
@@ -142,8 +163,8 @@ export async function GenerateResponseForUser(
 
     // We should call a function
     if (functionCall) {
-      const messageType = functionToMessageTypeMap[functionCall.name];
-      UpdateMessage({id : lastUserMessage.id, messageType : messageType})
+      const messageType = functionToMessageTypeMap[functionCall.name]
+      UpdateMessage({ id: lastUserMessage.id, messageType: messageType })
 
       messageForUser = await ProcessFunctionCalls(
         user,
@@ -162,13 +183,21 @@ export async function GenerateResponseForUser(
     messageForUser =
       "Sorry, we're having problems right now. Please try again later. Could not parse the response from OpenAI."
     console.log("Data is not available")
-    UpdateMessage({id : lastUserMessage.id, status : MessageStatus.FAILED, resolvedAt : new Date()})
+    UpdateMessage({
+      id: lastUserMessage.id,
+      status: MessageStatus.FAILED,
+      resolvedAt: new Date()
+    })
     return {
       resultMessage: messageForUser
     }
   }
 
-  UpdateMessage({id : lastUserMessage.id, status : MessageStatus.RESOLVED, resolvedAt : new Date()})
+  UpdateMessage({
+    id: lastUserMessage.id,
+    status: MessageStatus.RESOLVED,
+    resolvedAt: new Date()
+  })
   return {
     resultMessage: messageForUser,
     responseToFunctionName: responseToFunction
