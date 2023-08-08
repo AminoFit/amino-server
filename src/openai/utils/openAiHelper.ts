@@ -5,7 +5,7 @@ import { CreateCompletionResponseUsage } from "openai"
 import { prisma } from "@/database/prisma"
 
 // Log usage
-async function LogOpenAiUsage(
+export async function LogOpenAiUsage(
   user: User,
   usage: CreateCompletionResponseUsage,
   modelName: string

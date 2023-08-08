@@ -13,14 +13,14 @@ const COSINE_THRESHOLD = 0.8
 
 type EmbeddingObject = { embedding: number[]; [key: string]: any }
 
-interface FoodQuery {
+export interface FoodQuery {
   food_name: string
   user_food_descriptive_name: string
   branded?: boolean
   brand_name?: string
 }
 
-interface NxFoodItemResponse extends Omit<FoodItem, "Servings" | "Nutrients"> {
+export interface NxFoodItemResponse extends Omit<FoodItem, "Servings" | "Nutrients"> {
   Servings: {
     servingWeightGram: number
     servingName: string
@@ -89,7 +89,7 @@ function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemRespon
   }));
 }
 
-async function findNxFoodInfo(
+export async function findNxFoodInfo(
   foodQuery: FoodQuery
 ): Promise<NxFoodItemResponse[] | null> {
   let foodResults: NutritionixSearchInstantResponse = await searchFoodIds({
@@ -323,7 +323,6 @@ async function runTest() {
 }
 
 async function testSearch() {
-    /*
   const latteResponse = await findNxFoodInfo({
     food_name: "Starbucks Iced Latte",
     user_food_descriptive_name: "Starbucks Tall Iced Latte, 2% milk",
@@ -337,7 +336,6 @@ async function testSearch() {
     branded: true
   })
   console.log(JSON.stringify(yogurtResponse, null, 2))
-  */
   // --------------------------------
   const appleResponse = await findNxFoodInfo({
     food_name: "Apple",
@@ -354,5 +352,5 @@ async function testSearch() {
   console.log(JSON.stringify(lasagnaResponse, null, 2))
 }
 
-testSearch()
+//testSearch()
 //runTest()
