@@ -6,6 +6,7 @@ import { FoodTableDesktop } from "./FoodTableDesktop"
 import { TableHeader } from "./TableHeader"
 import { FoodTableMobile } from "./FoodTableMobile"
 import { GraphCalorieChart } from "./GraphCalorieChart"
+import { CalorieChart } from "./CalorieChart"
 
 async function getUser() {
   const session = await getServerSession(authOptions)
@@ -57,6 +58,7 @@ export default async function FoodLog() {
         <div>
           <div className="mb-4">
             <GraphCalorieChart calories={[1]} label="testing" />
+            {/* <CalorieChart foods={foods} /> */}
           </div>
 
           <TableHeader user={user} />
