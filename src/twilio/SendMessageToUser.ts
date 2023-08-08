@@ -1,4 +1,4 @@
-import { MessageDirection, Role, User } from "@prisma/client"
+import { MessageDirection, MessageType, Role, User } from "@prisma/client"
 import { twilioClient } from "./twilio"
 import { prisma } from "@/database/prisma"
 import { FoodItem, LoggedFoodItem } from "@prisma/client"
@@ -9,7 +9,7 @@ import { getNormalizedFoodValue } from "@/app/dashboard/utils/FoodHelper"
 const from = process.env.TWILIO_PHONE_NUMBER
 
 export async function SaveAndSendMessageToUser(user: User, message: string) {
-  await SaveMessageFromUser(user, message, Role.Assistant)
+  await SaveMessageFromUser(user, message, Role.Assistant, undefined, MessageType.ASSISTANT)
   const sentMsg = await SendMessageToUser(user, message)
   return sentMsg
 }

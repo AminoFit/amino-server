@@ -30,10 +30,15 @@ export default function ChatBox({messages, mutate}: {messages: Message[], mutate
       id: messages.length + 1,
       createdAt: new Date(),
       content: messageInput,
-      function_name: null, 
+      function_name: null,
       role: 'User', 
       userId: 'pending',
-    };
+      resolvedAt: null,
+      status: 'RECEIVED', 
+      messageType: 'CONVERSATION',
+      itemsToProcess: 0,
+      itemsProcessed: 0
+    };    
   
     // Optimistically update the UI
     mutate((currentData: Message[]) => [...currentData, newMessage], false);

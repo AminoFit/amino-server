@@ -1,11 +1,12 @@
 import SaveMessageFromUser from "@/database/SaveMessageFromUser"
+import UpdateMessage from "@/database/UpdateMessage"
 import { GenerateResponseForUser } from "@/openai/RespondToMessage"
 import {
   LogSmsMessage,
   SaveAndSendMessageToUser,
   SaveMessageToUser
 } from "@/twilio/SendMessageToUser"
-import { MessageDirection, Role, User } from "@prisma/client"
+import { MessageStatus, MessageDirection, Role, User } from "@prisma/client"
 import { NextResponse } from "next/server"
 
 export enum MessageSource {
@@ -21,7 +22,7 @@ export default async function ProcessMessage(
   const startTime = Date.now()
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  await SaveMessageFromUser(user, body, Role.User)
+  let userMessage = await SaveMessageFromUser(user, body, Role.User)
 
   let responseMessage = await GenerateResponseForUser(user)
 
