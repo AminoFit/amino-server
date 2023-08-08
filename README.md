@@ -39,3 +39,5 @@ Url to import into [TablePlus](https://tableplus.com/). This should be in your .
 ###
 After running docker postgres, 
 `npm run migrate:dev`
+
+testing
