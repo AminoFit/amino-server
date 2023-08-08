@@ -1,4 +1,10 @@
 import { Configuration, OpenAIApi } from "openai"
+import path from "path"
+import dotenv from "dotenv"
+const envPath = path.resolve(__dirname, "../../.env.local")
+
+dotenv.config({ path: envPath })
+
 const configuration = new Configuration({
   organization: process.env.OPENAI_ORG_ID,
   apiKey: process.env.OPENAI_API_KEY

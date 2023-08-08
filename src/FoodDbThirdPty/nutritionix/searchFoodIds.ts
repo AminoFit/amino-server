@@ -5,7 +5,7 @@ const envPath = path.resolve(__dirname, "../../../.env.local")
 
 dotenv.config({ path: envPath })
 
-interface NutritionixSearchInstantParams {
+export interface NutritionixSearchInstantParams {
   query: string
   branded?: boolean
   brand_ids?: string[]
@@ -14,13 +14,13 @@ interface NutritionixSearchInstantParams {
   taxonomy_node_id?: string
 }
 
-interface NutritionixSearchInstantResponse {
+export interface NutritionixSearchInstantResponse {
   branded: NutritionixBrandedItem[]
   self: NutritionixSelfItem[]
   common: NutritionixCommonItem[]
 }
 
-interface NutritionixBrandedItem {
+export interface NutritionixBrandedItem {
   food_name: string
   image: string | null
   serving_unit: string
@@ -44,7 +44,7 @@ interface NutritionixSelfItem {
   nix_item_id: string | null
 }
 
-interface NutritionixCommonItem {
+export interface NutritionixCommonItem {
   food_name: string
   image: string | null
   tag_id: string
@@ -53,7 +53,7 @@ interface NutritionixCommonItem {
 
 const NUTRITIONIX_API_URL = "https://trackapi.nutritionix.com/v2/search/instant"
 
-async function searchFoodIds(
+export async function searchFoodIds(
   params: NutritionixSearchInstantParams
 ): Promise<NutritionixSearchInstantResponse> {
   const url = new URL(NUTRITIONIX_API_URL)
@@ -84,16 +84,17 @@ async function searchFoodIds(
   return response.data as NutritionixSearchInstantResponse
 }
 
-searchFoodIds({
-  query: "Starbucks latte",
-  branded: true
-})
-  .then((response) => {
-    console.log(response)
+function runTests() {
+  searchFoodIds({
+    query: "Starbucks latte",
+    branded: true
   })
-  .catch((error) => {
-    console.error(`Error: ${error}`)
-  })
+    .then((response) => {
+      console.log(response)
+    })
+    .catch((error) => {
+      console.error(`Error: ${error}`)
+    })
 
   searchFoodIds({
     query: "Apple",
@@ -105,3 +106,4 @@ searchFoodIds({
     .catch((error) => {
       console.error(`Error: ${error}`)
     })
+}

@@ -7,7 +7,7 @@ dotenv.config({ path: envPath })
 
 const NUTRITIONIX_BRANDED_ITEM_URL = "https://trackapi.nutritionix.com/v2/search/item";
 
-interface BrandedFoodParams {
+export interface BrandedFoodParams {
   nix_item_id?: string;
   upc?: number;
   rw_sin?: number;
@@ -22,13 +22,13 @@ interface AltServing {
     qty: number
   } 
 
-interface BrandedFoodResponse {
+export interface BrandedFoodResponse {
   foods: {
     food_name: string;
     brand_name: string;
     serving_qty: number;
     serving_unit: string;
-    serving_weight_grams: number | null;
+    serving_weight_grams: number;
     nf_calories: number;
     nf_total_fat: number;
     nf_saturated_fat: number;
@@ -60,7 +60,7 @@ interface BrandedFoodResponse {
   }[];
 }
 
-async function getBrandedFoodInfo(
+export async function getBrandedFoodInfo(
   params: BrandedFoodParams
 ): Promise<BrandedFoodResponse> {
   const url = new URL(NUTRITIONIX_BRANDED_ITEM_URL);
@@ -87,4 +87,6 @@ async function getBrandedFoodInfo(
   return response.data as BrandedFoodResponse;
 }
 
-getBrandedFoodInfo({ nix_item_id: "61cc6887a8c268000a380d73" }).then((res) => console.log(JSON.stringify(res)))
+
+// debug
+// getBrandedFoodInfo({ nix_item_id: "61cc6887a8c268000a380d73" }).then((res) => console.log(JSON.stringify(res)))

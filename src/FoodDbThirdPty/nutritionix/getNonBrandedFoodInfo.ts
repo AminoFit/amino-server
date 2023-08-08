@@ -67,7 +67,7 @@ interface Photo {
   highres: string
 }
 
-interface NutrientResponse {
+export interface NxNonBrandedResponse {
   foods: NxFood[]
 }
 
@@ -76,10 +76,10 @@ interface FoodQuery {
   timezone?: string
 }
 
-async function getNonBrandedFoodInfo(
+export async function getNonBrandedFoodInfo(
   foodQuery: FoodQuery
-): Promise<NutrientResponse> {
-  const response = await axios.post<NutrientResponse>(
+): Promise<NxNonBrandedResponse> {
+  const response = await axios.post<NxNonBrandedResponse>(
     NUTRITIONIX_ENDPOINT,
     foodQuery,
     {
@@ -91,7 +91,7 @@ async function getNonBrandedFoodInfo(
     }
   )
 
-  return response.data as NutrientResponse
+  return response.data as NxNonBrandedResponse
 }
 
-getNonBrandedFoodInfo({ query: "apple" }).then((res) => console.log(JSON.stringify(res)))
+// getNonBrandedFoodInfo({ query: "apple" }).then((res) => console.log(JSON.stringify(res)))
