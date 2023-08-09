@@ -38,17 +38,17 @@ const dataFormatter = (number: number) => {
 }
 
 export const CalorieChart = () => (
-  // <BarChart
-  //   className="mt-6 h-20"
-  //   data={chartdata}
-  //   index="name"
-  //   categories={["Calories"]}
-  //   colors={["lime"]}
-  //   valueFormatter={dataFormatter}
-  //   yAxisWidth={48}
-  //   showXAxis={true}
-  //   showYAxis={false}
-  //   showLegend={false}
-  //   showGridLines={false}
-  // />
+  <BarChart
+    className="mt-6 h-20"
+    data={chartdata}
+    index="name"
+    categories={["Calories"]}
+    colors={["lime"]}
+    valueFormatter={dataFormatter}
+    yAxisWidth={48}
+    showXAxis={true}
+    showYAxis={false}
+    showLegend={false}
+    showGridLines={false}
+  />
 )
