@@ -130,6 +130,7 @@ model LoggedFoodItem {
   Serving       Serving? @relation(fields: [servingId], references: [id])
   messageId     Int?
   Message       Message? @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  status        String?
 }
 
 model Session {
