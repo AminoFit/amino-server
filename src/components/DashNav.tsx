@@ -52,7 +52,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
@@ -63,7 +63,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/chat"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
@@ -74,7 +74,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/settings"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
