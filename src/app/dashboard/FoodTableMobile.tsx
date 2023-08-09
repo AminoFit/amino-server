@@ -112,7 +112,7 @@ function FoodRow({
     (foodItem.FoodItem.FoodImage &&
       foodItem.FoodItem.FoodImage.length &&
       foodItem.FoodItem.FoodImage[0].pathToImage) ||
-    "https://cdn.discordapp.com/attachments/1107010584907612172/1137859696741589072/coudron_food_photography_of_Poke_Bowl_on_a_wooden_table_top-dow_d66a2bc6-009f-4177-91e9-203329f31dbd.png"
+    "https://cdn.discordapp.com/attachments/1107010584907612172/1138668812414242856/coudron_food_photography_of_an_empty_wooden_table_top-down_shot_6976cf67-5513-4a6b-9479-d13752b6b494.png"
 
   return (
     <>
