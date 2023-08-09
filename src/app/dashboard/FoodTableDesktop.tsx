@@ -82,43 +82,43 @@ export function FoodTableDesktop({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <table className="hidden lg:table min-w-full divide-y divide-gray-300">
-      <thead className="bg-gray-50">
+    <table className="hidden lg:table min-w-full">
+      <thead className="bg-zinc-500/50 text-zinc-200 font-semibold text-sm text-left">
         <tr>
           <th scope="col"></th>
           <th
             scope="col"
-            className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900 sm:pl-6"
+            className="py-3.5 pl-4 pr-3 text-center sm:pl-6"
           >
             Time
           </th>
           <th
             scope="col"
-            className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+            className="py-3.5 pl-4 pr-3 sm:pl-6"
           >
             Name
           </th>
           <th
             scope="col"
-            className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            className="px-3 py-3.5 "
           >
             Fat
           </th>
           <th
             scope="col"
-            className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            className="px-3 py-3.5 "
           >
             Carbohydrates
           </th>
           <th
             scope="col"
-            className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            className="px-3 py-3.5"
           >
             Protein
           </th>
           <th
             scope="col"
-            className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            className="px-3 py-3.5"
           >
             Calories
           </th>
@@ -127,17 +127,17 @@ export function FoodTableDesktop({
           </th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-200 bg-white">
+      <tbody className="divide-y divide-zinc-800 bg-zinc-800/50">
         {filteredFood.length === 0 && <FoodRowEmpty />}
         {foodGroups.map((foodGroup) => {
           if (!groups[foodGroup]) return null
           return (
             <React.Fragment key={foodGroup}>
-              <tr className="border-t border-gray-200">
+              <tr className="">
                 <th
                   colSpan={8}
                   scope="colgroup"
-                  className="bg-slate-100 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-slate-800"
+                  className="bg-slate-100 py-1 pl-4 pr-3 sm:pl-6 text-center text-xs font-bold text-zinc-300 bg-zinc-900"
                 >
                   {foodGroup.toUpperCase()}
                 </th>
@@ -149,11 +149,11 @@ export function FoodTableDesktop({
           )
         })}
         {filteredFood.length !== 0 && (
-          <tr className="border-t border-gray-200 text-left bg-gray-50 ">
-            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
-            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
-            <th className="px-4 py-3.5 text-sm font-semibold text-gray-900"></th>
-            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+          <tr className="border-t border-zinc-300 bg-zinc-500/50 text-zinc-200 font-semibold text-sm text-left">
+            <th className="px-4 py-3.5  "></th>
+            <th className="px-4 py-3.5 "></th>
+            <th className="px-4 py-3.5 "></th>
+            <th className="px-3 py-3.5 ">
               {filteredFood
                 .reduce(
                   (a, b) => a + getNormalizedFoodValue(b, "totalFatPerServing"),
@@ -162,7 +162,7 @@ export function FoodTableDesktop({
                 .toLocaleString()}
               g Fat
             </th>
-            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            <th className="px-3 py-3.5 ">
               {filteredFood
                 .reduce(
                   (a, b) => a + getNormalizedFoodValue(b, "carbPerServing"),
@@ -171,7 +171,7 @@ export function FoodTableDesktop({
                 .toLocaleString()}
               g Carbs
             </th>
-            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            <th className="px-3 py-3.5 ">
               {filteredFood
                 .reduce(
                   (a, b) => a + getNormalizedFoodValue(b, "proteinPerServing"),
@@ -180,7 +180,7 @@ export function FoodTableDesktop({
                 .toLocaleString()}
               g Protein
             </th>
-            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+            <th className="px-3 py-3.5">
               {filteredFood
                 .reduce(
                   (a, b) => a + getNormalizedFoodValue(b, "kcalPerServing"),
@@ -189,7 +189,7 @@ export function FoodTableDesktop({
                 .toLocaleString()}
               g Calories
             </th>
-            <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"></th>
+            <th className="px-3 py-3.5"></th>
           </tr>
         )}
       </tbody>
@@ -212,8 +212,8 @@ function FoodRow({
 
   return (
     <>
-      <tr key={foodItem.id}>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+      <tr key={foodItem.id} className="text-zinc-200">
+        <td className="whitespace-nowrap px-3 py-4 text-sm text-zinc-500 text-right">
           {foodItem.FoodItem.FoodImage &&
             foodItem.FoodItem.FoodImage.length > 0 && (
               <div className="inline-block">
@@ -227,41 +227,41 @@ function FoodRow({
               </div>
             )}
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center">
-          <div className="text-gray-700">
+        <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
+          <div className="text-zinc-200">
             {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
           </div>
-          <div className="text-xs">
+          <div className="text-zinc-500 text-xs">
             {moment(foodItem.consumedOn).tz(user.tzIdentifier).fromNow()}
           </div>
         </td>
         <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
-          <div className="text-xs font-light text-gray-500">
+          <div className="text-xs font-light text-zinc-500">
             {foodItem.servingAmount} {foodItem.loggedUnit}
           </div>
-          <div className="text-md font-medium text-gray-900 capitalize">
+          <div className="text-md font-medium text-zinc-200 capitalize">
             {foodItem.FoodItem.name}
           </div>
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <td className="whitespace-nowrap px-3 py-4 text-sm">
           {Math.round(
             getNormalizedFoodValue(foodItem, "totalFatPerServing")
           ).toLocaleString()}
           g Fat
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <td className="whitespace-nowrap px-3 py-4 text-sm">
           {Math.round(
             getNormalizedFoodValue(foodItem, "carbPerServing")
           ).toLocaleString()}
           g Carb
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <td className="whitespace-nowrap px-3 py-4 text-sm">
           {Math.round(
             getNormalizedFoodValue(foodItem, "proteinPerServing")
           ).toLocaleString()}
           g Protein
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <td className="whitespace-nowrap px-3 py-4 text-sm">
           {Math.round(
             getNormalizedFoodValue(foodItem, "kcalPerServing")
           ).toLocaleString()}{" "}
@@ -269,13 +269,13 @@ function FoodRow({
         </td>
         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
           <span
-            className="text-indigo-600/50 cursor-pointer"
+            className="text-amino-logo/50 cursor-pointer"
             // onClick={() => setDeleteModalOpen(true)}
           >
             Edit<span className="sr-only">, {foodItem.FoodItem.name}</span>
           </span>
           <span
-            className="ml-3 text-indigo-600 hover:text-indigo-900 cursor-pointer"
+            className="ml-3 text-amino-logo hover:text-amino-logo/70 cursor-pointer"
             onClick={() => setDeleteModalOpen(true)}
           >
             Delete<span className="sr-only">, {foodItem.FoodItem.name}</span>
