@@ -17,16 +17,22 @@
 import { Fragment } from "react"
 import { Disclosure, Menu, Transition } from "@headlessui/react"
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid"
-import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import {
+  Bars3Icon,
+  BellIcon,
+  UserPlusIcon,
+  XMarkIcon
+} from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
+import QuickLogFood from "@/app/dashboard/QuickLogFood"
 
 export default function DashNav() {
   const pathname = usePathname()
 
   return (
-    <Disclosure as="nav" className="bg-white">
+    <Disclosure as="nav" className="bg-[#19191A]">
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
@@ -46,7 +52,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
@@ -57,7 +63,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/chat"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
@@ -68,7 +74,7 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/settings"
-                        ? "border-indigo-500 text-gray-900"
+                        ? "border-amino-logo text-gray-200"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
@@ -78,29 +84,12 @@ export default function DashNav() {
               </div>
               <div className="flex flex-1 items-center justify-center px-2 lg:ml-6 lg:justify-end">
                 <div className="w-full max-w-lg lg:max-w-xs">
-                  <label htmlFor="search" className="sr-only">
-                    Search
-                  </label>
-                  <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <MagnifyingGlassIcon
-                        className="h-5 w-5 text-gray-400"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <input
-                      id="search"
-                      name="search"
-                      className="block w-full rounded-md border-0 bg-white py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                      placeholder="Quick log food"
-                      type="search"
-                    />
-                  </div>
+                  <QuickLogFood />
                 </div>
               </div>
               <div className="flex items-center lg:hidden">
                 {/* Mobile menu button */}
-                <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-black-900 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amino-500/20">
                   <span className="absolute -inset-0.5" />
                   <span className="sr-only">Open main menu</span>
                   {open ? (
@@ -157,15 +146,14 @@ export default function DashNav() {
 
           <Disclosure.Panel className="lg:hidden">
             <div className="space-y-1 pb-3 pt-2">
-              {/* Current: "bg-indigo-50 border-indigo-500 text-indigo-700", Default: "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800" */}
               <Disclosure.Button
                 as="a"
                 href="/dashboard"
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Dashboard
@@ -176,8 +164,8 @@ export default function DashNav() {
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard/chat"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Chat
@@ -188,8 +176,8 @@ export default function DashNav() {
                 className={classNames(
                   "block border-l-4 py-2 pl-3 pr-4 text-base font-medium",
                   pathname === "/dashboard/settings"
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                    ? "border-amino-500 bg-amino-900 text-gray-300"
+                    : "border-transparent text-gray-400 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
                 )}
               >
                 Settings

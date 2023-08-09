@@ -82,7 +82,7 @@ export function FoodTableMobile({
         if (!groups[foodGroup]) return null
         return (
           <React.Fragment key={foodGroup}>
-            <h2 className="text-sm font-bold text-center leading-7 text-gray-900">
+            <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
               {foodGroup.toUpperCase()}
             </h2>
             {groups[foodGroup].map((foodItem) => (
@@ -108,6 +108,12 @@ function FoodRow({
   const router = useRouter()
   const path = usePathname()
 
+  const backgroundImage =
+    (foodItem.FoodItem.FoodImage &&
+      foodItem.FoodItem.FoodImage.length &&
+      foodItem.FoodItem.FoodImage[0].pathToImage) ||
+    "https://cdn.discordapp.com/attachments/1107010584907612172/1137859696741589072/coudron_food_photography_of_Poke_Bowl_on_a_wooden_table_top-dow_d66a2bc6-009f-4177-91e9-203329f31dbd.png"
+
   return (
     <>
       {/* Mobile View */}
@@ -123,59 +129,39 @@ function FoodRow({
         }}
       />
 
-      <div className="p-3 border border-slate-800/30 mb-3 rounded-lg">
-        <div className="flex mb-3">
-          <div className="bg-green-500 rounded-full">
-            <div
-              style={{
-                // mixBlendMode: "lighten"
-              }}
-              className="rounded-full bg-red-500"
-            >
-              <Image
-                src={
-                  (foodItem.FoodItem.FoodImage &&
-                    foodItem.FoodItem.FoodImage.length &&
-                    foodItem.FoodItem.FoodImage[0].pathToImage) ||
-                  ""
-                }
-                style={{
-                  // filter: "grayscale(100%)"
-                }}
-                width={60}
-                height={60}
-                alt="Food image"
-                className="rounded-full"
-              />
+      <div className="mb-2 rounded-lg bg-zinc-900 relative z-10 overflow-hidden">
+        <div
+          className="absolute top-0 right-0 bottom-0 left-0 z-20"
+          style={{
+            backgroundImage: `url('${backgroundImage}')`,
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            opacity: 0.2
+          }}
+        ></div>
+        <div className="p-4 flex-column text-white z-30 relative">
+          <div className="">
+            <div className="inline capitalize font-bold text-2xl">
+              {foodItem.FoodItem.name}
             </div>
-          </div>
-          <div className="ml-4">
-            <div className="text-xs text-gray-800">
-              {foodItem.servingAmount} {foodItem.loggedUnit}
-            </div>
-            <h3 className="capitalize font-bold">{foodItem.FoodItem.name}</h3>
-            <div className="text-sm text-gray-500">
+            <div className="inline text-xs text-zinc-400 ms-2">
               {Math.round(
                 getNormalizedFoodValue(foodItem, "kcalPerServing")
               ).toLocaleString()}
-              {"kcals"}
+              {" kcals"}
             </div>
           </div>
-          {/* <div className="text-sm text-gray-500 grow text-right">
-            <div className="text-sm text-slate-600">Calories</div>
-            <div>
-              <span className="text-xl font-bold">
-                {Math.round(
-                  getNormalizedFoodValue(foodItem, "kcalPerServing")
-                ).toLocaleString()}{" "}
-              </span>
-            </div>
-          </div> */}
+
+          <div className="text-xs text-zinc-400">
+            {foodItem.servingAmount} {foodItem.loggedUnit}
+          </div>
         </div>
-        <div className="flex justify-between text-center">
-          <div>
-            <div className="text-sm text-red-500">Carbs</div>
-            <div>
+        <div className="p-4 flex text-white z-30 relative justify-between text-center">
+          <div className="border-b border-l rounded-bl-md border-amino-500/20">
+            <div className="px-2 text-xs text-amino-500 rounded-full">
+              Carbs
+            </div>
+            <div className="px-2 pb-1">
               <span className="text-xl font-bold">
                 {Math.round(
                   getNormalizedFoodValue(foodItem, "carbPerServing")
@@ -184,9 +170,9 @@ function FoodRow({
               g
             </div>
           </div>
-          <div>
-            <div className="text-sm text-yellow-600">Fats</div>
-            <div>
+          <div className="border-b border-l rounded-bl-md border-amino-500/20">
+            <div className="px-2 text-xs text-amino-500 rounded-full">Fats</div>
+            <div className="px-2 pb-1">
               <span className="text-xl font-bold">
                 {Math.round(
                   getNormalizedFoodValue(foodItem, "totalFatPerServing")
@@ -195,9 +181,11 @@ function FoodRow({
               g
             </div>
           </div>
-          <div>
-            <div className="text-sm text-blue-500">Protein</div>
-            <div>
+          <div className="border-b border-l rounded-bl-md border-amino-500/20">
+            <div className="px-2 text-xs text-amino-500 rounded-full">
+              Protein
+            </div>
+            <div className="px-2 pb-1">
               <span className="text-xl font-bold">
                 {Math.round(
                   getNormalizedFoodValue(foodItem, "proteinPerServing")
@@ -208,19 +196,19 @@ function FoodRow({
           </div>
         </div>
       </div>
+      {/* <div className="text-gray-600 text-sm mb-3 text-right ">
+        {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
+      </div> */}
     </>
   )
 }
 
 function FoodRowEmpty() {
   return (
-    <tr>
-      <td
-        className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center"
-        colSpan={8}
-      >
+    <div>
+      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
         <div className="text-gray-700">No food logged for this day</div>
-      </td>
-    </tr>
+      </div>
+    </div>
   )
 }

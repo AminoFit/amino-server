@@ -5,6 +5,8 @@ import { FoodLogHeader } from "./FoodLogHeader"
 import { FoodTableDesktop } from "./FoodTableDesktop"
 import { TableHeader } from "./TableHeader"
 import { FoodTableMobile } from "./FoodTableMobile"
+import { GraphCalorieChart } from "./GraphCalorieChart"
+import { CalorieChart } from "./CalorieChart"
 
 async function getUser() {
   const session = await getServerSession(authOptions)
@@ -33,7 +35,7 @@ async function getFoods() {
           include: { FoodImage: true }
         }
       }
-    }) 
+    })
     return userFoods
   }
   return []
@@ -49,11 +51,16 @@ export default async function FoodLog() {
 
   return (
     <>
-      <div className="py-8">
+      <div className="py-3">
         <div className="lg:flex lg:items-center lg:justify-between mb-10">
           <FoodLogHeader foods={foods} user={user} />
         </div>
         <div>
+          <div className="mb-4">
+            <GraphCalorieChart calories={[1]} label="testing" />
+            {/* <CalorieChart foods={foods} /> */}
+          </div>
+
           <TableHeader user={user} />
           <FoodTableMobile foods={foods} user={user} />
           <div className="mt-8 flow-root">

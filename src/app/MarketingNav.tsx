@@ -1,5 +1,6 @@
 "use client";
 
+import { Dialog } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import classNames from "classnames";
 import { useSession } from "next-auth/react";
@@ -14,7 +15,7 @@ const navigation = [
 
 export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [bannerOpen, setBannerOpen] = useState(true);
+  const [bannerOpen, setBannerOpen] = useState(false);
 
   const { data, status, update } = useSession();
 
@@ -91,7 +92,7 @@ export default function MarketingNav() {
           <div className="flex lg:flex-1">
             <a href="/dashboard" className="-m-1.5 p-1.5">
               <span className="sr-only">Your Company</span>
-              <img className="h-8 w-auto" src="logos/logo.svg" alt="" />
+              <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
             </a>
           </div>
           <div className="flex lg:hidden">
@@ -119,7 +120,7 @@ export default function MarketingNav() {
             {renderLogin()}
           </div>
         </nav>
-        {/* <Dialog
+        <Dialog
           as="div"
           className="lg:hidden"
           open={mobileMenuOpen}
@@ -130,11 +131,7 @@ export default function MarketingNav() {
             <div className="flex items-center justify-between">
               <a href="#" className="-m-1.5 p-1.5">
                 <span className="sr-only">Your Company</span>
-                <img
-                  className="h-8 w-auto"
-                  src="https://tailwindui.com/img/logos/mark.svg?color=blue&shade=600"
-                  alt=""
-                />
+                <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
               </a>
               <button
                 type="button"
@@ -162,7 +159,7 @@ export default function MarketingNav() {
               </div>
             </div>
           </Dialog.Panel>
-        </Dialog> */}
+        </Dialog>
       </header>
     </>
   );

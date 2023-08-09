@@ -58,9 +58,9 @@ export function TableHeader({ user }: { user: User }) {
         </button>
       </div>
       <div onClick={handleClickToday}>
-        <h2 className="text-md font-bold leading-7 text-gray-900">
+        <div className="text-md font-bold leading-7 text-zinc-100">
           {moment(selectedDate).tz(user.tzIdentifier).format("dddd, MMMM Do")}
-        </h2>
+        </div>
         <div className="text-sm font-light text-gray-500">
           Daily Food Overview
         </div>
