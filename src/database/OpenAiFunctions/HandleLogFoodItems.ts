@@ -100,8 +100,27 @@ export async function HandleLogFoodItems(
 
   const foodItems: FoodItemToLog[] = parameters.food_items
 
-  UpdateMessage({id : lastUserMessage.id, itemsToProcess : foodItems.length})
+  UpdateMessage({ id: lastUserMessage.id, itemsToProcess: foodItems.length })
   lastUserMessage.itemsToProcess = foodItems.length
+
+  // Add each food item to queue
+  for (let food of foodItems) {
+    const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/`
+    console.log("Target URL: ", targetUrl)
+
+    const fetchUrl = `https://api.serverlessq.com?id=${process.env.SERVERLESSQ_QUEUE_ID}&target=${targetUrl}`
+
+    const result = await fetch(fetchUrl, {
+      headers: {
+        Accept: "application/json",
+        "x-api-key": process.env.SERVERLESSQ_API_TOKEN!
+      },
+      method: "POST",
+      body: JSON.stringify(food)
+    })
+
+    console.log("Added to queue result: ", result)
+  }
 
   const foodAddResultsPromises = []
   for (let food of foodItems) {
@@ -259,7 +278,7 @@ async function HandleLogFoodItem(
     return "Sorry, I could not log your food items. Please try again later."
   }
 
-  await UpdateMessage({ id: lastUserMessage.id, incrementItemsProcessedBy: 1 });
+  await UpdateMessage({ id: lastUserMessage.id, incrementItemsProcessedBy: 1 })
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }
