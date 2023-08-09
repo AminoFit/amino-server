@@ -7,6 +7,9 @@ import { TableHeader } from "./TableHeader"
 import { FoodTableMobile } from "./FoodTableMobile"
 import { GraphCalorieChart } from "./GraphCalorieChart"
 import { CalorieChart } from "./CalorieChart"
+import { signOut } from "next-auth/react"
+import { getNormalizedFoodValue } from "./utils/FoodHelper"
+import moment from "moment-timezone"
 
 async function getUser() {
   const session = await getServerSession(authOptions)
@@ -46,7 +49,36 @@ export default async function FoodLog() {
   const user = await getUser()
 
   if (!user) {
+    signOut({ redirect: true, callbackUrl: "/login" })
     return <>No user found</>
+  }
+
+  const dates: moment.Moment[] = []
+
+  const selectedDate = moment().tz(user.tzIdentifier)
+
+  const labels: string[] = []
+
+  while (dates.length < 7) {
+    dates.unshift(moment(selectedDate))
+    if (labels.length === 0) {
+      labels.unshift("Today")
+    } else {
+      labels.unshift(selectedDate.format("MMM D"))
+    }
+    selectedDate.subtract(1, "day")
+  }
+
+  const calories: number[] = [0, 0, 0, 0, 0, 0, 0]
+
+  for (const food of foods) {
+    const cals = Math.round(getNormalizedFoodValue(food, "kcalPerServing"))
+
+    for (const day of dates) {
+      if (moment(food.consumedOn).tz(user.tzIdentifier).isSame(day, "day")) {
+        calories[dates.indexOf(day)] += cals
+      }
+    }
   }
 
   return (
@@ -57,7 +89,7 @@ export default async function FoodLog() {
         </div>
         <div>
           <div className="mb-4">
-            <GraphCalorieChart calories={[1]} label="testing" />
+            <GraphCalorieChart calories={calories} labels={labels} />
             {/* <CalorieChart foods={foods} /> */}
           </div>
 

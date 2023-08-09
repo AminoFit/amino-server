@@ -31,11 +31,12 @@ const greenBar = [
 
 export function GraphCalorieChart({
   calories,
-  label
+  labels
 }: {
   calories: number[]
-  label: string
+  labels: string[]
 }) {
+
   const options: ApexOptions = {
     chart: {
       // height: 250,
@@ -72,10 +73,10 @@ export function GraphCalorieChart({
           greyBar,
           greyBar,
           greyBar,
-          greenBar,
           greyBar,
           greyBar,
-          greyBar
+          greyBar,
+          greenBar
         ]
       }
     },
@@ -109,7 +110,7 @@ export function GraphCalorieChart({
     },
 
     xaxis: {
-      categories: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      categories: labels,
       position: "top",
       axisBorder: {
         show: false
@@ -169,7 +170,7 @@ export function GraphCalorieChart({
         series={[
           {
             name: "Calories",
-            data: [2458, 2588, 3128, 2212, 1908, 4100, 2874]
+            data: calories
           }
         ]}
         width="100%"
