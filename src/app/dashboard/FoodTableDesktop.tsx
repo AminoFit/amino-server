@@ -214,18 +214,6 @@ function FoodRow({
     <>
       <tr key={foodItem.id} className="text-zinc-200">
         <td className="whitespace-nowrap px-3 py-4 text-sm text-zinc-500 text-right">
-          {foodItem.FoodItem.FoodImage &&
-            foodItem.FoodItem.FoodImage.length > 0 && (
-              <div className="inline-block">
-                <Image
-                  src={foodItem.FoodItem.FoodImage[0].pathToImage}
-                  width={65}
-                  height={65}
-                  alt="Food image"
-                  className="border-solid border border-slate-800/10 rounded-lg"
-                />
-              </div>
-            )}
         </td>
         <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
           <div className="text-zinc-200">
