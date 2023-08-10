@@ -115,21 +115,21 @@ enum Role {
 }
 
 model LoggedFoodItem {
-  id              Int      @id @default(autoincrement())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now())
-  consumedOn      DateTime @default(now())
-  foodItemId      Int      @default(0)
-  grams           Float    @default(0)
+  id              Int       @id @default(autoincrement())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now())
+  consumedOn      DateTime  @default(now())
+  foodItemId      Int?      @default(0)
+  grams           Float     @default(0)
   servingId       Int?
   servingAmount   Float?
   loggedUnit      String?
-  userId          String   @default("0")
-  User            User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  FoodItem        FoodItem @relation(fields: [foodItemId], references: [id])
-  Serving         Serving? @relation(fields: [servingId], references: [id])
+  userId          String    @default("0")
+  User            User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  FoodItem        FoodItem? @relation(fields: [foodItemId], references: [id])
+  Serving         Serving?  @relation(fields: [servingId], references: [id])
   messageId       Int?
-  Message         Message? @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  Message         Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   status          String?
   placeholderName String?
 }
