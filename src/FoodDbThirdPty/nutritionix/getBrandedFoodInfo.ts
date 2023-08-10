@@ -1,4 +1,5 @@
 import axios from "axios"
+import { recordQuery } from "@/utils/apiUsageLogging"
 import path from "path"
 import dotenv from "dotenv"
 const envPath = path.resolve(__dirname, "../../../.env.local")
@@ -79,6 +80,9 @@ export async function getBrandedFoodInfo(
       "x-app-key": process.env.NUTRITIONIX_API_KEY
     }
   });
+
+  // no need to await this
+  recordQuery("nutritionix", url.toString());
 
   if (response.status !== 200) {
     throw new Error(`API request failed with status ${response.status}`);

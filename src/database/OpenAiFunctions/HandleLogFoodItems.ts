@@ -4,26 +4,57 @@ import { prisma } from "../prisma"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
 import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { FoodQuery, findNxFoodInfo, NxFoodItemResponse } from '../../FoodDbThirdPty/nutritionix/findNxFoodInfo';
+import {
+  FoodQuery,
+  findNxFoodInfo,
+  NxFoodItemResponse
+} from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
+import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
+import { checkRateLimit } from "../../utils/apiUsageLogging"
 
-type FoodItemPropertiesToRemove = 'id' | 'knownAs' | 'description' | 'transFatPerServing' | 'addedSugarPerServing' | 'lastUpdated' | 'verified' | 'userId';
+const ONE_HOUR_IN_MS = 60 * 60 * 1000
+const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
+
+type FoodItemPropertiesToRemove =
+  | "id"
+  | "knownAs"
+  | "description"
+  | "transFatPerServing"
+  | "addedSugarPerServing"
+  | "lastUpdated"
+  | "verified"
+  | "userId"
 
 function stringifyFoodItem(foodItem: NxFoodItemResponse): string {
   // Create a new object excluding the properties you want to remove
-  const result: Partial<NxFoodItemResponse> = { ...foodItem };
-  (['id', 'knownAs', 'description', 'transFatPerServing', 'addedSugarPerServing', 'lastUpdated', 'verified', 'userId'] as Array<FoodItemPropertiesToRemove>).forEach(prop => {
-    delete result[prop];
-  });
+  const result: Partial<NxFoodItemResponse> = { ...foodItem }
+  ;(
+    [
+      "id",
+      "knownAs",
+      "description",
+      "transFatPerServing",
+      "addedSugarPerServing",
+      "lastUpdated",
+      "verified",
+      "userId"
+    ] as Array<FoodItemPropertiesToRemove>
+  ).forEach((prop) => {
+    delete result[prop]
+  })
 
   // Clean up any properties with value 0 or null
   for (const key in result) {
-    if (result[key as keyof NxFoodItemResponse] === 0 || result[key as keyof NxFoodItemResponse] === null) {
-      delete result[key as keyof NxFoodItemResponse];
+    if (
+      result[key as keyof NxFoodItemResponse] === 0 ||
+      result[key as keyof NxFoodItemResponse] === null
+    ) {
+      delete result[key as keyof NxFoodItemResponse]
     }
   }
 
   // Convert the result object to a JSON string
-  return JSON.stringify(result);
+  return JSON.stringify(result)
 }
 
 function mapModelToEnum(model: string): FoodInfoSource {
@@ -296,22 +327,58 @@ async function addFoodItemToDatabase(
     // Construct the query for findNxFoodInfo
     const foodQuery: FoodQuery = {
       food_name: foodToLog.full_name,
-      user_food_descriptive_name: foodToLog.user_food_descriptive_name || foodToLog.full_name, 
-      branded: foodToLog.branded || false,
+      user_food_descriptive_name:
+        foodToLog.user_food_descriptive_name || foodToLog.full_name,
+      branded: foodToLog.branded || false
     }
 
     // Query the findNxFoodInfo function
-    const nxFoodInfoResponse = await findNxFoodInfo(foodQuery)
+    let nxFoodInfoResponse = null
+    if (await checkRateLimit("nutritionix", 45, ONE_DAY_IN_MS)) {
+      try {
+        nxFoodInfoResponse = await findNxFoodInfo(foodQuery)
+      } catch (err) {
+        console.log("Error finding NX food info", err) // Silently fail
+      }
+    }
+
+    // Query the findUsdaFoodInfo function
+    let usdaFoodInfoResponse = null
+    if (await checkRateLimit("udsa", 1000, ONE_HOUR_IN_MS)) {
+      try {
+        usdaFoodInfoResponse = await findUsdaFoodInfo({
+          food_name:
+            foodToLog.user_food_descriptive_name || foodToLog.full_name,
+          branded: foodToLog.branded || false
+        })
+      } catch (err) {
+        console.log("Error finding USDA food info", err) // Silently fail
+      }
+    }
 
     // create string name for food request
     let foodItemRequestString: string = constructFoodRequestString(foodToLog)
 
-    if ((nxFoodInfoResponse != null) && (nxFoodInfoResponse.length > 0)) {
+    if (nxFoodInfoResponse != null && nxFoodInfoResponse.length > 0) {
       // If we have a match, use the first one
       const food = nxFoodInfoResponse[0]
 
       // Construct the request string for the OpenAI foodItemCompletion function
-      foodItemRequestString = foodItemRequestString +"\n Some food info that may be relevant\n"+ stringifyFoodItem(food)
+      foodItemRequestString =
+        foodItemRequestString +
+        "\n Some food info that may be relevant\n" +
+        stringifyFoodItem(food)
+    }
+
+    if (usdaFoodInfoResponse != null) {
+      // If we have a match, use the first one
+      const food = usdaFoodInfoResponse
+
+      // Construct the request string for the OpenAI foodItemCompletion function
+      foodItemRequestString =
+        foodItemRequestString +
+        "\n Some food info that may be relevant\n" +
+        JSON.stringify(food)
     }
 
     const { foodItemInfo, model } = await foodItemCompletion(
