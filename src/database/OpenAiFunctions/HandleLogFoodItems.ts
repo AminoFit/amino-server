@@ -98,13 +98,33 @@ export async function HandleLogFoodItems(
 ) {
   console.log("parameters", parameters)
 
-  const foodItems: FoodItemToLog[] = parameters.food_items
+  const foodItemsToLog: FoodItemToLog[] = parameters.food_items
 
-  UpdateMessage({ id: lastUserMessage.id, itemsToProcess: foodItems.length })
-  lastUserMessage.itemsToProcess = foodItems.length
+  UpdateMessage({
+    id: lastUserMessage.id,
+    itemsToProcess: foodItemsToLog.length
+  })
+  lastUserMessage.itemsToProcess = foodItemsToLog.length
 
-  // Add each food item to queue
-  for (let food of foodItems) {
+  // Create all the pending food items
+  const data = []
+  for (let food of foodItemsToLog) {
+    data.push({
+      userId: user.id,
+      consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+      messageId: lastUserMessage.id,
+      status: "Needs Processing",
+      placeholderName: food.full_name
+      // Seb, do we need more info from the function here?
+    })
+  }
+  await prisma.loggedFoodItem.createMany({
+    data
+  })
+
+  const results = []
+  // Add each pending food item to queue
+  for (let food of foodItemsToLog) {
     const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/`
     console.log("Target URL: ", targetUrl)
 
@@ -120,21 +140,25 @@ export async function HandleLogFoodItems(
     })
 
     console.log("Added to queue result: ", result)
+
+    results.push("- " + constructFoodRequestString(food))
   }
 
-  const foodAddResultsPromises = []
-  for (let food of foodItems) {
-    foodAddResultsPromises.push(HandleLogFoodItem(food, lastUserMessage, user))
-  }
-  const results = (await Promise.all(foodAddResultsPromises)) || []
+  // Move process food items to POST route on serverlessq
+
+  // const foodAddResultsPromises = []
+  // for (let food of foodItemsToLog) {
+  //   foodAddResultsPromises.push(HandleLogFoodItem(food, lastUserMessage, user))
+  // }
+  // const results = (await Promise.all(foodAddResultsPromises)) || []
 
   if (results.length === 0) {
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift("I've logged your food:")
+  results.unshift("I've logged your food:\n")
 
-  return results.join("\n\n")
+  return results.join("\n")
 }
 
 async function HandleLogFoodItem(

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   const jsonData = await request.json()
 
-  console.log("jsonData", jsonData)
+  console.log("Need to process the following food jsonData", jsonData)
   
   return NextResponse.json({ text: "get ok" })
 }
