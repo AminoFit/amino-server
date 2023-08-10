@@ -1,4 +1,3 @@
-import { openai } from "../../utils/openaiFunctionSchemas"
 import { getBrandedFoodInfo, BrandedFoodResponse } from "./getBrandedFoodInfo"
 import {
   searchFoodIds,
@@ -8,11 +7,9 @@ import {
 } from "./searchFoodIds"
 import { getNonBrandedFoodInfo, NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
 import { FoodItem } from "@prisma/client"
+import { getEmbedding, EmbeddingObject, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 
 const COSINE_THRESHOLD = 0.8
-
-type EmbeddingObject = { embedding: number[]; [key: string]: any }
-
 export interface FoodQuery {
   food_name: string
   user_food_descriptive_name: string
@@ -139,14 +136,14 @@ export async function findNxFoodInfo(
     cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
     // Log the desired attributes for each of the top 5 items
-    for (let i = 0; i < cosineSimilaritiesAndEmbeddings.length; i++) {
+    /*for (let i = 0; i < cosineSimilaritiesAndEmbeddings.length; i++) {
       const itemInfo = cosineSimilaritiesAndEmbeddings[i]
       console.log(`Food Name: ${itemInfo.item.food_name}`)
       console.log(`ID: ${itemInfo.item.nix_item_id}`)
       console.log(`Cosine Similarity: ${itemInfo.similarity}`)
       console.log(`Brand Name: ${itemInfo.item.brand_name}`)
       console.log("-------------------------------")
-    }
+    }*/
 
     // Define the number of top items to retrieve
     const topItemsCount = 3
@@ -168,9 +165,9 @@ export async function findNxFoodInfo(
     )
 
     // Log the full info for each of the top items
-    mostSimilarBrandedItems.forEach((info, i) => {
+    /*mostSimilarBrandedItems.forEach((info, i) => {
       console.log(`Item ${i + 1} Full Info:`, info)
-    })
+    })*/
     // Transform the most similar branded items into the NxFoodItemResponse format
     const transformedItems: NxFoodItemResponse[] = mostSimilarBrandedItems.flatMap(
         mapFoodResponseToFoodItem
@@ -249,35 +246,7 @@ export async function findNxFoodInfo(
   return null
 }
 
-async function getEmbedding(input: string[]): Promise<any> {
-  const embedding = await openai.createEmbedding({
-    model: "text-embedding-ada-002",
-    input: input
-  })
-  return embedding.data
-}
 
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  // can use dot product due to embeddings being normalized
-  // dot product cosine similarity is not possible on unnormalized embeddings
-  let dotProduct = 0.0
-  let normA = 0.0
-  let normB = 0.0
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i]
-    normA += Math.pow(vecA[i], 2)
-    normB += Math.pow(vecB[i], 2)
-  }
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
-}
-
-function euclideanDistance(vecA: number[], vecB: number[]): number {
-  let sum = 0
-  for (let i = 0; i < vecA.length; i++) {
-    sum += Math.pow(vecA[i] - vecB[i], 2)
-  }
-  return Math.sqrt(sum)
-}
 
 async function runTest() {
   let foodEmbedding = [
@@ -309,15 +278,6 @@ async function runTest() {
     )
     console.log(
       `Similarity between "${foodEmbedding[0].query}" and "${foodEmbedding[i].query}": ${similarity}`
-    )
-  }
-  for (let i = 1; i < foodEmbedding.length; i++) {
-    const distance = euclideanDistance(
-      baseEmbedding,
-      foodEmbedding[i].embedding
-    )
-    console.log(
-      `Distance between "${foodEmbedding[0].query}" and "${foodEmbedding[i].query}": ${distance}`
     )
   }
 }

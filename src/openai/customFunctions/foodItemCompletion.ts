@@ -2,7 +2,6 @@ import { error } from "console"
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
 import { FoodItems } from "./foodItemInterface"
-import { LogOpenAiUsage } from "../utils/openAiHelper"
 import { User } from "@prisma/client"
 
 function checkType(actual: any, expected: any) {
@@ -10,7 +9,7 @@ function checkType(actual: any, expected: any) {
   else if (expected === "object")
     return actual !== null && typeof actual === "object"
   else if (expected === "integer")
-    return Number.isInteger(actual) || Number.isInteger(parseFloat(actual))
+    return Number.isInteger(actual) || (typeof actual === "number" && actual % 1 === 0)
   else return typeof actual === expected
 }
 
@@ -281,7 +280,7 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-3-turbo-0613"
+  let model = "gpt-3.5-turbo-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
@@ -292,10 +291,10 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
       model,
       temperature,
       max_tokens
-    })
+    }, user)
 
     // Log the OpenAI usage with the LogOpenAiUsage function
-    await LogOpenAiUsage(user, result.usage, model) // You need to pass the user and usage information here
+    console.log("result", JSON.stringify(result))
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
 
@@ -329,9 +328,8 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
         model,
         temperature,
         max_tokens
-      })
-      // Log the OpenAI usage with the LogOpenAiUsage function
-      await LogOpenAiUsage(user, result.usage, model) // You need to pass the user and usage information here
+      },
+      user)
       console.log("Second retry", result.function_call.arguments)
     }
     // check again for schema and data
@@ -353,3 +351,31 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
     throw error
   }
 }
+
+
+async function testRun() {
+  const user: User = {
+    id: "some_random_id",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York",
+  };
+  foodItemCompletion("apple", user)
+}
+
+// testRun()

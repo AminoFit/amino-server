@@ -1,4 +1,5 @@
 import axios from "axios"
+import { recordQuery } from "@/utils/apiUsageLogging"
 import path from "path"
 import dotenv from "dotenv"
 
@@ -7,12 +8,15 @@ dotenv.config({ path: envPath })
 
 const USDA_API_KEY = process.env.USDA_API_KEY
 
-type FoodItem = {
+export type UsdaFoodItem = {
   itemName: string
   branded: boolean
   brandName: string | null
   foodInfo: { [key: string]: number | null }
-  default_serving: { default_serving_amount: number, default_serving_unit: string }
+  default_serving: {
+    default_serving_amount: number
+    default_serving_unit: string
+  }
   portions: any[] // define the structure as per your requirements
   upc?: string
 }
@@ -20,7 +24,7 @@ type FoodItem = {
 function extractFoodInfo(
   foodItem: any,
   foodAttributesToQuery: string[]
-): FoodItem {
+): UsdaFoodItem {
   const foodInfo: { [key: string]: number | null } = {}
   const portions: any[] = []
 
@@ -41,7 +45,13 @@ function extractFoodInfo(
 
   if (foodItem.foodPortions) {
     foodItem.foodPortions.forEach((foodPortion: any) => {
-      portions.push(foodPortion)
+      const { amount, gramWeight, measureUnit } = foodPortion
+      portions.push({
+        name: measureUnit.name,
+        abbreviation: measureUnit.abbreviation,
+        amount,
+        gramWeight
+      })
     })
   }
   // Extract portion information
@@ -61,7 +71,10 @@ function extractFoodInfo(
   const branded = foodItem.dataType === "Branded"
   const brandName = branded ? foodItem.brandName : null
   const upc = branded ? foodItem.gtinUpc : undefined
-  const default_serving = { default_serving_amount: 100, default_serving_unit: "g" }
+  const default_serving = {
+    default_serving_amount: 100,
+    default_serving_unit: "g"
+  }
 
   return {
     itemName,
@@ -69,7 +82,7 @@ function extractFoodInfo(
     brandName,
     default_serving,
     foodInfo: filteredfoodInfo,
-    portions,
+    portions, // Updated portions array
     ...(upc ? { upc } : {})
   }
 }
@@ -206,29 +219,8 @@ export interface UsdaFoodsParams {
 
 export async function getUsdaFoodsInfo(
   params: UsdaFoodsParams
-): Promise<FoundationFoodItem[]> {
+): Promise<UsdaFoodItem[] | null> {
   const API_URL = `https://api.nal.usda.gov/fdc/v1/foods`
-  const requestParams = {
-    fdcIds: params.fdcIds.join(","),
-    format: params.format || "full", // default to 'full' if not specified
-    nutrients: params.nutrients ? params.nutrients.join(",") : undefined,
-    api_key: process.env.USDA_API_KEY
-  }
-
-  try {
-    const response = await axios.get(API_URL, { params: requestParams })
-    return response.data
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(error.message)
-    }
-    throw new Error(
-      `Error fetching multiple food details from USDA API: ${error}`
-    )
-  }
-}
-
-async function runTests() {
   const foodAttributesToQuery = [
     "Energy",
     "Protein",
@@ -244,11 +236,39 @@ async function runTests() {
     "Fatty acids, total trans",
     "Sugars, added"
   ]
-  const result = await getUsdaFoodsInfo({ fdcIds: ["2604937"] })
-  // console.log(JSON.stringify(result))
-  const foodInfo = extractFoodInfo(result[0], foodAttributesToQuery)
-  console.log(JSON.stringify(foodInfo))
-  console.log(foodInfo)
+  const requestParams = {
+    fdcIds: params.fdcIds.join(","),
+    format: params.format || "full", // default to 'full' if not specified
+    nutrients: params.nutrients ? params.nutrients.join(",") : undefined,
+    api_key: process.env.USDA_API_KEY
+  }
+
+  try {
+    const response = await axios.get(API_URL, { params: requestParams })
+    //const requestDetails = `${NUTRITIONIX_ENDPOINT} - ${JSON.stringify(foodQuery)}`;
+
+    // do not await this
+    recordQuery("usda", API_URL)
+
+    const foodItems = response.data.map(
+      (foodItem: any) => extractFoodInfo(foodItem, foodAttributesToQuery) // Use the params.foodAttributesToQuery here
+    )
+    return foodItems.length > 0 ? foodItems : null
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message)
+    }
+    throw new Error(
+      `Error fetching multiple food details from USDA API: ${error}`
+    )
+  }
 }
 
-runTests()
+async function runTests() {
+  const result = await getUsdaFoodsInfo({
+    fdcIds: ["174813"]
+  })
+  console.log(JSON.stringify(result))
+}
+
+//runTests()
