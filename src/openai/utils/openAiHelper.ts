@@ -1,16 +1,17 @@
-import { openai } from "@/utils/openaiFunctionSchemas"
+import { openai } from "../../utils/openaiFunctionSchemas"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { User } from "@prisma/client"
 import { CreateCompletionResponseUsage } from "openai"
-import { prisma } from "@/database/prisma"
+import { prisma } from "../../database/prisma"
 
 // Log usage
-async function LogOpenAiUsage(
+export async function LogOpenAiUsage(
   user: User,
   usage: CreateCompletionResponseUsage,
   modelName: string
 ) {
   console.log(`This request used ${usage.total_tokens || "??"} tokens`)
+  console.log(`user id: ${user.id}`)
   const data = {
     promptTokens: usage.prompt_tokens,
     completionTokens: usage.completion_tokens,
