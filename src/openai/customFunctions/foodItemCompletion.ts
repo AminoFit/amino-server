@@ -280,7 +280,7 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-3.5-turbo-0613"
+  let model = "gpt-4-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
