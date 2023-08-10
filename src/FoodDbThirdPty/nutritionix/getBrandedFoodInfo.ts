@@ -61,9 +61,7 @@ export interface BrandedFoodResponse {
   }[];
 }
 
-export async function getBrandedFoodInfo(
-  params: BrandedFoodParams
-): Promise<BrandedFoodResponse> {
+export async function getBrandedFoodInfo(params: BrandedFoodParams): Promise<BrandedFoodResponse> {
   const url = new URL(NUTRITIONIX_BRANDED_ITEM_URL);
   
   // Add the provided parameters to the URL
