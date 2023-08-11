@@ -1,38 +1,22 @@
 /** @type {import('tailwindcss').Config} */
+/* eslint-disable max-len */
 module.exports = {
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}", // Tremor module
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    transparent: "transparent",
+    current: "currentColor",
     extend: {
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic':
-          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-      },
       colors: {
-        amino: {
-          50: '#F4FCE8',
-          100: '#E9F9D2',
-          200: '#D2F4A4',
-          300: '#BCEE77',
-          400: '#A5E84A',
-          500: '#8FE31C',
-          600: '#72B517',
-          700: '#568811',
-          800: '#395B0B',
-          900: '#1D2D06',
-        },
-        'amino-logo': '#B0EB5F',// light mode
+        // light mode
         tremor: {
           brand: {
             faint: "#eff6ff", // blue-50
             muted: "#bfdbfe", // blue-200
             subtle: "#60a5fa", // blue-400
-            DEFAULT: "#b1eb5e", // amino green
+            DEFAULT: "#3b82f6", // blue-500
             emphasis: "#1d4ed8", // blue-700
             inverted: "#ffffff", // white
           },
@@ -41,7 +25,6 @@ module.exports = {
             subtle: "#f3f4f6", // gray-100
             DEFAULT: "#ffffff", // white
             emphasis: "#374151", // gray-700
-            transparent: "#ff0000",
           },
           border: {
             DEFAULT: "#e5e7eb", // gray-200
@@ -63,7 +46,7 @@ module.exports = {
             faint: "#0B1229", // custom
             muted: "#172554", // blue-950
             subtle: "#1e40af", // blue-800
-            DEFAULT: "#b1eb5e", // amino green
+            DEFAULT: "#3b82f6", // blue-500
             emphasis: "#60a5fa", // blue-400
             inverted: "#030712", // gray-950
           },
@@ -140,8 +123,5 @@ module.exports = {
         /^(fill-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950))$/,
     },
   ],
-  plugins: [
-    // ...
-    require('@tailwindcss/forms'),
-  ],
-}
+  plugins: [require("@headlessui/tailwindcss")],
+};

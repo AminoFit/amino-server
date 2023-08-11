@@ -1,7 +1,19 @@
 import { Fragment, useState } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { ScaleIcon, XMarkIcon, FireIcon } from "@heroicons/react/24/outline"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import { Accordion, AccordionHeader, AccordionBody, Divider, NumberInput } from "@tremor/react";
+import { getNormalizedFoodValue } from "./utils/FoodHelper"
+
+const NutritionInfo = ({ label, value, unit }: { label: string; value?: number; unit: string }) => (
+  <div className="flex justify-between items-end">
+    <span className="font-light text-slate-100 text-lg">{label}</span>
+    <span className="font-light text-base">
+      {value ? Math.round(value).toLocaleString() : '-'}{unit}
+    </span>
+    <Divider className="mt-1 h-px" color="text-slate-600" />
+  </div>
+);
 
 export default function EditFoodModal({
   isOpen,
@@ -12,17 +24,17 @@ export default function EditFoodModal({
   onRequestClose: () => void
   food: LoggedFoodItemWithFoodItem
 }) {
-    // Extract necessary fields
-    const { name, brand } = food.FoodItem;
-    const { grams, consumedOn } = food;
-    
-    // State for handling time and portion changes
-    const [selectedTime, setSelectedTime] = useState(new Date(consumedOn));
-    const [selectedPortion, setSelectedPortion] = useState(grams);
-  
-    // Dropdown options for portions (You'll need to define this based on your Serving model)
-    const portionOptions = food.FoodItem.Servings.map(serving => ({ value: serving.servingWeightGram, label: serving.servingName }));
-    
+  // Extract necessary fields
+  const { name, brand } = food.FoodItem;
+  const { grams, consumedOn } = food;
+
+  // State for handling time and portion changes
+  const [selectedTime, setSelectedTime] = useState(new Date(consumedOn));
+  const [selectedPortion, setSelectedPortion] = useState(grams);
+
+  // Dropdown options for portions (You'll need to define this based on your Serving model)
+  const portionOptions = food.FoodItem.Servings.map(serving => ({ value: serving.servingWeightGram, label: serving.servingName }));
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onRequestClose}>
@@ -49,46 +61,126 @@ export default function EditFoodModal({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-                  <button
-                    type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    onClick={() => onRequestClose()}
-                  >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                  </button>
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-slate-700 text-left shadow-xl transition-all sm:my-4 sm:w-full sm:max-w-lg divide-slate-500 divide-y">
+                <div>
+                  <div className="flex justify-between items-center px-4 py-5 pt-5">
+                    <div className="text-center sm:text-left">
+                      <Dialog.Title
+                        as="h2"
+                        className="text-lg font-semibold leading-4 text-white"
+                      >
+                        {brand ? `${name} by ${brand}` : name}
+                      </Dialog.Title>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-md bg-slate-600 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      onClick={() => onRequestClose()}
+                    >
+                      <span className="sr-only">Close</span>
+                      <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="px-4 pb-2">
+                    <Accordion className="bg-slate-600 border-slate-700">
+                      <AccordionHeader>
+                        <div className="grid grid-cols-5 gap-x-6 gap-y-8 flex-1 text-slate-200">
+                          <div className="inline-flex col-span-1 min-w-100">
+                            <FireIcon className="h-6 w-6" aria-hidden="true" />{Math.round(
+                              getNormalizedFoodValue(food, "kcalPerServing")
+                            ).toLocaleString()}
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            <ScaleIcon className="h-6 w-6" aria-hidden="true" />{food.grams}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"P "}{Math.round(
+                              getNormalizedFoodValue(food, "proteinPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"C "}{Math.round(
+                              getNormalizedFoodValue(food, "carbPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"F "}{Math.round(
+                              getNormalizedFoodValue(food, "totalFatPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                        </div>
+                      </AccordionHeader>
+                      <AccordionBody className="text-slate-200 flex-1">
+                        <div className="flex justify-between items-end">
+                          <span className="text-slate-100 text-xl">Calories</span>
+                          <span className="text-base">
+                            {Math.round(getNormalizedFoodValue(food, "kcalPerServing")).toLocaleString()}kcal
+                          </span>
+                        </div>
+                        <Divider className="my-1" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Total Fat</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "totalFatPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <div className="pl-4 flex justify-between items-end">
+                          <span className="font-extralight text-slate-100 text-base">Trans Fat</span>
+                          <span className="font-extralight text-s">
+                            {Math.round(getNormalizedFoodValue(food, "transFatPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+                        <div className="pl-4 flex justify-between items-end">
+                          <span className="font-extralight text-slate-100 text-base">Saturated Fat</span>
+                          <span className="font-extralight text-s">
+                            {Math.round(getNormalizedFoodValue(food, "satFatPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Total Carbohydrates</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "carbPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <div className="pl-4 flex justify-between items-end">
+                          <span className="font-extralight text-slate-100 text-base">Sugars</span>
+                          <span className="font-extralight text-s">
+                            {Math.round(getNormalizedFoodValue(food, "sugarPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <div className="pl-4 flex justify-between items-end">
+                          <span className="font-extralight text-slate-100 text-base">Fiber</span>
+                          <span className="font-extralight text-s">
+                            {Math.round(getNormalizedFoodValue(food, "fiberPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Protein</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "proteinPerServing")).toLocaleString()+" "}g
+                          </span>
+                        </div>
+                      </AccordionBody>
+                    </Accordion>
+                  </div>
                 </div>
-                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-          <Dialog.Title
-            as="h3"
-            className="text-base font-semibold leading-6 text-gray-900"
-          >
-            {brand ? `${name} by ${brand}` : name} {/* Food Name and Brand */}
-          </Dialog.Title>
-          <div className="mt-2">
-            <p className="text-sm text-gray-500">
-              Current Portion: {selectedPortion} grams {/* Current Portion */}
-            </p>
-            <div>
-              <select onChange={e => setSelectedPortion(Number(e.target.value))}>
-                {portionOptions.map(option => (
-                  <option value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              {/* Dropdown to choose portions */}
-            </div>
-            <div>
-              <input
-                type="datetime-local"
-                value={selectedTime.toISOString().substring(0, 16)}
-                onChange={e => setSelectedTime(new Date(e.target.value))}
-              />
-              {/* Time Input */}
-            </div>
-          </div>
-        </div>
+                <div className="bg-slate-700 px-4 pb-4 pt-2"> {/* Portion Section with Grey Background */}
+                  <p className="text-lg text-slate-100 font-light py-2">Portion</p>
+                  <div className="grid grid-cols-4 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-4">
+                    <div className="col-span-2">
+                      <NumberInput defaultValue={food.servingAmount ?? 0} />
+                    </div>
+                    <div className="text-aligned text-lg col-span-2 self-center text-slate-100">
+                      {food.loggedUnit} <span className="text-slate-200 text-base font-extralight">({food.grams}g)</span>
+                    </div>
+                  </div>
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>
