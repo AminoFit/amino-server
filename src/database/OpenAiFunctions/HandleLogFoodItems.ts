@@ -210,6 +210,8 @@ export async function HandleLogFoodItems(
 
   results.unshift("I've logged your food:\n")
 
+  results.push("It might take us a few minutes to update the items.")
+
   return results.join("\n")
 }
 

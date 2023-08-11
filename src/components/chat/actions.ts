@@ -6,9 +6,7 @@ import { prisma } from "@/database/prisma"
 import { getServerSession } from "next-auth"
 
 export async function sendMessage(newMessage: string) {
-  if (!newMessage) return
-
-  console.log("newMessage", newMessage)
+  if (!newMessage) return { error: "No message provided" }
 
   const session = await getServerSession(authOptions)
 
@@ -20,8 +18,10 @@ export async function sendMessage(newMessage: string) {
     })
 
     if (user) {
-      await ProcessMessage(user, newMessage, MessageSource.Web)
-      console.log("message sent")
+      const message = await ProcessMessage(user, newMessage, MessageSource.Web)
+      console.log("message", message)
+      return { message }
     }
   }
+  return { error: "No session" }
 }

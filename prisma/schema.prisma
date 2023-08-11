@@ -119,7 +119,7 @@ model LoggedFoodItem {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now())
   consumedOn      DateTime  @default(now())
-  foodItemId      Int?      @default(0)
+  foodItemId      Int?
   grams           Float     @default(0)
   servingId       Int?
   servingAmount   Float?

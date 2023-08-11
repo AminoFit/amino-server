@@ -23,5 +23,9 @@ export async function POST(request: Request) {
   const user = await GetOrCreateUser(fromPhone)
   console.log("user", user)
 
-  return await ProcessMessage(user, body, MessageSource.Sms)
+  const result = await ProcessMessage(user, body, MessageSource.Sms)
+  if (result) {
+    return NextResponse.json({ message: "Success" })
+  }
+  return new Response("Unknown Error", { status: 500 })
 }
