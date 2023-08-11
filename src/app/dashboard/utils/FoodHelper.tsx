@@ -7,7 +7,7 @@ import {
 import { prisma } from "@/database/prisma"
 
 export type LoggedFoodItemWithFoodItem = LoggedFoodItem & {
-  FoodItem?: FoodItem & { FoodImage?: FoodImage[] }
+  FoodItem: (FoodItem & { FoodImage?: FoodImage[] }) | null;
 }
 
 export function getNormalizedFoodValue(

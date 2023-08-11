@@ -6,8 +6,8 @@ import {
   FireIcon,
   TagIcon
 } from "@heroicons/react/24/outline"
+import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
-type LoggedFoodItemWithFoodItem = LoggedFoodItem & { FoodItem: FoodItem }
 
 export function FoodLogHeader({
   foods,
