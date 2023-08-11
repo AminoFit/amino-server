@@ -236,3 +236,11 @@ model FoodImage {
   foodItemId  Int
   FoodItem    FoodItem @relation(fields: [foodItemId], references: [id])
 }
+
+model ApiCalls {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  apiName   String
+  queryType String
+  count     Int
+}

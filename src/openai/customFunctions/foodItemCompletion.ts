@@ -2,26 +2,26 @@ import { error } from "console"
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
 import { FoodItems } from "./foodItemInterface"
+import { User } from "@prisma/client"
 
 function checkType(actual: any, expected: any) {
   if (expected === "array") return Array.isArray(actual)
   else if (expected === "object")
     return actual !== null && typeof actual === "object"
   else if (expected === "integer")
-    return Number.isInteger(actual) || Number.isInteger(parseFloat(actual))
+    return Number.isInteger(actual) || (typeof actual === "number" && actual % 1 === 0)
   else return typeof actual === expected
 }
 
-const SPECIAL_CASES = ["water", "diet", "tea"];
+const SPECIAL_CASES = ["water", "diet", "tea"]
 
 function isSpecialCase(name: string): boolean {
-  const lowerCaseName = name.toLowerCase();
-  return SPECIAL_CASES.some(caseItem => lowerCaseName.includes(caseItem));
+  const lowerCaseName = name.toLowerCase()
+  return SPECIAL_CASES.some((caseItem) => lowerCaseName.includes(caseItem))
 }
 
 function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
   for (let food of food_items.food_info) {
-
     // Check if all values are zero
     if (
       food.default_serving_weight_g === 0 &&
@@ -30,24 +30,36 @@ function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
       food.carb_per_serving === 0 &&
       food.protein_per_serving === 0
     ) {
-      console.log("Invalid food entry due to all zero values:", food.name);
-      return false;
+      console.log("Invalid food entry due to all zero values:", food.name)
+      return false
     }
 
     // If there are macros but no calories (or vice versa)
-    if ((food.total_fat_per_serving > 0 || food.carb_per_serving > 0 || food.protein_per_serving > 0) &&
-        food.kcal_per_serving === 0) {
-      console.log("Invalid food entry due to non-zero macros but zero calories:", food.name);
-      return false;
+    if (
+      (food.total_fat_per_serving > 0 ||
+        food.carb_per_serving > 0 ||
+        food.protein_per_serving > 0) &&
+      food.kcal_per_serving === 0
+    ) {
+      console.log(
+        "Invalid food entry due to non-zero macros but zero calories:",
+        food.name
+      )
+      return false
     }
 
     // If there are calories but no macros
-    if (food.kcal_per_serving > 0 &&
-        food.total_fat_per_serving === 0 &&
-        food.carb_per_serving === 0 &&
-        food.protein_per_serving === 0) {
-      console.log("Invalid food entry due to calories but zero macros:", food.name);
-      return false;
+    if (
+      food.kcal_per_serving > 0 &&
+      food.total_fat_per_serving === 0 &&
+      food.carb_per_serving === 0 &&
+      food.protein_per_serving === 0
+    ) {
+      console.log(
+        "Invalid food entry due to calories but zero macros:",
+        food.name
+      )
+      return false
     }
 
     // If the food has grams but all its macros and calories are 0 (and it's not a special case)
@@ -59,12 +71,15 @@ function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
       food.carb_per_serving === 0 &&
       food.protein_per_serving === 0
     ) {
-      console.log("Invalid food entry due to 0 macros & calories with grams:", food.name);
-      return false;
+      console.log(
+        "Invalid food entry due to 0 macros & calories with grams:",
+        food.name
+      )
+      return false
     }
   }
 
-  return true;
+  return true
 }
 
 export function checkCompliesWithSchema(
@@ -120,7 +135,7 @@ export function checkCompliesWithSchema(
   return true
 }
 
-export async function foodItemCompletion(inquiry: string): Promise<any> {
+export async function foodItemCompletion(inquiry: string, user: User): Promise<any> {
   if (!inquiry) {
     throw new Error("Bad prompt")
   }
@@ -142,12 +157,14 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
               properties: {
                 name: {
                   type: "string",
-                  description: "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
+                  description:
+                    "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
                 },
                 brand: {
                   type: "string",
                   nullable: true,
-                  description: "Brand name, if applicable. Leave empty if unknown"
+                  description:
+                    "Brand name, if applicable. Leave empty if unknown"
                 },
                 known_as: {
                   type: "array",
@@ -232,7 +249,8 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
                       },
                       serving_name: {
                         type: "string",
-                        description: "Serving description e.g. large, scoop, plate"
+                        description:
+                          "Serving description e.g. large, scoop, plate"
                       }
                     }
                   },
@@ -273,13 +291,20 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
       model,
       temperature,
       max_tokens
-    })
+    }, user)
+
+    // Log the OpenAI usage with the LogOpenAiUsage function
+    console.log("result", JSON.stringify(result))
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
 
-    let has_valid_schema = checkCompliesWithSchema(functions[0].parameters!,JSON.parse(result.function_call.arguments))
-    let has_valid_data = checkFoodHasNonZeroValues(JSON.parse(result.function_call.arguments))
-      
+    let has_valid_schema = checkCompliesWithSchema(
+      functions[0].parameters!,
+      JSON.parse(result.function_call.arguments)
+    )
+    let has_valid_data = checkFoodHasNonZeroValues(
+      JSON.parse(result.function_call.arguments)
+    )
 
     if (!has_valid_data || !has_valid_schema) {
       console.log("Invalid food item, retrying with different parameters")
@@ -288,7 +313,9 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
       max_tokens = 4096 // Update max tokens
 
       // add extra text to prompt
-      const new_inquiry = inquiry + "\nOld result may have contained invalid structure such as missing fields or missing nutritional values. Double check yourself."
+      const new_inquiry =
+        inquiry +
+        "\nOld result may have contained invalid structure such as missing fields or missing nutritional values. Double check yourself."
       messages = [
         { role: "system", content: system },
         { role: "user", content: new_inquiry }
@@ -301,20 +328,54 @@ export async function foodItemCompletion(inquiry: string): Promise<any> {
         model,
         temperature,
         max_tokens
-      })
+      },
+      user)
       console.log("Second retry", result.function_call.arguments)
     }
     // check again for schema and data
-    has_valid_data = checkFoodHasNonZeroValues(JSON.parse(result.function_call.arguments))
-    has_valid_schema = checkCompliesWithSchema(functions[0].parameters!,JSON.parse(result.function_call.arguments))
+    has_valid_data = checkFoodHasNonZeroValues(
+      JSON.parse(result.function_call.arguments)
+    )
+    has_valid_schema = checkCompliesWithSchema(
+      functions[0].parameters!,
+      JSON.parse(result.function_call.arguments)
+    )
     if (!has_valid_data || !has_valid_schema) {
       throw error("Could not find food item")
     }
     return {
       foodItemInfo: JSON.parse(result.function_call.arguments),
       model: model
-  };
+    }
   } catch (error) {
     throw error
   }
 }
+
+
+async function testRun() {
+  const user: User = {
+    id: "some_random_id",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York",
+  };
+  foodItemCompletion("apple", user)
+}
+
+// testRun()

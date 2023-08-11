@@ -22,9 +22,9 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          full_name: { type: "string", description: "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc." },
+          full_name: { type: "string", description: "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos." },
           brand: { type: "string", description: "The brand of the food item" },
-          // cooked: { type: "boolean", description: "If the item is cooked or not" },
+          branded: { type: "boolean", description: "If item is branded or not" },
           lemmatized_database_search_term: {
             type: "string",
             description:
@@ -32,7 +32,7 @@ export const logFoodSchema = {
           },
           user_food_descriptive_name: {
             type: "string",
-            description: "What the user calls the food"
+            description: "What the user calls the food, fix any potential typos"
           },
           timeEaten: {
             type: "string",

@@ -231,14 +231,15 @@ async function main() {
 
   console.log(checkCompliesWithSchema(outputSchema, objectotest));
   console.log(checkCompliesWithSchema(outputSchema, objectotest2));
-
+  /*
   try {
-    const result = await foodItemCompletion("Flank Steak");
+    const result = await foodItemCompletion("Flank Steak", user);
     console.log(result);
     //await messageHandlingFunction(system, inquiry);
   } catch (error) {
     console.error(error);
   }
+  */
 }
 
 main();
