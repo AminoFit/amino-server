@@ -58,9 +58,13 @@ export async function SendDailyMacrosToUser(user: User) {
       }
     },
     include: {
-      FoodItem: true
+      FoodItem: {
+        include: {
+          Servings: true, // Include the Servings relation
+        },
+      },
     }
-  })
+  })  
 
   let macrosToday = { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }
 

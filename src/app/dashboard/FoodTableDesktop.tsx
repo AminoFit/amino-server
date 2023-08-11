@@ -205,7 +205,7 @@ function FoodRow({
   user: User
 }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [foodEditModalOpen, setFoodEditModalOpen] = useState(false)
 
   const router = useRouter()
   const path = usePathname()
@@ -258,7 +258,7 @@ function FoodRow({
         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
           <span
             className="text-amino-logo/50 cursor-pointer"
-            // onClick={() => setDeleteModalOpen(true)}
+          onClick={() => setFoodEditModalOpen(true)}
           >
             Edit<span className="sr-only">, {foodItem.FoodItem.name}</span>
           </span>
@@ -270,6 +270,13 @@ function FoodRow({
           </span>
         </td>
       </tr>
+      <EditFoodModal
+        isOpen={foodEditModalOpen}
+        onRequestClose={() => {
+          setFoodEditModalOpen(false)
+        }}
+        food={foodItem}
+      />
       <DeleteFoodModal
         food={foodItem}
         isOpen={deleteModalOpen}
