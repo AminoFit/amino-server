@@ -181,7 +181,7 @@ export async function HandleLogFoodItems(
   )
 
   console.log("foodsNeedProcessing", foodsNeedProcessing)
-  
+
   const results = []
   foodItemsToLog.forEach((food) =>
     results.push("- " + constructFoodRequestString(food))
@@ -226,6 +226,7 @@ export async function HandleLogFoodItems(
 }
 
 export async function HandleLogFoodItem(
+  loggedFoodItem: LoggedFoodItem,
   food: FoodItemToLog,
   messageId: number,
   user: User
@@ -352,13 +353,12 @@ export async function HandleLogFoodItem(
     grams: food.serving.total_serving_grams,
     userId: user.id,
     consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-    messageId
+    messageId,
+    status: "Processed"
   }
 
   const foodItem = await prisma.loggedFoodItem
-    .create({
-      data
-    })
+    .update({ where: { id: loggedFoodItem.id }, data })
     .catch((err) => {
       console.log("Error logging food item", err)
     })

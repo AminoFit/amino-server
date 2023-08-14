@@ -43,6 +43,7 @@ export async function POST(request: Request) {
   }
 
   await HandleLogFoodItem(
+    loggedFoodItem,
     openAiData as FoodItemToLog,
     loggedFoodItem.id,
     loggedFoodItem.User
