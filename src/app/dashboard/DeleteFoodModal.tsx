@@ -62,7 +62,7 @@ export default function DeleteFoodModal({
                       className="text-base font-semibold leading-6 text-gray-900"
                     >
                       Delete{" "}
-                      <span className="underline">{food.FoodItem.name}</span>?
+                      <span className="underline">{food.FoodItem?.name}</span>?
                     </Dialog.Title>
                     <div className="mt-2">
                       <p className="text-sm text-gray-500">

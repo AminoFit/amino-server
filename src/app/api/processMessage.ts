@@ -22,7 +22,7 @@ export default async function ProcessMessage(
   const startTime = Date.now()
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  let userMessage = await SaveMessageFromUser(user, body, Role.User)
+  await SaveMessageFromUser(user, body, Role.User)
 
   let responseMessage = await GenerateResponseForUser(user)
 
@@ -45,5 +45,5 @@ export default async function ProcessMessage(
     await SaveMessageToUser(user, responseMessage.resultMessage || "")
   }
   console.log("The request took ", Date.now() - startTime, "ms")
-  return NextResponse.json({ message: "Success" })
+  return responseMessage.resultMessage
 }

@@ -228,7 +228,7 @@ function FoodRow({
             {foodItem.servingAmount} {foodItem.loggedUnit}
           </div>
           <div className="text-md font-medium text-zinc-200 capitalize">
-            {foodItem.FoodItem.name}
+            {foodItem.FoodItem?.name}
           </div>
         </td>
         <td className="whitespace-nowrap px-3 py-4 text-sm">
@@ -260,13 +260,13 @@ function FoodRow({
             className="text-amino-logo/50 cursor-pointer"
             // onClick={() => setDeleteModalOpen(true)}
           >
-            Edit<span className="sr-only">, {foodItem.FoodItem.name}</span>
+            Edit<span className="sr-only">, {foodItem.FoodItem?.name}</span>
           </span>
           <span
             className="ml-3 text-amino-logo hover:text-amino-logo/70 cursor-pointer"
             onClick={() => setDeleteModalOpen(true)}
           >
-            Delete<span className="sr-only">, {foodItem.FoodItem.name}</span>
+            Delete<span className="sr-only">, {foodItem.FoodItem?.name}</span>
           </span>
         </td>
       </tr>
