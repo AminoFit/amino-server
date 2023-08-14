@@ -4,6 +4,7 @@ import { ScaleIcon, XMarkIcon, FireIcon } from "@heroicons/react/24/outline"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 import { Accordion, AccordionHeader, AccordionBody, Divider, NumberInput } from "@tremor/react";
 import { getNormalizedFoodValue } from "./utils/FoodHelper"
+import { FoodItem } from "@prisma/client";
 
 const NutritionInfo = ({ label, value, unit }: { label: string; value?: number; unit: string }) => (
   <div className="flex justify-between items-end">
@@ -14,6 +15,23 @@ const NutritionInfo = ({ label, value, unit }: { label: string; value?: number; 
     <Divider className="mt-1 h-px" color="text-slate-600" />
   </div>
 );
+
+const renderSmallNutrientRow = (nutrientKey: keyof FoodItem, label: string, food: LoggedFoodItemWithFoodItem) => {
+  if (food.FoodItem[nutrientKey] != null) {
+    return (
+      <>
+        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+        <div className="pl-4 flex justify-between items-end">
+          <span className="font-extralight text-slate-100">{label}</span>
+          <span className="font-extralight text-s">
+            {Math.round(getNormalizedFoodValue(food, nutrientKey)).toLocaleString() + " "}g
+          </span>
+        </div>
+      </>
+    );
+  }
+  return null;
+};
 
 export default function EditFoodModal({
   isOpen,
@@ -124,20 +142,8 @@ export default function EditFoodModal({
                             {Math.round(getNormalizedFoodValue(food, "totalFatPerServing")).toLocaleString()+" "}g
                           </span>
                         </div>
-                        <Divider className="my-1 h-px" color="text-slate-600" />
-                        <div className="pl-4 flex justify-between items-end">
-                          <span className="font-extralight text-slate-100 text-base">Trans Fat</span>
-                          <span className="font-extralight text-s">
-                            {Math.round(getNormalizedFoodValue(food, "transFatPerServing")).toLocaleString()+" "}g
-                          </span>
-                        </div>
-                        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
-                        <div className="pl-4 flex justify-between items-end">
-                          <span className="font-extralight text-slate-100 text-base">Saturated Fat</span>
-                          <span className="font-extralight text-s">
-                            {Math.round(getNormalizedFoodValue(food, "satFatPerServing")).toLocaleString()+" "}g
-                          </span>
-                        </div>
+                        { renderSmallNutrientRow("transFatPerServing", "Trans Fat", food) }
+                        { renderSmallNutrientRow("satFatPerServing", "Saturated Fat", food) }
                         <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
                         <div className="flex justify-between items-end">
                           <span className="font-light text-slate-100 text-lg">Total Carbohydrates</span>
@@ -145,20 +151,7 @@ export default function EditFoodModal({
                             {Math.round(getNormalizedFoodValue(food, "carbPerServing")).toLocaleString()+" "}g
                           </span>
                         </div>
-                        <Divider className="my-1 h-px" color="text-slate-600" />
-                        <div className="pl-4 flex justify-between items-end">
-                          <span className="font-extralight text-slate-100 text-base">Sugars</span>
-                          <span className="font-extralight text-s">
-                            {Math.round(getNormalizedFoodValue(food, "sugarPerServing")).toLocaleString()+" "}g
-                          </span>
-                        </div>
-                        <Divider className="my-1 h-px" color="text-slate-600" />
-                        <div className="pl-4 flex justify-between items-end">
-                          <span className="font-extralight text-slate-100 text-base">Fiber</span>
-                          <span className="font-extralight text-s">
-                            {Math.round(getNormalizedFoodValue(food, "fiberPerServing")).toLocaleString()+" "}g
-                          </span>
-                        </div>
+                        { renderSmallNutrientRow("sugarPerServing", "Sugar", food) }
                         <Divider className="my-1 h-px" color="text-slate-600" />
                         <div className="flex justify-between items-end">
                           <span className="font-light text-slate-100 text-lg">Protein</span>
