@@ -1,20 +1,130 @@
-import { Fragment, useState } from "react"
+import { Fragment, useState, useEffect } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { ScaleIcon, XMarkIcon, FireIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import { Accordion, AccordionHeader, AccordionBody, Button, Divider, NumberInput, SearchSelect, SearchSelectItem, DatePicker } from "@tremor/react";
+import { getNormalizedFoodValue } from "./utils/FoodHelper"
+import moment from "moment-timezone"
+import { FoodItem, User } from "@prisma/client";
+import { TimePicker } from "@/components/timePicker/timePicker";
+import { updateLoggedFoodItem } from "./utils/LoggedFoodEditHelper"
+
+const renderSmallNutrientRow = (nutrientKey: keyof FoodItem, label: string, food: LoggedFoodItemWithFoodItem) => {
+  if (food.FoodItem && food.FoodItem[nutrientKey] != null) { // Added null-check for food.FoodItem
+    return (
+      <>
+        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+        <div className="pl-4 flex justify-between items-end">
+          <span className="font-extralight text-slate-100">{label}</span>
+          <span className="font-extralight text-s">
+            {Math.round(getNormalizedFoodValue(food, nutrientKey)).toLocaleString() + " "}g
+          </span>
+        </div>
+      </>
+    );
+  }
+  return null;
+};
 
 export default function EditFoodModal({
-  open,
-  setOpen,
-  food
+  isOpen,
+  onRequestClose,
+  food, user
 }: {
-  open: boolean
-  setOpen: (open: boolean) => void
-  food: LoggedFoodItemWithFoodItem
+  isOpen: boolean
+  onRequestClose: () => void
+  food: LoggedFoodItemWithFoodItem,
+  user: User
 }) {
+  // Extract necessary fields
+  let foodName = '';
+  let brand = '';
+
+  if (food.FoodItem) {
+    foodName = food.FoodItem.name;
+    brand = food.FoodItem.brand || "";
+  }
+  const consumedOnMoment = moment(food.consumedOn).tz(user.tzIdentifier);
+
+  const timeEaten = {
+    hours: consumedOnMoment.format('h'),
+    minutes: consumedOnMoment.format('mm'), // This will be a string with a leading zero if needed
+    ampm: consumedOnMoment.format('a'),
+  };
+
+  const defaultDate = consumedOnMoment.toDate();
+  // Define a state variable to store the selected date
+  const [selectedDate, setSelectedDate] = useState(defaultDate);
+  const [selectedTime, setSelectedTime] = useState<{ hours: string; minutes: string; ampm: string }>(timeEaten);
+  const [servingWeightGramsValue, setServingGramsValue] = useState((food.grams / (food.servingAmount || 1)) || 0);
+  const [servingValue, setServingValue] = useState(food.loggedUnit || '');
+  const [portionAmount, setPortionAmount] = useState(food.servingAmount ?? 0);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleServingChange = (value: string) => {
+    if (food.FoodItem) {
+      const selectedServing = food.FoodItem.Servings.find(serving => serving.servingName === value);
+      if (selectedServing) {
+        setServingValue(value);
+        setServingGramsValue(selectedServing.servingWeightGram);
+      }
+    }
+  };
+
+
+  const handlePortionChange = (value: number) => {
+    setPortionAmount(value);
+  };
+
+  const handleTimeChange = (time: { hours: string; minutes: string; ampm: string }) => {
+    setSelectedTime(time);
+  };
+
+
+  // Define a callback to handle changes to the date
+  const handleDateChange = (value: Date | undefined) => {
+    if (value) {
+      setSelectedDate(value);
+      // Additional logic for handling date changes (e.g., saving to a server) can be added here
+    }
+  };
+
+  const handleSaveFoodItem = async () => {
+    setIsSaving(true);
+
+    let hours24Format = parseInt(selectedTime.hours);
+    if (selectedTime.ampm === 'pm' && hours24Format < 12) {
+      hours24Format += 12;
+    } else if (selectedTime.ampm === 'am' && hours24Format === 12) {
+      hours24Format = 0;
+    }
+
+    const localMoment = moment(selectedDate).tz(moment.tz.guess());
+    localMoment.hour(hours24Format).minute(parseInt(selectedTime.minutes));
+
+    const consumedOn = localMoment.toDate();
+
+    const foodData = {
+      consumedOn: consumedOn,
+      grams: servingWeightGramsValue * portionAmount,
+      servingAmount: portionAmount,
+      loggedUnit: servingValue,
+    };
+
+    const updatedFoodItem = await updateLoggedFoodItem(food.id, foodData);
+
+    if (updatedFoodItem) {
+      console.log("Food item updated successfully");
+    } else {
+      console.error("Failed to update food item");
+    }
+    setIsSaving(false);
+  };
+
+
   return (
-    <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={setOpen}>
+    <Transition.Root show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-10" onClose={onRequestClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -38,55 +148,137 @@ export default function EditFoodModal({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-                  <button
-                    type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <ExclamationTriangleIcon
-                      className="h-6 w-6 text-red-600"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-base font-semibold leading-6 text-gray-900"
+              <Dialog.Panel className="relative transform rounded-lg bg-slate-700 text-left shadow-xl transition-all sm:my-4 sm:w-full sm:max-w-lg divide-slate-500 divide-y">
+                <div>
+                  <div className="flex justify-between items-center px-4 py-5 pt-5">
+                    <div className="text-center sm:text-left">
+                      <Dialog.Title
+                        as="h2"
+                        className="text-lg font-semibold leading-4 text-white"
+                      >
+                        {brand ? `${foodName} by ${brand}` : foodName} {food.FoodItem?.verified && <CheckCircleIcon className="h-4 w-4 inline-block" />}
+                      </Dialog.Title>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-md bg-slate-600 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      onClick={() => onRequestClose()}
                     >
-                      Edit Food
-                    </Dialog.Title>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to deactivate your account? All of
-                        your data will be permanently removed from our servers
-                        forever. This action cannot be undone.
-                      </p>
+                      <span className="sr-only">Close</span>
+                      <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="px-4 pb-2">
+                    <Accordion className="bg-slate-600 border-slate-700">
+                      <AccordionHeader>
+                        <div className="grid grid-cols-5 gap-x-6 gap-y-8 flex-1 text-slate-200">
+                          <div className="inline-flex col-span-1 min-w-100">
+                            <FireIcon className="h-6 w-6" aria-hidden="true" />{Math.round(
+                              getNormalizedFoodValue(food, "kcalPerServing")
+                            ).toLocaleString()}
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            <ScaleIcon className="h-6 w-6" aria-hidden="true" />{food.grams}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"P "}{Math.round(
+                              getNormalizedFoodValue(food, "proteinPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"C "}{Math.round(
+                              getNormalizedFoodValue(food, "carbPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                          <div className="inline-flex col-span-1 min-w-100">
+                            {"F "}{Math.round(
+                              getNormalizedFoodValue(food, "totalFatPerServing")
+                            ).toLocaleString()}g
+                          </div>
+                        </div>
+                      </AccordionHeader>
+                      <AccordionBody className="text-slate-200 flex-1">
+                        <div className="flex justify-between items-end">
+                          <span className="text-slate-100 text-xl">Calories</span>
+                          <span className="text-base">
+                            {Math.round(getNormalizedFoodValue(food, "kcalPerServing")).toLocaleString()}kcal
+                          </span>
+                        </div>
+                        <Divider className="my-1" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Total Fat</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "totalFatPerServing")).toLocaleString() + " "}g
+                          </span>
+                        </div>
+                        {renderSmallNutrientRow("transFatPerServing", "Trans Fat", food)}
+                        {renderSmallNutrientRow("satFatPerServing", "Saturated Fat", food)}
+                        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Total Carbohydrates</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "carbPerServing")).toLocaleString() + " "}g
+                          </span>
+                        </div>
+                        {renderSmallNutrientRow("sugarPerServing", "Sugar", food)}
+                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <div className="flex justify-between items-end">
+                          <span className="font-light text-slate-100 text-lg">Protein</span>
+                          <span className="font-light text-base">
+                            {Math.round(getNormalizedFoodValue(food, "proteinPerServing")).toLocaleString() + " "}g
+                          </span>
+                        </div>
+                      </AccordionBody>
+                    </Accordion>
+                  </div>
+                </div>
+                <div className="bg-slate-800 px-4 pb-4 pt-2"> {/* Portion Section with Grey Background */}
+                  <p className="text-lg text-slate-100 font-light py-2">Portion</p>
+                  <div className="grid grid-cols-4 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-4">
+                    <div className="col-span-2">
+                      <NumberInput defaultValue={portionAmount} onValueChange={handlePortionChange} />
+                    </div>
+                    <div className="text-aligned text-lg col-span-2 self-center text-slate-100">
+                      {/*
+                      {food.loggedUnit} <span className="text-slate-200 text-base font-extralight">({food.grams}g)</span>
+                            */}
+                      <SearchSelect placeholder={servingValue + " (" + servingWeightGramsValue + " g)"} value={servingValue} onValueChange={handleServingChange}>
+                        {food.FoodItem ? (
+                          food.FoodItem.Servings.map((serving) => (
+                            <SearchSelectItem key={serving.id} value={serving.servingName}>
+                              {serving.servingName} ({serving.servingWeightGram}g)
+                            </SearchSelectItem>
+                          ))
+                        ) : (
+                          <></> 
+                        )}
+                      </SearchSelect>
                     </div>
                   </div>
+                  <p className="text-xs text-slate-100 font-light pt-2">Total weight: {servingWeightGramsValue * portionAmount} g</p>
                 </div>
-                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                    onClick={() => setOpen(false)}
+                <div className="bg-slate-700 px-4 pb-4 pt-2">
+                  <p className="text-lg text-slate-100 font-light py-2">Time eaten</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="inset-0 z-50 overflow-visible">
+                      <DatePicker
+                        className="max-w-sm mx-auto"
+                        value={selectedDate}
+                        onValueChange={handleDateChange}
+                        enableClear={false}
+                        enableYearNavigation={false}
+                      />
+                    </div>
+                    <TimePicker onChange={handleTimeChange} defaultValue={timeEaten} />
+                  </div>
+                </div>
+                <div className="bg-slate-800 px-4 py-4 rounded-b-lg flex justify-end">
+                  <Button onClick={handleSaveFoodItem} className="bg-indigo-600 hover:bg-indigo-700 py-1 px-4 text-white rounded-md" loading={isSaving} // Using the loading prop to indicate saving state
+                    loadingText="Saving" // Optional text to display while loading
+                    color="indigo" // You can adjust the color as per the Tremor color props
                   >
-                    Deactivate
-                  </button>
-                  <button
-                    type="button"
-                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                    onClick={() => setOpen(false)}
-                  >
-                    Cancel
-                  </button>
+                    Save
+                  </Button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>

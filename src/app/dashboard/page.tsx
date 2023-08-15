@@ -35,7 +35,7 @@ async function getFoods() {
       },
       include: {
         FoodItem: {
-          include: { FoodImage: true }
+          include: { Servings: true, FoodImage: true }
         }
       }
     })
