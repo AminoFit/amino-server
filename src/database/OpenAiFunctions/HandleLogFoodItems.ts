@@ -364,7 +364,8 @@ export async function HandleLogFoodItem(
     return "Sorry, I could not log your food items. Please try again later."
   }
 
-  await UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
+  console.log("Updating messageID: ", messageId)
+  UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }
@@ -464,7 +465,7 @@ async function addFoodItemToDatabase(
 
     let newFood: FoodItem
 
-    let food: FoodInfo = foodItemInfo.food_info[0]
+    let food: FoodInfo = foodItemInfo
     console.log("food req string:", foodItemRequestString)
 
     newFood = await prisma.foodItem.create({

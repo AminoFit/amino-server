@@ -1,5 +1,4 @@
 import SaveMessageFromUser from "@/database/SaveMessageFromUser"
-import UpdateMessage from "@/database/UpdateMessage"
 import { GenerateResponseForUser } from "@/openai/RespondToMessage"
 import {
   LogSmsMessage,

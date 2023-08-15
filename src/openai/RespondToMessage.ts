@@ -178,6 +178,11 @@ export async function GenerateResponseForUser(
       messageForUser =
         completion?.data.choices[0].message?.content ||
         "Sorry, I don't understand. Can you try again?"
+      UpdateMessage({
+        id: lastUserMessage.id,
+        status: MessageStatus.RESOLVED,
+        resolvedAt: new Date()
+      })
     }
   } else {
     messageForUser =
@@ -193,11 +198,6 @@ export async function GenerateResponseForUser(
     }
   }
 
-  UpdateMessage({
-    id: lastUserMessage.id,
-    status: MessageStatus.RESOLVED,
-    resolvedAt: new Date()
-  })
   return {
     resultMessage: messageForUser,
     responseToFunctionName: responseToFunction

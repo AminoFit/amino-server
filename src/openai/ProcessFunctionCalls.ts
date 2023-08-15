@@ -4,6 +4,8 @@ import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUse
 import { SendListOfFoodsTodayToUser } from "@/twilio/SendMessageToUser"
 import { User, Message } from "@prisma/client"
 import { ChatCompletionRequestMessageFunctionCall } from "openai"
+import UpdateMessage from "@/database/UpdateMessage"
+import { MessageStatus } from "@prisma/client"
 
 export const ProcessFunctionCalls = async (
   user: User,
@@ -22,11 +24,29 @@ export const ProcessFunctionCalls = async (
       const resultMessage = await HandleLogFoodItems(user, parameters, lastUserMessage)
       return resultMessage
     case "show_daily_food":
-      return await SendListOfFoodsTodayToUser(user)
+      const daily_food_reply = await SendListOfFoodsTodayToUser(user)
+      UpdateMessage({
+        id: lastUserMessage.id,
+        status: MessageStatus.RESOLVED,
+        resolvedAt: new Date()
+      })
+      return daily_food_reply
     case "log_exercise":
-      return await HandleLogExercise(user, parameters)
+      const exercise_reply = await HandleLogExercise(user, parameters)
+      UpdateMessage({
+        id: lastUserMessage.id,
+        status: MessageStatus.RESOLVED,
+        resolvedAt: new Date()
+      })
+      return exercise_reply
     case "update_user_info":
-      return await HandleUpdateUserInfo(user, parameters)
+      const user_info_reply = await HandleUpdateUserInfo(user, parameters)
+      UpdateMessage({
+        id: lastUserMessage.id,
+        status: MessageStatus.RESOLVED,
+        resolvedAt: new Date()
+      })
+      return user_info_reply
   }
   return "Something went wrong. We could not find a function with that name."
 }

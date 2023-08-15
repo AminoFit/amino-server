@@ -1,6 +1,6 @@
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
-import { FoodItems } from "./foodItemInterface"
+import { FoodInfo } from "./foodItemInterface"
 import { User } from "@prisma/client"
 
 function checkType(actual: any, expected: any) {
@@ -8,7 +8,10 @@ function checkType(actual: any, expected: any) {
   else if (expected === "object")
     return actual !== null && typeof actual === "object"
   else if (expected === "integer")
-    return Number.isInteger(actual) || (typeof actual === "number" && actual % 1 === 0)
+    return (
+      Number.isInteger(actual) ||
+      (typeof actual === "number" && actual % 1 === 0)
+    )
   else return typeof actual === expected
 }
 
@@ -19,8 +22,8 @@ function isSpecialCase(name: string): boolean {
   return SPECIAL_CASES.some((caseItem) => lowerCaseName.includes(caseItem))
 }
 
-function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
-  for (let food of food_items.food_info) {
+function checkFoodHasNonZeroValues(food: FoodInfo): boolean {
+  
     // Check if all values are zero
     if (
       food.default_serving_weight_g === 0 &&
@@ -76,8 +79,7 @@ function checkFoodHasNonZeroValues(food_items: FoodItems): boolean {
       )
       return false
     }
-  }
-
+  
   return true
 }
 
@@ -134,7 +136,10 @@ export function checkCompliesWithSchema(
   return true
 }
 
-export async function foodItemCompletion(inquiry: string, user: User): Promise<any> {
+export async function foodItemCompletion(
+  inquiry: string,
+  user: User
+): Promise<any> {
   if (!inquiry) {
     throw new Error("Bad prompt")
   }
@@ -149,126 +154,115 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
       parameters: {
         type: "object",
         properties: {
-          food_info: {
+          name: {
+            type: "string",
+            description:
+              "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
+          },
+          brand: {
+            type: "string",
+            nullable: true,
+            description: "Brand name, if applicable. Leave empty if unknown"
+          },
+          known_as: {
+            type: "array",
+            items: { type: "string" },
+            description: "Other names for the food, array of strings"
+          },
+          food_description: {
+            type: "string",
+            nullable: true,
+            description: "Food description"
+          },
+          default_serving_weight_g: {
+            type: "integer",
+            description: "Weight of standard in g, 100g otherwise"
+          },
+          kcal_per_serving: {
+            type: "number",
+            description: "Calories (g)/serving"
+          },
+          total_fat_per_serving: {
+            type: "number",
+            description: "Total fat (g)/serving"
+          },
+          sat_fat_per_serving: {
+            type: "number",
+            nullable: true,
+            description: "Saturated fat (g)/serving"
+          },
+          trans_fat_per_serving: {
+            type: "number",
+            nullable: true,
+            description: "Trans fat (g)/serving"
+          },
+          carb_per_serving: {
+            type: "number",
+            description: "Carb (g)/serving"
+          },
+          sugar_per_serving: {
+            type: "number",
+            nullable: true,
+            description: "Sugar (g)/serving"
+          },
+          added_sugar_per_serving: {
+            type: "number",
+            nullable: true,
+            description: "Added sugar (g)/serving"
+          },
+          protein_per_serving: {
+            type: "number",
+            description: "Protein (g)/serving"
+          },
+          nutrients: {
             type: "array",
             items: {
               type: "object",
               properties: {
-                name: {
+                nutrient_name: {
                   type: "string",
                   description:
-                    "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
+                    "Nutrient name (e.g. Sodium, Potassium, Vitamin C)"
                 },
-                brand: {
+                nutrient_unit: {
                   type: "string",
-                  nullable: true,
-                  description:
-                    "Brand name, if applicable. Leave empty if unknown"
+                  description: "Nutrient unit (mg, mcg, IU, etc.)"
                 },
-                known_as: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Other names for the food, array of strings"
-                },
-                food_description: {
-                  type: "string",
-                  nullable: true,
-                  description: "Food description"
-                },
-                default_serving_weight_g: {
-                  type: "integer",
-                  description: "Weight of standard in g, 100g otherwise"
-                },
-                kcal_per_serving: {
+                nutrient_amount_per_g: {
                   type: "number",
-                  description: "Calories (g)/serving"
-                },
-                total_fat_per_serving: {
-                  type: "number",
-                  description: "Total fat (g)/serving"
-                },
-                sat_fat_per_serving: {
-                  type: "number",
-                  nullable: true,
-                  description: "Saturated fat (g)/serving"
-                },
-                trans_fat_per_serving: {
-                  type: "number",
-                  nullable: true,
-                  description: "Trans fat (g)/serving"
-                },
-                carb_per_serving: {
-                  type: "number",
-                  description: "Carb (g)/serving"
-                },
-                sugar_per_serving: {
-                  type: "number",
-                  nullable: true,
-                  description: "Sugar (g)/serving"
-                },
-                added_sugar_per_serving: {
-                  type: "number",
-                  nullable: true,
-                  description: "Added sugar (g)/serving"
-                },
-                protein_per_serving: {
-                  type: "number",
-                  description: "Protein (g)/serving"
-                },
-                nutrients: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      nutrient_name: {
-                        type: "string",
-                        description:
-                          "Nutrient name (e.g. Sodium, Potassium, Vitamin C)"
-                      },
-                      nutrient_unit: {
-                        type: "string",
-                        description: "Nutrient unit (mg, mcg, IU, etc.)"
-                      },
-                      nutrient_amount_per_g: {
-                        type: "number",
-                        description: "Nutrient amount/g of food"
-                      }
-                    }
-                  },
-                  description: "Nutrient information"
-                },
-                servings: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      serving_weight_g: {
-                        type: "number",
-                        description: "Serving weight in grams"
-                      },
-                      serving_name: {
-                        type: "string",
-                        description:
-                          "Serving description e.g. large, scoop, plate"
-                      }
-                    }
-                  },
-                  description: "Serving sizes & descriptions"
+                  description: "Nutrient amount/g of food"
                 }
-              },
-              required: [
-                "name",
-                "default_serving_weight_g",
-                "kcal_per_serving",
-                "protein_per_serving",
-                "carb_per_serving",
-                "total_fat_per_serving",
-                "servings"
-              ]
-            }
+              }
+            },
+            description: "Nutrient information"
+          },
+          servings: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                serving_weight_g: {
+                  type: "number",
+                  description: "Serving weight in grams"
+                },
+                serving_name: {
+                  type: "string",
+                  description: "Serving description e.g. large, scoop, plate"
+                }
+              }
+            },
+            description: "Serving sizes & descriptions"
           }
         },
-        required: ["food_info"]
+        required: [
+          "name",
+          "default_serving_weight_g",
+          "kcal_per_serving",
+          "protein_per_serving",
+          "carb_per_serving",
+          "total_fat_per_serving",
+          "servings"
+        ]
       }
     }
   ]
@@ -279,18 +273,21 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-4-0613"
+  let model = "gpt-3.5-turbo-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
   try {
-    result = await chatCompletion({
-      messages,
-      functions,
-      model,
-      temperature,
-      max_tokens
-    }, user)
+    result = await chatCompletion(
+      {
+        messages,
+        functions,
+        model,
+        temperature,
+        max_tokens
+      },
+      user
+    )
 
     // Log the OpenAI usage with the LogOpenAiUsage function
     console.log("result", JSON.stringify(result))
@@ -321,14 +318,16 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
       ]
 
       // Retry chatCompletion with updated temperature
-      result = await chatCompletion({
-        messages,
-        functions,
-        model,
-        temperature,
-        max_tokens
-      },
-      user)
+      result = await chatCompletion(
+        {
+          messages,
+          functions,
+          model,
+          temperature,
+          max_tokens
+        },
+        user
+      )
       console.log("Second retry", result.function_call.arguments)
     }
     // check again for schema and data
@@ -351,7 +350,6 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
   }
 }
 
-
 async function testRun() {
   const user: User = {
     id: "some_random_id",
@@ -372,8 +370,8 @@ async function testRun() {
     setupCompleted: false,
     sentContact: false,
     sendCheckins: false,
-    tzIdentifier: "America/New_York",
-  };
+    tzIdentifier: "America/New_York"
+  }
   foodItemCompletion("apple", user)
 }
 
