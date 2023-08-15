@@ -114,6 +114,23 @@ function FoodRow({
       foodItem.FoodItem.FoodImage[0].pathToImage) ||
     "https://cdn.discordapp.com/attachments/1107010584907612172/1138668812414242856/coudron_food_photography_of_an_empty_wooden_table_top-down_shot_6976cf67-5513-4a6b-9479-d13752b6b494.png"
 
+  const isLoading = foodItem.status === "Needs Processing"
+
+  const name =
+    foodItem.FoodItem?.name ||
+    (foodItem.extendedOpenAiData?.valueOf() as any)?.full_name ||
+    "Loading..."
+
+  const subtext = isLoading
+    ? "Looking up nutrition info..."
+    : Math.round(
+        getNormalizedFoodValue(foodItem, "kcalPerServing")
+      ).toLocaleString() + " kcals"
+
+  const servingSubtext = isLoading
+    ? (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_amount + " " + (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_name || "Unknown Amount"
+    : foodItem.servingAmount + " " + foodItem.loggedUnit
+
   return (
     <>
       {/* Mobile View */}
@@ -141,60 +158,57 @@ function FoodRow({
         ></div>
         <div className="p-4 flex-column text-white z-30 relative">
           <div className="">
-            <div className="inline capitalize font-bold text-2xl">
-              {foodItem.FoodItem?.name}
-            </div>
-            <div className="inline text-xs text-zinc-400 ms-2">
-              {Math.round(
-                getNormalizedFoodValue(foodItem, "kcalPerServing")
-              ).toLocaleString()}
-              {" kcals"}
-            </div>
+            <div className="inline capitalize font-bold text-2xl">{name}</div>
+            <div className="inline text-xs text-zinc-400 ms-2">{subtext}</div>
           </div>
 
           <div className="text-xs text-zinc-400">
-            {foodItem.servingAmount} {foodItem.loggedUnit}
+            {servingSubtext}
           </div>
         </div>
-        <div className="p-4 flex text-white z-30 relative justify-between text-center">
-          <div className="border-b border-l rounded-bl-md border-amino-500/20">
-            <div className="px-2 text-xs text-amino-500 rounded-full">
-              Carbs
+        {!isLoading && (
+          <div className="p-4 flex text-white z-30 relative justify-between text-center">
+            <div className="border-b border-l rounded-bl-md border-amino-500/20">
+              <div className="px-2 text-xs text-amino-500 rounded-full">
+                Carbs
+              </div>
+              <div className="px-2 pb-1">
+                <span className="text-xl font-bold">
+                  {Math.round(
+                    getNormalizedFoodValue(foodItem, "carbPerServing")
+                  ).toLocaleString()}
+                </span>
+                g
+              </div>
             </div>
-            <div className="px-2 pb-1">
-              <span className="text-xl font-bold">
-                {Math.round(
-                  getNormalizedFoodValue(foodItem, "carbPerServing")
-                ).toLocaleString()}
-              </span>
-              g
+            <div className="border-b border-l rounded-bl-md border-amino-500/20">
+              <div className="px-2 text-xs text-amino-500 rounded-full">
+                Fats
+              </div>
+              <div className="px-2 pb-1">
+                <span className="text-xl font-bold">
+                  {Math.round(
+                    getNormalizedFoodValue(foodItem, "totalFatPerServing")
+                  ).toLocaleString()}
+                </span>
+                g
+              </div>
+            </div>
+            <div className="border-b border-l rounded-bl-md border-amino-500/20">
+              <div className="px-2 text-xs text-amino-500 rounded-full">
+                Protein
+              </div>
+              <div className="px-2 pb-1">
+                <span className="text-xl font-bold">
+                  {Math.round(
+                    getNormalizedFoodValue(foodItem, "proteinPerServing")
+                  ).toLocaleString()}
+                </span>
+                g
+              </div>
             </div>
           </div>
-          <div className="border-b border-l rounded-bl-md border-amino-500/20">
-            <div className="px-2 text-xs text-amino-500 rounded-full">Fats</div>
-            <div className="px-2 pb-1">
-              <span className="text-xl font-bold">
-                {Math.round(
-                  getNormalizedFoodValue(foodItem, "totalFatPerServing")
-                ).toLocaleString()}
-              </span>
-              g
-            </div>
-          </div>
-          <div className="border-b border-l rounded-bl-md border-amino-500/20">
-            <div className="px-2 text-xs text-amino-500 rounded-full">
-              Protein
-            </div>
-            <div className="px-2 pb-1">
-              <span className="text-xl font-bold">
-                {Math.round(
-                  getNormalizedFoodValue(foodItem, "proteinPerServing")
-                ).toLocaleString()}
-              </span>
-              g
-            </div>
-          </div>
-        </div>
+        )}
       </div>
       {/* <div className="text-gray-600 text-sm mb-3 text-right ">
         {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
