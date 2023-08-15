@@ -1,4 +1,10 @@
-import { User, FoodItem, Message, FoodInfoSource } from "@prisma/client"
+import {
+  User,
+  FoodItem,
+  Message,
+  FoodInfoSource,
+  LoggedFoodItem
+} from "@prisma/client"
 import UpdateMessage from "@/database/UpdateMessage"
 import { prisma } from "../prisma"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
@@ -150,13 +156,39 @@ export async function HandleLogFoodItems(
 ) {
   console.log("parameters", parameters)
 
-  const foodItems: FoodItemToLog[] = parameters.food_items
+  const foodItemsToLog: FoodItemToLog[] = parameters.food_items
 
-  UpdateMessage({ id: lastUserMessage.id, itemsToProcess: foodItems.length })
-  lastUserMessage.itemsToProcess = foodItems.length
+  UpdateMessage({
+    id: lastUserMessage.id,
+    itemsToProcess: foodItemsToLog.length
+  })
+  lastUserMessage.itemsToProcess = foodItemsToLog.length
 
-  // Add each food item to queue
-  for (let food of foodItems) {
+  // Create all the pending food items
+  const foodsNeedProcessing = await prisma.$transaction(
+    foodItemsToLog.map((food) =>
+      prisma.loggedFoodItem.create({
+        data: {
+          userId: user.id,
+          consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+          messageId: lastUserMessage.id,
+          status: "Needs Processing",
+          extendedOpenAiData: food as any
+          // Seb, do we need more info from the function here?
+        }
+      })
+    )
+  )
+
+  console.log("foodsNeedProcessing", foodsNeedProcessing)
+
+  const results = []
+  foodItemsToLog.forEach((food) =>
+    results.push("- " + constructFoodRequestString(food))
+  )
+
+  // Add each pending food item to queue
+  for (let food of foodsNeedProcessing) {
     const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/`
     console.log("Target URL: ", targetUrl)
 
@@ -174,24 +206,29 @@ export async function HandleLogFoodItems(
     console.log("Added to queue result: ", result)
   }
 
-  const foodAddResultsPromises = []
-  for (let food of foodItems) {
-    foodAddResultsPromises.push(HandleLogFoodItem(food, lastUserMessage, user))
-  }
-  const results = (await Promise.all(foodAddResultsPromises)) || []
+  // Move process food items to POST route on serverlessq
+
+  // const foodAddResultsPromises = []
+  // for (let food of foodItemsToLog) {
+  //   foodAddResultsPromises.push(HandleLogFoodItem(food, lastUserMessage, user))
+  // }
+  // const results = (await Promise.all(foodAddResultsPromises)) || []
 
   if (results.length === 0) {
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift("I've logged your food:")
+  results.unshift("I've logged your food:\n")
 
-  return results.join("\n\n")
+  results.push("It might take us a few minutes to update the items.")
+
+  return results.join("\n")
 }
 
-async function HandleLogFoodItem(
+export async function HandleLogFoodItem(
+  loggedFoodItem: LoggedFoodItem,
   food: FoodItemToLog,
-  lastUserMessage: Message,
+  messageId: number,
   user: User
 ): Promise<string> {
   let matches = []
@@ -260,7 +297,7 @@ async function HandleLogFoodItem(
   if (matches.length === 0) {
     console.log("No matches found for food item", food.full_name)
 
-    const newFood = await addFoodItemToDatabase(food, user, lastUserMessage)
+    const newFood = await addFoodItemToDatabase(food, user, messageId)
     matches = [newFood]
   }
 
@@ -316,13 +353,12 @@ async function HandleLogFoodItem(
     grams: food.serving.total_serving_grams,
     userId: user.id,
     consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-    messageId: lastUserMessage.id
+    messageId,
+    status: "Processed"
   }
 
   const foodItem = await prisma.loggedFoodItem
-    .create({
-      data
-    })
+    .update({ where: { id: loggedFoodItem.id }, data })
     .catch((err) => {
       console.log("Error logging food item", err)
     })
@@ -330,7 +366,7 @@ async function HandleLogFoodItem(
     return "Sorry, I could not log your food items. Please try again later."
   }
 
-  await UpdateMessage({ id: lastUserMessage.id, incrementItemsProcessedBy: 1 })
+  await UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }
@@ -338,7 +374,7 @@ async function HandleLogFoodItem(
 async function addFoodItemToDatabase(
   foodToLog: FoodItemToLog,
   user: User,
-  lastUserMessage: Message
+  messageId: number
 ): Promise<FoodItem> {
   console.log("food", foodToLog)
 
@@ -425,7 +461,7 @@ async function addFoodItemToDatabase(
         sugarPerServing: food.sugar_per_serving ?? 0,
         addedSugarPerServing: food.added_sugar_per_serving ?? 0,
         proteinPerServing: food.protein_per_serving,
-        messageId: lastUserMessage.id,
+        messageId,
         foodInfoSource: mapModelToEnum(model),
         Servings: {
           create:

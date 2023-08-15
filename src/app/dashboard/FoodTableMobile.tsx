@@ -109,7 +109,7 @@ function FoodRow({
   const path = usePathname()
 
   const backgroundImage =
-    (foodItem.FoodItem.FoodImage &&
+    (foodItem.FoodItem?.FoodImage &&
       foodItem.FoodItem.FoodImage.length &&
       foodItem.FoodItem.FoodImage[0].pathToImage) ||
     "https://cdn.discordapp.com/attachments/1107010584907612172/1138668812414242856/coudron_food_photography_of_an_empty_wooden_table_top-down_shot_6976cf67-5513-4a6b-9479-d13752b6b494.png"
@@ -142,7 +142,7 @@ function FoodRow({
         <div className="p-4 flex-column text-white z-30 relative">
           <div className="">
             <div className="inline capitalize font-bold text-2xl">
-              {foodItem.FoodItem.name}
+              {foodItem.FoodItem?.name}
             </div>
             <div className="inline text-xs text-zinc-400 ms-2">
               {Math.round(

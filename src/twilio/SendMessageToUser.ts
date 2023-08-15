@@ -107,7 +107,12 @@ export async function SendListOfFoodsTodayToUser(user: User) {
     let returnMessage = `Here's your list of food logged today:\n\n`
 
     for (const food of foodToday) {
-      returnMessage += `\n${food.FoodItem.name} - ${food.servingAmount} ${food.loggedUnit}`
+      if (food.FoodItem) { // Check if FoodItem is not null
+        returnMessage += `\n${food.FoodItem.name} - ${food.servingAmount} ${food.loggedUnit}`
+      } else {
+        // Handle the case where FoodItem is null, if needed
+        returnMessage += `\nUnknown Food - ${food.servingAmount} ${food.loggedUnit}`
+      }
     }
     return returnMessage
   }
