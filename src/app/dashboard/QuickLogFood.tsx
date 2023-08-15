@@ -1,6 +1,6 @@
 "use client"
 
-import { sendMessage } from "@/components/chat/actions"
+import { QuickLogFoodMessage, sendMessage } from "@/components/chat/actions"
 import { Dialog, Transition } from "@headlessui/react"
 import { CheckIcon, ExclamationTriangleIcon, UserPlusIcon } from "@heroicons/react/24/outline"
 import { FormEventHandler, Fragment, useRef, useState } from "react"
@@ -24,7 +24,7 @@ export default function QuickLogFood() {
     setRequestMessage("Please wait...")
     setRequestStatus(RequestStatus.PENDING)
     setModalOpen(true)
-    const result = await sendMessage(quickLogInput)
+    const result = await QuickLogFoodMessage(quickLogInput)
     if (result.error) {
       setRequestMessage(result.error)
       setRequestStatus(RequestStatus.ERROR)
