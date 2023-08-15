@@ -41,24 +41,26 @@ export const TimePicker = ({ onChange, defaultValue }: {
     };
 
     return (
-        <div className="p-1 w-28 bg-dark-tremor-background border border-gray-800 rounded-lg shadow-xl flex justify-center">
-            <div className="flex text-base text-white">
-                <select name="hours" value={time.hours} onChange={handleHoursChange} className="bg-transparent appearance-none outline-none">
+        <div className="container mx-auto">
+            <div className="inline-flex border rounded-md shadow-lg p-1 pt-1 bg-gray-100 text-lg text-gray-700">
+                <select name="hours" value={time.hours} onChange={handleHoursChange} className="pl-1 outline-none border-0 appearance-none bg-transparent">
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
                         <option key={hour} value={String(hour)}>{String(hour).padStart(2, '0')}</option>
                     ))}
                 </select>
-                <span className="text-base mr-3">:</span>
-                <select name="minutes" value={time.minutes} onChange={handleMinutesChange} className="bg-transparent appearance-none outline-none mr-4">
+                <span className="pr-2">:</span>
+                <select name="minutes" value={time.minutes} onChange={handleMinutesChange} className="outline-none border-0 appearance-none bg-transparent">
                     {minuteOptions.map((minute) => (
                         <option key={minute} value={String(minute).padStart(2, '0')}>{String(minute).padStart(2, '0')}</option>
                     ))}
                 </select>
-                <select name="ampm" value={time.ampm} onChange={handleAmPmChange} className="bg-transparent appearance-none outline-none">
+                <select name="ampm" value={time.ampm} onChange={handleAmPmChange} className="pr-1 outline-none border-0 appearance-none bg-transparent">
                     <option value="am">AM</option>
                     <option value="pm">PM</option>
                 </select>
             </div>
         </div>
+
+
     );
 };
