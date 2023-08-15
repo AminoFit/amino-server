@@ -189,7 +189,7 @@ export async function HandleLogFoodItems(
 
   // Add each pending food item to queue
   for (let food of foodsNeedProcessing) {
-    const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/`
+    const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/${food.id}`
     console.log("Target URL: ", targetUrl)
 
     const fetchUrl = `https://api.serverlessq.com?id=${process.env.SERVERLESSQ_QUEUE_ID}&target=${targetUrl}`
@@ -198,9 +198,7 @@ export async function HandleLogFoodItems(
       headers: {
         Accept: "application/json",
         "x-api-key": process.env.SERVERLESSQ_API_TOKEN!
-      },
-      method: "POST",
-      body: JSON.stringify(food)
+      }
     })
 
     console.log("Added to queue result: ", result)
@@ -218,7 +216,9 @@ export async function HandleLogFoodItems(
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
+  results.unshift(
+    "We're logging your food. It might take a few mins for us to look up all the information:"
+  )
 
   return results.join(" ")
 }
