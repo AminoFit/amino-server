@@ -276,6 +276,7 @@ function FoodRow({
           setFoodEditModalOpen(false)
         }}
         food={foodItem}
+        user={user}
       />
       <DeleteFoodModal
         food={foodItem}
