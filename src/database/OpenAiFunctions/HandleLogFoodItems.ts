@@ -218,7 +218,9 @@ export async function HandleLogFoodItems(
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
+  results.unshift(
+    "We're logging your food. It might take a few mins for us to look up all the information:"
+  )
 
   return results.join(" ")
 }
@@ -385,11 +387,17 @@ async function addFoodItemToDatabase(
       branded: foodToLog.branded || false
     }
 
-    // Define function to get NX food info
     const getNxFoodInfo = async () => {
+      const startTime = Date.now() // Capture start time
       if (await checkRateLimit("nutritionix", 45, ONE_DAY_IN_MS)) {
         try {
-          return await findNxFoodInfo(foodQuery)
+          const result = await findNxFoodInfo(foodQuery)
+          console.log(
+            "Time taken for Nutritionix API:",
+            Date.now() - startTime,
+            "ms"
+          ) // Log the time taken
+          return result
         } catch (err) {
           console.log("Error finding NX food info", err) // Silently fail
           return null
@@ -398,16 +406,17 @@ async function addFoodItemToDatabase(
       return null
     }
 
-    // Define function to get USDA food info
     const getUsdaFoodInfo = async () => {
-      if (await checkRateLimit("udsa", 1000, ONE_HOUR_IN_MS)) {
-        // Note: Corrected the typo 'udsa' to 'usda'
+      const startTime = Date.now()
+      if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
         try {
-          return await findUsdaFoodInfo({
+          const result = await findUsdaFoodInfo({
             food_name:
               foodToLog.user_food_descriptive_name || foodToLog.full_name,
             branded: foodToLog.branded || false
           })
+          console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
+          return result
         } catch (err) {
           console.log("Error finding USDA food info", err) // Silently fail
           return null
@@ -447,10 +456,13 @@ async function addFoodItemToDatabase(
         JSON.stringify(food)
     }
 
+    // Time the llm call (foodItemCompletion)
+    const foodItemCompletionStartTime = Date.now() // Capture start time
     const { foodItemInfo, model } = await foodItemCompletion(
       foodItemRequestString,
       user
     )
+    console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime,"ms")
 
     let newFood: FoodItem
 
