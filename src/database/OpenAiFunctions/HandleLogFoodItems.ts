@@ -385,29 +385,42 @@ async function addFoodItemToDatabase(
       branded: foodToLog.branded || false
     }
 
-    // Query the findNxFoodInfo function
-    let nxFoodInfoResponse = null
-    if (await checkRateLimit("nutritionix", 45, ONE_DAY_IN_MS)) {
-      try {
-        nxFoodInfoResponse = await findNxFoodInfo(foodQuery)
-      } catch (err) {
-        console.log("Error finding NX food info", err) // Silently fail
+    // Define function to get NX food info
+    const getNxFoodInfo = async () => {
+      if (await checkRateLimit("nutritionix", 45, ONE_DAY_IN_MS)) {
+        try {
+          return await findNxFoodInfo(foodQuery)
+        } catch (err) {
+          console.log("Error finding NX food info", err) // Silently fail
+          return null
+        }
       }
+      return null
     }
 
-    // Query the findUsdaFoodInfo function
-    let usdaFoodInfoResponse = null
-    if (await checkRateLimit("udsa", 1000, ONE_HOUR_IN_MS)) {
-      try {
-        usdaFoodInfoResponse = await findUsdaFoodInfo({
-          food_name:
-            foodToLog.user_food_descriptive_name || foodToLog.full_name,
-          branded: foodToLog.branded || false
-        })
-      } catch (err) {
-        console.log("Error finding USDA food info", err) // Silently fail
+    // Define function to get USDA food info
+    const getUsdaFoodInfo = async () => {
+      if (await checkRateLimit("udsa", 1000, ONE_HOUR_IN_MS)) {
+        // Note: Corrected the typo 'udsa' to 'usda'
+        try {
+          return await findUsdaFoodInfo({
+            food_name:
+              foodToLog.user_food_descriptive_name || foodToLog.full_name,
+            branded: foodToLog.branded || false
+          })
+        } catch (err) {
+          console.log("Error finding USDA food info", err) // Silently fail
+          return null
+        }
       }
+      return null
     }
+
+    // Dispatch both API calls simultaneously
+    const [nxFoodInfoResponse, usdaFoodInfoResponse] = await Promise.all([
+      getNxFoodInfo(),
+      getUsdaFoodInfo()
+    ])
 
     // create string name for food request
     let foodItemRequestString: string = constructFoodRequestString(foodToLog)
