@@ -50,6 +50,8 @@ export async function GET(
     return new Response("No serving", { status: 400 })
   }
 
+  let seconds = 1
+
   const customReadable = new ReadableStream({
     start(controller) {
       controller.enqueue(
@@ -65,7 +67,7 @@ export async function GET(
       })
 
       setInterval(() => {
-        controller.enqueue(encoder.encode("Still processing..."))
+        controller.enqueue(encoder.encode("Seconds elapsed: " + seconds++))
       }, 1000)
     }
   })
