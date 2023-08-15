@@ -1,6 +1,9 @@
 import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai"
 import { User } from "@prisma/client"
 import { LogOpenAiUsage } from "../utils/openAiHelper"
+import path from "path"
+import dotenv from "dotenv"
+dotenv.config({ path: path.resolve(__dirname, "../../../.env.local") })
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY

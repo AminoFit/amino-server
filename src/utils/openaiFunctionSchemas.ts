@@ -1,4 +1,9 @@
 import { Configuration, OpenAIApi } from "openai"
+import path from "path"
+import dotenv from "dotenv"
+const envPath = path.resolve(__dirname, "../../.env.local")
+
+dotenv.config({ path: envPath })
 
 const configuration = new Configuration({
   organization: process.env.OPENAI_ORG_ID,
@@ -17,16 +22,9 @@ export const logFoodSchema = {
         type: "object",
         description: "A food item",
         properties: {
-          full_name: {
-            type: "string",
-            description:
-              "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos."
-          },
+          full_name: { type: "string", description: "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos." },
           brand: { type: "string", description: "The brand of the food item" },
-          branded: {
-            type: "boolean",
-            description: "If item is branded or not"
-          },
+          branded: { type: "boolean", description: "If item is branded or not" },
           lemmatized_database_search_term: {
             type: "string",
             description:
@@ -42,42 +40,32 @@ export const logFoodSchema = {
               "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
           },
           serving: {
-            type: "object",
-            properties: {
-              serving_amount: {
-                type: "number",
-                description: "Amount of the serving"
+              type: "object",
+              properties: {
+                serving_amount: {
+                  type: "number",
+                  description: "Amount of the serving",
+                },
+                serving_name: {
+                  type: "string",
+                  description:
+                    "Description of the serving, e.g. large, cup, piece",
+                },
+                total_serving_grams: {
+                  type: "number",
+                  description:
+                    "The weight of the item eaten in grams. CANNOT BE 0"
+                },
+                total_serving_calories: {
+                  type: "number",
+                  description: "The number of calories in the food item"
+                },
               },
-              serving_name: {
-                type: "string",
-                description:
-                  "Description of the serving, e.g. large, cup, piece"
-              },
-              total_serving_grams: {
-                type: "number",
-                description:
-                  "The weight of the item eaten in grams. CANNOT BE 0"
-              },
-              total_serving_calories: {
-                type: "number",
-                description: "The number of calories in the food item"
-              }
-            },
-            required: [
-              "serving_amount",
-              "serving_name",
-              "total_serving_grams",
-              "total_serving_calories"
-            ],
-            description: "Serving size and description of food item"
+            required: ["serving_amount", "serving_name", "total_serving_grams", "total_serving_calories"],
+            description: "Serving size and description of food item",
           }
         },
-        required: [
-          "full_name",
-          "total_weight_grams",
-          "lemmatized_database_search_term",
-          "serving"
-        ]
+        required: ["full_name", "total_weight_grams", "lemmatized_database_search_term", "serving"]
       }
     },
     total_calories: {

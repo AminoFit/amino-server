@@ -1,3 +1,4 @@
+import { error } from "console"
 import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
 import { FoodItems } from "./foodItemInterface"
@@ -340,7 +341,7 @@ export async function foodItemCompletion(inquiry: string, user: User): Promise<a
       JSON.parse(result.function_call.arguments)
     )
     if (!has_valid_data || !has_valid_schema) {
-      throw console.error("Could not find food item")
+      throw error("Could not find food item")
     }
     return {
       foodItemInfo: JSON.parse(result.function_call.arguments),
