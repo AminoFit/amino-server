@@ -1,10 +1,5 @@
 import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
-import path from "path"
-import dotenv from "dotenv"
-const envPath = path.resolve(__dirname, "../../../.env.local")
-
-dotenv.config({ path: envPath })
 
 const NUTRITIONIX_ENDPOINT =
   "https://trackapi.nutritionix.com/v2/natural/nutrients"
@@ -92,10 +87,12 @@ export async function getNonBrandedFoodInfo(
     }
   )
 
-  const requestDetails = `${NUTRITIONIX_ENDPOINT} - ${JSON.stringify(foodQuery)}`;
+  const requestDetails = `${NUTRITIONIX_ENDPOINT} - ${JSON.stringify(
+    foodQuery
+  )}`
 
   // do not await this
-  recordQuery("nutritionix", requestDetails);
+  recordQuery("nutritionix", requestDetails)
 
   return response.data as NxNonBrandedResponse
 }

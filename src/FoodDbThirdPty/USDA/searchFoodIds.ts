@@ -1,10 +1,5 @@
 import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
-import path from "path"
-import dotenv from "dotenv"
-
-const envPath = path.resolve(__dirname, "../../../.env.local")
-dotenv.config({ path: envPath })
 
 const USDA_API_KEY = process.env.USDA_API_KEY
 export interface UsdaSearchParams {
@@ -41,72 +36,71 @@ type RequestParams = {
 }
 
 function createUrlWithParams(baseUrl: string, params: any): string {
-  const url = new URL(baseUrl);
+  const url = new URL(baseUrl)
   Object.keys(params).forEach((key) => {
-    const value = params[key as keyof typeof params];
+    const value = params[key as keyof typeof params]
     if (value !== undefined) {
-      url.searchParams.append(key, String(value));
+      url.searchParams.append(key, String(value))
     }
-  });
-  return url.toString();
+  })
+  return url.toString()
 }
 
 export async function searchFoodIds(
   params: UsdaSearchParams
 ): Promise<UsdaSearchResponse> {
-  const API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
-  const queryWords = params.query.split(" ");
+  const API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+  const queryWords = params.query.split(" ")
 
   const requestParams: RequestParams = {
     query: params.query,
     pageSize: 10,
     api_key: USDA_API_KEY
-  };
+  }
 
-  let filteredFoods: UsdaFoodIdResults[] = [];
+  let filteredFoods: UsdaFoodIdResults[] = []
 
   try {
     // Unbranded and Branded cases
     const dataTypesArray = params.branded
       ? ["Branded", "Foundation", "SR Legacy"]
-      : ["Foundation", "SR Legacy", "Branded"];
+      : ["Foundation", "SR Legacy", "Branded"]
 
     for (const dataType of dataTypesArray) {
-      requestParams.dataType = dataType;
-      const completeUrl = createUrlWithParams(API_URL, requestParams);
+      requestParams.dataType = dataType
+      const completeUrl = createUrlWithParams(API_URL, requestParams)
 
       let response = await axios.get<UsdaSearchResponse>(API_URL, {
         params: requestParams
-      });
+      })
 
       // Record
-      recordQuery("usda", completeUrl);
+      recordQuery("usda", completeUrl)
 
       filteredFoods = response.data.foods.filter((food) =>
         queryWords.every((word) =>
           food.description.toLowerCase().includes(word.toLowerCase())
         )
-      );
+      )
 
-      if (filteredFoods.length !== 0) break;
+      if (filteredFoods.length !== 0) break
     }
 
     // Final try: if still no results, drop the requirement for all words
     if (filteredFoods.length === 0) {
-      const completeUrl = createUrlWithParams(API_URL, requestParams);
+      const completeUrl = createUrlWithParams(API_URL, requestParams)
       const response = await axios.get<UsdaSearchResponse>(API_URL, {
         params: requestParams
-      });
-      recordQuery("usda", completeUrl);
-      filteredFoods = response.data.foods;
+      })
+      recordQuery("usda", completeUrl)
+      filteredFoods = response.data.foods
     }
 
-    return { foods: filteredFoods };
+    return { foods: filteredFoods }
   } catch (error) {
-    throw new Error(`Error fetching data from USDA API: ${error}`);
+    throw new Error(`Error fetching data from USDA API: ${error}`)
   }
 }
-
 
 async function runTests() {
   await searchFoodIds({
