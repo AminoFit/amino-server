@@ -1,3 +1,5 @@
+export const runtime = "edge"
+
 import { HandleLogFoodItem } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { prisma } from "@/database/prisma"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
@@ -7,7 +9,9 @@ export async function GET(
   request: Request, // needed so we don't cache this request
   { params }: { params: { loggedFoodId: string } }
 ) {
-  const loggedFoodIdString = params.loggedFoodId // 'a', 'b', or 'c'
+  const encoder = new TextEncoder()
+
+  const loggedFoodIdString = params.loggedFoodId
 
   console.log("got a POST request to process food item")
 
@@ -46,14 +50,29 @@ export async function GET(
     return new Response("No serving", { status: 400 })
   }
 
-  await HandleLogFoodItem(
-    loggedFoodItem,
-    openAiData as FoodItemToLog,
-    loggedFoodItem.id,
-    loggedFoodItem.User
-  )
+  let seconds = 1
 
-  console.log("Done processing food item", loggedFoodItem.id)
+  const customReadable = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode("Starting to process food item: " + loggedFoodItem.id)
+      )
+      HandleLogFoodItem(
+        loggedFoodItem,
+        openAiData as FoodItemToLog,
+        loggedFoodItem.id,
+        loggedFoodItem.User
+      ).then(() => {
+        controller.close()
+      })
 
-  return NextResponse.json({ text: "Processed Food" })
+      setInterval(() => {
+        controller.enqueue(encoder.encode("Seconds elapsed: " + seconds++))
+      }, 1000)
+    }
+  })
+
+  return new Response(customReadable, {
+    headers: { "Content-Type": "text/html; charset=utf-8" }
+  })
 }

@@ -1,10 +1,5 @@
 import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
-import path from "path"
-import dotenv from "dotenv"
-
-const envPath = path.resolve(__dirname, "../../../.env.local")
-dotenv.config({ path: envPath })
 
 const USDA_API_KEY = process.env.USDA_API_KEY
 
