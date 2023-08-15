@@ -47,3 +47,23 @@ export default async function ProcessMessage(
   console.log("The request took ", Date.now() - startTime, "ms")
   return responseMessage.resultMessage
 }
+
+/*
+  Logs food in non-chat context. Should return a confirmation message or error message.
+*/
+export async function QuickLogMessage(user: User, body: string) {
+  const startTime = Date.now()
+  await LogSmsMessage(user, body, MessageDirection.Inbound)
+
+  await SaveMessageFromUser(user, body, Role.User)
+
+  let responseMessage = await GenerateResponseForUser(user)
+
+  console.log("responseMessage", responseMessage)
+
+  await SaveMessageToUser(user, responseMessage.resultMessage || "")
+
+  console.log("The request took ", Date.now() - startTime, "ms")
+
+  return responseMessage.resultMessage
+}

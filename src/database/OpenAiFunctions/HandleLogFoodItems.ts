@@ -184,7 +184,7 @@ export async function HandleLogFoodItems(
 
   const results = []
   foodItemsToLog.forEach((food) =>
-    results.push("- " + constructFoodRequestString(food))
+    results.push(constructFoodRequestString(food))
   )
 
   // Add each pending food item to queue
@@ -218,11 +218,9 @@ export async function HandleLogFoodItems(
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift("I've logged your food:\n")
+  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
 
-  results.push("It might take us a few minutes to update the items.")
-
-  return results.join("\n")
+  return results.join(" ")
 }
 
 export async function HandleLogFoodItem(

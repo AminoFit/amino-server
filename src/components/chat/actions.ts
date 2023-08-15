@@ -1,7 +1,7 @@
 "use server"
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth"
-import ProcessMessage, { MessageSource } from "@/app/api/processMessage"
+import ProcessMessage, { MessageSource, QuickLogMessage } from "@/app/api/processMessage"
 import { prisma } from "@/database/prisma"
 import { getServerSession } from "next-auth"
 
@@ -18,7 +18,7 @@ export async function sendMessage(newMessage: string) {
     })
 
     if (user) {
-      const message = await ProcessMessage(user, newMessage, MessageSource.Web)
+      const message = await QuickLogMessage(user, newMessage)
       console.log("message", message)
       return { message }
     }

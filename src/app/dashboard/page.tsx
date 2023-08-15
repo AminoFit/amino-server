@@ -88,10 +88,9 @@ export default async function FoodLog() {
           <FoodLogHeader foods={foods} user={user} />
         </div>
         <div>
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <GraphCalorieChart calories={calories} labels={labels} />
-            {/* <CalorieChart foods={foods} /> */}
-          </div>
+          </div> */}
 
           <TableHeader user={user} />
           <FoodTableMobile foods={foods} user={user} />
