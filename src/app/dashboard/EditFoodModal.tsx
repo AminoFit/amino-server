@@ -10,7 +10,7 @@ import { TimePicker } from "@/components/timePicker/timePicker";
 import { updateLoggedFoodItem } from "./utils/LoggedFoodEditHelper"
 
 const renderSmallNutrientRow = (nutrientKey: keyof FoodItem, label: string, food: LoggedFoodItemWithFoodItem) => {
-  if (food.FoodItem[nutrientKey] != null) {
+  if (food.FoodItem && food.FoodItem[nutrientKey] != null) { // Added null-check for food.FoodItem
     return (
       <>
         <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
@@ -37,7 +37,13 @@ export default function EditFoodModal({
   user: User
 }) {
   // Extract necessary fields
-  const { name, brand } = food.FoodItem;
+  let foodName = '';
+  let brand = '';
+
+  if (food.FoodItem) {
+    foodName = food.FoodItem.name;
+    brand = food.FoodItem.brand || "";
+  }
   const consumedOnMoment = moment(food.consumedOn).tz(user.tzIdentifier);
 
   const timeEaten = {
@@ -56,12 +62,15 @@ export default function EditFoodModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const handleServingChange = (value: string) => {
-    const selectedServing = food.FoodItem.Servings.find(serving => serving.servingName === value);
-    if (selectedServing) {
-      setServingValue(value);
-      setServingGramsValue(selectedServing.servingWeightGram);
+    if (food.FoodItem) {
+      const selectedServing = food.FoodItem.Servings.find(serving => serving.servingName === value);
+      if (selectedServing) {
+        setServingValue(value);
+        setServingGramsValue(selectedServing.servingWeightGram);
+      }
     }
   };
+
 
   const handlePortionChange = (value: number) => {
     setPortionAmount(value);
@@ -82,35 +91,35 @@ export default function EditFoodModal({
 
   const handleSaveFoodItem = async () => {
     setIsSaving(true);
-    
+
     let hours24Format = parseInt(selectedTime.hours);
     if (selectedTime.ampm === 'pm' && hours24Format < 12) {
       hours24Format += 12;
     } else if (selectedTime.ampm === 'am' && hours24Format === 12) {
       hours24Format = 0;
     }
-    
+
     const localMoment = moment(selectedDate).tz(moment.tz.guess());
     localMoment.hour(hours24Format).minute(parseInt(selectedTime.minutes));
-  
+
     const consumedOn = localMoment.toDate();
-  
+
     const foodData = {
       consumedOn: consumedOn,
       grams: servingWeightGramsValue * portionAmount,
       servingAmount: portionAmount,
       loggedUnit: servingValue,
     };
-  
+
     const updatedFoodItem = await updateLoggedFoodItem(food.id, foodData);
-  
+
     if (updatedFoodItem) {
       console.log("Food item updated successfully");
     } else {
       console.error("Failed to update food item");
     }
     setIsSaving(false);
-  };  
+  };
 
 
   return (
@@ -147,7 +156,7 @@ export default function EditFoodModal({
                         as="h2"
                         className="text-lg font-semibold leading-4 text-white"
                       >
-                        {brand ? `${name} by ${brand}` : name} {food.FoodItem.verified && <CheckCircleIcon className="h-4 w-4 inline-block" />}
+                        {brand ? `${foodName} by ${brand}` : foodName} {food.FoodItem?.verified && <CheckCircleIcon className="h-4 w-4 inline-block" />}
                       </Dialog.Title>
                     </div>
                     <button
@@ -234,11 +243,15 @@ export default function EditFoodModal({
                       {food.loggedUnit} <span className="text-slate-200 text-base font-extralight">({food.grams}g)</span>
                             */}
                       <SearchSelect placeholder={servingValue + " (" + servingWeightGramsValue + " g)"} value={servingValue} onValueChange={handleServingChange}>
-                        {food.FoodItem.Servings.map((serving) => (
-                          <SearchSelectItem key={serving.id} value={serving.servingName}>
-                            {serving.servingName} ({serving.servingWeightGram}g)
-                          </SearchSelectItem>
-                        ))}
+                        {food.FoodItem ? (
+                          food.FoodItem.Servings.map((serving) => (
+                            <SearchSelectItem key={serving.id} value={serving.servingName}>
+                              {serving.servingName} ({serving.servingWeightGram}g)
+                            </SearchSelectItem>
+                          ))
+                        ) : (
+                          <></> 
+                        )}
                       </SearchSelect>
                     </div>
                   </div>
