@@ -4,7 +4,7 @@ import axios from "axios"
 import moment from "moment-timezone"
 import { useSearchParams } from "next/navigation"
 import { FoodLogHeader } from "./FoodLogHeader"
-import { FoodTableMobile } from "./FoodTableMobile"
+import { FoodTable } from "./FoodTable"
 import { TableHeader } from "./TableHeader"
 
 export default function FoodLog() {
@@ -27,7 +27,7 @@ export default function FoodLog() {
         <FoodLogHeader foods={[]} user={user} />
         <div>
           <TableHeader />
-          <FoodTableMobile />
+          <FoodTable />
         </div>
       </div>
     </>
