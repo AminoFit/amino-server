@@ -2,7 +2,6 @@ import { User } from "@prisma/client"
 
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
-
 export function FoodLogHeader({
   foods,
   user
@@ -13,7 +12,7 @@ export function FoodLogHeader({
   return (
     <>
       <div className="px-4 sm:px-6 lg:px-0">
-        <div className="mt-5 flex mb-4">
+        <div className="mt-5 flex justify-between mb-4">
           <div>
             {user.firstName && (
               <div className="text-sm font-light text-amino-logo">
@@ -23,9 +22,14 @@ export function FoodLogHeader({
             <h2 className="mb-3 text-4xl font-bold leading-7 text-zinc-50 sm:truncate sm:text-3xl sm:tracking-tight">
               {user.firstName || "Welcome Back"}
             </h2>
-            {/* <h2 className="mb-5 text-lg leading-7 text-zinc-50">
-              Let's get you closer to your goal. Log your food above.
-            </h2> */}
+          </div>
+          <div className="p-3 rounded-lg bg-[#ffffff]/10 backdrop-blur-sm flex flex-col text-white text-center">
+            <div className="text-4xl sm:text-5xl font-bold">3,200</div>
+            <div className="text-xs uppercase">Calories Remaining</div>
+          </div>
+          <div className="p-3 rounded-lg bg-[#ffffff]/10 backdrop-blur-sm flex flex-col text-white text-center">
+            <div className="text-4xl sm:text-5xl font-bold">5</div>
+            <div className="text-xs">DAY STREAK</div>
           </div>
         </div>
 

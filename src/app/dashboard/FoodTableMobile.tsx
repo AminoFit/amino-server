@@ -76,7 +76,7 @@ export function FoodTableMobile({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <div className="px-3 pt-3 rounded-3xl bg-[#212121]">
+    <div className="px-3 pt-3 rounded-3xl bg-[#ffffff]/10 backdrop-blur-sm">
       {filteredFood.length === 0 && <FoodRowEmpty />}
       {foodGroups.map((foodGroup) => {
         if (!groups[foodGroup]) return null
