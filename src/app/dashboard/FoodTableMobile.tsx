@@ -42,6 +42,7 @@ export function FoodTableMobile() {
     refetchInterval: 1000 * 15
   })
 
+  console.log("foods", foods)
   const groups = _.chain(foods || [])
     .filter((food) => {
       const consumptionTime = moment(food.consumedOn)
@@ -70,6 +71,9 @@ export function FoodTableMobile() {
       return "dinner"
     })
     .value()
+
+
+  console.log("groups", groups)
 
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
