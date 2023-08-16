@@ -17,11 +17,17 @@ import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
-import { foodEmbedding } from "../../utils/foodEmbedding"
+import { foodEmbedding, foodToLogEmbedding } from "../../utils/foodEmbedding"
 import pgvector from "pgvector/utils"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
+
+type FoodItemIdAndEmbedding = {
+  id: number;
+  embedding: string;
+};
+
 
 type FoodItemPropertiesToRemove =
   | "id"
@@ -231,6 +237,24 @@ export async function HandleLogFoodItem(
   messageId: number,
   user: User
 ): Promise<string> {
+
+// Get the user query vector
+// Assuming you have a function to convert foodUserQuery to a vector
+const userQueryVector = await foodToLogEmbedding(food);
+
+// Convert the user query vector to SQL format using pgvector
+const embeddingSql = pgvector.toSql(userQueryVector);
+
+// Query for the nearest neighbors based on the embedding vector
+const items = await prisma.$queryRaw`SELECT id, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5` as FoodItemIdAndEmbedding[];
+
+// Process the result as you need
+items.forEach(item => {
+  console.log(`Item ID: ${item.id}`);
+});
+
+
+  // classical search
   let matches = []
 
   console.log("foodItem db helper word", food.lemmatized_database_search_term)
