@@ -86,7 +86,7 @@ export function FoodTableMobile({
             <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
               {foodGroup.toUpperCase()}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-4 pb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-1 pb-3">
               {groups[foodGroup].map((foodItem) => (
                 <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
               ))}
