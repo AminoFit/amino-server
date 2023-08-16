@@ -17,6 +17,8 @@ import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
+import { foodEmbedding } from "../../utils/foodEmbedding"
+import pgvector from "pgvector/utils"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -461,7 +463,11 @@ async function addFoodItemToDatabase(
       foodItemRequestString,
       user
     )
-    console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime,"ms")
+    console.log(
+      "Time taken for foodItemCompletion:",
+      Date.now() - foodItemCompletionStartTime,
+      "ms"
+    )
 
     let newFood: FoodItem
 
@@ -502,6 +508,14 @@ async function addFoodItemToDatabase(
         }
       }
     })
+
+    // save the vector to the database
+    const embeddingArray = new Float32Array(await foodEmbedding(newFood))
+    const embeddingSql = pgvector.toSql(Array.from(embeddingArray))
+    const result = await prisma.$executeRaw`UPDATE "FoodItem"
+          SET embedding = ${embeddingSql}::vector
+          WHERE id = ${newFood.id}`
+
     return newFood
   } catch (err) {
     console.log("Error getting food item info", err)
