@@ -4,6 +4,7 @@ import { QuickLogFoodMessage } from "@/components/chat/actions"
 import { Dialog, Transition } from "@headlessui/react"
 import { CheckIcon, ExclamationTriangleIcon, UserPlusIcon } from "@heroicons/react/24/outline"
 import { Fragment, useState } from "react"
+import { queryClient } from "../providers"
 
 enum RequestStatus {
   IDLE,
@@ -32,6 +33,7 @@ export default function QuickLogFood() {
     if (result.message) {
       setRequestMessage(result.message.toString())
       setRequestStatus(RequestStatus.SUCCESS)
+      queryClient.invalidateQueries({ queryKey: ['foodData'] })
     }
     setQuickLogInput("")
   }

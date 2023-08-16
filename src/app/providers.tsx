@@ -14,7 +14,7 @@ export const NextAuthProvider = ({ children }: Props) => {
   return <SessionProvider>{children}</SessionProvider>
 }
 
-const queryClient = new QueryClient()
+export const queryClient = new QueryClient()
 
 export const QueryDataProvider = ({ children }: Props) => {
   return (
