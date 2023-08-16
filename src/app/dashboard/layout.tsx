@@ -4,6 +4,8 @@ import { getUser } from "./settings/actions"
 import { TimeZoneBanner } from "./TimeZoneBanner"
 import DashNav from "@/components/DashNav"
 
+import foodBackground from '@/images/backgrounds/food-icon-bg.png'
+
 export default async function Example({
   children
 }: {
@@ -16,10 +18,14 @@ export default async function Example({
   }
 
   return (
-    <div className="bg-[#19191A] min-h-screen">
+    <div className="min-h-screen"
+    style={{
+      backgroundImage: `url(${foodBackground.src})`,
+      backgroundSize: '500px',
+    }}>
       <DashNav />
 
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
+      <div className="mx-auto max-w-7xl lg:px-8">
         {/* We've used 3xl here, but feel free to try other max-widths based on your needs */}
         <div className="">{children}</div>
       </div>

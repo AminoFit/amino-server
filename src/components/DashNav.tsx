@@ -32,7 +32,7 @@ export default function DashNav() {
   const pathname = usePathname()
 
   return (
-    <Disclosure as="nav" className="bg-[#19191A]">
+    <Disclosure as="nav" className="">
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
