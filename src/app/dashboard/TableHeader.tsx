@@ -1,21 +1,17 @@
 "use client"
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon
-} from "@heroicons/react/24/outline"
-import { User } from "@prisma/client"
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline"
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-export function TableHeader({ user }: { user: User }) {
+export function TableHeader() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
 
-  let selectedDate = moment().tz(user.tzIdentifier)
+  let selectedDate = moment()
 
   if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
-    const now = moment().tz(user.tzIdentifier)
+    const now = moment()
     selectedDate = moment(searchParams.get("date"))
     selectedDate.set({
       hour: now.hour(),
@@ -33,12 +29,12 @@ export function TableHeader({ user }: { user: User }) {
     router.push(`${pathname}?date=${newDate.format("YYYY-MM-DD")}`)
   }
   const handleClickToday = () => {
-    const todayDate = moment().tz(user.tzIdentifier)
+    const todayDate = moment()
     router.push(`${pathname}?date=${todayDate.format("YYYY-MM-DD")}`)
   }
 
   const renderTimeText = () => {
-    if (selectedDate.isSame(moment().tz(user.tzIdentifier), "day")) {
+    if (selectedDate.isSame(moment(), "day")) {
       return "Today"
     }
     return selectedDate.fromNow()
@@ -58,7 +54,7 @@ export function TableHeader({ user }: { user: User }) {
       </div>
       <div onClick={handleClickToday}>
         <div className="text-md font-bold leading-7 text-zinc-100">
-          {moment(selectedDate).tz(user.tzIdentifier).format("dddd, MMMM Do")}
+          {moment(selectedDate).format("dddd, MMMM Do")}
         </div>
         <div className="text-sm font-light text-gray-300">
           Daily Food Overview
