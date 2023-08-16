@@ -53,6 +53,8 @@ export async function GET(
       loggedFoodItem.messageId,
       loggedFoodItem.User
     )
+  } else {
+    console.log("No messageId")
   }
 
   console.log("Done processing food item", loggedFoodItem.id)

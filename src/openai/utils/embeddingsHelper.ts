@@ -1,4 +1,13 @@
-import { openai } from "../../utils/openaiFunctionSchemas"
+import { Configuration, OpenAIApi } from "openai"
+
+import * as path from "path";
+require("dotenv").config({ path: path.resolve(__dirname, "../../../.env.local") });
+
+const configuration = new Configuration({
+  organization: process.env.OPENAI_ORG_ID,
+  apiKey: process.env.OPENAI_API_KEY
+})
+export const openai = new OpenAIApi(configuration)
 
 export type EmbeddingObject = { embedding: number[]; [key: string]: any }
 
