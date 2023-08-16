@@ -66,7 +66,6 @@ export function FoodTableMobile() {
 
   const renderBody = () => {
     if (isLoading) return <FoodRowLoading />
-    if (isFetching) return <FoodRowFetching />
     if (foods.length === 0) return <FoodRowEmpty />
     return (
       <>
@@ -256,15 +255,6 @@ function FoodRowLoading() {
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
         <div className="text-zinc-200">Loading food for this day...</div>
-      </div>
-    </div>
-  )
-}
-function FoodRowFetching() {
-  return (
-    <div>
-      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-200">Fetching food for this day...</div>
       </div>
     </div>
   )
