@@ -76,7 +76,7 @@ export function FoodTableMobile({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <div className="px-3 py-3 rounded-t-3xl bg-[#212121]">
+    <div className="px-3 pt-3 rounded-3xl bg-[#212121]">
       {filteredFood.length === 0 && <FoodRowEmpty />}
       {foodGroups.map((foodGroup) => {
         if (!groups[foodGroup]) return null
@@ -85,7 +85,7 @@ export function FoodTableMobile({
             <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
               {foodGroup.toUpperCase()}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 mb-5 pt-4 pb-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-4 pb-3">
               {groups[foodGroup].map((foodItem) => (
                 <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
               ))}
@@ -224,7 +224,7 @@ function FoodRowEmpty() {
   return (
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-gray-700">No food logged for this day</div>
+        <div className="text-zinc-500">No food logged for this day. Use the Quick Log above to start logging!</div>
       </div>
     </div>
   )
