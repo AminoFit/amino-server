@@ -26,6 +26,9 @@ Reach out to Chris or Seb to get a copy of the local `.env.local` stuff that you
 - Coudron: `+1 855 650 0610`
 - Grubb: `+1 567 292 1010`
 
+## Amino Tunnels
+- Coudron `ngrok http --domain=ab5c7598fc4d-259316472161741218.ngrok-free.app 3000`
+
 
 ## Setup postgres locally
 ### Install Postgres and Run via Docker
