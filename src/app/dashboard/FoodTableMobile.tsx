@@ -2,17 +2,17 @@
 
 import { User } from "@prisma/client"
 import moment from "moment-timezone"
-import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  getNormalizedFoodValue,
-  LoggedFoodItemWithFoodItem
+  LoggedFoodItemWithFoodItem,
+  getNormalizedFoodValue
 } from "./utils/FoodHelper"
 
+import { PencilIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { useState } from "react"
 import _ from "underscore"
-import React, { useState } from "react"
-import EditFoodModal from "./EditFoodModal"
 import DeleteFoodModal from "./DeleteFoodModal"
+import EditFoodModal from "./EditFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
 
 export function FoodTableMobile({
@@ -76,19 +76,21 @@ export function FoodTableMobile({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <div className="lg:hidden">
+    <div className="px-3 pt-3 rounded-3xl bg-[#212121]">
       {filteredFood.length === 0 && <FoodRowEmpty />}
       {foodGroups.map((foodGroup) => {
         if (!groups[foodGroup]) return null
         return (
-          <React.Fragment key={foodGroup}>
+          <div key={foodGroup}>
             <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
               {foodGroup.toUpperCase()}
             </h2>
-            {groups[foodGroup].map((foodItem) => (
-              <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
-            ))}
-          </React.Fragment>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-1 pb-3">
+              {groups[foodGroup].map((foodItem) => (
+                <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
+              ))}
+            </div>
+          </div>
         )
       })}
     </div>
@@ -103,7 +105,7 @@ function FoodRow({
   user: User
 }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [foodEditModalOpen, setFoodEditModalOpen] = useState(false)
 
   const router = useRouter()
   const path = usePathname()
@@ -128,7 +130,10 @@ function FoodRow({
       ).toLocaleString() + " kcals"
 
   const servingSubtext = isLoading
-    ? (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_amount + " " + (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_name || "Unknown Amount"
+    ? (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_amount +
+        " " +
+        (foodItem.extendedOpenAiData?.valueOf() as any)?.serving
+          ?.serving_name || "Unknown Amount"
     : foodItem.servingAmount + " " + foodItem.loggedUnit
 
   return (
@@ -146,66 +151,92 @@ function FoodRow({
         }}
       />
 
-      <div className="mb-2 rounded-lg bg-zinc-900 relative z-10 overflow-hidden">
-        <div
-          className="absolute top-0 right-0 bottom-0 left-0 z-20"
-          style={{
-            backgroundImage: `url('${backgroundImage}')`,
-            backgroundPosition: "center",
-            backgroundSize: "cover",
-            opacity: 0.2
-          }}
-        ></div>
-        <div className="p-4 flex-column text-white z-30 relative">
-          <div className="">
-            <div className="inline capitalize font-bold text-2xl">{name}</div>
-            <div className="inline text-xs text-zinc-400 ms-2">{subtext}</div>
+      <EditFoodModal
+        isOpen={foodEditModalOpen}
+        onRequestClose={() => {
+          setFoodEditModalOpen(false)
+        }}
+        food={foodItem}
+        user={user}
+      />
+
+      <div
+        className="rounded-lg bg-zinc-900 overflow-hidden"
+        style={{
+          backgroundImage: `linear-gradient(rgba(46, 46, 46, 0.95), rgba(46, 46, 46, 0.95)), url('${backgroundImage}')`,
+          backgroundPosition: "center",
+          backgroundSize: "cover"
+          // opacity: 0.0
+        }}
+      >
+        <div className="p-4 flex-column text-white">
+          <div className="flex">
+            <div>
+              <div className="inline capitalize font-bold text-lg">{name}</div>
+              <div className="inline text-xs text-zinc-400 ml-1">{subtext}</div>
+            </div>
+            <div className="text-zinc-400 text-right grow">
+              <XMarkIcon
+                className="h-4 w-4 inline cursor-pointer"
+                onClick={() => {
+                  setDeleteModalOpen(true)
+                }}
+              />
+            </div>
           </div>
 
-          <div className="text-xs text-zinc-400">
-            {servingSubtext}
-          </div>
+          <div className="text-xs text-zinc-400">{servingSubtext}</div>
         </div>
         {!isLoading && (
-          <div className="p-4 flex text-white z-30 relative justify-between text-center">
-            <div className="border-b border-l rounded-bl-md border-amino-500/20">
-              <div className="px-2 text-xs text-amino-500 rounded-full">
-                Carbs
+          <div className="flex">
+            <div className="px-4 pb-4 flex text-white text-center">
+              <div className="border-b border-l rounded-bl-md border-amino-500/20 mr-3">
+                <div className="px-2 text-xs text-amino-500 rounded-full">
+                  Carbs
+                </div>
+                <div className="px-2 pb-1">
+                  <span className="text-xl font-bold">
+                    {Math.round(
+                      getNormalizedFoodValue(foodItem, "carbPerServing")
+                    ).toLocaleString()}
+                  </span>
+                  g
+                </div>
               </div>
-              <div className="px-2 pb-1">
-                <span className="text-xl font-bold">
-                  {Math.round(
-                    getNormalizedFoodValue(foodItem, "carbPerServing")
-                  ).toLocaleString()}
-                </span>
-                g
+              <div className="border-b border-l rounded-bl-md border-amino-500/20 mr-3">
+                <div className="px-2 text-xs text-amino-500 rounded-full">
+                  Fats
+                </div>
+                <div className="px-2 pb-1">
+                  <span className="text-xl font-bold">
+                    {Math.round(
+                      getNormalizedFoodValue(foodItem, "totalFatPerServing")
+                    ).toLocaleString()}
+                  </span>
+                  g
+                </div>
+              </div>
+              <div className="border-b border-l rounded-bl-md border-amino-500/20 mr-3">
+                <div className="px-2 text-xs text-amino-500 rounded-full">
+                  Protein
+                </div>
+                <div className="px-2 pb-1">
+                  <span className="text-xl font-bold">
+                    {Math.round(
+                      getNormalizedFoodValue(foodItem, "proteinPerServing")
+                    ).toLocaleString()}
+                  </span>
+                  g
+                </div>
               </div>
             </div>
-            <div className="border-b border-l rounded-bl-md border-amino-500/20">
-              <div className="px-2 text-xs text-amino-500 rounded-full">
-                Fats
-              </div>
-              <div className="px-2 pb-1">
-                <span className="text-xl font-bold">
-                  {Math.round(
-                    getNormalizedFoodValue(foodItem, "totalFatPerServing")
-                  ).toLocaleString()}
-                </span>
-                g
-              </div>
-            </div>
-            <div className="border-b border-l rounded-bl-md border-amino-500/20">
-              <div className="px-2 text-xs text-amino-500 rounded-full">
-                Protein
-              </div>
-              <div className="px-2 pb-1">
-                <span className="text-xl font-bold">
-                  {Math.round(
-                    getNormalizedFoodValue(foodItem, "proteinPerServing")
-                  ).toLocaleString()}
-                </span>
-                g
-              </div>
+            <div className="text-zinc-400 text-right self-end grow pb-4 px-4">
+              <PencilIcon
+                className="h-4 w-4 inline cursor-pointer"
+                onClick={() => {
+                  setFoodEditModalOpen(true)
+                }}
+              />
             </div>
           </div>
         )}
@@ -221,7 +252,9 @@ function FoodRowEmpty() {
   return (
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-gray-700">No food logged for this day</div>
+        <div className="text-zinc-500">
+          No food logged for this day. Use the Quick Log above to start logging!
+        </div>
       </div>
     </div>
   )

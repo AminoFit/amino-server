@@ -1,15 +1,12 @@
 import { prisma } from "@/database/prisma"
+import moment from "moment-timezone"
 import { getServerSession } from "next-auth"
+import { signOut } from "next-auth/react"
 import { authOptions } from "../api/auth/[...nextauth]/auth"
 import { FoodLogHeader } from "./FoodLogHeader"
-import { FoodTableDesktop } from "./FoodTableDesktop"
-import { TableHeader } from "./TableHeader"
 import { FoodTableMobile } from "./FoodTableMobile"
-import { GraphCalorieChart } from "./GraphCalorieChart"
-import { CalorieChart } from "./CalorieChart"
-import { signOut } from "next-auth/react"
+import { TableHeader } from "./TableHeader"
 import { getNormalizedFoodValue } from "./utils/FoodHelper"
-import moment from "moment-timezone"
 
 async function getUser() {
   const session = await getServerSession(authOptions)
@@ -94,15 +91,6 @@ export default async function FoodLog() {
 
           <TableHeader user={user} />
           <FoodTableMobile foods={foods} user={user} />
-          <div className="mt-8 flow-root">
-            <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-              <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div className="shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                  <FoodTableDesktop foods={foods} user={user} />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </>

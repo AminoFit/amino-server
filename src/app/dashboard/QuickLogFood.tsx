@@ -1,9 +1,9 @@
 "use client"
 
-import { QuickLogFoodMessage, sendMessage } from "@/components/chat/actions"
+import { QuickLogFoodMessage } from "@/components/chat/actions"
 import { Dialog, Transition } from "@headlessui/react"
 import { CheckIcon, ExclamationTriangleIcon, UserPlusIcon } from "@heroicons/react/24/outline"
-import { FormEventHandler, Fragment, useRef, useState } from "react"
+import { Fragment, useState } from "react"
 
 enum RequestStatus {
   IDLE,

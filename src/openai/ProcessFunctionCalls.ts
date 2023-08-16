@@ -1,11 +1,10 @@
 import { HandleLogExercise } from "@/database/OpenAiFunctions/HandleLogExercise"
-import { HandleLogFoodItems, VerifyHandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo"
-import { SendListOfFoodsTodayToUser } from "@/twilio/SendMessageToUser"
-import { User, Message } from "@prisma/client"
-import { ChatCompletionRequestMessageFunctionCall } from "openai"
 import UpdateMessage from "@/database/UpdateMessage"
-import { MessageStatus } from "@prisma/client"
+import { SendListOfFoodsTodayToUser } from "@/twilio/SendMessageToUser"
+import { Message, MessageStatus, User } from "@prisma/client"
+import { ChatCompletionRequestMessageFunctionCall } from "openai"
 
 export const ProcessFunctionCalls = async (
   user: User,

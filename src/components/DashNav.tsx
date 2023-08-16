@@ -14,25 +14,22 @@
   }
   ```
 */
-import { Fragment } from "react"
+import QuickLogFood from "@/app/dashboard/QuickLogFood"
 import { Disclosure, Menu, Transition } from "@headlessui/react"
-import { MagnifyingGlassIcon } from "@heroicons/react/20/solid"
 import {
   Bars3Icon,
-  BellIcon,
-  UserPlusIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
-import QuickLogFood from "@/app/dashboard/QuickLogFood"
+import { Fragment } from "react"
 
 export default function DashNav() {
   const pathname = usePathname()
 
   return (
-    <Disclosure as="nav" className="bg-[#19191A]">
+    <Disclosure as="nav" className="">
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
@@ -53,7 +50,7 @@ export default function DashNav() {
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard"
                         ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Food Log
@@ -64,7 +61,7 @@ export default function DashNav() {
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/chat"
                         ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Chat
@@ -75,7 +72,7 @@ export default function DashNav() {
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/settings"
                         ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Settings
@@ -183,7 +180,7 @@ export default function DashNav() {
                 Settings
               </Disclosure.Button>
             </div>
-            <div className="border-t border-gray-200 pb-3 pt-4">
+            <div className="border-t border-gray-200/20 pb-3 pt-4">
               <div className="flex items-center px-4">
                 {/* <div className="flex-shrink-0">
                   <img
@@ -193,7 +190,7 @@ export default function DashNav() {
                   />
                 </div> */}
                 <div className="">
-                  <div className="text-base font-medium text-gray-800">
+                  <div className="text-base font-medium text-zinc-200">
                     Your Account
                   </div>
                 </div>
@@ -209,7 +206,7 @@ export default function DashNav() {
               <div className="mt-3 space-y-1">
                 <Disclosure.Button
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                  className="block px-4 py-2 text-base font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-800"
                 >
                   Sign out
                 </Disclosure.Button>

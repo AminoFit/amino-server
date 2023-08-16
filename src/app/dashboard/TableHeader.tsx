@@ -1,6 +1,5 @@
 "use client"
 import {
-  CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon
 } from "@heroicons/react/24/outline"
@@ -61,10 +60,10 @@ export function TableHeader({ user }: { user: User }) {
         <div className="text-md font-bold leading-7 text-zinc-100">
           {moment(selectedDate).tz(user.tzIdentifier).format("dddd, MMMM Do")}
         </div>
-        <div className="text-sm font-light text-gray-500">
+        <div className="text-sm font-light text-gray-300">
           Daily Food Overview
         </div>
-        <div className="text-xs font-light text-gray-500/70 mb-4">
+        <div className="text-xs font-light text-gray-300 mb-4">
           {renderTimeText()}
         </div>
       </div>
