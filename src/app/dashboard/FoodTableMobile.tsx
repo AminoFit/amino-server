@@ -44,19 +44,6 @@ export function FoodTableMobile() {
 
   console.log("foods", foods)
   const groups = _.chain(foods || [])
-    .filter((food) => {
-      const consumptionTime = moment(food.consumedOn)
-
-      let selectedDate = moment()
-      if (
-        searchParams.get("date") &&
-        moment(searchParams.get("date")).isValid()
-      ) {
-        selectedDate = moment(searchParams.get("date"))
-      }
-
-      return consumptionTime.isSame(selectedDate, "day")
-    })
     .groupBy((food) => {
       const consumptionTime = moment(food.consumedOn)
       if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
