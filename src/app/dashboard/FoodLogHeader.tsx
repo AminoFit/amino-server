@@ -18,7 +18,7 @@ export function FoodLogHeader({
 }) {
   return (
     <>
-      <div className="">
+      <div className="px-5">
         <div className="mt-5 flex mb-4">
           <div>
             {user.firstName && (

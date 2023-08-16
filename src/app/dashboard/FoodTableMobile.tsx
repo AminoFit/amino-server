@@ -76,19 +76,21 @@ export function FoodTableMobile({
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   return (
-    <div className="lg:hidden">
+    <div className="px-3 py-3 rounded-t-3xl bg-[#212121]">
       {filteredFood.length === 0 && <FoodRowEmpty />}
       {foodGroups.map((foodGroup) => {
         if (!groups[foodGroup]) return null
         return (
-          <React.Fragment key={foodGroup}>
+          <div key={foodGroup}>
             <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
               {foodGroup.toUpperCase()}
             </h2>
-            {groups[foodGroup].map((foodItem) => (
-              <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
-            ))}
-          </React.Fragment>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 mb-5 pt-4 pb-2">
+              {groups[foodGroup].map((foodItem) => (
+                <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
+              ))}
+            </div>
+          </div>
         )
       })}
     </div>
@@ -128,7 +130,10 @@ function FoodRow({
       ).toLocaleString() + " kcals"
 
   const servingSubtext = isLoading
-    ? (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_amount + " " + (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_name || "Unknown Amount"
+    ? (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_amount +
+        " " +
+        (foodItem.extendedOpenAiData?.valueOf() as any)?.serving
+          ?.serving_name || "Unknown Amount"
     : foodItem.servingAmount + " " + foodItem.loggedUnit
 
   return (
@@ -146,28 +151,26 @@ function FoodRow({
         }}
       />
 
-      <div className="mb-2 rounded-lg bg-zinc-900 relative z-10 overflow-hidden">
+      <div className="rounded-lg bg-zinc-900 relative z-10 overflow-hidden">
         <div
           className="absolute top-0 right-0 bottom-0 left-0 z-20"
           style={{
-            backgroundImage: `url('${backgroundImage}')`,
+            backgroundImage: `linear-gradient(rgba(46, 46, 46, 0.95), rgba(46, 46, 46, 0.95)), url('${backgroundImage}')`,
             backgroundPosition: "center",
-            backgroundSize: "cover",
-            opacity: 0.2
+            backgroundSize: "cover"
+            // opacity: 0.0
           }}
         ></div>
         <div className="p-4 flex-column text-white z-30 relative">
           <div className="">
-            <div className="inline capitalize font-bold text-2xl">{name}</div>
-            <div className="inline text-xs text-zinc-400 ms-2">{subtext}</div>
+            <div className="inline capitalize font-bold text-lg">{name}</div>
+            <div className="inline text-xs text-zinc-400 ml-1">{subtext}</div>
           </div>
 
-          <div className="text-xs text-zinc-400">
-            {servingSubtext}
-          </div>
+          <div className="text-xs text-zinc-400">{servingSubtext}</div>
         </div>
         {!isLoading && (
-          <div className="p-4 flex text-white z-30 relative justify-between text-center">
+          <div className="px-4 pb-4 flex text-white z-30 relative justify-between text-center">
             <div className="border-b border-l rounded-bl-md border-amino-500/20">
               <div className="px-2 text-xs text-amino-500 rounded-full">
                 Carbs

@@ -94,7 +94,7 @@ export default async function FoodLog() {
 
           <TableHeader user={user} />
           <FoodTableMobile foods={foods} user={user} />
-          <div className="mt-8 flow-root">
+          {/* <div className="mt-8 flow-root">
             <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
               <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
                 <div className="shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
@@ -102,7 +102,7 @@ export default async function FoodLog() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </>
