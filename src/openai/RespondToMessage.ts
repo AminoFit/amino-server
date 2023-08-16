@@ -1,19 +1,19 @@
 import GetMessagesForUser from "@/database/GetMessagesForUser"
-import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import UpdateMessage from "@/database/UpdateMessage"
+import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import {
   logExerciseSchema,
   logFoodSchema,
   showDailyFoodSummarySchema,
   updateUserInfoSchema
 } from "@/utils/openaiFunctionSchemas"
-import { Message, Role, User, MessageStatus, MessageType } from "@prisma/client"
-import { getOpenAICompletion } from "./utils/openAiHelper"
+import { Message, MessageStatus, MessageType, Role, User } from "@prisma/client"
 import {
   ChatCompletionRequestMessage,
   ChatCompletionRequestMessageRoleEnum
 } from "openai"
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
+import { getOpenAICompletion } from "./utils/openAiHelper"
 
 const ROLE_MAPPING = {
   [Role.User]: ChatCompletionRequestMessageRoleEnum.User,

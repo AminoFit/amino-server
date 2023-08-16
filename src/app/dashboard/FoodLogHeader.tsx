@@ -1,11 +1,5 @@
-import { LoggedFoodItem, FoodItem, User } from "@prisma/client"
+import { User } from "@prisma/client"
 
-import FoodStats from "./FoodStats"
-import {
-  ChevronRightIcon,
-  FireIcon,
-  TagIcon
-} from "@heroicons/react/24/outline"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
 

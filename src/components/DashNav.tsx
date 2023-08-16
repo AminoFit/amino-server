@@ -14,19 +14,16 @@
   }
   ```
 */
-import { Fragment } from "react"
+import QuickLogFood from "@/app/dashboard/QuickLogFood"
 import { Disclosure, Menu, Transition } from "@headlessui/react"
-import { MagnifyingGlassIcon } from "@heroicons/react/20/solid"
 import {
   Bars3Icon,
-  BellIcon,
-  UserPlusIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
-import QuickLogFood from "@/app/dashboard/QuickLogFood"
+import { Fragment } from "react"
 
 export default function DashNav() {
   const pathname = usePathname()

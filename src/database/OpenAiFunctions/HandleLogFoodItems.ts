@@ -1,22 +1,22 @@
-import {
-  User,
-  FoodItem,
-  Message,
-  FoodInfoSource,
-  LoggedFoodItem
-} from "@prisma/client"
-import UpdateMessage from "@/database/UpdateMessage"
-import { prisma } from "../prisma"
-import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
-import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
-import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
 import {
   FoodQuery,
-  findNxFoodInfo,
-  NxFoodItemResponse
+  NxFoodItemResponse,
+  findNxFoodInfo
 } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
-import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
+import UpdateMessage from "@/database/UpdateMessage"
+import {
+  FoodInfoSource,
+  FoodItem,
+  LoggedFoodItem,
+  Message,
+  User
+} from "@prisma/client"
+import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
+import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { prisma } from "../prisma"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS

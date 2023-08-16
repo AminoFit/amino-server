@@ -2,19 +2,18 @@
 
 import { User } from "@prisma/client"
 import moment from "moment-timezone"
-import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  getNormalizedFoodValue,
-  LoggedFoodItemWithFoodItem
+  LoggedFoodItemWithFoodItem,
+  getNormalizedFoodValue
 } from "./utils/FoodHelper"
 
-import _ from "underscore"
-import React, { useState } from "react"
-import EditFoodModal from "./EditFoodModal"
-import DeleteFoodModal from "./DeleteFoodModal"
-import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
 import { PencilIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { useState } from "react"
+import _ from "underscore"
+import DeleteFoodModal from "./DeleteFoodModal"
+import EditFoodModal from "./EditFoodModal"
+import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
 
 export function FoodTableMobile({
   foods,

@@ -1,6 +1,5 @@
 "use client"
 import {
-  CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon
 } from "@heroicons/react/24/outline"
