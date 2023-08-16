@@ -5,9 +5,16 @@ import {
   NutritionixBrandedItem,
   NutritionixCommonItem
 } from "./searchFoodIds"
-import { getNonBrandedFoodInfo, NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
+import {
+  getNonBrandedFoodInfo,
+  NxNonBrandedResponse
+} from "./getNonBrandedFoodInfo"
 import { FoodItem } from "@prisma/client"
-import { getEmbedding, EmbeddingObject, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import {
+  getEmbedding,
+  EmbeddingObject,
+  cosineSimilarity
+} from "../../openai/utils/embeddingsHelper"
 
 const COSINE_THRESHOLD = 0.8
 export interface FoodQuery {
@@ -17,7 +24,8 @@ export interface FoodQuery {
   brand_name?: string
 }
 
-export interface NxFoodItemResponse extends Omit<FoodItem, "Servings" | "Nutrients"> {
+export interface NxFoodItemResponse
+  extends Omit<FoodItem, "Servings" | "Nutrients"> {
   Servings: {
     servingWeightGram: number
     servingName: string
@@ -29,9 +37,11 @@ export interface NxFoodItemResponse extends Omit<FoodItem, "Servings" | "Nutrien
   }[]
 }
 
-type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse;
+type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse
 
-function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemResponse[] {
+function mapFoodResponseToFoodItem(
+  response: CombinedResponse
+): NxFoodItemResponse[] {
   return response.foods.map((food) => ({
     id: 0, // Replace with the proper ID once available
     name: food.food_name,
@@ -83,7 +93,7 @@ function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemRespon
           (food.nf_potassium || 0) / (food.serving_weight_grams || 1)
       }
     ]
-  }));
+  }))
 }
 
 export async function findNxFoodInfo(
@@ -169,9 +179,8 @@ export async function findNxFoodInfo(
       console.log(`Item ${i + 1} Full Info:`, info)
     })*/
     // Transform the most similar branded items into the NxFoodItemResponse format
-    const transformedItems: NxFoodItemResponse[] = mostSimilarBrandedItems.flatMap(
-        mapFoodResponseToFoodItem
-    )
+    const transformedItems: NxFoodItemResponse[] =
+      mostSimilarBrandedItems.flatMap(mapFoodResponseToFoodItem)
 
     return transformedItems
   } else {
@@ -236,17 +245,14 @@ export async function findNxFoodInfo(
     )
 
     // Transform the most similar common items into the NxFoodItemResponse format
-    const commondFoodItems: NxFoodItemResponse[] = mostSimilarCommonItems.flatMap(
-        mapFoodResponseToFoodItem
-    )
+    const commondFoodItems: NxFoodItemResponse[] =
+      mostSimilarCommonItems.flatMap(mapFoodResponseToFoodItem)
 
     return commondFoodItems
   }
 
   return null
 }
-
-
 
 async function runTest() {
   let foodEmbedding = [
