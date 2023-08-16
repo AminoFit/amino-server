@@ -42,20 +42,8 @@ export function FoodTableMobile() {
     refetchInterval: 1000 * 15
   })
 
+  console.log("foods", foods)
   const groups = _.chain(foods || [])
-    .filter((food) => {
-      const consumptionTime = moment(food.consumedOn)
-
-      let selectedDate = moment()
-      if (
-        searchParams.get("date") &&
-        moment(searchParams.get("date")).isValid()
-      ) {
-        selectedDate = moment(searchParams.get("date"))
-      }
-
-      return consumptionTime.isSame(selectedDate, "day")
-    })
     .groupBy((food) => {
       const consumptionTime = moment(food.consumedOn)
       if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
@@ -71,10 +59,14 @@ export function FoodTableMobile() {
     })
     .value()
 
+
+  console.log("groups", groups)
+
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
   const renderBody = () => {
     if (isLoading) return <FoodRowLoading />
+    if (isFetching) return <FoodRowFetching />
     if (foods.length === 0) return <FoodRowEmpty />
     return (
       <>
@@ -264,6 +256,15 @@ function FoodRowLoading() {
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
         <div className="text-zinc-200">Loading food for this day...</div>
+      </div>
+    </div>
+  )
+}
+function FoodRowFetching() {
+  return (
+    <div>
+      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
+        <div className="text-zinc-200">Fetching food for this day...</div>
       </div>
     </div>
   )
