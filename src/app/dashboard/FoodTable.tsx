@@ -89,7 +89,7 @@ export function FoodTable() {
   }
 
   return (
-    <div className="px-3 pt-3 rounded-3xl bg-[#ffffff]/10 backdrop-blur-sm">
+    <div className="px-3 pt-3 mb-16 rounded-xl bg-[#494949] ring-1 ring-[#555555]">
       {renderBody()}
     </div>
   )
@@ -106,7 +106,7 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
     (foodItem.FoodItem?.FoodImage &&
       foodItem.FoodItem.FoodImage.length &&
       foodItem.FoodItem.FoodImage[0].pathToImage) ||
-    "https://cdn.discordapp.com/attachments/1107010584907612172/1138668812414242856/coudron_food_photography_of_an_empty_wooden_table_top-down_shot_6976cf67-5513-4a6b-9479-d13752b6b494.png"
+    "https://cdn.discordapp.com/ephemeral-attachments/1107010584907612172/1141797943712690206/coudron_food_photography_of_cutting_board_on_a_wooden_table_top_bcc64dcd-7a9a-4595-8f41-0b394b6c5033.png"
 
   const isLoading = foodItem.status === "Needs Processing"
 

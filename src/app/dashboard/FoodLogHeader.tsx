@@ -3,6 +3,7 @@ import { User } from "@prisma/client"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import CalOverviewCard from "./CalOverviewCard"
 
 export function FoodLogHeader({
   foods,
@@ -13,7 +14,7 @@ export function FoodLogHeader({
 }) {
   return (
     <>
-      <div className="px-4 sm:px-6 lg:px-0">
+      <div className="px-4 sm:px-6 lg:px-0 mb-8">
         <div className="mt-5 flex justify-between mb-4">
           <div>
             {user?.firstName && (
@@ -25,25 +26,11 @@ export function FoodLogHeader({
               {user?.firstName || "Welcome Back"}
             </h2>
           </div>
-          <FoodLogStreak />
+          {/* <FoodLogStreak /> */}
         </div>
-
-        {/* <div className="flex items-center py-3 px-4 bg-amino-logo text-zinc-900 rounded-xl">
-          <div className="mr-3">
-            <FireIcon className="h-6 w-6" />
-          </div>
-          <div className="grow">
-            <div className="text-xs uppercase">YOUR GOAL</div>
-            <div className="text-xl uppercase tracking-tighter">
-              {user.fitnessGoal}
-            </div>
-          </div>
-          <div>
-            <ChevronRightIcon className="h-6 w-6" />
-          </div>
-        </div> */}
-
-        <div>{/* <FoodStats foods={foods} user={user} /> */}</div>
+        <div>
+          <CalOverviewCard />
+        </div>
       </div>
     </>
   )

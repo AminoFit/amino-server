@@ -14,8 +14,6 @@ export async function GET(
     return new Response("User not found", { status: 404 })
   }
 
-  const today = moment().tz(user.tzIdentifier)
-
   let foods = await prisma.loggedFoodItem.findMany({
     where: {
       userId: user.id
@@ -35,12 +33,15 @@ export async function GET(
 
   let streak = 0
 
-  const loggedToday = !!groups[today.format("YYYY-MM-DD")]
+
+  const day = moment().tz(user.tzIdentifier)
+
+  const loggedToday = !!groups[day.format("YYYY-MM-DD")]
 
   while (true) {
-    const date = today.subtract(1, "day").format("YYYY-MM-DD")
+    const dateString = day.subtract(1, "day").format("YYYY-MM-DD")
 
-    if (!groups[date]) {
+    if (!groups[dateString]) {
       break
     }
 
