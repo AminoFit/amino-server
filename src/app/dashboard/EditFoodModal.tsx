@@ -23,6 +23,7 @@ import moment from "moment-timezone"
 import { FoodItem, User } from "@prisma/client"
 import { TimePicker } from "@/components/timePicker/timePicker"
 import { updateLoggedFoodItem } from "./utils/LoggedFoodEditHelper"
+import { queryClient } from "../providers"
 
 const renderSmallNutrientRow = (
   nutrientKey: keyof FoodItem,
@@ -33,9 +34,9 @@ const renderSmallNutrientRow = (
     // Added null-check for food.FoodItem
     return (
       <>
-        <Divider className="pl-4 my-1 h-px" color="text-slate-600" />
+        <Divider className="pl-4 my-1 h-px" color="text-zinc-600" />
         <div className="pl-4 flex justify-between items-end">
-          <span className="font-extralight text-slate-100">{label}</span>
+          <span className="font-extralight text-zinc-100">{label}</span>
           <span className="font-extralight text-s">
             {Math.round(
               getNormalizedFoodValue(food, nutrientKey)
@@ -151,6 +152,7 @@ export default function EditFoodModal({
       console.error("Failed to update food item")
     }
     setIsSaving(false)
+    queryClient.invalidateQueries({ queryKey: ["foodData"] })
   }
 
   return (
@@ -173,19 +175,19 @@ export default function EditFoodModal({
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
+              enterFrom="opacity-0 tranzinc-y-4 sm:tranzinc-y-0 sm:scale-95"
+              enterTo="opacity-100 tranzinc-y-0 sm:scale-100"
               leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+              leaveFrom="opacity-100 tranzinc-y-0 sm:scale-100"
+              leaveTo="opacity-0 tranzinc-y-4 sm:tranzinc-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform rounded-lg bg-slate-700 text-left shadow-xl transition-all sm:my-4 sm:w-full sm:max-w-lg divide-slate-500 divide-y">
+              <Dialog.Panel className="relative transform rounded-lg bg-zinc-700 text-left shadow-xl transition-all sm:my-4 sm:w-full sm:max-w-lg divide-zinc-600 divide-y">
                 <div>
                   <div className="flex justify-between items-center px-4 py-5 pt-5">
                     <div className="text-center sm:text-left">
                       <Dialog.Title
                         as="h2"
-                        className="text-lg font-semibold leading-4 text-white"
+                        className="text-lg font-semibold leading-4 text-white capitalize"
                       >
                         {brand ? `${foodName} by ${brand}` : foodName}{" "}
                         {food.FoodItem?.verified && (
@@ -195,7 +197,7 @@ export default function EditFoodModal({
                     </div>
                     <button
                       type="button"
-                      className="rounded-md bg-slate-600 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      className="rounded-md bg-zinc-600 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       onClick={() => onRequestClose()}
                     >
                       <span className="sr-only">Close</span>
@@ -203,9 +205,9 @@ export default function EditFoodModal({
                     </button>
                   </div>
                   <div className="px-4 pb-2">
-                    <Accordion className="bg-slate-600 border-slate-700">
+                    <Accordion className="bg-red-600 border-zinc-700">
                       <AccordionHeader>
-                        <div className="grid grid-cols-5 gap-x-6 gap-y-8 flex-1 text-slate-200">
+                        <div className="grid grid-cols-5 gap-x-6 gap-y-8 flex-1 text-zinc-200">
                           <div className="inline-flex col-span-1 min-w-100">
                             <FireIcon className="h-6 w-6" aria-hidden="true" />
                             {Math.round(
@@ -239,9 +241,9 @@ export default function EditFoodModal({
                           </div>
                         </div>
                       </AccordionHeader>
-                      <AccordionBody className="text-slate-200 flex-1">
+                      <AccordionBody className="text-zinc-200 flex-1">
                         <div className="flex justify-between items-end">
-                          <span className="text-slate-100 text-xl">
+                          <span className="text-zinc-100 text-xl">
                             Calories
                           </span>
                           <span className="text-base">
@@ -251,9 +253,9 @@ export default function EditFoodModal({
                             kcal
                           </span>
                         </div>
-                        <Divider className="my-1" color="text-slate-600" />
+                        <Divider className="my-1" color="text-zinc-600" />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-slate-100 text-lg">
+                          <span className="font-light text-zinc-100 text-lg">
                             Total Fat
                           </span>
                           <span className="font-light text-base">
@@ -275,10 +277,10 @@ export default function EditFoodModal({
                         )}
                         <Divider
                           className="pl-4 my-1 h-px"
-                          color="text-slate-600"
+                          color="text-zinc-600"
                         />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-slate-100 text-lg">
+                          <span className="font-light text-zinc-100 text-lg">
                             Total Carbohydrates
                           </span>
                           <span className="font-light text-base">
@@ -293,9 +295,9 @@ export default function EditFoodModal({
                           "Sugar",
                           food
                         )}
-                        <Divider className="my-1 h-px" color="text-slate-600" />
+                        <Divider className="my-1 h-px" color="text-zinc-600" />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-slate-100 text-lg">
+                          <span className="font-light text-zinc-100 text-lg">
                             Protein
                           </span>
                           <span className="font-light text-base">
@@ -309,10 +311,10 @@ export default function EditFoodModal({
                     </Accordion>
                   </div>
                 </div>
-                <div className="bg-slate-800 px-4 pb-4 pt-2">
+                <div className="bg-zinc-800 px-4 pb-4 pt-2">
                   {" "}
                   {/* Portion Section with Grey Background */}
-                  <p className="text-lg text-slate-100 font-light py-2">
+                  <p className="text-lg text-zinc-100 font-light py-2">
                     Portion
                   </p>
                   <div className="grid grid-cols-4 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-4">
@@ -322,9 +324,9 @@ export default function EditFoodModal({
                         onValueChange={handlePortionChange}
                       />
                     </div>
-                    <div className="text-aligned text-lg col-span-2 self-center text-slate-100">
+                    <div className="text-aligned text-lg col-span-2 self-center text-zinc-100">
                       {/*
-                      {food.loggedUnit} <span className="text-slate-200 text-base font-extralight">({food.grams}g)</span>
+                      {food.loggedUnit} <span className="text-zinc-200 text-base font-extralight">({food.grams}g)</span>
                             */}
                       <SearchSelect
                         placeholder={
@@ -349,12 +351,12 @@ export default function EditFoodModal({
                       </SearchSelect>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-100 font-light pt-2">
+                  <p className="text-xs text-zinc-100 font-light pt-2">
                     Total weight: {servingWeightGramsValue * portionAmount} g
                   </p>
                 </div>
-                <div className="bg-slate-700 px-4 pb-4 pt-2">
-                  <p className="text-lg text-slate-100 font-light py-2">
+                <div className="bg-zinc-700 px-4 pb-4 pt-2">
+                  <p className="text-lg text-zinc-100 font-light py-2">
                     Time eaten
                   </p>
                   <div className="grid grid-cols-2 gap-4">
@@ -373,13 +375,13 @@ export default function EditFoodModal({
                     />
                   </div>
                 </div>
-                <div className="bg-slate-800 px-4 py-4 rounded-b-lg flex justify-end">
+                <div className="bg-zinc-800 px-4 py-4 rounded-b-lg flex justify-end">
                   <Button
                     onClick={handleSaveFoodItem}
-                    className="bg-indigo-600 hover:bg-indigo-700 py-1 px-4 text-white rounded-md"
+                    className="bg-amino-600 hover:bg-amino-500 py-1 px-4 text-zinc-900 rounded-md"
                     loading={isSaving} // Using the loading prop to indicate saving state
                     loadingText="Saving" // Optional text to display while loading
-                    color="indigo" // You can adjust the color as per the Tremor color props
+                    color="zinc" // You can adjust the color as per the Tremor color props
                   >
                     Save
                   </Button>

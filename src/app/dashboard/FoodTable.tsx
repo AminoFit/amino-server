@@ -31,7 +31,7 @@ export function FoodTable() {
     isLoading,
     error,
     data: foods,
-    isFetching
+    isFetching,
   } = useQuery({
     queryKey: ["foodData", formattedDate],
     queryFn: () =>
