@@ -14,7 +14,7 @@ export async function foodEmbedding(foodItem: FoodItem): Promise<number[]> {
   ) {
     textToEmbed += ` - ${foodItem.brand}`
   }
-  const embedding = await getEmbedding([textToEmbed])
+  const embedding = await getEmbedding([textToEmbed.toLowerCase()])
   return embedding.data[0].embedding
 }
 
@@ -29,6 +29,6 @@ export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<numb
   ) {
     textToEmbed += ` - ${foodToLog.brand}`
   }
-  const embedding = await getEmbedding([textToEmbed])
+  const embedding = await getEmbedding([textToEmbed.toLowerCase()])
   return embedding.data[0].embedding
 }
