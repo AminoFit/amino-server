@@ -6,9 +6,9 @@ import {
 import { getUsdaFoodsInfo, UsdaFoodItem } from "./getFoodInfo"
 import {
   getEmbedding,
-  EmbeddingObject,
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
+import { CreateEmbeddingResponseDataInner } from "openai"
 
 export interface UsdaFindFoodParams {
   food_name: string
@@ -39,7 +39,7 @@ export async function findUsdaFoodInfo(
   const queryEmbedding = allEmbeddings.data[0].embedding
   const itemEmbeddings = allEmbeddings.data
     .slice(1)
-    .map((embeddingObject: EmbeddingObject) => embeddingObject.embedding)
+    .map((embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding)
 
   // Create an array to store cosine similarities and embeddings
   const cosineSimilaritiesAndEmbeddings: Array<{

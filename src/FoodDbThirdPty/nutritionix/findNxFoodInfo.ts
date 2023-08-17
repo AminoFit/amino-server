@@ -12,9 +12,10 @@ import {
 import { FoodItem } from "@prisma/client"
 import {
   getEmbedding,
-  EmbeddingObject,
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
+import { CreateEmbeddingResponseDataInner } from "openai"
+
 
 const COSINE_THRESHOLD = 0.8
 export interface FoodQuery {
@@ -119,7 +120,7 @@ export async function findNxFoodInfo(
     const queryEmbedding = allEmbeddings.data[0].embedding
     const itemEmbeddings = allEmbeddings.data
       .slice(1)
-      .map((embeddingObject: EmbeddingObject) => embeddingObject.embedding)
+      .map((embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding)
 
     // create an array to store cosine similarities and embeddings
     const cosineSimilaritiesAndEmbeddings: Array<{
@@ -199,7 +200,7 @@ export async function findNxFoodInfo(
     const queryEmbedding = allEmbeddings.data[0].embedding
     const itemEmbeddings = allEmbeddings.data
       .slice(1)
-      .map((embeddingObject: EmbeddingObject) => embeddingObject.embedding)
+      .map((embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding)
 
     // create an array to store cosine similarities and embeddings
     const cosineSimilaritiesAndEmbeddings: Array<{
@@ -253,7 +254,7 @@ export async function findNxFoodInfo(
 
   return null
 }
-
+/*
 async function runTest() {
   let foodEmbedding = [
     { query: "skim milk", embedding: [] },
@@ -317,6 +318,6 @@ async function testSearch() {
   })
   console.log(JSON.stringify(lasagnaResponse, null, 2))
 }
-
+*/
 //testSearch()
 //runTest()
