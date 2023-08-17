@@ -1,6 +1,8 @@
 import { User } from "@prisma/client"
 
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
+import { useQuery } from "@tanstack/react-query"
+import axios from "axios"
 
 export function FoodLogHeader({
   foods,
@@ -23,10 +25,7 @@ export function FoodLogHeader({
               {user?.firstName || "Welcome Back"}
             </h2>
           </div>
-          <div className="p-3 rounded-lg bg-[#ffffff]/10 backdrop-blur-sm flex flex-col text-white text-center">
-            <div className="text-4xl sm:text-5xl font-bold">5</div>
-            <div className="text-xs">DAY STREAK</div>
-          </div>
+          <FoodLogStreak />
         </div>
 
         {/* <div className="flex items-center py-3 px-4 bg-amino-logo text-zinc-900 rounded-xl">
@@ -47,5 +46,23 @@ export function FoodLogHeader({
         <div>{/* <FoodStats foods={foods} user={user} /> */}</div>
       </div>
     </>
+  )
+}
+
+function FoodLogStreak() {
+  const { isLoading, error, data } = useQuery({
+    queryKey: ["foodLogStreak"],
+    queryFn: () => axios.get("/api/user/get-streak").then((res) => res.data)
+  })
+
+  return (
+    <div className="p-3 rounded-lg bg-[#ffffff]/10 backdrop-blur-sm flex flex-col text-white text-center">
+      {isLoading ? (
+        <div className="text-sm py-4 opacity-20">Loading</div>
+      ) : (
+        <div className="text-4xl sm:text-5xl font-bold">{data.streak}</div>
+      )}
+      <div className="text-xs">DAY STREAK</div>
+    </div>
   )
 }
