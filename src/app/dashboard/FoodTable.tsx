@@ -14,52 +14,38 @@ import _ from "underscore"
 import DeleteFoodModal from "./DeleteFoodModal"
 import EditFoodModal from "./EditFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
+import { useQuery } from "@tanstack/react-query"
+import axios from "axios"
 
-export function FoodTableMobile({
-  foods,
-  user
-}: {
-  foods: LoggedFoodItemWithFoodItem[]
-  user: User
-}) {
+export function FoodTable() {
   const searchParams = useSearchParams()
 
-  //filter foods by date
-  let selectedDate = moment().tz(user.tzIdentifier)
+  let selectedDate = moment()
   if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
     selectedDate = moment(searchParams.get("date"))
   }
 
-  const filteredFood = _.filter(foods, (food) => {
-    const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
+  const formattedDate = selectedDate.format("YYYY-MM-DD")
 
-    let selectedDate = moment().tz(user.tzIdentifier)
-    if (
-      searchParams.get("date") &&
-      moment(searchParams.get("date")).isValid()
-    ) {
-      selectedDate = moment(searchParams.get("date"))
-    }
-
-    return consumptionTime.isSame(selectedDate, "day")
+  const {
+    isLoading,
+    error,
+    data: foods,
+    isFetching,
+  } = useQuery({
+    queryKey: ["foodData", formattedDate],
+    queryFn: () =>
+      axios
+        .get("/api/user/get-foods-on-date/" + formattedDate)
+        .then((res) => res.data),
+    refetchIntervalInBackground: true,
+    refetchInterval: 1000 * 15
   })
 
-  const groups = _.chain(filteredFood)
-    .filter((food) => {
-      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
-
-      let selectedDate = moment().tz(user.tzIdentifier)
-      if (
-        searchParams.get("date") &&
-        moment(searchParams.get("date")).isValid()
-      ) {
-        selectedDate = moment(searchParams.get("date"))
-      }
-
-      return consumptionTime.isSame(selectedDate, "day")
-    })
+  console.log("foods", foods)
+  const groups = _.chain(foods || [])
     .groupBy((food) => {
-      const consumptionTime = moment(food.consumedOn).tz(user.tzIdentifier)
+      const consumptionTime = moment(food.consumedOn)
       if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
         return "midnight snack"
       }
@@ -73,37 +59,43 @@ export function FoodTableMobile({
     })
     .value()
 
+
+  console.log("groups", groups)
+
   const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
 
-  return (
-    <div className="px-3 pt-3 rounded-3xl bg-[#212121]">
-      {filteredFood.length === 0 && <FoodRowEmpty />}
-      {foodGroups.map((foodGroup) => {
-        if (!groups[foodGroup]) return null
-        return (
-          <div key={foodGroup}>
-            <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
-              {foodGroup.toUpperCase()}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-1 pb-3">
-              {groups[foodGroup].map((foodItem) => (
-                <FoodRow foodItem={foodItem} user={user} key={foodItem.id} />
-              ))}
+  const renderBody = () => {
+    if (isLoading) return <FoodRowLoading />
+    if (foods.length === 0) return <FoodRowEmpty />
+    return (
+      <>
+        {foodGroups.map((foodGroup) => {
+          if (!groups[foodGroup]) return null
+          return (
+            <div key={foodGroup}>
+              <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
+                {foodGroup.toUpperCase()}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-1 pb-3">
+                {groups[foodGroup].map((foodItem) => (
+                  <FoodRow foodItem={foodItem} key={foodItem} />
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </>
+    )
+  }
+
+  return (
+    <div className="px-3 pt-3 rounded-3xl bg-[#ffffff]/10 backdrop-blur-sm">
+      {renderBody()}
     </div>
   )
 }
 
-function FoodRow({
-  foodItem,
-  user
-}: {
-  foodItem: LoggedFoodItemWithFoodItem
-  user: User
-}) {
+function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [foodEditModalOpen, setFoodEditModalOpen] = useState(false)
 
@@ -157,7 +149,6 @@ function FoodRow({
           setFoodEditModalOpen(false)
         }}
         food={foodItem}
-        user={user}
       />
 
       <div
@@ -252,9 +243,18 @@ function FoodRowEmpty() {
   return (
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-500">
+        <div className="text-zinc-200">
           No food logged for this day. Use the Quick Log above to start logging!
         </div>
+      </div>
+    </div>
+  )
+}
+function FoodRowLoading() {
+  return (
+    <div>
+      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
+        <div className="text-zinc-200">Loading food for this day...</div>
       </div>
     </div>
   )

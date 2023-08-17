@@ -261,7 +261,7 @@ export default function GoalsDialog({ isOpen, onRequestClose, user }: { isOpen: 
                                   <li><strong>Carbohydrates:</strong> 4 calories per gram.</li>
                                   <li><strong>Fats:</strong> 9 calories per gram.</li>
                                 </ul>
-                                By setting your macro goals, you're inherently defining the distribution of your total calorie intake.
+                                By setting your macro goals, you`re inherently defining the distribution of your total calorie intake.
                               </Disclosure.Panel>
                             </Transition>
                           </>

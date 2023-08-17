@@ -7,7 +7,7 @@ export async function GET(
   request: Request, // needed so we don't cache this request
   { params }: { params: { loggedFoodId: string } }
 ) {
-  const loggedFoodIdString = params.loggedFoodId // 'a', 'b', or 'c'
+  const loggedFoodIdString = params.loggedFoodId
 
   console.log("got a POST request to process food item")
 
