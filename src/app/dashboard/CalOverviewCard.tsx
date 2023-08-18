@@ -151,10 +151,7 @@ export default function CalOverviewCard() {
             </div>
           ))}
       </Card>
-      <Card className="col-span-1 sm:col-span-2">
-        <Text>Day streak</Text>
-        <Metric>4</Metric>
-      </Card>
+      <StreakCard />
       <Card className="col-span-1 sm:col-span-2">
         <Text>Foods Logged</Text>
         <Metric>42</Metric>
@@ -164,5 +161,22 @@ export default function CalOverviewCard() {
         <Metric>425,843</Metric>
       </Card>
     </div>
+  )
+}
+
+function StreakCard() {
+  const { isLoading, error, data } = useQuery({
+    queryKey: ["dayStreak"],
+    queryFn: () => axios.get("/api/user/get-streak").then((res) => res.data)
+  })
+
+  if (isLoading || !data) {
+    return <></>
+  }
+  return (
+    <Card className="col-span-1 sm:col-span-2">
+      <Text>Day Streak</Text>
+      <Metric>{data.streak}</Metric>
+    </Card>
   )
 }
