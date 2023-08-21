@@ -23,7 +23,8 @@ export async function GET(
     where: {
       userId: user.id,
       consumedOn: {
-        gte: yesterday.startOf("day").toDate()
+        gte: yesterday.startOf("day").toDate(),
+        lt: yesterday.startOf("day").toDate()
       }
     },
     include: {
