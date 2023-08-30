@@ -212,6 +212,7 @@ model FoodItem {
   messageId                Int?
   Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   embedding                Unsupported("vector(1536)")?
+  @@unique([name, brand])
 }
 
 model Serving {
@@ -225,7 +226,7 @@ model Serving {
 
 model Nutrient {
   id                    Int      @id @default(autoincrement())
-  nutrientName          String
+  nutrientName          String   
   nutrientUnit          String
   nutrientAmountPerGram Float
   foodItemId            Int
@@ -246,4 +247,12 @@ model ApiCalls {
   apiName   String
   queryType String
   count     Int
+}
+
+model ApiTokens {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  apiName   String
+  token     String   @unique
+  expires   DateTime
 }
