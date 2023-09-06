@@ -1,5 +1,5 @@
 import axios from "axios"
-import { recordQuery } from "@/utils/apiUsageLogging"
+import { recordQuery } from "../../utils/apiUsageLogging"
 
 const USDA_API_KEY = process.env.USDA_API_KEY
 export interface UsdaSearchParams {

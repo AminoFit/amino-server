@@ -45,7 +45,7 @@ export async function getFsAccessToken(): Promise<string> {
     if (storedToken) return storedToken
   } catch (err) {
     debug = true
-    console.error("Failed to get stored access token, we are likley on debug mode")
+    console.error("Failed to get stored access token, we are likely on debug mode")
   }
   const clientID = process.env.FATSECRET_CLIENT_ID
   const clientSecret = process.env.FATSECRET_CLIENT_SECRET

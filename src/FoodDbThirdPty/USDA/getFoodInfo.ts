@@ -1,37 +1,29 @@
 import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
-
-const USDA_API_KEY = process.env.USDA_API_KEY
-
-export type UsdaFoodItem = {
-  itemName: string
-  branded: boolean
-  brandName: string | null
-  foodInfo: { [key: string]: number | null }
-  default_serving: {
-    default_serving_amount: number
-    default_serving_unit: string
-  }
-  portions: any[] // define the structure as per your requirements
-  upc?: string
-}
+import { UsdaFoodItem } from "./usdaInterfaceHelper"
 
 function extractFoodInfo(
   foodItem: any,
   foodAttributesToQuery: string[]
 ): UsdaFoodItem {
-  const foodInfo: { [key: string]: number | null } = {}
+  const foodInfo: { [key: string]: { amount: number | null; unit: string | null } } = {}
   const portions: any[] = []
 
   foodAttributesToQuery.forEach((name) => {
-    foodInfo[name] = null
+    foodInfo[name] = {amount: null, unit: null}
   })
 
   foodItem.foodNutrients.forEach((foodNutrient: any) => {
     if (foodAttributesToQuery.includes(foodNutrient.nutrient.name)) {
-      foodInfo[foodNutrient.nutrient.name] = foodNutrient.amount
+      // Only include the nutrient if it's not "Energy" or if it's "Energy" with unit "kcal"
+      if (foodNutrient.nutrient.name !== "Energy" || foodNutrient.nutrient.unitName === "kcal") {
+        foodInfo[foodNutrient.nutrient.name] = {
+          amount: foodNutrient.amount,
+          unit: foodNutrient.nutrient.unitName
+        };
+      }
     }
-  })
+  });
 
   // Filter out the attributes with null values
   const filteredfoodInfo = Object.fromEntries(
@@ -40,9 +32,13 @@ function extractFoodInfo(
 
   if (foodItem.foodPortions) {
     foodItem.foodPortions.forEach((foodPortion: any) => {
-      const { amount, gramWeight, measureUnit } = foodPortion
+      const { amount, gramWeight, measureUnit, modifier } = foodPortion
+      let name = measureUnit.name;
+      if (name === 'undetermined') {
+        name = `${amount} ${modifier}`;
+      }
       portions.push({
-        name: measureUnit.name,
+        name,
         abbreviation: measureUnit.abbreviation,
         amount,
         gramWeight
@@ -222,6 +218,7 @@ export async function getUsdaFoodsInfo(
     "Total lipid (fat)",
     "Carbohydrate, by difference",
     "Energy (Atwater General Factors)",
+    "Sugars, total including NLEA",
     "Sugars, Total",
     "Fiber, total dietary",
     "Carbohydrate, by summation",
@@ -229,7 +226,11 @@ export async function getUsdaFoodsInfo(
     "Fatty acids, total saturated",
     "Fatty acids, total monounsaturated",
     "Fatty acids, total trans",
-    "Sugars, added"
+    "Sugars, added",
+    "Cholesterol",
+    "Potassium, K",
+    "Sodium, Na",
+    "Calcium, Ca"
   ]
   const requestParams = {
     fdcIds: params.fdcIds.join(","),
@@ -240,7 +241,8 @@ export async function getUsdaFoodsInfo(
 
   try {
     const response = await axios.get(API_URL, { params: requestParams })
-    //const requestDetails = `${NUTRITIONIX_ENDPOINT} - ${JSON.stringify(foodQuery)}`;
+
+    //console.log(JSON.stringify(response.data))
 
     // do not await this
     recordQuery("usda", API_URL)
@@ -261,7 +263,7 @@ export async function getUsdaFoodsInfo(
 
 async function runTests() {
   const result = await getUsdaFoodsInfo({
-    fdcIds: ["174813"]
+    fdcIds: ["170554", "2262074", "325871", "2515376"]
   })
   console.log(JSON.stringify(result))
 }

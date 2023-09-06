@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { vectorToSql, vectorFromSql } from "@/utils/pgvectorHelper"
-import { foodEmbedding } from "../../../utils/foodEmbedding"
+import { getFoodEmbedding } from "../../../utils/foodEmbedding"
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ export async function embeddingBackfill() {
   
       // Check if the foodItem is found and create the embedding
       if (foodItem) {
-        const newEmbeddingArray = new Float32Array(await foodEmbedding(foodItem));
+        const newEmbeddingArray = new Float32Array(await getFoodEmbedding(foodItem));
         const embeddingSql = vectorToSql(Array.from(newEmbeddingArray));
   
         // Update the database record with the new embedding

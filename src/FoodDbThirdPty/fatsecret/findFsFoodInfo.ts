@@ -3,16 +3,13 @@ import {
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
 import { CreateEmbeddingResponseDataInner } from "openai"
-import {
-  findFatSecretFoodInfo,
-  FatSecretFindFoodParams
-} from "./searchFsFood"
-import { FsFoodInfo } from "./fsInterfaceHelper"
+import { findFatSecretFoodInfo, FatSecretFindFoodParams } from "./searchFsFood"
+import { FsFoodInfo, convertFsToFoodItem, FoodItemWithServings } from "./fsInterfaceHelper"
 
-const COSINE_THRESHOLD = 0.85
+const COSINE_THRESHOLD = 0.8
 
 interface FsFoodInfoWithEmbedding {
-  item: FsFoodInfo
+  item: FoodItemWithServings
   similarity: number
   embedding: number[]
 }
@@ -23,13 +20,16 @@ export async function findFsFoodInfo(
   // Search for food IDs based on the given query
   const searchResponse: FsFoodInfo[] = await findFatSecretFoodInfo({
     search_expression: searchParams.search_expression,
+    branded: searchParams.branded,
     max_results: searchParams.max_results
   })
 
   // create an array of all queries to get embeddings for
   const allQueries = [searchParams.search_expression].concat(
-    searchResponse.map((item) => 
-      item.food_type === "Brand" ? `${item.food_name} - ${item.brand_name}` : item.food_name
+    searchResponse.map((item) =>
+      item.food_type === "Brand"
+        ? `${item.food_name} - ${item.brand_name}`
+        : item.food_name
     )
   )
 
@@ -55,7 +55,7 @@ export async function findFsFoodInfo(
     // add to array only if similarity is 0.8 or more (or adjust the threshold as needed)
     if (similarity >= COSINE_THRESHOLD) {
       foodItemsWithEmbedding.push({
-        item: searchResponse[i],
+        item: convertFsToFoodItem(searchResponse[i]),
         similarity,
         embedding: itemEmbeddings[i]
       })
@@ -68,20 +68,26 @@ export async function findFsFoodInfo(
   // If there are no items that match the threshold, return null
   if (foodItemsWithEmbedding.length === 0) return null
 
+  /*
   for (let i = 0; i < Math.min(foodItemsWithEmbedding.length, 4); i++) {
-    console.log(foodItemsWithEmbedding[i].item, 'with similarity', foodItemsWithEmbedding[i].similarity);
+    console.log(
+      foodItemsWithEmbedding[i].item,
+      "with similarity",
+      foodItemsWithEmbedding[i].similarity
+    )
   }
+ */
 
   return foodItemsWithEmbedding[0]
 }
 
 async function runTests() {
   const results = await findFsFoodInfo({
-    search_expression: "uncooked oats",
+    search_expression: "Blackened Salmon, Avo & Quinoa Salad - Pret",
+    branded: true
   })
   //console.log(results)
-  console.log(JSON.stringify(results?.item.servings))
+  console.log(JSON.stringify(results))
 }
 
-runTests()
-
+// runTests()

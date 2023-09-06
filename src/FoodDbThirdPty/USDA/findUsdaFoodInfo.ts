@@ -3,12 +3,14 @@ import {
   UsdaSearchResponse,
   UsdaFoodIdResults
 } from "./searchFoodIds"
-import { getUsdaFoodsInfo, UsdaFoodItem } from "./getFoodInfo"
+import { getUsdaFoodsInfo } from "./getFoodInfo"
+import { UsdaFoodItem } from "./usdaInterfaceHelper"
 import {
   getEmbedding,
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
 import { CreateEmbeddingResponseDataInner } from "openai"
+import { FoodItemWithServings, mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
 
 export interface UsdaFindFoodParams {
   food_name: string
@@ -20,7 +22,7 @@ const COSINE_THRESHOLD = 0.85
 
 export async function findUsdaFoodInfo(
   searchParams: UsdaFindFoodParams
-): Promise<UsdaFoodItem | null> {
+): Promise<FoodItemWithServings | null> {
   // Search for food IDs based on the given query
   const searchResponse: UsdaSearchResponse = await searchFoodIds({
     query: searchParams.food_name,
@@ -76,7 +78,7 @@ export async function findUsdaFoodInfo(
     fdcIds: [String(topItemFdcId)]
   })
 
-  return usdaFoodsInfo ? usdaFoodsInfo[0] : null
+  return usdaFoodsInfo ? mapUsdaFoodItemToFoodItem(usdaFoodsInfo[0]) : null
 }
 
 async function runTests() {
@@ -84,4 +86,4 @@ async function runTests() {
   console.log(results)
 }
 
-//runTests()
+// runTests()

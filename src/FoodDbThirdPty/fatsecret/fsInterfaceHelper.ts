@@ -2,19 +2,7 @@ import { FoodItem, Nutrient } from "@prisma/client"
 
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
 
-interface FoodItemWithServings
-  extends Omit<
-    FoodItem,
-    | "id"
-    | "description"
-    | "knownAs"
-    | "userId"
-    | "embedding"
-    | "lastUpdated"
-    | "messageId"
-    | "foodInfoSource"
-    | "verified"
-  > {
+export interface FoodItemWithServings extends Omit<FoodItem, "Servings" | "Nutrients"> {
   Servings: Array<{
     servingWeightGram: number
     servingName: string
@@ -90,7 +78,7 @@ function mapNutrients(serving: Serving, unitConversionFactor: number): FoodNutri
     })
 }
 
-function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
+export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
   let serving = fsFoodItem.servings.serving.find(
     (serving) =>
       Number(serving.metric_serving_amount) === 100 &&
@@ -117,6 +105,14 @@ function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
 
   // Map fsFoodItem to FoodItem
   const foodItem: FoodItemWithServings = {
+    id: 0,
+    knownAs: [],
+    description: null, 
+    lastUpdated: new Date(),
+    verified: false,
+    userId: null, 
+    foodInfoSource: "User", 
+    messageId: null, 
     name: fsFoodItem.food_name,
     brand: fsFoodItem.brand_name,
     defaultServingWeightGram: serving.metric_serving_amount,
@@ -157,7 +153,7 @@ function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
 
   return foodItem
 }
-
+/*
 function runTest() {
   const fsFoodItem: FsFoodInfo = JSON.parse(
     `{"food_id":"36421","food_name":"Mushrooms","food_type":"Generic","food_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms","servings":{"serving":[{"calcium":"2","calories":"15","carbohydrate":"2.30","cholesterol":"0","fat":"0.24","fiber":"0.7","iron":"0.35","measurement_description":"cup, pieces or slices","metric_serving_amount":"70.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.112","potassium":"223","protein":"2.16","saturated_fat":"0.035","serving_description":"1 cup pieces or slices","serving_id":"34244","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34244&portionamount=1.000","sodium":"4","sugar":"1.16","vitamin_a":"0","vitamin_c":"1.5","vitamin_d":"1"},{"calcium":"3","calories":"21","carbohydrate":"3.15","cholesterol":"0","fat":"0.33","fiber":"1.0","iron":"0.48","measurement_description":"cup, whole","metric_serving_amount":"96.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.154","potassium":"305","protein":"2.97","saturated_fat":"0.048","serving_description":"1 cup whole","serving_id":"34245","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34245&portionamount=1.000","sodium":"5","sugar":"1.58","vitamin_a":"0","vitamin_c":"2.0","vitamin_d":"2"},{"calcium":"1","calories":"5","carbohydrate":"0.75","cholesterol":"0","fat":"0.08","fiber":"0.2","iron":"0.12","measurement_description":"large","metric_serving_amount":"23.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.037","potassium":"73","protein":"0.71","saturated_fat":"0.012","serving_description":"1 large","serving_id":"34246","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34246&portionamount=1.000","sodium":"1","sugar":"0.38","vitamin_a":"0","vitamin_c":"0.5","vitamin_d":"0"},{"calcium":"1","calories":"4","carbohydrate":"0.59","cholesterol":"0","fat":"0.06","fiber":"0.2","iron":"0.09","measurement_description":"medium","metric_serving_amount":"18.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.029","potassium":"57","protein":"0.56","saturated_fat":"0.009","serving_description":"1 medium","serving_id":"34247","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34247&portionamount=1.000","sodium":"1","sugar":"0.30","vitamin_a":"0","vitamin_c":"0.4","vitamin_d":"0"},{"calcium":"0","calories":"1","carbohydrate":"0.20","cholesterol":"0","fat":"0.02","fiber":"0.1","iron":"0.03","measurement_description":"slice","metric_serving_amount":"6.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.010","potassium":"19","protein":"0.19","saturated_fat":"0.003","serving_description":"1 slice","serving_id":"34248","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34248&portionamount=1.000","sodium":"0","sugar":"0.10","vitamin_a":"0","vitamin_c":"0.1","vitamin_d":"0"},{"calcium":"0","calories":"2","carbohydrate":"0.33","cholesterol":"0","fat":"0.03","fiber":"0.1","iron":"0.05","measurement_description":"small","metric_serving_amount":"10.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.016","potassium":"32","protein":"0.31","saturated_fat":"0.005","serving_description":"1 small","serving_id":"34249","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34249&portionamount=1.000","sodium":"0","sugar":"0.16","vitamin_a":"0","vitamin_c":"0.2","vitamin_d":"0"},{"calcium":"1","calories":"8","carbohydrate":"1.15","cholesterol":"0","fat":"0.12","fiber":"0.4","iron":"0.18","measurement_description":"cup pieces","metric_serving_amount":"35.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"0.500","polyunsaturated_fat":"0.056","potassium":"111","protein":"1.08","saturated_fat":"0.018","serving_description":"1/2 cup pieces","serving_id":"34250","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=34250&portionamount=0.500","sodium":"2","sugar":"0.58","vitamin_a":"0","vitamin_c":"0.7","vitamin_d":"1"},{"calcium":"1","calories":"6","carbohydrate":"0.93","cholesterol":"0","fat":"0.10","fiber":"0.3","iron":"0.14","measurement_description":"oz","metric_serving_amount":"28.350","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.045","potassium":"90","protein":"0.88","saturated_fat":"0.014","serving_description":"1 oz","serving_id":"44166","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=44166&portionamount=1.000","sodium":"1","sugar":"0.47","vitamin_a":"0","vitamin_c":"0.6","vitamin_d":"1"},{"calcium":"14","calories":"100","carbohydrate":"14.88","cholesterol":"0","fat":"1.54","fiber":"4.5","iron":"2.27","measurement_description":"lb","metric_serving_amount":"453.600","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"1.000","polyunsaturated_fat":"0.726","potassium":"1442","protein":"14.02","saturated_fat":"0.227","serving_description":"1 lb","serving_id":"48813","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=48813&portionamount=1.000","sodium":"23","sugar":"7.48","vitamin_a":"0","vitamin_c":"9.5","vitamin_d":"9"},{"calcium":"3","calories":"22","carbohydrate":"3.28","cholesterol":"0","fat":"0.34","fiber":"1.0","iron":"0.50","measurement_description":"g","metric_serving_amount":"100.000","metric_serving_unit":"g","monounsaturated_fat":"0","number_of_units":"100.000","polyunsaturated_fat":"0.160","potassium":"318","protein":"3.09","saturated_fat":"0.050","serving_description":"100 g","serving_id":"59152","serving_url":"https://www.fatsecret.com/calories-nutrition/usda/mushrooms?portionid=59152&portionamount=100.000","sodium":"5","sugar":"1.65","vitamin_a":"0","vitamin_c":"2.1","vitamin_d":"2"}]}}`
@@ -166,3 +162,4 @@ function runTest() {
 }
 
 runTest()
+*/

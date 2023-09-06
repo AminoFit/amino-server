@@ -97,4 +97,4 @@ export async function getNonBrandedFoodInfo(
   return response.data as NxNonBrandedResponse
 }
 
-// getNonBrandedFoodInfo({ query: "apple" }).then((res) => console.log(JSON.stringify(res)))
+//getNonBrandedFoodInfo({ query: "Fries" }).then((res) => console.log(JSON.stringify(res)))

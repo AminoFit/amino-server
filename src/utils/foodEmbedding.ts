@@ -3,7 +3,7 @@ import { getEmbedding } from "../openai/utils/embeddingsHelper"
 import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
 
 
-export async function foodEmbedding(foodItem: FoodItem): Promise<number[]> {
+export async function getFoodEmbedding(foodItem: FoodItem): Promise<number[]> {
   // Construct the text input for the embedding
   let textToEmbed = foodItem.name
 

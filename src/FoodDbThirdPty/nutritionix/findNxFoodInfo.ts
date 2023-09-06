@@ -43,26 +43,35 @@ type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse
 function mapFoodResponseToFoodItem(
   response: CombinedResponse
 ): NxFoodItemResponse[] {
-  return response.foods.map((food) => ({
+  return response.foods.map((food) => {
+    // Extract trans fat from full_nutrients array
+    const transFatNutrient = food.full_nutrients.find(nutrient => nutrient.attr_id === 605);
+    const transFat = transFatNutrient ? transFatNutrient.value : null;
+
+    // Extract added sugar from full_nutrients array
+    const addedSugarNutrient = food.full_nutrients.find(nutrient => nutrient.attr_id === 539);
+    const addedSugar = addedSugarNutrient ? addedSugarNutrient.value : null;
+
+    return {
     id: 0, // Replace with the proper ID once available
     name: food.food_name,
     brand: food.brand_name,
-    knownAs: [], // You may need to map this properly based on your data
-    description: null, // You may need to map this properly based on your data
+    knownAs: [], 
+    description: null, 
     defaultServingWeightGram: food.serving_weight_grams,
     kcalPerServing: food.nf_calories,
     totalFatPerServing: food.nf_total_fat,
     satFatPerServing: food.nf_saturated_fat,
-    transFatPerServing: null, // You may need to map this properly based on your data
+    transFatPerServing: transFat, 
     carbPerServing: food.nf_total_carbohydrate,
     sugarPerServing: food.nf_sugars,
-    addedSugarPerServing: null, // You may need to map this properly based on your data
+    addedSugarPerServing: addedSugar, 
     proteinPerServing: food.nf_protein,
     lastUpdated: new Date(),
     verified: false,
-    userId: null, // You may need to map this properly based on your data
-    foodInfoSource: "User", // You may need to map this properly based on your data
-    messageId: null, // You may need to map this properly based on your data
+    userId: null, 
+    foodInfoSource: "User", 
+    messageId: null, 
     Servings: food.alt_measures
       ? food.alt_measures.map((alt) => ({
           servingWeightGram: alt.serving_weight,
@@ -94,7 +103,8 @@ function mapFoodResponseToFoodItem(
           (food.nf_potassium || 0) / (food.serving_weight_grams || 1)
       }
     ]
-  }))
+  }
+})
 }
 
 export async function findNxFoodInfo(
