@@ -7,11 +7,8 @@ function checkType(actual: any, expected: any) {
   if (expected === "array") return Array.isArray(actual)
   else if (expected === "object")
     return actual !== null && typeof actual === "object"
-  else if (expected === "integer")
-    return (
-      Number.isInteger(actual) ||
-      (typeof actual === "number" && actual % 1 === 0)
-    )
+  else if (expected === "integer" || expected === "number")
+    return typeof actual === "number"
   else return typeof actual === expected
 }
 

@@ -54,8 +54,8 @@ export async function findFatSecretFoodInfo(
       } else if (searchParams.branded === false) {
         foods = foods.filter((food: any) => food.food_type === "Generic")
       }
-      console.log("Found", foods.length, "foods")
-      console.log(foods)
+      // console.log("Found", foods.length, "foods")
+      // console.log(foods)
 
       return foods as FsFoodInfo[]
     }

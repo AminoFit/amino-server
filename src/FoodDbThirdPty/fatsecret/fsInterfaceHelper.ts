@@ -109,7 +109,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
     knownAs: [],
     description: null, 
     lastUpdated: new Date(),
-    verified: false,
+    verified: true,
     userId: null, 
     foodInfoSource: "User", 
     messageId: null, 

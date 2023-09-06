@@ -1,10 +1,15 @@
-import { LoggedFoodItem, FoodItem, FoodImage, Serving } from "@prisma/client"
+import { LoggedFoodItem, FoodItem, FoodImage, Serving, Nutrient } from "@prisma/client"
 
 export type LoggedFoodItemWithFoodItem = LoggedFoodItem & {
   FoodItem: FoodItem & {
     Servings: Serving[]; // Change this line
     FoodImage?: FoodImage[];
   } | null; // From the main branch
+};
+
+export type FoodItemWithNutrientsAndServing = FoodItem & {
+  Nutrients: Nutrient[];
+  Servings: Serving[];
 };
 
 export function getNormalizedFoodValue(

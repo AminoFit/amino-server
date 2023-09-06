@@ -26,6 +26,7 @@ import { vectorToSql } from "@/utils/pgvectorHelper"
 import { levenshteinDistance } from "../../utils/nlpHelper"
 import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { sanitizeServingName } from "../utils/textSanitize"
+import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -438,15 +439,36 @@ export async function HandleLogFoodItem(
 }
 
 async function addFoodItemPrisma(
-  food: FoodItem,
+  food: FoodItemWithNutrientsAndServing,
   messageId: number,
   model: string
 ): Promise<FoodItem> {
+  // Omit the id field from the food object
+  const { id, ...foodWithoutId } = food
+
   const newFood = await prisma.foodItem.create({
     data: {
-      ...food,
+      ...foodWithoutId,
       messageId: messageId,
-      foodInfoSource: mapModelToEnum(model)
+      foodInfoSource: mapModelToEnum(model),
+      // Check if nutrients exist before adding them
+      ...(food.Nutrients && {
+        Nutrients: {
+          create: food.Nutrients.map((nutrient) => ({
+            nutrientName: nutrient.nutrientName,
+            nutrientUnit: nutrient.nutrientUnit,
+            nutrientAmountPerGram: nutrient.nutrientAmountPerGram
+          }))
+        }
+      }),
+      ...(food.Servings && {
+        Servings: {
+          create: food.Servings.map((serving) => ({
+            servingWeightGram: serving.servingWeightGram,
+            servingName: serving.servingName
+          }))
+        }
+      })
     }
   })
 
@@ -628,9 +650,9 @@ async function addFoodItemToDatabase(
     // If the highest similarity score is greater than COSINE_THRESHOLD, add the food item manually
     if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
       const newFood = await addFoodItemPrisma(
-        highestSimilarityItem.foodItem,
+        highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
         messageId,
-        'Online'
+        "Online"
       )
       return newFood
     }
@@ -650,7 +672,7 @@ async function addFoodItemToDatabase(
     let food: FoodInfo = foodItemInfo
     console.log("food req string:", foodItemRequestString)
     const newFood = await addFoodItemPrisma(
-      mapOpenAiFoodInfoToFoodItem(food),
+      mapOpenAiFoodInfoToFoodItem(food) as FoodItemWithNutrientsAndServing,
       messageId,
       model
     )
