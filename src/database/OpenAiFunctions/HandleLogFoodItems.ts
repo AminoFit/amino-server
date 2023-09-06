@@ -678,50 +678,6 @@ async function addFoodItemToDatabase(
     )
 
     return newFood
-    /*
-    newFood = await prisma.foodItem.create({
-      data: {
-        name: food.name,
-        brand: food.brand,
-        knownAs: food.known_as || [],
-        description: food.food_description,
-        defaultServingWeightGram: food.default_serving_weight_g,
-        kcalPerServing: food.kcal_per_serving,
-        totalFatPerServing: food.total_fat_per_serving,
-        satFatPerServing: food.sat_fat_per_serving ?? 0,
-        transFatPerServing: food.trans_fat_per_serving ?? 0,
-        carbPerServing: food.carb_per_serving,
-        sugarPerServing: food.sugar_per_serving ?? 0,
-        addedSugarPerServing: food.added_sugar_per_serving ?? 0,
-        proteinPerServing: food.protein_per_serving,
-        messageId,
-        foodInfoSource: mapModelToEnum(model),
-        Servings: {
-          create:
-            food.servings?.map((serving) => ({
-              servingWeightGram: serving.serving_weight_g,
-              servingName: sanitizeServingName(serving.serving_name)
-            })) || []
-        },
-        Nutrients: {
-          create:
-            food.nutrients?.map((nutrient) => ({
-              nutrientName: nutrient.nutrient_name,
-              nutrientUnit: nutrient.nutrient_unit,
-              nutrientAmountPerGram: nutrient.nutrient_amount_per_g
-            })) || []
-        }
-      }
-    })
-
-    // save the vector to the database
-    const embeddingArray = new Float32Array(await getFoodEmbedding(newFood))
-    const embeddingSql = vectorToSql(Array.from(embeddingArray))
-    const result = await prisma.$executeRaw`UPDATE "FoodItem"
-          SET embedding = ${embeddingSql}::vector
-          WHERE id = ${newFood.id}`
-
-    return newFood*/
   } catch (err) {
     console.log("Error getting food item info", err)
     throw err

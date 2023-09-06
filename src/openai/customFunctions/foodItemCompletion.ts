@@ -79,6 +79,17 @@ function checkFoodHasNonZeroValues(food: FoodInfo): boolean {
   
   return true
 }
+function addDefaultValues(foodItemInfo: any) {
+  foodItemInfo.total_fat_per_serving = foodItemInfo.total_fat_per_serving || 0;
+  foodItemInfo.sat_fat_per_serving = foodItemInfo.sat_fat_per_serving || 0;
+  foodItemInfo.trans_fat_per_serving = foodItemInfo.trans_fat_per_serving || 0;
+  foodItemInfo.carb_per_serving = foodItemInfo.carb_per_serving || 0;
+  foodItemInfo.sugar_per_serving = foodItemInfo.sugar_per_serving || 0;
+  foodItemInfo.added_sugar_per_serving = foodItemInfo.added_sugar_per_serving || 0;
+  foodItemInfo.protein_per_serving = foodItemInfo.protein_per_serving || 0;
+  
+  return foodItemInfo;
+}
 
 export function checkCompliesWithSchema(
   schema: { [key: string]: any },
@@ -270,7 +281,7 @@ export async function foodItemCompletion(
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-3.5-turbo-0613"
+  let model = "gpt-4-0613"//"gpt-3.5-turbo-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
@@ -290,13 +301,15 @@ export async function foodItemCompletion(
     console.log("result", JSON.stringify(result))
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
-
+    let foodItemInfo = JSON.parse(result.function_call.arguments);
+    foodItemInfo = addDefaultValues(foodItemInfo);
+    
     let has_valid_schema = checkCompliesWithSchema(
       functions[0].parameters!,
-      JSON.parse(result.function_call.arguments)
+      foodItemInfo
     )
     let has_valid_data = checkFoodHasNonZeroValues(
-      JSON.parse(result.function_call.arguments)
+      foodItemInfo
     )
 
     if (!has_valid_data || !has_valid_schema) {
@@ -327,19 +340,22 @@ export async function foodItemCompletion(
       )
       console.log("Second retry", result.function_call.arguments)
     }
+    foodItemInfo = JSON.parse(result.function_call.arguments);
+    foodItemInfo = addDefaultValues(foodItemInfo);
+
     // check again for schema and data
     has_valid_data = checkFoodHasNonZeroValues(
-      JSON.parse(result.function_call.arguments)
+      foodItemInfo
     )
     has_valid_schema = checkCompliesWithSchema(
       functions[0].parameters!,
-      JSON.parse(result.function_call.arguments)
+      foodItemInfo
     )
     if (!has_valid_data || !has_valid_schema) {
       throw console.error("Could not find food item")
     }
     return {
-      foodItemInfo: JSON.parse(result.function_call.arguments),
+      foodItemInfo: foodItemInfo,
       model: model
     }
   } catch (error) {
