@@ -1,7 +1,8 @@
-import { Configuration, OpenAIApi } from "openai"
+import { Configuration, CreateEmbeddingResponse, CreateEmbeddingResponseDataInner, OpenAIApi } from "openai"
 
 import * as path from "path";
 require("dotenv").config({ path: path.resolve(__dirname, "../../../.env.local") });
+
 
 const configuration = new Configuration({
   organization: process.env.OPENAI_ORG_ID,
@@ -9,9 +10,7 @@ const configuration = new Configuration({
 })
 export const openai = new OpenAIApi(configuration)
 
-export type EmbeddingObject = { embedding: number[]; [key: string]: any }
-
-export async function getEmbedding(input: string[]): Promise<any> {
+export async function getEmbedding(input: string[]): Promise<CreateEmbeddingResponse> {
     const embedding = await openai.createEmbedding({
       model: "text-embedding-ada-002",
       input: input

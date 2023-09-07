@@ -17,9 +17,19 @@ import { FoodInfo } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
+import { foodEmbedding, foodToLogEmbedding } from "../../utils/foodEmbedding"
+import { vectorToSql } from "@/utils/pgvectorHelper"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
+
+const COSINE_THRESHOLD = 0.945
+
+type FoodItemIdAndEmbedding = {
+  id: number
+  cosine_similarity: number
+  embedding: string
+}
 
 type FoodItemPropertiesToRemove =
   | "id"
@@ -164,6 +174,8 @@ export async function HandleLogFoodItems(
   })
   lastUserMessage.itemsToProcess = foodItemsToLog.length
 
+  console.time("foodsProcessingTime")
+
   // Create all the pending food items
   const foodsNeedProcessing = await prisma.$transaction(
     foodItemsToLog.map((food) =>
@@ -179,6 +191,8 @@ export async function HandleLogFoodItems(
       })
     )
   )
+
+  console.timeEnd("foodsProcessingTime")
 
   console.log("foodsNeedProcessing", foodsNeedProcessing)
 
@@ -229,6 +243,52 @@ export async function HandleLogFoodItem(
   messageId: number,
   user: User
 ): Promise<string> {
+  // Get the user query vector
+  // Assuming you have a function to convert foodUserQuery to a vector
+  const userQueryVector = await foodToLogEmbedding(food)
+
+  // Convert the user query vector to SQL format using pgvector
+  const embeddingSql = vectorToSql(userQueryVector)
+
+  // Query for the cosine similarity based on the embedding vector
+  const cosineSearchResults =
+    (await prisma.$queryRaw`SELECT id, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity, embedding::text FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
+
+  // Process the result as you need
+  cosineSearchResults.forEach((item) => {
+    const similarity = item.cosine_similarity.toFixed(3);
+    console.log(`Item ID: ${item.id} - Cosine Similarity: ${similarity}`)
+  })
+
+  // Filter items based on cosine similarity
+  const filteredItems = cosineSearchResults.filter(
+    (item) => item.cosine_similarity >= COSINE_THRESHOLD
+  )
+
+  let bestMatch: FoodItem;
+  // If no matches found, add food item to the database
+  if (filteredItems.length === 0) {
+    console.log("No matches found for food item", food.full_name)
+
+    const newFood = await addFoodItemToDatabase(food, user, messageId)
+    bestMatch = newFood
+  } else {
+    const match = await prisma.foodItem.findUnique({
+      where: {
+        id: filteredItems[0].id,
+      },
+    });
+  
+    if (match !== null) {
+      bestMatch = match;
+    } else {
+      // Handle the unexpected null case
+      throw new Error(`Failed to find FoodItem with id ${filteredItems[0].id}`);
+    }
+  }
+
+  /*
+  // classical search
   let matches = []
 
   console.log("foodItem db helper word", food.lemmatized_database_search_term)
@@ -302,6 +362,8 @@ export async function HandleLogFoodItem(
   // Let's assume we have a function getBestMatch that returns the best match
   //let bestMatch = getBestMatch(matches)
   let bestMatch: FoodItem = matches[0]
+
+  */
 
   // Let's find the serving
   // split the string into an array and filter out the serving unit
@@ -461,7 +523,11 @@ async function addFoodItemToDatabase(
       foodItemRequestString,
       user
     )
-    console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime,"ms")
+    console.log(
+      "Time taken for foodItemCompletion:",
+      Date.now() - foodItemCompletionStartTime,
+      "ms"
+    )
 
     let newFood: FoodItem
 
@@ -489,7 +555,7 @@ async function addFoodItemToDatabase(
           create:
             food.servings?.map((serving) => ({
               servingWeightGram: serving.serving_weight_g,
-              servingName: serving.serving_name
+              servingName: sanitizeServingName(serving.serving_name)
             })) || []
         },
         Nutrients: {
@@ -502,6 +568,14 @@ async function addFoodItemToDatabase(
         }
       }
     })
+
+    // save the vector to the database
+    const embeddingArray = new Float32Array(await foodEmbedding(newFood))
+    const embeddingSql = vectorToSql(Array.from(embeddingArray))
+    const result = await prisma.$executeRaw`UPDATE "FoodItem"
+          SET embedding = ${embeddingSql}::vector
+          WHERE id = ${newFood.id}`
+
     return newFood
   } catch (err) {
     console.log("Error getting food item info", err)

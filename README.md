@@ -43,3 +43,38 @@ Url to import into [TablePlus](https://tableplus.com/). This should be in your .
 After running docker postgres, 
 `npm run migrate:dev`
 
+
+
+
+###
+Instructions to install pgvector on a local docker image of postgres
+
+Access your docker image (assuming it is called amino-postgres)
+`docker exec -it amino-postgres bash`
+
+install git
+`apt-get install -y git`
+
+install pgvector
+```cd /tmp
+git clone --branch v0.4.4 https://github.com/pgvector/pgvector.git
+cd pgvector```
+
+make and install
+```
+apt-get install make
+apt-get install gcc
+apt install postgresql-server-dev-15
+export PG_CONFIG=/usr/lib/postgresql/15/bin/pg_config
+make
+make install
+```
+
+exit the docker bash
+`exit`
+
+enter postgres
+`docker exec -it amino-postgres psql -U postgres -d postgres`
+
+install vector
+`CREATE EXTENSION vector;`
