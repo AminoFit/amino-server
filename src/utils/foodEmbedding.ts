@@ -1,0 +1,34 @@
+import { FoodItem } from "@prisma/client"
+import { getEmbedding } from "../openai/utils/embeddingsHelper"
+import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
+
+
+export async function foodEmbedding(foodItem: FoodItem): Promise<number[]> {
+  // Construct the text input for the embedding
+  let textToEmbed = foodItem.name
+
+  // Append the brand name with a hyphen if it doesn't already appear in the name
+  if (
+    foodItem.brand &&
+    !textToEmbed.toLowerCase().includes(foodItem.brand.toLowerCase())
+  ) {
+    textToEmbed += ` - ${foodItem.brand}`
+  }
+  const embedding = await getEmbedding([textToEmbed.toLowerCase()])
+  return embedding.data[0].embedding
+}
+
+export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<number[]> {
+  // Construct the text input for the embedding
+  let textToEmbed = foodToLog.user_food_descriptive_name || foodToLog.full_name
+
+  // Append the brand name with a hyphen if it doesn't already appear in the name
+  if (
+    foodToLog.brand &&
+    !textToEmbed.toLowerCase().includes(foodToLog.brand.toLowerCase())
+  ) {
+    textToEmbed += ` - ${foodToLog.brand}`
+  }
+  const embedding = await getEmbedding([textToEmbed.toLowerCase()])
+  return embedding.data[0].embedding
+}
