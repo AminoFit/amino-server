@@ -162,17 +162,16 @@ export async function VerifyHandleLogFoodItems(parameters: any) {
 export async function HandleLogFoodItems(
   user: User,
   parameters: any,
-  lastUserMessage: Message
+  lastUserMessageId: number
 ) {
   console.log("parameters", parameters)
 
   const foodItemsToLog: FoodItemToLog[] = parameters.food_items
 
   UpdateMessage({
-    id: lastUserMessage.id,
+    id: lastUserMessageId,
     itemsToProcess: foodItemsToLog.length
   })
-  lastUserMessage.itemsToProcess = foodItemsToLog.length
 
   console.time("foodsProcessingTime")
 
@@ -183,7 +182,7 @@ export async function HandleLogFoodItems(
         data: {
           userId: user.id,
           consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-          messageId: lastUserMessage.id,
+          messageId: lastUserMessageId,
           status: "Needs Processing",
           extendedOpenAiData: food as any
           // Seb, do we need more info from the function here?

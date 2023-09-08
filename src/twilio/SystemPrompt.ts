@@ -4,7 +4,7 @@ import moment from "moment-timezone";
 export const GetSystemStartPrompt = (user: User) => {
   let nameInfoString = user.firstName 
     ? `You can call the user by their name: "${user.firstName}".`
-    : `You do not know the user's name. You can ask them for it.`;
+    : ``;
 
   let ageString = "";
   if (user.dateOfBirth) {

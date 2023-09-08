@@ -1,5 +1,5 @@
 import SaveMessageFromUser from "@/database/SaveMessageFromUser"
-import { GenerateResponseForUser } from "@/openai/RespondToMessage"
+import { GenerateResponseForQuickLog } from "@/openai/RespondToMessage"
 import {
   LogSmsMessage,
   SaveAndSendMessageToUser,
@@ -21,9 +21,9 @@ export default async function ProcessMessage(
   const startTime = Date.now()
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  await SaveMessageFromUser(user, body, Role.User)
+  const inputMessage = await SaveMessageFromUser(user, body, Role.User)
 
-  let responseMessage = await GenerateResponseForUser(user)
+  let responseMessage = await GenerateResponseForQuickLog(user, inputMessage.id)
 
   if (responseMessage.responseToFunctionName) {
     // Save the message to the database
@@ -35,7 +35,7 @@ export default async function ProcessMessage(
     )
 
     // Get a new response with that message now logged
-    responseMessage = await GenerateResponseForUser(user)
+    responseMessage = await GenerateResponseForQuickLog(user, inputMessage.id)
   }
 
   if (messageSource === MessageSource.Sms) {
@@ -54,9 +54,9 @@ export async function QuickLogMessage(user: User, body: string) {
   const startTime = Date.now()
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  await SaveMessageFromUser(user, body, Role.User)
+  const inputMessage = await SaveMessageFromUser(user, body, Role.User)
 
-  let responseMessage = await GenerateResponseForUser(user)
+  let responseMessage = await GenerateResponseForQuickLog(user, inputMessage.id)
 
   console.log("responseMessage", responseMessage)
 
