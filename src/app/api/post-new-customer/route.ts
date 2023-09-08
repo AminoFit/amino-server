@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   console.log("user", user)
   await SaveMessageFromUser(
     user,
-    "The user just signed up on the website. Send them a note welcoming them to the platform. Ask them for their name to get started. After they give you their name, tell them how you can log foods and works. Tell them to give it a try.",
+    "The user just signed up on the website. Tell them how you can log foods and works. Tell them to give it a try.",
     Role.System
   )
   // const responseMessage = await GenerateResponseForUser(user);

@@ -117,7 +117,7 @@ export default function CalOverviewCard() {
               ? data.metricsToday.calories.toLocaleString()
               : data.metricsYesterday.calories.toLocaleString()}
           </Metric>
-          <Text>of {data.userGoals.calories.toLocaleString()}</Text>
+          <Text>of {data.userGoals.calories?.toLocaleString() || 2000}</Text>
         </Flex>
         <TabGroup
           index={selectedIndex}
