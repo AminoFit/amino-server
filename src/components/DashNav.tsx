@@ -38,7 +38,7 @@ export default function DashNav() {
                 <div className="flex flex-shrink-0 items-center">
                   <img
                     className="h-8 w-auto"
-                    src="/logos/logo.svg"
+                    src="/logos/logo-light.svg"
                     alt="Amino Fit Logo"
                   />
                 </div>
@@ -49,8 +49,8 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard"
-                        ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-amino-logo text-gray-800"
+                        : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Food Log
@@ -60,8 +60,8 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/chat"
-                        ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-amino-logo text-gray-800"
+                        : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Chat
@@ -71,8 +71,8 @@ export default function DashNav() {
                     className={classNames(
                       "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium",
                       pathname === "/dashboard/settings"
-                        ? "border-amino-logo text-gray-200"
-                        : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-amino-logo text-gray-800"
+                        : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-700"
                     )}
                   >
                     Settings

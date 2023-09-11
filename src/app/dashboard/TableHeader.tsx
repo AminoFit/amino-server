@@ -53,13 +53,13 @@ export function TableHeader() {
         </button>
       </div>
       <div onClick={handleClickToday}>
-        <div className="text-md font-bold leading-7 text-zinc-100">
-          {moment(selectedDate).format("dddd, MMMM Do")}
-        </div>
-        <div className="text-sm font-light text-gray-300">
+        <div className="font-display text-2xl tracking-tight text-slate-900 sm:text-4xl">
           Daily Food Overview
         </div>
-        <div className="text-xs font-light text-gray-300 mb-4">
+        <div className="text-lg tracking-tight text-slate-700">
+          {moment(selectedDate).format("dddd, MMMM Do")}
+        </div>
+        <div className="text-sm font-medium text-slate-600 mb-4">
           {renderTimeText()}
         </div>
       </div>

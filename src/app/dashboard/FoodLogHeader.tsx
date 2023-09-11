@@ -18,11 +18,11 @@ export function FoodLogHeader({
         <div className="mt-5 flex justify-between mb-4">
           <div>
             {user?.firstName && (
-              <div className="text-sm font-light text-amino-logo">
+              <div className="text-sm font-light text-amino-600">
                 Welcome Back
               </div>
             )}
-            <h2 className="mb-3 text-4xl font-bold leading-7 text-zinc-50 sm:truncate sm:text-3xl sm:tracking-tight">
+            <h2 className="mb-3 text-4xl font-bold leading-7 text-zinc-800 sm:truncate sm:text-3xl sm:tracking-tight">
               {user?.firstName || "Welcome Back"}
             </h2>
           </div>

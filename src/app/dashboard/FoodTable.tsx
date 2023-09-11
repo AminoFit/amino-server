@@ -31,7 +31,7 @@ export function FoodTable() {
     isLoading,
     error,
     data: foods,
-    isFetching,
+    isFetching
   } = useQuery({
     queryKey: ["foodData", formattedDate],
     queryFn: () =>
@@ -58,7 +58,6 @@ export function FoodTable() {
       return "dinner"
     })
     .value()
-
 
   console.log("groups", groups)
 
@@ -89,7 +88,7 @@ export function FoodTable() {
   }
 
   return (
-    <div className="px-3 pt-3 mb-16 rounded-xl bg-[#494949] ring-1 ring-[#555555]">
+    <div className="px-3 pt-3 mb-16 group relative rounded-full px-4 py-1 lg:rounded-xl lg:p-6 bg-black lg:bg-black/10 lg:ring-1 lg:ring-inset lg:ring-black/10">
       {renderBody()}
     </div>
   )
@@ -243,7 +242,7 @@ function FoodRowEmpty() {
   return (
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-200">
+        <div className="text-zinc-800">
           No food logged for this day. Use the Quick Log above to start logging!
         </div>
       </div>

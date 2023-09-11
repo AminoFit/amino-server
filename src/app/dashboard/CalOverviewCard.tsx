@@ -1,17 +1,12 @@
-import { ArrowDownIcon } from "@heroicons/react/24/outline"
 import { useQuery } from "@tanstack/react-query"
 import {
   Card,
-  TabList,
-  Tab,
-  ProgressBar,
-  Text,
-  Flex,
-  Button,
   Metric,
-  BadgeDelta,
+  ProgressBar,
+  Tab,
   TabGroup,
-  Grid
+  TabList,
+  Text
 } from "@tremor/react"
 import axios from "axios"
 
@@ -31,94 +26,89 @@ export default function CalOverviewCard() {
     return <></>
   }
 
+  const calorieGoal = data.userGoals.calories || 2200
+  const carbGoal = data.userGoals.carbs || 200
+  const fatGoal = data.userGoals.fats || 200
+  const proteinGoal = data.userGoals.protein || 200
+
   const metrics: { [key: string]: any } = [
     {
       title: "Carbs",
       remaining:
-        data.metricsToday.carbs >= data.userGoals.carbs
-          ? `(${data.metricsToday.carbs - data.userGoals.carbs}g over)`
-          : `(${data.userGoals.carbs - data.metricsToday.carbs}g remaining)`,
-      value: (data.metricsToday.carbs / data.userGoals.carbs) * 100,
-      metric: `${data.metricsToday.carbs}g / ${data.userGoals.carbs}g`,
+        data.metricsToday.carbs >= carbGoal
+          ? `${data.metricsToday.carbs - carbGoal}g over`
+          : `${carbGoal - data.metricsToday.carbs}g remaining`,
+      value: (data.metricsToday.carbs / carbGoal) * 100,
+      metric: `${data.metricsToday.carbs}g / ${carbGoal}g`,
       day: "Today"
     },
     {
       title: "Fats",
       remaining:
-        data.metricsToday.fats >= data.userGoals.fats
-          ? `(${data.metricsToday.fats - data.userGoals.fats}g over)`
-          : `(${data.userGoals.fats - data.metricsToday.fats}g remaining)`,
-      value: (data.metricsToday.fats / data.userGoals.fats) * 100,
-      metric: `${data.metricsToday.fats}g / ${data.userGoals.fats}g`,
+        data.metricsToday.fats >= fatGoal
+          ? `${data.metricsToday.fats - fatGoal}g over`
+          : `${fatGoal - data.metricsToday.fats}g remaining`,
+      value: (data.metricsToday.fats / fatGoal) * 100,
+      metric: `${data.metricsToday.fats}g / ${fatGoal}g`,
       day: "Today"
     },
     {
       title: "Protein",
       remaining:
-        data.metricsToday.protein >= data.userGoals.protein
-          ? `(${data.metricsToday.protein - data.userGoals.protein}g over)`
-          : `(${
-              data.userGoals.protein - data.metricsToday.protein
-            }g remaining)`,
-      value: (data.metricsToday.protein / data.userGoals.protein) * 100,
-      metric: `${data.metricsToday.protein}g / ${data.userGoals.protein}g`,
+        data.metricsToday.protein >= proteinGoal
+          ? `${data.metricsToday.protein - proteinGoal}g over`
+          : `${proteinGoal - data.metricsToday.protein}g remaining`,
+      value: (data.metricsToday.protein / proteinGoal) * 100,
+      metric: `${data.metricsToday.protein}g / ${proteinGoal}g`,
       day: "Today"
     },
     {
       title: "Carbs",
       remaining:
-        data.metricsYesterday.carbs >= data.userGoals.carbs
-          ? `(${data.metricsYesterday.carbs - data.userGoals.carbs}g over)`
-          : `(${
-              data.userGoals.carbs - data.metricsYesterday.carbs
-            }g remaining)`,
-      value: (data.metricsYesterday.carbs / data.userGoals.carbs) * 100,
-      metric: `${data.metricsYesterday.carbs}g / ${data.userGoals.carbs}g`,
+        data.metricsYesterday.carbs >= carbGoal
+          ? `${data.metricsYesterday.carbs - carbGoal}g over`
+          : `${carbGoal - data.metricsYesterday.carbs}g remaining`,
+      value: (data.metricsYesterday.carbs / carbGoal) * 100,
+      metric: `${data.metricsYesterday.carbs}g / ${carbGoal}g`,
       day: "Yesterday"
     },
     {
       title: "Fats",
       remaining:
-        data.metricsYesterday.fats >= data.userGoals.fats
-          ? `(${data.metricsYesterday.fats - data.userGoals.fats}g over)`
-          : `(${data.userGoals.fats - data.metricsYesterday.fats}g remaining)`,
-      value: (data.metricsYesterday.fats / data.userGoals.fats) * 100,
-      metric: `${data.metricsYesterday.fats}g / ${data.userGoals.fats}g`,
+        data.metricsYesterday.fats >= fatGoal
+          ? `${data.metricsYesterday.fats - fatGoal}g over`
+          : `${fatGoal - data.metricsYesterday.fats}g remaining`,
+      value: (data.metricsYesterday.fats / fatGoal) * 100,
+      metric: `${data.metricsYesterday.fats}g / ${fatGoal}g`,
       day: "Yesterday"
     },
     {
       title: "Protein",
       remaining:
-        data.metricsYesterday.protein >= data.userGoals.protein
-          ? `(${data.metricsYesterday.protein - data.userGoals.protein}g over)`
-          : `(${
-              data.userGoals.protein - data.metricsYesterday.protein
-            }g remaining)`,
-      value: (data.metricsYesterday.protein / data.userGoals.protein) * 100,
-      metric: `${data.metricsYesterday.protein}g / ${data.userGoals.protein}g`,
+        data.metricsYesterday.protein >= proteinGoal
+          ? `${data.metricsYesterday.protein - proteinGoal}g over`
+          : `${proteinGoal - data.metricsYesterday.protein}g remaining`,
+      value: (data.metricsYesterday.protein / proteinGoal) * 100,
+      metric: `${data.metricsYesterday.protein}g / ${proteinGoal}g`,
       day: "Yesterday"
     }
   ]
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-7 gap-4">
-      <Card className="col-span-2 sm:col-span-3 row-span-3">
-        <Flex alignItems="start">
-          <Text>Total Calories</Text>
+      <div className="col-span-2 sm:col-span-3 row-span-3 bg-amino-500 rounded-xl p-6 outline outline-2 outline-offset-2 outline-amino-600">
+        <div>
+          <div>Total Calories</div>
           {/* <BadgeDelta deltaType="moderateIncrease">18%</BadgeDelta> */}
-        </Flex>
-        <Flex
-          justifyContent="start"
-          alignItems="baseline"
-          className="space-x-3 truncate"
-        >
-          <Metric>
+        </div>
+        <div className="space-x-3 truncate">
+          <span>
             {selectedIndex === 0
               ? data.metricsToday.calories.toLocaleString()
               : data.metricsYesterday.calories.toLocaleString()}
-          </Metric>
-          <Text>of {data.userGoals.calories?.toLocaleString() || 2000}</Text>
-        </Flex>
+          </span>
+          <span>of {calorieGoal.toLocaleString()}</span>
+        </div>
         <TabGroup
           index={selectedIndex}
           onIndexChange={setSelectedIndex}
@@ -137,20 +127,15 @@ export default function CalOverviewCard() {
           .filter((item: any) => item.day === selectedDay)
           .map((item: any) => (
             <div key={item.title} className="space-y-2 mt-4">
-              <Flex>
-                <Text>
-                  {item.title}{" "}
-                  <span className="text-gray-400">{item.remaining}</span>
-                </Text>
-                <Text>
-                  {`${item.value.toFixed(0)}% `}{" "}
-                  <span className="text-gray-400">{`(${item.metric})`}</span>
-                </Text>
-              </Flex>
+              <div>{item.title}</div>
+              <div className="flex justify-between">
+                <div className="text-zinc-600 text-sm">{item.remaining}</div>
+                <div className="text-zinc-600 text-sm">{`(${item.metric})`}</div>
+              </div>
               <ProgressBar value={item.value} />
             </div>
           ))}
-      </Card>
+      </div>
       <StreakCard />
       <Card className="col-span-1 sm:col-span-2">
         <Text>Foods Logged</Text>
@@ -174,9 +159,9 @@ function StreakCard() {
     return <></>
   }
   return (
-    <Card className="col-span-1 sm:col-span-2">
-      <Text>Day Streak</Text>
-      <Metric>{data.streak}</Metric>
-    </Card>
+    <div className="col-span-1 sm:col-span-2 bg-amino-500 rounded-xl p-6 outline outline-2 outline-offset-2 outline-amino-600">
+      <div className="text-sm">Day Streak</div>
+      <div className="text-2xl font-bold">{data.streak}</div>
+    </div>
   )
 }

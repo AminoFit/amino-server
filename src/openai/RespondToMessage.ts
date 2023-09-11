@@ -1,6 +1,12 @@
-import GetMessagesForUser from "@/database/GetMessagesForUser"
+import {
+  GetMessageById,
+  GetMessagesForUser
+} from "@/database/GetMessagesForUser"
 import UpdateMessage from "@/database/UpdateMessage"
-import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
+import {
+  GetSystemQuickLogPrompt,
+  GetSystemStartPrompt
+} from "@/twilio/SystemPrompt"
 import {
   logExerciseSchema,
   logFoodSchema,
@@ -204,21 +210,40 @@ export async function GenerateResponseForUser(
   }
 }
 
-
 export async function GenerateResponseForQuickLog(
-  user: User, 
+  user: User,
   inputMessageId: number
 ): Promise<ResponseForUser> {
   // Get messages
   const messages: ChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: GetSystemStartPrompt(user)
+      content: GetSystemQuickLogPrompt(user)
     }
   ]
 
   UpdateMessage({ id: inputMessageId, status: MessageStatus.PROCESSING })
 
+  const loadedMessage = await GetMessageById(inputMessageId)
+  if (!loadedMessage) {
+    const messageForUser =
+      "Sorry, we're having problems right now. Please try again later. Could not find the message"
+    console.log("Message is not available")
+    UpdateMessage({
+      id: inputMessageId,
+      status: MessageStatus.FAILED,
+      resolvedAt: new Date()
+    })
+    return {
+      resultMessage: messageForUser
+    }
+  }
+
+  let msg: ChatCompletionRequestMessage = {
+    role: ROLE_MAPPING.User,
+    content: loadedMessage.content
+  }
+  messages.push(msg)
 
   /* models
   gpt-3.5-turbo-0613
@@ -235,7 +260,7 @@ export async function GenerateResponseForQuickLog(
         name: "log_food_items",
         // description: "Call this function to log food items when the user says what they ate.",
         parameters: logFoodSchema
-      },
+      }
     ],
     function_call: "auto",
     temperature: 0.0
