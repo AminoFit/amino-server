@@ -183,6 +183,9 @@ enum FoodInfoSource {
   GPT4
   LLAMA
   LLAMA2
+  USDA
+  FATSECRET
+  NUTRITIONIX
 }
 
 model FoodItem {
@@ -191,7 +194,9 @@ model FoodItem {
   brand                    String?
   knownAs                  String[]                     @default([])
   description              String?
-  defaultServingWeightGram Float
+  defaultServingWeightGram Float?                       
+  defaultServingLiquidMl   Float?
+  isLiquid                 Boolean                      @default(false)                       
   kcalPerServing           Float                        @default(0)
   totalFatPerServing       Float                        @default(0)
   satFatPerServing         Float?
@@ -202,6 +207,8 @@ model FoodItem {
   proteinPerServing        Float                        @default(0)
   lastUpdated              DateTime                     @default(now())
   verified                 Boolean                      @default(false)
+  externalId               String?
+  UPC                      String?
   Servings                 Serving[]
   Nutrients                Nutrient[]
   userId                   String?
@@ -217,7 +224,8 @@ model FoodItem {
 
 model Serving {
   id                Int              @id @default(autoincrement())
-  servingWeightGram Float
+  servingWeightGram Float?           
+  servingLiquidMl   Float?
   servingName       String
   foodItemId        Int
   FoodItem          FoodItem         @relation(fields: [foodItemId], references: [id])

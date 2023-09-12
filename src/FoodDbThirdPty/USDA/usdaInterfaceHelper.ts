@@ -3,16 +3,24 @@ import { FoodItem, Nutrient } from "@prisma/client"
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
 
 export interface FoodItemWithServings
-extends Omit<FoodItem, "Servings" | "Nutrients"> {
+  extends Omit<FoodItem, "Servings" | "Nutrients"> {
   Servings: Array<{
-    servingWeightGram: number
+    servingWeightGram?: number
+    servingLiquidMl?: number
     servingName: string
   }>
   Nutrients: FoodNutrient[]
 }
 
+interface Portion {
+  servingSize: number
+  servingSizeUnit: string
+  householdServingFullText: string
+}
+
 export interface UsdaFoodItem {
   itemName: string
+  fdcId: number
   branded: boolean
   brandName: string | null
   foodInfo: { [key: string]: { amount: number | null; unit: string | null } }
@@ -20,7 +28,11 @@ export interface UsdaFoodItem {
     default_serving_amount: number
     default_serving_unit: string
   }
-  portions: any[]
+  portions: Portion[]
+  householdServingFullText?: string
+  servingSize?: number
+  servingSizeUnit?: string
+  packageWeight?: string
   upc?: string
 }
 
@@ -31,15 +43,23 @@ export function mapUsdaFoodItemToFoodItem(
     [key: string]: keyof FoodItemWithServings
   } = {
     Energy: "kcalPerServing",
+    calories: "kcalPerServing",
     "Energy (Atwater General Factors)": "kcalPerServing",
     Protein: "proteinPerServing",
+    protein: "proteinPerServing",
     "Total lipid (fat)": "totalFatPerServing",
     "Total fat (NLEA)": "totalFatPerServing",
+    fat: "totalFatPerServing",
     "Carbohydrate, by difference": "carbPerServing",
     "Carbohydrate, by summation": "carbPerServing",
     "Sugars, total including NLEA": "sugarPerServing",
     "Sugars, Total": "sugarPerServing",
     "Fatty acids, total saturated": "satFatPerServing",
+    saturatedFat: "satFatPerServing",
+    transFat: "transFatPerServing",
+    carbohydrates: "carbPerServing",
+    sugars: "sugarPerServing",
+    addedSugar: "addedSugarPerServing",
     "Fatty acids, total trans": "transFatPerServing",
     "Sugars, added": "addedSugarPerServing"
   }
@@ -47,20 +67,26 @@ export function mapUsdaFoodItemToFoodItem(
   const foodItem: FoodItemWithServings = {
     id: 0,
     knownAs: [],
-    description: null, 
+    description: null,
     lastUpdated: new Date(),
-    verified: false,
-    userId: null, 
-    foodInfoSource: "User", 
-    messageId: null, 
+    verified: true,
+    userId: null,
+    foodInfoSource: "USDA",
+    messageId: null,
     name: usdaFoodItem.itemName,
     brand: usdaFoodItem.brandName || "",
     defaultServingWeightGram:
-      usdaFoodItem.default_serving.default_serving_amount,
+      (usdaFoodItem.default_serving.default_serving_unit === 'g') ? usdaFoodItem.default_serving.default_serving_amount : null,
+    defaultServingLiquidMl: 
+      (usdaFoodItem.default_serving.default_serving_unit === 'ml') ? usdaFoodItem.default_serving.default_serving_amount : null,
+    isLiquid: usdaFoodItem.default_serving.default_serving_unit === 'ml',
     Servings: usdaFoodItem.portions.map((portion) => ({
-      servingWeightGram: portion.gramWeight,
-      servingName: portion.name
+      servingWeightGram: portion.servingSizeUnit === 'g' ? portion.servingSize : undefined,
+      servingLiquidMl: portion.servingSizeUnit === 'ml' ? portion.servingSize : undefined,
+      servingName: portion.householdServingFullText ? portion.householdServingFullText : `${portion.servingSize} ${portion.servingSizeUnit}`
     })),
+    UPC: usdaFoodItem.upc || null,
+    externalId: usdaFoodItem.fdcId.toString(),
     Nutrients: [],
     kcalPerServing: 0,
     proteinPerServing: 0,
@@ -86,10 +112,11 @@ export function mapUsdaFoodItemToFoodItem(
       foodItem.Nutrients.push({
         nutrientName,
         nutrientUnit: nutrientInfo.unit || "g", // Use the unit from nutrientInfo if available
-        nutrientAmountPerGram:
-        parseFloat(
-          ((nutrientInfo.amount as number) /
-          usdaFoodItem.default_serving.default_serving_amount).toFixed(3)
+        nutrientAmountPerGram: parseFloat(
+          (
+            (nutrientInfo.amount as number) /
+            usdaFoodItem.default_serving.default_serving_amount
+          ).toFixed(3)
         )
       })
     }
