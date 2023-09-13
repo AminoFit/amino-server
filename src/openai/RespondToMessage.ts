@@ -258,7 +258,8 @@ export async function GenerateResponseForQuickLog(
     functions: [
       {
         name: "log_food_items",
-        // description: "Call this function to log food items when the user says what they ate.",
+        description:
+          "Call this function to log food items when the user says what they ate.",
         parameters: logFoodSchema
       }
     ],
