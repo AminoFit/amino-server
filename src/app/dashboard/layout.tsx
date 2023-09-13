@@ -18,7 +18,7 @@ export default async function Example({
   }
 
   return (
-    <div className="relative isolate bg-white px-6">
+    <div className="relative isolate bg-white px-1 md:px-6">
       <div
         className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl"
         aria-hidden="true"
@@ -33,7 +33,7 @@ export default async function Example({
       </div>
       <DashNav />
 
-      <div className="mx-auto max-w-7xl lg:px-8">
+      <div className="mx-auto max-w-7xl px-0 lg:px-8">
         {/* We've used 3xl here, but feel free to try other max-widths based on your needs */}
         <div className="">{children}</div>
       </div>
