@@ -249,7 +249,7 @@ export async function searchFoodIds(
       const response = await axios.get<UsdaSearchResponse>(API_URL, {
         params: requestParams
       })
-      // recordQuery("usda", completeUrl)
+      recordQuery("usda", completeUrl)
       let [newFilteredFoods, stopThresholdMet] =
         await filterFoodsByEmbeddingSimilarity(
           queryEmbedding,

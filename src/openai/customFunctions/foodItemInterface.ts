@@ -1,17 +1,17 @@
-import { FoodItem, Nutrient } from "@prisma/client"
+import { FoodItem, Nutrient, Serving } from "@prisma/client"
 import { sanitizeServingName } from "../../database/utils/textSanitize"
 
 export interface FoodItems {
   food_info: FoodInfo[]
 }
 
-export interface OpenAiNutrient {
+export interface GptNutrient {
   nutrient_name: string // Nutrient name (e.g. Sodium, Potassium, Vitamin C)
   nutrient_unit: string // Nutrient unit (mg, mcg, IU, etc.)
   nutrient_amount_per_g: number // Nutrient amount/g of food
 }
 
-export interface Serving {
+export interface GptFoodServing {
   serving_weight_g: number // Serving weight in grams
   serving_name: string // Serving description e.g. large, scoop, plate
 }
@@ -27,20 +27,19 @@ export interface FoodInfo {
   sat_fat_per_serving?: number | null // Saturated fat (g) normalized to 100g
   trans_fat_per_serving?: number | null // Trans fat (g) normalized to 100g
   carb_per_serving: number // Carb (g) normalized to 100g
+  fiber_per_serving?: number | null // Fiber (g) normalized to 100g
   sugar_per_serving?: number | null // Sugar (g) normalized to 100g
   added_sugar_per_serving?: number | null // Added sugar (g) normalized to 100g
   protein_per_serving: number // Protein (g) normalized to 100g
-  nutrients?: OpenAiNutrient[] // Nutrient information
-  servings: Serving[] // Serving sizes & descriptions
+  nutrients?: GptNutrient[] // Nutrient information
+  servings: GptFoodServing[] // Serving sizes & descriptions
 }
 
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
+interface FoodServing extends Omit<Serving, "id" | "foodItemId"> {}
 
 export interface FoodItemWithServings extends Omit<FoodItem, "Servings" | "Nutrients"> {
-  Servings: Array<{
-    servingWeightGram: number
-    servingName: string
-  }>
+  Servings: FoodServing[]
   Nutrients: FoodNutrient[]
 }
 
@@ -50,16 +49,22 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo): FoodItemWithServing
     lastUpdated: new Date(),
     verified: false,
     userId: null, 
+    externalId: null,
+    UPC: null,
     name: food.name,
     brand: food.brand || "",
     knownAs: food.known_as || [],
     description: food.food_description || "",
     defaultServingWeightGram: food.default_serving_weight_g,
+    defaultServingLiquidMl: null,
+    weightUnknown: false,
+    isLiquid: false,
     kcalPerServing: food.kcal_per_serving,
     totalFatPerServing: food.total_fat_per_serving,
     satFatPerServing: food.sat_fat_per_serving ?? 0,
     transFatPerServing: food.trans_fat_per_serving ?? 0,
     carbPerServing: food.carb_per_serving,
+    fiberPerServing: food.fiber_per_serving ?? 0,
     sugarPerServing: food.sugar_per_serving ?? 0,
     addedSugarPerServing: food.added_sugar_per_serving ?? 0,
     proteinPerServing: food.protein_per_serving,
@@ -67,12 +72,14 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo): FoodItemWithServing
     foodInfoSource: 'GPT4',
     Servings: food.servings?.map((serving) => ({
       servingWeightGram: serving.serving_weight_g,
-      servingName: sanitizeServingName(serving.serving_name)
+      servingName: sanitizeServingName(serving.serving_name),
+      servingAlternateAmount: null,
+      servingAlternateUnit: null
     })) || [],
     Nutrients: food.nutrients?.map((nutrient) => ({
       nutrientName: nutrient.nutrient_name,
       nutrientUnit: nutrient.nutrient_unit,
-      nutrientAmountPerGram: nutrient.nutrient_amount_per_g
+      nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_g
     })) || []
   }
   return prismaFoodItem

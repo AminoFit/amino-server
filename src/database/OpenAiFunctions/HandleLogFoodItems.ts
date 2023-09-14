@@ -1,9 +1,9 @@
 import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
 import {
   FoodQuery,
-  NxFoodItemResponse,
   findNxFoodInfo
 } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
+import { NxFoodItemResponse } from "@/FoodDbThirdPty/nutritionix/nxInterfaceHelper"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
 import UpdateMessage from "@/database/UpdateMessage"
 import {
@@ -457,7 +457,7 @@ async function addFoodItemPrisma(
           create: food.Nutrients.map((nutrient) => ({
             nutrientName: nutrient.nutrientName,
             nutrientUnit: nutrient.nutrientUnit,
-            nutrientAmountPerGram: nutrient.nutrientAmountPerGram
+            nutrientAmountPerDefaultServing: nutrient.nutrientAmountPerDefaultServing
           }))
         }
       }),
@@ -465,6 +465,8 @@ async function addFoodItemPrisma(
         Servings: {
           create: food.Servings.map((serving) => ({
             servingWeightGram: serving.servingWeightGram,
+            servingAlternateAmount: serving.servingAlternateAmount,
+            servingAlternateUnit: serving.servingAlternateUnit,
             servingName: serving.servingName
           }))
         }

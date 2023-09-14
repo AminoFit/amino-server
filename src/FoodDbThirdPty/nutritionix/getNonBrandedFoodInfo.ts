@@ -7,6 +7,7 @@ const NUTRITIONIX_ENDPOINT =
 interface NxFood {
   food_name: string
   brand_name: string | null
+  nf_metric_qty: number
   serving_qty: number
   serving_unit: string
   serving_weight_grams: number

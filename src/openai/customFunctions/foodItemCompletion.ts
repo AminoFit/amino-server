@@ -208,6 +208,10 @@ export async function foodItemCompletion(
             type: "number",
             description: "Carb (g)/serving"
           },
+          fiber_per_serving: {
+            type: "number",
+            description: "Fiber (g)/serving"
+          },
           sugar_per_serving: {
             type: "number",
             nullable: true,

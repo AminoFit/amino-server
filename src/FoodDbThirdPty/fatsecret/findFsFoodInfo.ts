@@ -49,6 +49,7 @@ export async function findFsFoodInfo(
   const foodItemsWithEmbedding: Array<FsFoodInfoWithEmbedding> = []
 
   for (let i = 0; i < searchResponse.length; i++) {
+    console.log(JSON.stringify(searchResponse[i]))
     // calculate cosine similarity
     const similarity = cosineSimilarity(queryEmbedding, itemEmbeddings[i])
 
@@ -83,11 +84,12 @@ export async function findFsFoodInfo(
 
 async function runTests() {
   const results = await findFsFoodInfo({
-    search_expression: "Blackened Salmon, Avo & Quinoa Salad - Pret",
+    search_expression: "Fiber Gummies",
     branded: true
   })
   //console.log(results)
-  console.log(JSON.stringify(results))
+  console.log(JSON.stringify(results?.similarity))
+  console.dir(results?.item, { depth: null })
 }
 
 // runTests()

@@ -97,7 +97,7 @@ export default function EditFoodModal({
       )
       if (selectedServing) {
         setServingValue(value)
-        setServingGramsValue(selectedServing.servingWeightGram)
+        setServingGramsValue(selectedServing.servingWeightGram || 0)
       }
     }
   }

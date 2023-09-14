@@ -1,6 +1,6 @@
 import axios from "axios"
 import { getFsAccessToken } from "./oauthFs"
-import { FsFoodInfo } from "./fsInterfaceHelper"
+import { FsFoodInfo, convertFsToFoodItem } from "./fsInterfaceHelper"
 
 export interface FatSecretFindFoodParams {
   search_expression: string
@@ -67,11 +67,40 @@ export async function findFatSecretFoodInfo(
   }
 }
 
-/*
+
 async function runTest() {
-  const searchParams: FatSecretFindFoodParams = { search_expression: "Starbucks Ice latte" }
+  const searchParams: FatSecretFindFoodParams = { search_expression: "Banana" }
   const result: FsFoodInfo[] = await findFatSecretFoodInfo(searchParams)
-  console.log(JSON.stringify(result))
-}*/
+  console.log(convertFsToFoodItem(result[0]))
+  // console.log(JSON.stringify(result.splice(0,10)))
+  /*console.log(convertFsToFoodItem(JSON.parse(`{
+    "brand_name": "Metamucil",
+    "food_id": "55367381",
+    "food_name": "Fiber Gummies",
+    "food_type": "Brand",
+    "food_url": "https://www.fatsecret.com/calories-nutrition/metamucil/fiber-gummies",
+    "servings": {
+      "serving": [
+        {
+          "added_sugars": "0",
+          "calories": "25",
+          "carbohydrate": "10.00",
+          "cholesterol": "0",
+          "fat": "0",
+          "fiber": "5.0",
+          "measurement_description": "serving",
+          "number_of_units": "1.000",
+          "protein": "0",
+          "serving_description": "3 gummies",
+          "serving_id": "46490652",
+          "serving_url": "https://www.fatsecret.com/calories-nutrition/metamucil/fiber-gummies",
+          "sodium": "20",
+          "sugar": "2.00"
+        }
+      ]
+    }
+  }`)))*/
+  //console.log(convertFsToFoodItem(result2[23]))
+}
 
 // runTest()

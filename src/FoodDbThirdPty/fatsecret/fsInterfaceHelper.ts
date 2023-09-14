@@ -1,16 +1,16 @@
-import { FoodItem, Nutrient } from "@prisma/client"
+import { FoodItem, Nutrient, Serving } from "@prisma/client"
 
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings extends Omit<FoodItem, "Servings" | "Nutrients"> {
-  Servings: Array<{
-    servingWeightGram: number
-    servingName: string
-  }>
+interface AminoServing extends Omit<Serving, "id" | "foodItemId"> {}
+
+export interface FoodItemWithServings
+  extends Omit<FoodItem, "Servings" | "Nutrients"> {
+  Servings: AminoServing[]
   Nutrients: FoodNutrient[]
 }
 
-export interface Serving {
+export interface FsServing {
   serving_id: string
   serving_description: string
   serving_url: string
@@ -46,11 +46,35 @@ export interface FsFoodInfo {
   food_url: string
   brand_name: string | null
   servings: {
-    serving: Serving[]
+    serving: FsServing[]
   }
 }
+function deduplicateServings(servings: FsServing[]): FsServing[] {
+  const servingMap = new Map<number, FsServing>()
 
-function mapNutrients(serving: Serving, unitConversionFactor: number): FoodNutrient[] {
+  for (const serving of servings) {
+    const weight = serving.metric_serving_amount
+    const existingServing = servingMap.get(weight)
+
+    if (!existingServing) {
+      servingMap.set(weight, serving)
+    } else {
+      if (
+        serving.serving_description.length <
+        existingServing.serving_description.length
+      ) {
+        servingMap.set(weight, serving)
+      }
+    }
+  }
+
+  return Array.from(servingMap.values())
+}
+
+function mapNutrients(
+  serving: FsServing,
+  unitConversionFactor: number
+): FoodNutrient[] {
   const formatNutrientName = (name: string): string => {
     return name
       .split("_")
@@ -61,25 +85,32 @@ function mapNutrients(serving: Serving, unitConversionFactor: number): FoodNutri
   const nutrientsToMap = [
     { name: "cholesterol", unit: "mg" },
     { name: "potassium", unit: "mg" },
-    { name: "fiber", unit: "g" },
     { name: "vitamin_a", unit: "µg" },
     { name: "vitamin_c", unit: "mg" },
     { name: "vitamin_d", unit: "µg" }
   ]
 
   return nutrientsToMap
-    .filter(({ name }) => serving[name as keyof Serving] !== undefined)
+    .filter(({ name }) => serving[name as keyof FsServing] !== undefined)
     .map(({ name, unit }) => {
       return {
         nutrientName: formatNutrientName(name),
-        nutrientAmountPerGram: parseFloat((Number(serving[name as keyof Serving]) / (Number(serving.metric_serving_amount) * unitConversionFactor)).toFixed(3)),
+        nutrientAmountPerDefaultServing: parseFloat(
+          (
+            Number(serving[name as keyof FsServing])
+          ).toFixed(3)
+        ),
         nutrientUnit: unit
       }
     })
 }
 
-export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
-  let serving = fsFoodItem.servings.serving.find(
+export function convertFsToFoodItem(
+  fsFoodItem: FsFoodInfo
+): FoodItemWithServings {
+  const deduplicatedServings = deduplicateServings(fsFoodItem.servings.serving)
+
+  let serving = deduplicatedServings.find(
     (serving) =>
       Number(serving.metric_serving_amount) === 100 &&
       serving.metric_serving_unit === "g"
@@ -87,52 +118,65 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
 
   if (!serving) {
     // If there's no 100g serving, select the first serving
-    console.log("No 100g serving found for", fsFoodItem.food_name)
-    serving = fsFoodItem.servings.serving[0] // Replace this with your logic to select the most sensible serving
+    // console.log("No 100g serving found for", fsFoodItem.food_name)
+    serving = fsFoodItem.servings.serving[0]
   }
 
   // Convert units if necessary
   let unitConversionFactor = 1
   if (serving.metric_serving_unit === "oz") {
     unitConversionFactor = 28.3495
-  } else if (serving.metric_serving_unit === "ml") {
-    unitConversionFactor = 1
   }
+
   serving.metric_serving_amount *= unitConversionFactor
 
-  // get nurients
+  let weightUnknown = false
+  console.log(serving.metric_serving_amount)
+  if (Number.isNaN(serving.metric_serving_amount)) {
+    console.log("Weight unknown for", fsFoodItem.food_name)
+    weightUnknown = true
+    serving.metric_serving_amount = 10
+    serving.metric_serving_unit = "g"
+    console.log(serving.metric_serving_amount)
+  }
+
+  // get nutrients
   const nutrients = mapNutrients(serving, unitConversionFactor)
 
   // Map fsFoodItem to FoodItem
   const foodItem: FoodItemWithServings = {
     id: 0,
+    externalId: fsFoodItem.food_id,
+    UPC: null,
     knownAs: [],
-    description: null, 
+    description: null,
     lastUpdated: new Date(),
     verified: true,
-    userId: null, 
-    foodInfoSource: "User", 
-    messageId: null, 
+    userId: null,
+    foodInfoSource: "FATSECRET",
+    messageId: null,
     name: fsFoodItem.food_name,
     brand: fsFoodItem.brand_name,
-    defaultServingWeightGram: serving.metric_serving_amount,
+    defaultServingWeightGram:
+      serving.metric_serving_unit === "g"
+        ? serving.metric_serving_amount
+        : null,
+    defaultServingLiquidMl:
+      serving.metric_serving_unit === "ml"
+        ? serving.metric_serving_amount
+        : null,
+    isLiquid: serving.metric_serving_unit === "ml",
+    weightUnknown: weightUnknown,
     kcalPerServing: serving.calories ? serving.calories : 0,
     totalFatPerServing: serving.fat ? serving.fat : 0,
-    satFatPerServing: serving.saturated_fat
-      ? serving.saturated_fat
-      : 0,
-    carbPerServing: serving.carbohydrate
-      ? serving.carbohydrate
-      : 0,
-    sugarPerServing: serving.sugar ? serving.sugar : 0,
+    satFatPerServing: serving.saturated_fat ? serving.saturated_fat : null,
+    carbPerServing: serving.carbohydrate ? serving.carbohydrate : 0,
+    fiberPerServing: serving.fiber ? serving.fiber : null,
+    sugarPerServing: serving.sugar ? serving.sugar : null,
     proteinPerServing: serving.protein ? serving.protein : 0,
-    transFatPerServing: serving.trans_fat
-      ? serving.trans_fat
-      : 0,
-    addedSugarPerServing: serving.added_sugars
-      ? serving.added_sugars
-      : 0,
-    Servings: fsFoodItem.servings.serving
+    transFatPerServing: serving.trans_fat ? serving.trans_fat : null,
+    addedSugarPerServing: serving.added_sugars ? serving.added_sugars : null,
+    Servings: deduplicatedServings
       .filter(
         (serving) =>
           !(
@@ -145,7 +189,17 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
           )
       )
       .map((serving) => ({
-        servingWeightGram: serving.metric_serving_amount * unitConversionFactor,
+        servingWeightGram:
+          serving.metric_serving_unit === "g"
+            ? serving.metric_serving_amount
+            : null,
+        servingAlternateAmount:
+          serving.metric_serving_unit !== "g" && serving.number_of_units
+            ? serving.number_of_units
+            : null,
+        servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
+            ? serving.measurement_description
+            : null,
         servingName: serving.serving_description
       })),
     Nutrients: nutrients

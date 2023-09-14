@@ -1,14 +1,12 @@
-import { FoodItem, Nutrient } from "@prisma/client"
+import { FoodItem, Nutrient, Serving } from "@prisma/client"
 
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
 
+interface UsdaServing extends Omit<Serving, "id" | "foodItemId"> {}
+
 export interface FoodItemWithServings
   extends Omit<FoodItem, "Servings" | "Nutrients"> {
-  Servings: Array<{
-    servingWeightGram?: number
-    servingLiquidMl?: number
-    servingName: string
-  }>
+  Servings: UsdaServing[]
   Nutrients: FoodNutrient[]
 }
 
@@ -47,6 +45,9 @@ export function mapUsdaFoodItemToFoodItem(
     "Energy (Atwater General Factors)": "kcalPerServing",
     Protein: "proteinPerServing",
     protein: "proteinPerServing",
+    fiber: "fiberPerServing",
+    "Fiber, total dietary": "fiberPerServing",
+    "Total dietary fiber (AOAC 2011.25)": "fiberPerServing",
     "Total lipid (fat)": "totalFatPerServing",
     "Total fat (NLEA)": "totalFatPerServing",
     fat: "totalFatPerServing",
@@ -75,27 +76,30 @@ export function mapUsdaFoodItemToFoodItem(
     messageId: null,
     name: usdaFoodItem.itemName,
     brand: usdaFoodItem.brandName || "",
+    weightUnknown: false,
     defaultServingWeightGram:
       (usdaFoodItem.default_serving.default_serving_unit === 'g') ? usdaFoodItem.default_serving.default_serving_amount : null,
     defaultServingLiquidMl: 
       (usdaFoodItem.default_serving.default_serving_unit === 'ml') ? usdaFoodItem.default_serving.default_serving_amount : null,
     isLiquid: usdaFoodItem.default_serving.default_serving_unit === 'ml',
     Servings: usdaFoodItem.portions.map((portion) => ({
-      servingWeightGram: portion.servingSizeUnit === 'g' ? portion.servingSize : undefined,
-      servingLiquidMl: portion.servingSizeUnit === 'ml' ? portion.servingSize : undefined,
+      servingWeightGram: portion.servingSizeUnit === 'g' ? portion.servingSize : null,
+      servingAlternateAmount: portion.servingSizeUnit !== 'g' ? portion.servingSize : null,
+      servingAlternateUnit: portion.servingSizeUnit !== 'g' ? portion.servingSizeUnit : null,
       servingName: portion.householdServingFullText ? portion.householdServingFullText : `${portion.servingSize} ${portion.servingSizeUnit}`
     })),
-    UPC: usdaFoodItem.upc || null,
+    UPC: Number(usdaFoodItem.upc) || null,
     externalId: usdaFoodItem.fdcId.toString(),
     Nutrients: [],
     kcalPerServing: 0,
     proteinPerServing: 0,
     totalFatPerServing: 0,
     carbPerServing: 0,
-    sugarPerServing: 0,
-    satFatPerServing: 0,
-    transFatPerServing: 0,
-    addedSugarPerServing: 0
+    fiberPerServing: null,
+    sugarPerServing: null,
+    satFatPerServing: null,
+    transFatPerServing: null,
+    addedSugarPerServing: null
   }
 
   for (const [nutrientName, nutrientInfo] of Object.entries(
@@ -112,10 +116,9 @@ export function mapUsdaFoodItemToFoodItem(
       foodItem.Nutrients.push({
         nutrientName,
         nutrientUnit: nutrientInfo.unit || "g", // Use the unit from nutrientInfo if available
-        nutrientAmountPerGram: parseFloat(
+        nutrientAmountPerDefaultServing: parseFloat(
           (
-            (nutrientInfo.amount as number) /
-            usdaFoodItem.default_serving.default_serving_amount
+            (nutrientInfo.amount as number)
           ).toFixed(3)
         )
       })
