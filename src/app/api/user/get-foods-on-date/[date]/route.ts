@@ -19,7 +19,7 @@ export async function GET(
     return new Response("No date provided", { status: 400 })
   }
 
-  const parsedDate = moment(dateString, "YYYY-MM-DD").tz(user.tzIdentifier)
+  const parsedDate = moment.tz(dateString, "YYYY-MM-DD", user.tzIdentifier)
 
   if (!parsedDate.isValid()) {
     return new Response(

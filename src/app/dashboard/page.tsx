@@ -25,7 +25,7 @@ export default function FoodLog() {
     <>
       <div className="py-3">
         <FoodLogHeader foods={[]} user={user} />
-        <div>
+        <div className="px-0 sm:px-6 lg:px-0 mb-8">
           <TableHeader />
           <FoodTable />
         </div>

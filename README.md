@@ -67,6 +67,8 @@ cd pgvector
 
 make and install
 ```
+apt-get install make
+apt-get install gcc
 apt install postgresql-server-dev-15
 export PG_CONFIG=/usr/lib/postgresql/15/bin/pg_config
 make

@@ -31,7 +31,7 @@ export function FoodTable() {
     isLoading,
     error,
     data: foods,
-    isFetching,
+    isFetching
   } = useQuery({
     queryKey: ["foodData", formattedDate],
     queryFn: () =>
@@ -46,10 +46,7 @@ export function FoodTable() {
   const groups = _.chain(foods || [])
     .groupBy((food) => {
       const consumptionTime = moment(food.consumedOn)
-      if (consumptionTime.hour() < 5 || consumptionTime.hour() > 22) {
-        return "midnight snack"
-      }
-      if (consumptionTime.hour() < 11) {
+      if (consumptionTime.hour() < 10) {
         return "breakfast"
       }
       if (consumptionTime.hour() < 15) {
@@ -59,27 +56,31 @@ export function FoodTable() {
     })
     .value()
 
-
   console.log("groups", groups)
 
-  const foodGroups = ["breakfast", "lunch", "dinner", "midnight snack"]
+  const foodGroups = ["breakfast", "lunch", "dinner"]
 
-  const renderBody = () => {
+  const renderMealSections = () => {
     if (isLoading) return <FoodRowLoading />
-    if (foods.length === 0) return <FoodRowEmpty />
     return (
       <>
         {foodGroups.map((foodGroup) => {
-          if (!groups[foodGroup]) return null
+          // if (!groups[foodGroup]) return null
           return (
-            <div key={foodGroup}>
-              <h2 className="text-sm font-bold text-center leading-7 text-zinc-200">
+            <div key={foodGroup} className="rounded-md bg-black/10 px-3 pb-2">
+              <h2 className="text-sm font-bold text-center leading-7 text-zinc-800 py-3">
                 {foodGroup.toUpperCase()}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pt-1 pb-3">
-                {groups[foodGroup].map((foodItem) => (
-                  <FoodRow foodItem={foodItem} key={foodItem} />
-                ))}
+              <div className="grid grid-cols-1 gap-2">
+                {!!groups[foodGroup] ? (
+                  (groups[foodGroup] || []).map((foodItem) => (
+                    <FoodRow foodItem={foodItem} key={foodItem} />
+                  ))
+                ) : (
+                  <div className="py-12 text-sm text-gray-500 text-center text-zinc-700">
+                    No food logged for this meal.
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -89,8 +90,8 @@ export function FoodTable() {
   }
 
   return (
-    <div className="px-3 pt-3 rounded-3xl bg-[#ffffff]/10 backdrop-blur-sm">
-      {renderBody()}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 px-2">
+      {renderMealSections()}
     </div>
   )
 }
@@ -106,7 +107,7 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
     (foodItem.FoodItem?.FoodImage &&
       foodItem.FoodItem.FoodImage.length &&
       foodItem.FoodItem.FoodImage[0].pathToImage) ||
-    "https://cdn.discordapp.com/attachments/1107010584907612172/1138668812414242856/coudron_food_photography_of_an_empty_wooden_table_top-down_shot_6976cf67-5513-4a6b-9479-d13752b6b494.png"
+    "https://cdn.discordapp.com/ephemeral-attachments/1107010584907612172/1141797943712690206/coudron_food_photography_of_cutting_board_on_a_wooden_table_top_bcc64dcd-7a9a-4595-8f41-0b394b6c5033.png"
 
   const isLoading = foodItem.status === "Needs Processing"
 
@@ -243,7 +244,7 @@ function FoodRowEmpty() {
   return (
     <div>
       <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-200">
+        <div className="text-zinc-800">
           No food logged for this day. Use the Quick Log above to start logging!
         </div>
       </div>

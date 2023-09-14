@@ -9,7 +9,7 @@ import { ChatCompletionRequestMessageFunctionCall } from "openai"
 export const ProcessFunctionCalls = async (
   user: User,
   functionCall: ChatCompletionRequestMessageFunctionCall,
-  lastUserMessage: Message
+  lastUserMessageId: number
 ): Promise<string> => {
   const functionName = functionCall.name
   if (!functionCall.arguments) {
@@ -20,12 +20,12 @@ export const ProcessFunctionCalls = async (
   switch (functionName) {
     case "log_food_items":
       console.log("log_food_items", parameters)
-      const resultMessage = await HandleLogFoodItems(user, parameters, lastUserMessage)
+      const resultMessage = await HandleLogFoodItems(user, parameters, lastUserMessageId)
       return resultMessage
     case "show_daily_food":
       const daily_food_reply = await SendListOfFoodsTodayToUser(user)
       UpdateMessage({
-        id: lastUserMessage.id,
+        id: lastUserMessageId,
         status: MessageStatus.RESOLVED,
         resolvedAt: new Date()
       })
@@ -33,7 +33,7 @@ export const ProcessFunctionCalls = async (
     case "log_exercise":
       const exercise_reply = await HandleLogExercise(user, parameters)
       UpdateMessage({
-        id: lastUserMessage.id,
+        id: lastUserMessageId,
         status: MessageStatus.RESOLVED,
         resolvedAt: new Date()
       })
@@ -41,7 +41,7 @@ export const ProcessFunctionCalls = async (
     case "update_user_info":
       const user_info_reply = await HandleUpdateUserInfo(user, parameters)
       UpdateMessage({
-        id: lastUserMessage.id,
+        id: lastUserMessageId,
         status: MessageStatus.RESOLVED,
         resolvedAt: new Date()
       })
