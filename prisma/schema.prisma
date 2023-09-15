@@ -223,6 +223,7 @@ model FoodItem {
   embedding                Unsupported("vector(1536)")?
 
   @@unique([name, brand])
+  @@unique([externalId, foodInfoSource])
 }
 
 model Serving {

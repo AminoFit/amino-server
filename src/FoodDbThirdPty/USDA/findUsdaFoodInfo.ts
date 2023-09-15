@@ -74,7 +74,19 @@ export async function findUsdaFoodInfo(
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
   // If there are no items that match the threshold, return null
-  if (cosineSimilaritiesAndEmbeddings.length === 0) return null
+  if (cosineSimilaritiesAndEmbeddings.length === 0){
+    console.log("No USDA results found")
+    return null
+  }
+
+  console.log("USDA results:")
+  cosineSimilaritiesAndEmbeddings.slice(0,3).forEach((itemInfo) => {
+    if (itemInfo.item.brandName) {
+      console.log(`Item: ${itemInfo.item.description} by ${itemInfo.item.brandName} has similarity ${itemInfo.similarity}`);
+    } else {
+      console.log(`Item: ${itemInfo.item.description} has similarity ${itemInfo.similarity}`);
+    }
+  });
 
   // Get the top-ranked item's fdcId
   const topItemFdcId = cosineSimilaritiesAndEmbeddings[0].item.fdcId

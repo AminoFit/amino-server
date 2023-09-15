@@ -11,6 +11,10 @@ export interface FatSecretFindFoodParams {
   flag_default_serving?: boolean
 }
 
+// this function directly interacts with the FatSecret API
+// and returns the response as is
+// use findFsFoodInfo to get the best result using embeddings
+// to rank the results which is a lot more accurate
 export async function findFatSecretFoodInfo(
   searchParams: FatSecretFindFoodParams
 ): Promise<FsFoodInfo[] | any> {
