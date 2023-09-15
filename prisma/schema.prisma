@@ -183,6 +183,9 @@ enum FoodInfoSource {
   GPT4
   LLAMA
   LLAMA2
+  USDA
+  FATSECRET
+  NUTRITIONIX
 }
 
 model FoodItem {
@@ -191,17 +194,23 @@ model FoodItem {
   brand                    String?
   knownAs                  String[]                     @default([])
   description              String?
-  defaultServingWeightGram Int
+  defaultServingWeightGram Float?
+  defaultServingLiquidMl   Float?
+  isLiquid                 Boolean                      @default(false)
+  weightUnknown            Boolean                      @default(false)
   kcalPerServing           Float                        @default(0)
   totalFatPerServing       Float                        @default(0)
   satFatPerServing         Float?
   transFatPerServing       Float?
   carbPerServing           Float                        @default(0)
+  fiberPerServing          Float?
   sugarPerServing          Float?
   addedSugarPerServing     Float?
   proteinPerServing        Float                        @default(0)
   lastUpdated              DateTime                     @default(now())
   verified                 Boolean                      @default(false)
+  externalId               String?
+  UPC                      Int?
   Servings                 Serving[]
   Nutrients                Nutrient[]
   userId                   String?
@@ -212,24 +221,28 @@ model FoodItem {
   messageId                Int?
   Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   embedding                Unsupported("vector(1536)")?
+
+  @@unique([name, brand])
 }
 
 model Serving {
-  id                Int              @id @default(autoincrement())
-  servingWeightGram Float
-  servingName       String
-  foodItemId        Int
-  FoodItem          FoodItem         @relation(fields: [foodItemId], references: [id])
-  LoggedFoodItems   LoggedFoodItem[]
+  id                     Int              @id @default(autoincrement())
+  servingWeightGram      Float?
+  servingAlternateAmount Float?
+  servingAlternateUnit   String?
+  servingName            String
+  foodItemId             Int
+  FoodItem               FoodItem         @relation(fields: [foodItemId], references: [id])
+  LoggedFoodItems        LoggedFoodItem[]
 }
 
 model Nutrient {
-  id                    Int      @id @default(autoincrement())
-  nutrientName          String
-  nutrientUnit          String
-  nutrientAmountPerGram Float
-  foodItemId            Int
-  FoodItem              FoodItem @relation(fields: [foodItemId], references: [id])
+  id                              Int      @id @default(autoincrement())
+  nutrientName                    String
+  nutrientUnit                    String
+  nutrientAmountPerDefaultServing Float
+  foodItemId                      Int
+  FoodItem                        FoodItem @relation(fields: [foodItemId], references: [id])
 }
 
 model FoodImage {
@@ -246,4 +259,12 @@ model ApiCalls {
   apiName   String
   queryType String
   count     Int
+}
+
+model ApiTokens {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  apiName   String
+  token     String   @unique
+  expires   DateTime
 }

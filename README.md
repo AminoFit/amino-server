@@ -53,12 +53,17 @@ Access your docker image (assuming it is called amino-postgres)
 `docker exec -it amino-postgres bash`
 
 install git
+`apt-get update`
 `apt-get install -y git`
+
+install make
+`apt-install gcc`
 
 install pgvector
 ```cd /tmp
 git clone --branch v0.4.4 https://github.com/pgvector/pgvector.git
-cd pgvector```
+cd pgvector
+```
 
 make and install
 ```

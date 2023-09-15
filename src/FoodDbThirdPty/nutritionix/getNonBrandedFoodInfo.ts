@@ -7,6 +7,7 @@ const NUTRITIONIX_ENDPOINT =
 interface NxFood {
   food_name: string
   brand_name: string | null
+  nf_metric_qty: number
   serving_qty: number
   serving_unit: string
   serving_weight_grams: number
@@ -97,4 +98,4 @@ export async function getNonBrandedFoodInfo(
   return response.data as NxNonBrandedResponse
 }
 
-// getNonBrandedFoodInfo({ query: "apple" }).then((res) => console.log(JSON.stringify(res)))
+//getNonBrandedFoodInfo({ query: "Fries" }).then((res) => console.log(JSON.stringify(res)))

@@ -3,12 +3,16 @@ import {
   UsdaSearchResponse,
   UsdaFoodIdResults
 } from "./searchFoodIds"
-import { getUsdaFoodsInfo, UsdaFoodItem } from "./getFoodInfo"
+import { getUsdaFoodsInfo } from "./getFoodInfo"
+import { UsdaFoodItem } from "./usdaInterfaceHelper"
 import {
   getEmbedding,
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
-import { CreateEmbeddingResponseDataInner } from "openai"
+import {
+  FoodItemWithServings,
+  mapUsdaFoodItemToFoodItem
+} from "./usdaInterfaceHelper"
 
 export interface UsdaFindFoodParams {
   food_name: string
@@ -20,26 +24,16 @@ const COSINE_THRESHOLD = 0.85
 
 export async function findUsdaFoodInfo(
   searchParams: UsdaFindFoodParams
-): Promise<UsdaFoodItem | null> {
+): Promise<FoodItemWithServings | null> {
+  // get the embedding for the search query
+  const queryEmbedding = (await getEmbedding([(searchParams.brand_name  ? `${searchParams.food_name} ${searchParams.brand_name}` : searchParams.food_name).toLowerCase()])).data[0].embedding;
   // Search for food IDs based on the given query
   const searchResponse: UsdaSearchResponse = await searchFoodIds({
     query: searchParams.food_name,
-    branded: searchParams.branded
+    branded: searchParams.branded,
+    brand_name: searchParams.brand_name,
+    query_embedding: queryEmbedding
   })
-
-  // create an array of all queries to get embeddings for
-  const allQueries = [searchParams.food_name].concat(
-    searchResponse.foods.map((item) => item.description)
-  )
-
-  // get all embeddings in a single API call
-  const allEmbeddings = await getEmbedding(allQueries) // Assuming the same embedding function
-
-  // extract query embedding and item embeddings
-  const queryEmbedding = allEmbeddings.data[0].embedding
-  const itemEmbeddings = allEmbeddings.data
-    .slice(1)
-    .map((embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding)
 
   // Create an array to store cosine similarities and embeddings
   const cosineSimilaritiesAndEmbeddings: Array<{
@@ -49,15 +43,29 @@ export async function findUsdaFoodInfo(
   }> = []
 
   for (let i = 0; i < searchResponse.foods.length; i++) {
-    // calculate cosine similarity
-    const similarity = cosineSimilarity(queryEmbedding, itemEmbeddings[i])
+    // get the pre-calculated cosine similarity and embedding
+    let similarity = searchResponse.foods[i].similarity
+    let embedding = searchResponse.foods[i].embedding
+
+    // if the embedding is not present, calculate it
+    if (!embedding) {
+      const nameToEmbed = searchResponse.foods[i].brandName
+        ? `${searchResponse.foods[i].description} - ${searchResponse.foods[i].brandName}`
+        : searchResponse.foods[i].description
+      embedding = (await getEmbedding([nameToEmbed.toLowerCase()])).data[0].embedding
+    }
+
+    // if the similarity is not present, calculate it
+    if (!similarity) {
+      similarity = cosineSimilarity(queryEmbedding, embedding)
+    }
 
     // add to array only if similarity is 0.8 or more (or adjust the threshold as needed)
     if (similarity >= COSINE_THRESHOLD) {
       cosineSimilaritiesAndEmbeddings.push({
         item: searchResponse.foods[i],
         similarity,
-        embedding: itemEmbeddings[i]
+        embedding
       })
     }
   }
@@ -76,12 +84,16 @@ export async function findUsdaFoodInfo(
     fdcIds: [String(topItemFdcId)]
   })
 
-  return usdaFoodsInfo ? usdaFoodsInfo[0] : null
+  return usdaFoodsInfo ? mapUsdaFoodItemToFoodItem(usdaFoodsInfo[0]) : null
 }
 
 async function runTests() {
-  const results = await findUsdaFoodInfo({ food_name: "Protein powder soy", branded: false })
+  const results = await findUsdaFoodInfo({
+    food_name: "Triple Zero Strawberry Yogurt",
+    branded: true,
+    brand_name: "Oikos"
+  })
   console.log(results)
 }
 
-//runTests()
+// runTests()

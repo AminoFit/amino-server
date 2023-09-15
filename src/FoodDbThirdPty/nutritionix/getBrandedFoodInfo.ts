@@ -25,6 +25,7 @@ export interface BrandedFoodResponse {
     brand_name: string
     serving_qty: number
     serving_unit: string
+    nf_metric_qty: number
     serving_weight_grams: number
     nf_calories: number
     nf_total_fat: number
@@ -48,6 +49,7 @@ export interface BrandedFoodResponse {
     metadata: Record<string, unknown>
     source: number
     ndb_no: number | null
+    upc: number | null
     tags: any
     alt_measures: AltServing[]
     photo: {
@@ -72,8 +74,8 @@ export async function getBrandedFoodInfo(
 
   const response = await axios.get(url.toString(), {
     headers: {
-      "x-app-id": process.env.NUTRITIONIX_APP_ID || "",
-      "x-app-key": process.env.NUTRITIONIX_API_KEY || ""
+      "x-app-id": process.env.NUTRITIONIX_APP_ID,
+      "x-app-key": process.env.NUTRITIONIX_API_KEY
     }
   })
 
@@ -89,3 +91,4 @@ export async function getBrandedFoodInfo(
 
 // debug
 // getBrandedFoodInfo({ nix_item_id: "61cc6887a8c268000a380d73" }).then((res) => console.log(JSON.stringify(res)))
+//getBrandedFoodInfo({ nix_item_id: "639c50154711260008df8557" }).then((res) => console.log(JSON.stringify(res)))
