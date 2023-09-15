@@ -31,7 +31,8 @@ export function FoodTable() {
     isLoading,
     error,
     data: foods,
-    isFetching
+    isFetching,
+    refetch
   } = useQuery({
     queryKey: ["foodData", formattedDate],
     queryFn: () =>
@@ -60,6 +61,21 @@ export function FoodTable() {
 
   const foodGroups = ["breakfast", "lunch", "dinner"]
 
+  const copyYesterday = async (meal: string, today: string) => {
+    console.log("copy yesterday", meal, today)
+    const yesterday = moment(selectedDate).subtract(1, "day")
+    const yesterdayFormatted = yesterday.format("YYYY-MM-DD")
+
+    const { data } = await axios.get("/api/user/copy-meal/", {
+      params: {
+        fromDate: yesterdayFormatted,
+        toDate: moment(selectedDate).format("YYYY-MM-DD"),
+        meal
+      }
+    })
+    refetch()
+  }
+
   const renderMealSections = () => {
     if (isLoading) return <FoodRowLoading />
     return (
@@ -78,7 +94,14 @@ export function FoodTable() {
                   ))
                 ) : (
                   <div className="py-12 text-sm text-gray-500 text-center text-zinc-700">
-                    No food logged for this meal.
+                    <div className="mb-2">No food logged for this meal.</div>
+                    <button
+                      type="button"
+                      className="rounded bg-white px-2 py-1 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                      onClick={() => copyYesterday(foodGroup, formattedDate)}
+                    >
+                      Copy Yesterday
+                    </button>
                   </div>
                 )}
               </div>
