@@ -65,6 +65,15 @@ export async function findFsFoodInfo(
   // Sort items by cosine similarity
   foodItemsWithEmbedding.sort((a, b) => b.similarity - a.similarity)
 
+  console.log("FatSecret results:")
+  foodItemsWithEmbedding.slice(0,3).forEach((itemInfo) => {
+    if (itemInfo.item.brand) {
+      console.log(`Item: ${itemInfo.item.name} by ${itemInfo.item.brand} has similarity ${itemInfo.similarity}`);
+    } else {
+      console.log(`Item: ${itemInfo.item.name} has similarity ${itemInfo.similarity}`);
+    }
+  });
+
   // If there are no items that match the threshold, return null
   if (foodItemsWithEmbedding.length === 0) return null
 
