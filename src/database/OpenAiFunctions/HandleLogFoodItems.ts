@@ -38,6 +38,8 @@ const COSINE_THRESHOLD_LOW_QUALITY = 0.85
 
 type FoodItemIdAndEmbedding = {
   id: number
+  name: string
+  brand: string
   cosine_similarity: number
   embedding: string
 }
@@ -202,7 +204,7 @@ export async function HandleLogFoodItems(
       }
     })
 
-    console.log("Added to queue result: ", result)
+    console.log(`Added to queue with code ${result.status} ${result.statusText}`)
   }
 
   // Move process food items to POST route on serverlessq
@@ -240,7 +242,7 @@ export async function HandleLogFoodItem(
 
   // Query for the cosine similarity based on the embedding vector
   const cosineSearchResults =
-    (await prisma.$queryRaw`SELECT id, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity, embedding::text FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
+    (await prisma.$queryRaw`SELECT id, name, brand, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity, embedding::text FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
 
   
   console.log("Searching in database")
@@ -248,7 +250,11 @@ export async function HandleLogFoodItem(
   // Process the result as you need
   cosineSearchResults.forEach((item) => {
     const similarity = item.cosine_similarity.toFixed(3)
-    console.log(`Item ID: ${item.id} - Cosine Similarity: ${similarity}`)
+    if (item.brand){
+      console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name} - ${item.brand}`)
+    } else {
+      console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name}`)
+    }
   })
 
   // Filter items based on cosine similarity
@@ -485,7 +491,7 @@ async function addFoodItemToDatabase(
   try {
     // Create a new variable based off the user_food_descriptive_name or full_name
     let fullFoodName =
-      foodToLog.user_food_descriptive_name || foodToLog.full_name
+      foodToLog.lemmatized_database_search_term || foodToLog.full_name
 
     // Append the brand name if it is not present in the original string
     if (
@@ -498,7 +504,7 @@ async function addFoodItemToDatabase(
     // Construct the query for findNxFoodInfo
     const foodQuery: FoodQuery = {
       food_name: foodToLog.full_name,
-      user_food_descriptive_name: fullFoodName,
+      lemmatized_database_search_term: fullFoodName,
       branded: foodToLog.branded || false
     }
 
@@ -527,7 +533,8 @@ async function addFoodItemToDatabase(
         try {
           const result = await findUsdaFoodInfo({
             food_name: fullFoodName,
-            branded: foodToLog.branded || false
+            branded: foodToLog.branded || false,
+            brand_name: foodToLog.brand || undefined
           })
           console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
           return result

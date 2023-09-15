@@ -63,7 +63,6 @@ export const GetSystemStartPrompt = (user: User) => {
     .tz(user.tzIdentifier)
     .format()}\n${ageString}\n${heightString}\n${weightString}\n${fitnessGoalString}\n${macroGoalsString}\n${calorieGoalString}\n${unitPreferenceString}`
 
-  console.log("prompt", prompt)
   return prompt.trim() // trim to remove any potential starting or ending new lines
 }
 
@@ -77,6 +76,5 @@ export const GetSystemQuickLogPrompt = (user: User) => {
     .tz(user.tzIdentifier)
     .format()}`
 
-  console.log("prompt", prompt)
   return prompt.trim() // trim to remove any potential starting or ending new lines
 }

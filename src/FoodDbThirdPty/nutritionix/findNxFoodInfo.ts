@@ -22,7 +22,7 @@ import {
 const COSINE_THRESHOLD = 0.8
 export interface FoodQuery {
   food_name: string
-  user_food_descriptive_name: string
+  lemmatized_database_search_term: string
   branded?: boolean
   brand_name?: string
 }
@@ -48,13 +48,13 @@ export async function findNxFoodInfo(
   foodQuery: FoodQuery
 ): Promise<NxFoodItemResponse[] | null> {
   let foodResults: NutritionixSearchInstantResponse = await searchFoodIds({
-    query: foodQuery.user_food_descriptive_name,
+    query: foodQuery.lemmatized_database_search_term,
     branded: foodQuery.branded
   })
 
   // Create an array of all queries to get embeddings for
   const mainQuery = includeBrandName(
-    foodQuery.user_food_descriptive_name,
+    foodQuery.lemmatized_database_search_term,
     foodQuery.brand_name || ""
   ).toLowerCase()
 
@@ -152,15 +152,14 @@ export async function findNxFoodInfo(
   // sort items by cosine similarity
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
-  /*cosineSimilaritiesAndEmbeddings.forEach((itemInfo) => {
-    console.log(`Item Name: ${itemInfo.item.food_name}`);
+  console.log("Nutritionix results:")
+  cosineSimilaritiesAndEmbeddings.slice(0,3).forEach((itemInfo) => {
     if (isNutritionixBrandedItem(itemInfo.item)) {
-      console.log(`Brand Name: ${itemInfo.item.brand_name}`);
+      console.log(`Item: ${itemInfo.item.food_name} by ${itemInfo.item.brand_name} has similarity ${itemInfo.similarity}`);
+    } else {
+      console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`);
     }
-    console.log(`Similarity: ${itemInfo.similarity}`);
-    console.log("-------------------------------");
   });
-  */
 
   // Define the number of top items to retrieve
   const topItemsCount = 1
@@ -186,7 +185,7 @@ export async function findNxFoodInfo(
       getFoodInfoPromises
     )
 
-    console.dir(mostSimilarBrandedItems, { depth: null })
+    // console.dir(mostSimilarBrandedItems, { depth: null })
 
     // Transform the most similar branded items into the NxFoodItemResponse format
     const transformedItems: NxFoodItemResponse[] =
@@ -254,7 +253,8 @@ async function runTest() {
 async function testSearch() {
   const latteResponse = await findNxFoodInfo({
     food_name: "Starbucks Iced Latte",
-    user_food_descriptive_name: "Starbucks Iced Latte whole milk, Venti",
+    //user_food_descriptive_name: "Starbucks Iced Latte whole milk, Venti",
+    lemmatized_database_search_term: "Starbucks Iced Latte whole milk, Venti",
     branded: true
   })
   console.log(JSON.stringify(latteResponse, null, 2))
