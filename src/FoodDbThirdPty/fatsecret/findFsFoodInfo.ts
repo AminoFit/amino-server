@@ -49,7 +49,6 @@ export async function findFsFoodInfo(
   const foodItemsWithEmbedding: Array<FsFoodInfoWithEmbedding> = []
 
   for (let i = 0; i < searchResponse.length; i++) {
-    console.log(JSON.stringify(searchResponse[i]))
     // calculate cosine similarity
     const similarity = cosineSimilarity(queryEmbedding, itemEmbeddings[i])
 
@@ -88,7 +87,7 @@ async function runTests() {
     branded: true
   })
   //console.log(results)
-  console.log(JSON.stringify(results?.similarity))
+  console.log("similarity" + JSON.stringify(results?.similarity))
   console.dir(results?.item, { depth: null })
 }
 

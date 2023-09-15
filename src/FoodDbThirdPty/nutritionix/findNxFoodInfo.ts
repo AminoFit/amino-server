@@ -152,7 +152,7 @@ export async function findNxFoodInfo(
   // sort items by cosine similarity
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
-  cosineSimilaritiesAndEmbeddings.forEach((itemInfo) => {
+  /*cosineSimilaritiesAndEmbeddings.forEach((itemInfo) => {
     console.log(`Item Name: ${itemInfo.item.food_name}`);
     if (isNutritionixBrandedItem(itemInfo.item)) {
       console.log(`Brand Name: ${itemInfo.item.brand_name}`);
@@ -160,6 +160,7 @@ export async function findNxFoodInfo(
     console.log(`Similarity: ${itemInfo.similarity}`);
     console.log("-------------------------------");
   });
+  */
 
   // Define the number of top items to retrieve
   const topItemsCount = 1

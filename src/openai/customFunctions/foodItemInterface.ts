@@ -1,4 +1,4 @@
-import { FoodItem, Nutrient, Serving } from "@prisma/client"
+import { FoodItem, Nutrient, Serving, FoodInfoSource } from "@prisma/client"
 import { sanitizeServingName } from "../../database/utils/textSanitize"
 
 export interface FoodItems {
@@ -8,7 +8,7 @@ export interface FoodItems {
 export interface GptNutrient {
   nutrient_name: string // Nutrient name (e.g. Sodium, Potassium, Vitamin C)
   nutrient_unit: string // Nutrient unit (mg, mcg, IU, etc.)
-  nutrient_amount_per_g: number // Nutrient amount/g of food
+  nutrient_amount_per_serving: number // Nutrient amount/g of food
 }
 
 export interface GptFoodServing {
@@ -43,7 +43,26 @@ export interface FoodItemWithServings extends Omit<FoodItem, "Servings" | "Nutri
   Nutrients: FoodNutrient[]
 }
 
-export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo): FoodItemWithServings {
+function mapModelToEnum(model: string): FoodInfoSource {
+  if (model.startsWith("gpt-4")) {
+    return FoodInfoSource.GPT4
+  }
+
+  if (model.startsWith("gpt-3.5")) {
+    return FoodInfoSource.GPT3
+  }
+
+  return FoodInfoSource.User // Default to 'User'
+}
+
+export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): FoodItemWithServings {
+  const castToFloatOrNull = (value: any): number | null => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const floatVal = parseFloat(value);
+    return isNaN(floatVal) ? null : floatVal;
+  };  
   let prismaFoodItem: FoodItemWithServings = {
     id: 0,
     lastUpdated: new Date(),
@@ -59,17 +78,17 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo): FoodItemWithServing
     defaultServingLiquidMl: null,
     weightUnknown: false,
     isLiquid: false,
-    kcalPerServing: food.kcal_per_serving,
-    totalFatPerServing: food.total_fat_per_serving,
-    satFatPerServing: food.sat_fat_per_serving ?? 0,
-    transFatPerServing: food.trans_fat_per_serving ?? 0,
-    carbPerServing: food.carb_per_serving,
-    fiberPerServing: food.fiber_per_serving ?? 0,
-    sugarPerServing: food.sugar_per_serving ?? 0,
-    addedSugarPerServing: food.added_sugar_per_serving ?? 0,
-    proteinPerServing: food.protein_per_serving,
+    kcalPerServing: Number(food.kcal_per_serving),
+    totalFatPerServing: Number(food.total_fat_per_serving),
+    satFatPerServing: castToFloatOrNull(food.sat_fat_per_serving),
+    transFatPerServing: castToFloatOrNull(food.trans_fat_per_serving),
+    carbPerServing: Number(food.carb_per_serving),
+    fiberPerServing: castToFloatOrNull(food.fiber_per_serving),
+    sugarPerServing: castToFloatOrNull(food.sugar_per_serving),
+    addedSugarPerServing: castToFloatOrNull(food.added_sugar_per_serving),
+    proteinPerServing: Number(food.protein_per_serving),
     messageId: 0,
-    foodInfoSource: 'GPT4',
+    foodInfoSource: mapModelToEnum(model),
     Servings: food.servings?.map((serving) => ({
       servingWeightGram: serving.serving_weight_g,
       servingName: sanitizeServingName(serving.serving_name),
@@ -79,7 +98,7 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo): FoodItemWithServing
     Nutrients: food.nutrients?.map((nutrient) => ({
       nutrientName: nutrient.nutrient_name,
       nutrientUnit: nutrient.nutrient_unit,
-      nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_g
+      nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
     })) || []
   }
   return prismaFoodItem

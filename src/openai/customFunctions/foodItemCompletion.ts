@@ -240,9 +240,9 @@ export async function foodItemCompletion(
                   type: "string",
                   description: "Nutrient unit (mg, mcg, IU, etc.)"
                 },
-                nutrient_amount_per_g: {
+                nutrient_amount_per_serving: {
                   type: "number",
-                  description: "Nutrient amount/g of food"
+                  description: "Nutrient amount/serving of food"
                 }
               }
             },

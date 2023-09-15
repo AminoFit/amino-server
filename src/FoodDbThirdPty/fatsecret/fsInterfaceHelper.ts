@@ -131,13 +131,11 @@ export function convertFsToFoodItem(
   serving.metric_serving_amount *= unitConversionFactor
 
   let weightUnknown = false
-  console.log(serving.metric_serving_amount)
   if (Number.isNaN(serving.metric_serving_amount)) {
     console.log("Weight unknown for", fsFoodItem.food_name)
     weightUnknown = true
     serving.metric_serving_amount = 10
     serving.metric_serving_unit = "g"
-    console.log(serving.metric_serving_amount)
   }
 
   // get nutrients
@@ -159,7 +157,7 @@ export function convertFsToFoodItem(
     brand: fsFoodItem.brand_name,
     defaultServingWeightGram:
       serving.metric_serving_unit === "g"
-        ? serving.metric_serving_amount
+        ? Number(serving.metric_serving_amount)
         : null,
     defaultServingLiquidMl:
       serving.metric_serving_unit === "ml"
@@ -167,15 +165,19 @@ export function convertFsToFoodItem(
         : null,
     isLiquid: serving.metric_serving_unit === "ml",
     weightUnknown: weightUnknown,
-    kcalPerServing: serving.calories ? serving.calories : 0,
-    totalFatPerServing: serving.fat ? serving.fat : 0,
-    satFatPerServing: serving.saturated_fat ? serving.saturated_fat : null,
-    carbPerServing: serving.carbohydrate ? serving.carbohydrate : 0,
-    fiberPerServing: serving.fiber ? serving.fiber : null,
-    sugarPerServing: serving.sugar ? serving.sugar : null,
-    proteinPerServing: serving.protein ? serving.protein : 0,
-    transFatPerServing: serving.trans_fat ? serving.trans_fat : null,
-    addedSugarPerServing: serving.added_sugars ? serving.added_sugars : null,
+
+    // For fields that are Float (non-nullable) in your schema:
+    kcalPerServing: Number(serving.calories) || 0,
+    totalFatPerServing: Number(serving.fat) || 0,
+    carbPerServing: Number(serving.carbohydrate) || 0,
+    proteinPerServing: Number(serving.protein) || 0,
+
+    // For fields that are Float? (nullable) in your schema:
+    satFatPerServing: serving.saturated_fat ? Number(serving.saturated_fat) : null,
+    fiberPerServing: serving.fiber ? Number(serving.fiber) : null,
+    sugarPerServing: serving.sugar ? Number(serving.sugar) : null,
+    transFatPerServing: serving.trans_fat ? Number(serving.trans_fat) : null,
+    addedSugarPerServing: serving.added_sugars ? Number(serving.added_sugars) : null,
     Servings: deduplicatedServings
       .filter(
         (serving) =>
@@ -191,11 +193,11 @@ export function convertFsToFoodItem(
       .map((serving) => ({
         servingWeightGram:
           serving.metric_serving_unit === "g"
-            ? serving.metric_serving_amount
+            ?  Number(serving.metric_serving_amount)
             : null,
         servingAlternateAmount:
           serving.metric_serving_unit !== "g" && serving.number_of_units
-            ? serving.number_of_units
+            ? Number(serving.number_of_units)
             : null,
         servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
             ? serving.measurement_description

@@ -1,17 +1,15 @@
-import { FoodItem, Serving } from "@prisma/client"
+import { FoodItem, Serving, Nutrient } from "@prisma/client"
 import { NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
 import { BrandedFoodResponse } from "./getBrandedFoodInfo"
 
 interface NxFoodServing extends Omit<Serving, "id" | "foodItemId"> {}
+interface NxFoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
+
 
 export interface NxFoodItemResponse
   extends Omit<FoodItem, "Servings" | "Nutrients"> {
   Servings: NxFoodServing[]
-  Nutrients: {
-    nutrientName: string
-    nutrientUnit: string
-    nutrientAmountPerServing?: number
-  }[]
+  Nutrients: NxFoodNutrient[]
   embedding?: number[]
 }
 
@@ -77,6 +75,24 @@ export function mapFoodResponseToFoodItem(
     )
     const addedSugar = addedSugarNutrient ? addedSugarNutrient.value : null
 
+    const nutrients = [
+      {
+        nutrientName: "Cholesterol",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: food.nf_cholesterol || -1
+      },
+      {
+        nutrientName: "Sodium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: food.nf_sodium || -1
+      },
+      {
+        nutrientName: "Potassium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: food.nf_potassium || -1
+      }
+    ].filter((nutrient) => (nutrient.nutrientAmountPerDefaultServing != undefined) && (nutrient.nutrientAmountPerDefaultServing != -1))
+
     return {
       id: 0,
       UPC: Number(food.upc) || null,
@@ -90,8 +106,8 @@ export function mapFoodResponseToFoodItem(
       defaultServingLiquidMl:
         food.serving_unit == "ml" ? food.serving_qty : null,
       isLiquid: food.serving_unit == "ml",
-      kcalPerServing: food.nf_calories || 0,
-      totalFatPerServing: food.nf_total_fat || 0,
+      kcalPerServing: Number(food.nf_calories) || 0,
+      totalFatPerServing: Number(food.nf_total_fat) || 0,
       satFatPerServing: food.nf_saturated_fat,
       transFatPerServing: transFat,
       carbPerServing: food.nf_total_carbohydrate || 0,
@@ -120,23 +136,7 @@ export function mapFoodResponseToFoodItem(
             }))
           : [])
       ]),
-      Nutrients: [
-        {
-          nutrientName: "Cholesterol",
-          nutrientUnit: "mg",
-          nutrientAmountPerServing: food.nf_cholesterol
-        },
-        {
-          nutrientName: "Sodium",
-          nutrientUnit: "mg",
-          nutrientAmountPerServing: food.nf_sodium
-        },
-        {
-          nutrientName: "Potassium",
-          nutrientUnit: "mg",
-          nutrientAmountPerServing: food.nf_potassium || undefined
-        }
-      ].filter((nutrient) => nutrient.nutrientAmountPerServing != undefined)
+      Nutrients: nutrients
     }
   })
 }
@@ -154,3 +154,4 @@ function testMapping() {
   console.dir(mapFoodResponseToFoodItem(foodResponse), { depth: null })
   console.dir(mapFoodResponseToFoodItem(longFoodResponse), { depth: null })
 }
+

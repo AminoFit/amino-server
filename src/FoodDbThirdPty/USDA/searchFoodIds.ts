@@ -119,7 +119,6 @@ function filterFoodsByBrand(
   foods: UsdaFoodIdResults[],
   brandName: string
 ): UsdaFoodIdResults[] {
-  console.log("filtering by brand name: " + brandName)
   return foods.filter((food) => {
     if (food.brandName) {
       const distance = levenshteinDistance(
@@ -191,7 +190,6 @@ export async function searchFoodIds(
       requestParams.dataType = dataType
       requestParams.query = params.query
       let completeUrl = createUrlWithParams(API_URL, requestParams)
-      console.log("url: " + completeUrl)
 
       // Push the axios request promise into the promises array
       promises.push(axios.get<UsdaSearchResponse>(API_URL, {params: requestParams}).then((response) => response.data))
@@ -206,7 +204,6 @@ export async function searchFoodIds(
           requestParams.query = params.brand_name
         }
         completeUrl = createUrlWithParams(API_URL, requestParams)
-        console.log("url: " + completeUrl)
 
         promises.push(
           axios

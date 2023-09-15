@@ -84,18 +84,6 @@ function stringifyFoodItem(foodItem: NxFoodItemResponse): string {
   return JSON.stringify(result)
 }
 
-function mapModelToEnum(model: string): FoodInfoSource {
-  if (model.startsWith("gpt-4")) {
-    return FoodInfoSource.GPT4
-  }
-
-  if (model.startsWith("gpt-3.5")) {
-    return FoodInfoSource.GPT3
-  }
-
-  return FoodInfoSource.User // Default to 'User'
-}
-
 function constructFoodRequestString(foodToLog: FoodItemToLog) {
   let result = ""
 
@@ -254,6 +242,9 @@ export async function HandleLogFoodItem(
   const cosineSearchResults =
     (await prisma.$queryRaw`SELECT id, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity, embedding::text FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
 
+  
+  console.log("Searching in database")
+  console.log("__________________________________________________________")
   // Process the result as you need
   cosineSearchResults.forEach((item) => {
     const similarity = item.cosine_similarity.toFixed(3)
@@ -439,8 +430,8 @@ export async function HandleLogFoodItem(
 
 async function addFoodItemPrisma(
   food: FoodItemWithNutrientsAndServing,
-  messageId: number,
-  model: string
+  messageId: number
+  //model: string
 ): Promise<FoodItem> {
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
@@ -449,7 +440,7 @@ async function addFoodItemPrisma(
     data: {
       ...foodWithoutId,
       messageId: messageId,
-      foodInfoSource: mapModelToEnum(model),
+      //foodInfoSource: mapModelToEnum(model),
       // Check if nutrients exist before adding them
       ...(food.Nutrients && {
         Nutrients: {
@@ -652,8 +643,7 @@ async function addFoodItemToDatabase(
     if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
       const newFood = await addFoodItemPrisma(
         highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
-        messageId,
-        "Online"
+        messageId
       )
       return newFood
     }
@@ -673,9 +663,8 @@ async function addFoodItemToDatabase(
     let food: FoodInfo = foodItemInfo
     console.log("food req string:", foodItemRequestString)
     const newFood = await addFoodItemPrisma(
-      mapOpenAiFoodInfoToFoodItem(food) as FoodItemWithNutrientsAndServing,
-      messageId,
-      model
+      mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing,
+      messageId
     )
 
     return newFood
