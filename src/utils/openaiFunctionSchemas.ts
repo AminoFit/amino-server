@@ -7,85 +7,59 @@ const configuration = new Configuration({
 export const openai = new OpenAIApi(configuration)
 
 export const logFoodSchema = {
-  type: "object",
-  description: "Food items that were eaten by a user",
+  type: 'object',
   properties: {
     food_items: {
-      type: "array",
-      description: "An array of food items that were eaten",
+      type: 'array',
+      description: 'An array of food items that were eaten',
       items: {
-        type: "object",
-        description: "A food item",
+        type: 'object',
+        description: 'A food item',
         properties: {
-          full_name: {
-            type: "string",
-            description:
-              "Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos."
+          food_full_name: {
+            type: 'string',
+            description: 'Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos.'
           },
-          brand: { type: "string", description: "The brand of the food item" },
-          branded: {
-            type: "boolean",
-            description: "If item is branded or not"
+          base_food_name: {
+            type: 'string',
+            description: 'Basic term for the item. Eg Apple if input is sliced apples'
           },
-          lemmatized_database_search_term: {
-            type: "string",
-            description:
-              "Basic terms to search for in a database, ideally the lemmatized version"
-          },
-          user_food_descriptive_name: {
-            type: "string",
-            description: "What the user calls the food, fix any potential typos"
+          branded: { type: 'boolean', description: 'If item is branded or not' },
+          brand: {
+            type: 'string',
+            description: 'The brand of the food item. Empty for generic items.'
           },
           timeEaten: {
-            type: "string",
-            description:
-              "Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00 (no fractional seconds)"
+            type: 'string',
+            description: 'Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00'
           },
           serving: {
-            type: "object",
+            type: 'object',
             properties: {
-              serving_amount: {
-                type: "number",
-                description: "Amount of the serving"
-              },
+              serving_amount: { type: 'number', description: 'Amount of the serving' },
               serving_name: {
-                type: "string",
-                description:
-                  "Description of the serving, e.g. large, cup, piece"
+                type: 'string',
+                description: 'Description of the serving, e.g. large, cup, piece'
               },
               total_serving_grams: {
-                type: "number",
-                description:
-                  "The weight of the item eaten in grams. CANNOT BE 0"
+                type: 'number',
+                description: 'The weight of the item eaten in grams. CANNOT BE 0'
               },
-              total_serving_calories: {
-                type: "number",
-                description: "The number of calories in the food item"
+              is_liquid: { type: 'boolean', description: 'Is item liquid' },
+              total_serving_ml: {
+                type: 'number',
+                description: 'The millilitre amount of the item. Only for liquid items.'
               }
             },
-            required: [
-              "serving_amount",
-              "serving_name",
-              "total_serving_grams",
-              "total_serving_calories"
-            ],
-            description: "Serving size and description of food item"
+            required: [ 'serving_amount', 'serving_name', 'total_serving_grams' ],
+            description: 'Serving size and description of food item'
           }
         },
-        required: [
-          "full_name",
-          "total_weight_grams",
-          "lemmatized_database_search_term",
-          "serving"
-        ]
+        required: [ 'food_full_name', 'base_food_name', 'serving' ]
       }
-    },
-    total_calories: {
-      type: "number",
-      description: "The total calories in the meal"
     }
   },
-  required: ["food_items", "total_calories"]
+  required: [ 'food_items' ]
 }
 
 export const showDailyFoodSummarySchema = {

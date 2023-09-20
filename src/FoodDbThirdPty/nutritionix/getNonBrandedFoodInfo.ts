@@ -8,6 +8,7 @@ interface NxFood {
   food_name: string
   brand_name: string | null
   nf_metric_qty: number
+  nf_metric_uom: string
   serving_qty: number
   serving_unit: string
   serving_weight_grams: number

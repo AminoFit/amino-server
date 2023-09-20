@@ -43,7 +43,10 @@ function extractFoodInfo(
         }
       }
     )
-    if (foodItem.servingSizeUnit === "GRM" || foodItem.servingSizeUnit === "g") {
+    if (
+      foodItem.servingSizeUnit === "GRM" ||
+      foodItem.servingSizeUnit === "g"
+    ) {
       default_serving = {
         default_serving_amount: foodItem.servingSize,
         default_serving_unit: "g"
@@ -130,7 +133,7 @@ function extractFoodInfo(
     brandName,
     default_serving,
     foodInfo: filteredfoodInfo,
-    portions, 
+    portions,
     ...(upc ? { upc } : {})
   }
 }
@@ -321,10 +324,12 @@ export async function getUsdaFoodsInfo(
 
     // do not await this
     recordQuery("usda", API_URL)
-
-    const foodItems = response.data.map(
-      (foodItem: any) => extractFoodInfo(foodItem, foodAttributesToQuery) // Use the params.foodAttributesToQuery here
-    )
+    let foodItems: UsdaFoodItem[] = []
+    if (response.data) {
+      foodItems = response.data.map(
+        (foodItem: any) => extractFoodInfo(foodItem, foodAttributesToQuery) // Use the params.foodAttributesToQuery here
+      )
+    }
     return foodItems.length > 0 ? foodItems : null
   } catch (error) {
     if (error instanceof Error) {

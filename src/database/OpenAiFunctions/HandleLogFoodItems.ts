@@ -1,23 +1,12 @@
 import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
-import {
-  FoodQuery,
-  findNxFoodInfo
-} from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
+import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
 import { NxFoodItemResponse } from "@/FoodDbThirdPty/nutritionix/nxInterfaceHelper"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
 import UpdateMessage from "@/database/UpdateMessage"
-import {
-  FoodInfoSource,
-  FoodItem,
-  LoggedFoodItem,
-  Message,
-  User
-} from "@prisma/client"
+import { FoodInfoSource, FoodItem, LoggedFoodItem, Message, User } from "@prisma/client"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
-import {
-  FoodInfo,
-  mapOpenAiFoodInfoToFoodItem
-} from "../../openai/customFunctions/foodItemInterface"
+import { foodItemMissingFieldComplete } from "../../openai/customFunctions/foodItemMissingFieldComplete"
+import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
@@ -74,10 +63,7 @@ function stringifyFoodItem(foodItem: NxFoodItemResponse): string {
 
   // Clean up any properties with value 0 or null
   for (const key in result) {
-    if (
-      result[key as keyof NxFoodItemResponse] === 0 ||
-      result[key as keyof NxFoodItemResponse] === null
-    ) {
+    if (result[key as keyof NxFoodItemResponse] === 0 || result[key as keyof NxFoodItemResponse] === null) {
       delete result[key as keyof NxFoodItemResponse]
     }
   }
@@ -91,40 +77,21 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
 
   if (foodToLog.brand) {
     // Check if brand exists in full name
-    if (
-      foodToLog.full_name
-        .toLowerCase()
-        .indexOf(foodToLog.brand.toLowerCase()) === -1
-    ) {
+    if (foodToLog.food_full_name.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
       result += foodToLog.brand + " "
     }
   }
   // Add full name
-  result += foodToLog.full_name
-
-  // Add user descriptive name if it's different enough from the full name
-  if (
-    foodToLog.user_food_descriptive_name &&
-    levenshteinDistance(
-      foodToLog.full_name,
-      foodToLog.user_food_descriptive_name
-    ) > 3
-  ) {
-    result += ` (${foodToLog.user_food_descriptive_name})`
-  }
+  result += foodToLog.food_full_name
 
   // Add serving details
   let servingDetails = ""
 
   if (foodToLog.serving.serving_amount) {
-    servingDetails +=
-      foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
+    servingDetails += foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
   }
 
-  if (
-    foodToLog.serving.serving_amount &&
-    foodToLog.serving.total_serving_grams
-  ) {
+  if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_grams) {
     servingDetails += " - "
   }
 
@@ -149,11 +116,7 @@ export async function VerifyHandleLogFoodItems(parameters: any) {
   }
 }
 
-export async function HandleLogFoodItems(
-  user: User,
-  parameters: any,
-  lastUserMessageId: number
-) {
+export async function HandleLogFoodItems(user: User, parameters: any, lastUserMessageId: number) {
   console.log("parameters", parameters)
 
   const foodItemsToLog: FoodItemToLog[] = parameters.food_items
@@ -186,9 +149,7 @@ export async function HandleLogFoodItems(
   console.log("foodsNeedProcessing", foodsNeedProcessing)
 
   const results = []
-  foodItemsToLog.forEach((food) =>
-    results.push(constructFoodRequestString(food))
-  )
+  foodItemsToLog.forEach((food) => results.push(constructFoodRequestString(food)))
 
   // Add each pending food item to queue
   for (let food of foodsNeedProcessing) {
@@ -219,9 +180,7 @@ export async function HandleLogFoodItems(
     return "Sorry, I could not log your food items. Please try again later. E230"
   }
 
-  results.unshift(
-    "We're logging your food. It might take a few mins for us to look up all the information:"
-  )
+  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
 
   return results.join(" ")
 }
@@ -244,13 +203,12 @@ export async function HandleLogFoodItem(
   const cosineSearchResults =
     (await prisma.$queryRaw`SELECT id, name, brand, embedding::text, 1 - (embedding <=> ${embeddingSql}::vector) AS cosine_similarity, embedding::text FROM "FoodItem" ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
 
-  
   console.log("Searching in database")
   console.log("__________________________________________________________")
   // Process the result as you need
   cosineSearchResults.forEach((item) => {
     const similarity = item.cosine_similarity.toFixed(3)
-    if (item.brand){
+    if (item.brand) {
       console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name} - ${item.brand}`)
     } else {
       console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name}`)
@@ -258,21 +216,14 @@ export async function HandleLogFoodItem(
   })
 
   // Filter items based on cosine similarity
-  const filteredItems = cosineSearchResults.filter(
-    (item) => item.cosine_similarity >= COSINE_THRESHOLD
-  )
+  const filteredItems = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 
   let bestMatch: FoodItem
   // If no matches found, add food item to the database
   if (filteredItems.length === 0) {
-    console.log("No matches found for food item", food.full_name)
+    console.log("No matches found for food item", food.food_full_name)
 
-    const newFood = await addFoodItemToDatabase(
-      food,
-      userQueryVector,
-      user,
-      messageId
-    )
+    const newFood = await addFoodItemToDatabase(food, userQueryVector, user, messageId)
     bestMatch = newFood
   } else {
     const match = await prisma.foodItem.findUnique({
@@ -402,9 +353,7 @@ export async function HandleLogFoodItem(
     }
   })
   if (!serving) {
-    console.log(
-      `No serving found for food item id ${bestMatch.id} and serving size ${servingSize[0]}`
-    )
+    console.log(`No serving found for food item id ${bestMatch.id} and serving size ${servingSize[0]}`)
   }
   // Proceed with original logging process with some modifications
   const data: any = {
@@ -419,11 +368,9 @@ export async function HandleLogFoodItem(
     status: "Processed"
   }
 
-  const foodItem = await prisma.loggedFoodItem
-    .update({ where: { id: loggedFoodItem.id }, data })
-    .catch((err) => {
-      console.log("Error logging food item", err)
-    })
+  const foodItem = await prisma.loggedFoodItem.update({ where: { id: loggedFoodItem.id }, data }).catch((err) => {
+    console.log("Error logging food item", err)
+  })
   if (!foodItem) {
     return "Sorry, I could not log your food items. Please try again later."
   }
@@ -490,20 +437,16 @@ async function addFoodItemToDatabase(
 
   try {
     // Create a new variable based off the user_food_descriptive_name or full_name
-    let fullFoodName =
-      foodToLog.lemmatized_database_search_term || foodToLog.full_name
+    let fullFoodName = foodToLog.food_full_name
 
     // Append the brand name if it is not present in the original string
-    if (
-      foodToLog.brand &&
-      !fullFoodName.toLowerCase().includes(foodToLog.brand.toLowerCase())
-    ) {
+    if (foodToLog.branded && foodToLog.brand && !fullFoodName.toLowerCase().includes(foodToLog.brand.toLowerCase())) {
       fullFoodName += ` - ${foodToLog.brand}`
     }
 
     // Construct the query for findNxFoodInfo
     const foodQuery: FoodQuery = {
-      food_name: foodToLog.full_name,
+      food_name: foodToLog.food_full_name,
       lemmatized_database_search_term: fullFoodName,
       branded: foodToLog.branded || false
     }
@@ -513,11 +456,7 @@ async function addFoodItemToDatabase(
       if (await checkRateLimit("nutritionix", 45, ONE_DAY_IN_MS)) {
         try {
           const result = await findNxFoodInfo(foodQuery)
-          console.log(
-            "Time taken for Nutritionix API:",
-            Date.now() - startTime,
-            "ms"
-          ) // Log the time taken
+          console.log("Time taken for Nutritionix API:", Date.now() - startTime, "ms") // Log the time taken
           return result
         } catch (err) {
           console.log("Error finding NX food info", err) // Silently fail
@@ -554,11 +493,7 @@ async function addFoodItemToDatabase(
             search_expression: fullFoodName,
             branded: foodToLog.branded || false
           })
-          console.log(
-            "Time taken for FatSecret API:",
-            Date.now() - startTime,
-            "ms"
-          ) // Log the time taken
+          console.log("Time taken for FatSecret API:", Date.now() - startTime, "ms") // Log the time taken
           return result
         } catch (err) {
           console.log("Error finding FatSecret food info", err) // Silently fail
@@ -569,8 +504,11 @@ async function addFoodItemToDatabase(
     }
 
     // Dispatch both API calls simultaneously
-    const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] =
-      await Promise.all([getNxFoodInfo(), getUsdaFoodInfo(), getFsFoodInfo()])
+    const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
+      getNxFoodInfo(),
+      getUsdaFoodInfo(),
+      getFsFoodInfo()
+    ])
 
     const foodInfoResponses: {
       foodItem: FoodItem
@@ -595,9 +533,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString +
-          "\n Some food info that may be relevant\n" +
-          stringifyFoodItem(food)
+          foodItemRequestString + "\n Some food info that may be relevant\n" + stringifyFoodItem(food)
       }
     }
 
@@ -615,9 +551,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString +
-          "\n Some food info that may be relevant\n" +
-          JSON.stringify(food)
+          foodItemRequestString + "\n Some food info that may be relevant\n" + JSON.stringify(food)
       }
     }
 
@@ -635,9 +569,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString +
-          "\n Some food info that may be relevant\n" +
-          JSON.stringify(food)
+          foodItemRequestString + "\n Some food info that may be relevant\n" + JSON.stringify(food)
       }
     }
 
@@ -648,24 +580,25 @@ async function addFoodItemToDatabase(
 
     // If the highest similarity score is greater than COSINE_THRESHOLD, add the food item manually
     if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
-      const newFood = await addFoodItemPrisma(
-        highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
-        messageId
-      )
+      console.log("Found a match with similarity", highestSimilarityItem.similarityToQuery)
+      let foodItemToSave = highestSimilarityItem.foodItem
+      if (
+        highestSimilarityItem.foodItem.defaultServingWeightGram === 0 ||
+        highestSimilarityItem.foodItem.defaultServingWeightGram === null
+      ) {
+        foodItemToSave = await foodItemMissingFieldComplete(
+          highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
+          user
+        )
+      }
+      const newFood = await addFoodItemPrisma(foodItemToSave as FoodItemWithNutrientsAndServing, messageId)
       return newFood
     }
 
     // If we didn't find a match we then rely on GPT-4
     const foodItemCompletionStartTime = Date.now() // Capture start time
-    const { foodItemInfo, model } = await foodItemCompletion(
-      foodItemRequestString,
-      user
-    )
-    console.log(
-      "Time taken for foodItemCompletion:",
-      Date.now() - foodItemCompletionStartTime,
-      "ms"
-    )
+    const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user)
+    console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
 
     let food: FoodInfo = foodItemInfo
     console.log("food req string:", foodItemRequestString)

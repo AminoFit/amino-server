@@ -124,8 +124,11 @@ export function convertFsToFoodItem(
 
   // Convert units if necessary
   let unitConversionFactor = 1
+  console.log(serving.metric_serving_unit)
   if (serving.metric_serving_unit === "oz") {
+    console.log("Converting oz to g for", fsFoodItem.food_name)
     unitConversionFactor = 28.3495
+    serving.metric_serving_unit = "g"
   }
 
   serving.metric_serving_amount *= unitConversionFactor

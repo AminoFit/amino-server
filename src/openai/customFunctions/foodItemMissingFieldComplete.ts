@@ -1,0 +1,260 @@
+import { chatCompletion } from "./chatCompletion"
+import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
+import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
+import { User, FoodInfoSource } from "@prisma/client"
+import { checkCompliesWithSchema } from "./foodItemCompletion"
+
+const foodItemMissingFieldCompleteProperties = {
+  type: "object",
+  properties: {
+    liquid_density_if_liquid: { type: "number" },
+    default_serving_weight_g: {
+      type: "number",
+      description:
+        "Know or inferred weight. Cannot be 0 or null. Must be greater than sum(carbs,fat,protein)"
+    },
+    servings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          serving_id: { type: "number" },
+          serving_weight_gram: {
+            type: "number",
+            description: "Know or inferred weight. Cannot be 0 or null."
+          }
+        },
+        required: ["serving_id", "serving_weight_gram"]
+      },
+      required: ["servings"]
+    }
+  },
+  required: ["default_serving_weight_g", "servings"]
+}
+
+interface AutocompleteServing {
+  serving_id: number
+  serving_weight_gram: number // Known or inferred weight. Cannot be 0 or null.
+}
+
+interface AutocompleteFoodItem {
+  liquid_density_if_liquid?: number // Optional because it's not in the "required" field of JSON Schema
+  default_serving_weight_g: number // Known or inferred weight. Cannot be 0 or null. Must be greater than sum(carbs,fat,protein)
+  alternate_name: string // other names for the item
+  servings: AutocompleteServing[] // Array of "Serving" interface
+}
+
+const generateInquiryString = (foodItem: FoodItemWithNutrientsAndServing) => {
+  const filteredServings = foodItem.Servings.filter(
+    (serving) => serving.servingWeightGram === null
+  ).slice(0, 3)
+
+  let inquiry = filteredServings
+    .map(
+      (serving) => `---
+servingId: ${serving.id}
+servingName: ${serving.servingName}
+servingAlternateAmount: ${serving.servingAlternateAmount}
+servingAlternateUnit: ${serving.servingAlternateUnit}`
+    )
+    .join("\n")
+
+  return inquiry
+}
+
+const updateFoodItem = (
+  foodItem: FoodItemWithNutrientsAndServing,
+  autocompleteResults: AutocompleteFoodItem
+): FoodItemWithNutrientsAndServing => {
+  // Update default_serving_weight_g
+  if (autocompleteResults.default_serving_weight_g !== null) {
+    foodItem.defaultServingWeightGram =
+      autocompleteResults.default_serving_weight_g
+    foodItem.weightUnknown = false
+  }
+
+  // Update servings
+  foodItem.Servings = foodItem.Servings.map((serving) => {
+    const newServing = autocompleteResults.servings.find(
+      (r) => r.serving_id === serving.id
+    )
+    if (newServing) {
+      serving.servingWeightGram = newServing.serving_weight_gram
+    }
+    return serving
+  })
+
+  return foodItem
+}
+
+export async function foodItemMissingFieldComplete(
+  foodItem: FoodItemWithNutrientsAndServing,
+  user: User
+): Promise<FoodItemWithNutrientsAndServing> {
+  const system =
+    "You are a bot that autocompletes food item missing elements. Call the autocomplete_missing_fields function to do so."
+
+  const functions: ChatCompletionFunctions[] = [
+    {
+      name: "autocomplete_missing_fields",
+      description:
+        "Completes the missing fields of a food item. Guesstimate if values are not known.",
+      parameters: foodItemMissingFieldCompleteProperties
+    }
+  ]
+
+  const inquiry =
+    `
+Food item: ${foodItem.name}${foodItem.brand ? "\nBrand: " + foodItem.brand : ""}
+Kcal: ${foodItem.kcalPerServing}
+Carbs: ${foodItem.carbPerServing}
+Fat: ${foodItem.totalFatPerServing}
+Protein: ${foodItem.proteinPerServing}
+DefaultServingGrams: ${foodItem.defaultServingWeightGram}
+isLiquid: ${foodItem.isLiquid}
+DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
+    generateInquiryString(foodItem)
+
+  let result: any = null
+  let messages: ChatCompletionRequestMessage[] = [
+    { role: "system", content: system },
+    { role: "user", content: inquiry }
+  ]
+  let model = "gpt-4-0613" //"gpt-3.5-turbo-0613"
+  let max_tokens = 2048
+  let temperature = 0.05
+
+  try {
+    result = await chatCompletion(
+      {
+        messages,
+        functions,
+        model,
+        temperature,
+        max_tokens
+      },
+      user
+    )
+
+    let foodItemCompletionResult: AutocompleteFoodItem = JSON.parse(
+      result.function_call.arguments
+    )
+
+    let has_valid_schema = checkCompliesWithSchema(
+      foodItemMissingFieldCompleteProperties,
+      foodItemCompletionResult
+    )
+
+    if (!has_valid_schema) {
+      console.log("Invalid food completion, retrying with different parameters")
+      console.log("First try was", foodItemCompletionResult)
+      temperature = 0.1 // Update temperature
+      model = "gpt-4-0613" // Update model
+      max_tokens = 4096 // Update max tokens
+
+      messages = [
+        { role: "system", content: system },
+        { role: "user", content: inquiry }
+      ]
+
+      // Retry chatCompletion with updated temperature
+      result = await chatCompletion(
+        {
+          messages,
+          functions,
+          model,
+          temperature,
+          max_tokens
+        },
+        user
+      )
+      console.log("Second retry", result.function_call.arguments)
+    }
+    foodItemCompletionResult = JSON.parse(result.function_call.arguments)
+    // check again for schema and data
+    has_valid_schema = checkCompliesWithSchema(
+      foodItemMissingFieldCompleteProperties,
+      foodItemCompletionResult
+    )
+    if (!has_valid_schema) {
+      throw console.error("Could not find food item")
+    }
+    return updateFoodItem(foodItem, foodItemCompletionResult)
+  } catch (error) {
+    throw error
+  }
+}
+
+async function testRun() {
+  const user: User = {
+    id: "clklnwf090000lzssqhgfm8kr",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York"
+  }
+  const serving = {
+    id: 329,
+    servingWeightGram: null,
+    servingName: "1 bottle",
+    foodItemId: 128,
+    servingAlternateAmount: 1,
+    servingAlternateUnit: "bottle"
+  }
+  const serving2 = {
+    id: 452,
+    servingWeightGram: null,
+    servingName: "1 cup",
+    foodItemId: 128,
+    servingAlternateAmount: 1,
+    servingAlternateUnit: "cup"
+  }
+  const foodItem: FoodItemWithNutrientsAndServing = {
+    id: 128,
+    name: "Milk, 2%",
+    brand: "Fairlife",
+    knownAs: [],
+    description: null,
+    defaultServingLiquidMl: 240,
+    defaultServingWeightGram: null,
+    kcalPerServing: 120,
+    totalFatPerServing: 4.5,
+    satFatPerServing: 3,
+    transFatPerServing: 0,
+    carbPerServing: 6,
+    sugarPerServing: 6,
+    addedSugarPerServing: null,
+    proteinPerServing: 13,
+    lastUpdated: new Date("2023-09-18 20:00:38.115"),
+    verified: true,
+    userId: null,
+    messageId: 489,
+    foodInfoSource: FoodInfoSource.NUTRITIONIX,
+    UPC: null,
+    externalId: "5d0b35e53aba6bbd692c5f52",
+    fiberPerServing: 0,
+    isLiquid: true,
+    weightUnknown: false,
+    Servings: [serving, serving2],
+    Nutrients: []
+  }
+  console.dir(await foodItemMissingFieldComplete(foodItem, user), {
+    depth: null
+  })
+}
+
+//testRun()
