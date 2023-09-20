@@ -32,6 +32,7 @@ export async function findFsFoodInfo(
         : item.food_name
     )
   )
+  console.log("query FS:", searchParams.search_expression)
 
   // get all embeddings in a single API call
   const allEmbeddings = await getEmbedding(allQueries) // Assuming the same embedding function

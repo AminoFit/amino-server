@@ -1,3 +1,7 @@
+export function toTitleCase(str: string): string {
+  return str.toLowerCase().replace(/\b\w/g, (char: string) => char.toUpperCase());
+}
+
 export const levenshteinDistance = (
   s: string,
   t: string,
@@ -84,6 +88,8 @@ export function wordLevenshtein(s1: string, s2: string, threshold?: number): num
 }
 
 function runTest() {
+  console.log(toTitleCase("catalina crunch"))
+  console.log(toTitleCase("CORE POWER, HIGH PROTEIN MILK SHAKE, STRAWBERRY, BANANA, STRAWBERRY, BANANA"))
   console.log(levenshteinDistance("Catalina", "Catalina Crunch"))
   console.log(jaccardSimilarity("Catalina Cereal", "Catalina Crunch"))
   console.log(wordLevenshtein("Catalina Cereal", "Catalina Crunch", 1)) // Output should be true

@@ -14,6 +14,7 @@ export default async function Example({
   const user = await getUser()
 
   if (!user) {
+    console.log("no user found")
     return <div className="">No user found</div>
   }
 

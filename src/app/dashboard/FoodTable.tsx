@@ -44,7 +44,6 @@ export function FoodTable() {
     refetchInterval: 1000 * 15
   })
 
-  console.log("foods", foods)
   const groups = _.chain(foods || [])
     .groupBy((food) => {
       const consumptionTime = moment(food.consumedOn)
@@ -57,8 +56,6 @@ export function FoodTable() {
       return "dinner"
     })
     .value()
-
-  console.log("groups", groups)
 
   const foodGroups = ["breakfast", "lunch", "dinner"]
 
@@ -142,7 +139,7 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
 
   const name =
     foodItem.FoodItem?.name ||
-    (foodItem.extendedOpenAiData?.valueOf() as any)?.full_name ||
+    (foodItem.extendedOpenAiData?.valueOf() as any)?.food_database_search_name ||
     "Loading..."
 
   const subtext = isLoading

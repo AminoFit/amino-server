@@ -59,6 +59,7 @@ export async function findNxFoodInfo(
   ).toLowerCase()
 
   const queryEmbedding = (await getEmbedding([mainQuery])).data[0].embedding
+  console.log("query NX:", mainQuery)
 
   // create an array to store cosine similarities and embeddings
   const cosineSimilaritiesAndEmbeddings: foodItemWithEmbeddings[] = []

@@ -2,6 +2,7 @@ import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
 import { UsdaFoodItem } from "./usdaInterfaceHelper"
 import { mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
+import { toTitleCase } from "../../utils/nlpHelper"
 
 function extractFoodInfo(
   foodItem: any,
@@ -43,7 +44,10 @@ function extractFoodInfo(
         }
       }
     )
-    if (foodItem.servingSizeUnit === "GRM" || foodItem.servingSizeUnit === "g") {
+    if (
+      foodItem.servingSizeUnit === "GRM" ||
+      foodItem.servingSizeUnit === "g"
+    ) {
       default_serving = {
         default_serving_amount: foodItem.servingSize,
         default_serving_unit: "g"
@@ -117,7 +121,7 @@ function extractFoodInfo(
     })
   }
 
-  const itemName = foodItem.description
+  const itemName = toTitleCase(foodItem.description)
   const branded = foodItem.dataType === "Branded"
   const brandName = branded ? foodItem.brandName : null
   const upc = branded ? foodItem.gtinUpc : undefined
@@ -130,7 +134,7 @@ function extractFoodInfo(
     brandName,
     default_serving,
     foodInfo: filteredfoodInfo,
-    portions, 
+    portions,
     ...(upc ? { upc } : {})
   }
 }
@@ -321,17 +325,19 @@ export async function getUsdaFoodsInfo(
 
     // do not await this
     recordQuery("usda", API_URL)
-
-    const foodItems = response.data.map(
-      (foodItem: any) => extractFoodInfo(foodItem, foodAttributesToQuery) // Use the params.foodAttributesToQuery here
-    )
+    let foodItems: UsdaFoodItem[] = []
+    if (response.data) {
+      foodItems = response.data.map(
+        (foodItem: any) => extractFoodInfo(foodItem, foodAttributesToQuery) // Use the params.foodAttributesToQuery here
+      )
+    }
     return foodItems.length > 0 ? foodItems : null
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message)
     }
     throw new Error(
-      `Error fetching multiple food details from USDA API: ${error}`
+      `Error fetching multiple food details from USDA API while searching for ${params.fdcIds}: ${error}`
     )
   }
 }
