@@ -39,8 +39,8 @@ export async function GET(
   if (!openAiData) {
     return new Response("No openAiData", { status: 400 })
   }
-  if (!openAiData.food_full_name) {
-    return new Response("No food_full_name", { status: 400 })
+  if (!openAiData.food_database_search_name) {
+    return new Response("No food_database_search_name", { status: 400 })
   }
   if (!openAiData.serving) {
     return new Response("No serving", { status: 400 })

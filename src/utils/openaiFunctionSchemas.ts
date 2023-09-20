@@ -16,9 +16,9 @@ export const logFoodSchema = {
         type: 'object',
         description: 'A food item',
         properties: {
-          food_full_name: {
+          food_database_search_name: {
             type: 'string',
-            description: 'Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos.'
+            description: 'Do not include servings. Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos.'
           },
           base_food_name: {
             type: 'string',
@@ -55,7 +55,7 @@ export const logFoodSchema = {
             description: 'Serving size and description of food item'
           }
         },
-        required: [ 'food_full_name', 'base_food_name', 'serving' ]
+        required: [ 'food_database_search_name', 'base_food_name', 'serving' ]
       }
     }
   },

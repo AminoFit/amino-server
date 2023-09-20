@@ -110,7 +110,7 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
 
   const name =
     foodItem.FoodItem?.name ||
-    (foodItem.extendedOpenAiData?.valueOf() as any)?.food_full_name ||
+    (foodItem.extendedOpenAiData?.valueOf() as any)?.food_database_search_name ||
     "Loading..."
 
   const subtext = isLoading

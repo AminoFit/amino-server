@@ -20,7 +20,7 @@ export async function getFoodEmbedding(foodItem: FoodItem): Promise<number[]> {
 
 export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<number[]> {
   // Construct the text input for the embedding
-  let textToEmbed = (foodToLog.food_full_name).toLowerCase()
+  let textToEmbed = (foodToLog.food_database_search_name).toLowerCase()
 
   // Append the brand name with a hyphen if it doesn't already appear in the name
   if (

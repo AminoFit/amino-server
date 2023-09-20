@@ -77,12 +77,12 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
 
   if (foodToLog.brand) {
     // Check if brand exists in full name
-    if (foodToLog.food_full_name.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
+    if (foodToLog.food_database_search_name.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
       result += foodToLog.brand + " "
     }
   }
   // Add full name
-  result += foodToLog.food_full_name
+  result += foodToLog.food_database_search_name
 
   // Add serving details
   let servingDetails = ""
@@ -221,7 +221,7 @@ export async function HandleLogFoodItem(
   let bestMatch: FoodItem
   // If no matches found, add food item to the database
   if (filteredItems.length === 0) {
-    console.log("No matches found for food item", food.food_full_name)
+    console.log("No matches found for food item", food.food_database_search_name)
 
     const newFood = await addFoodItemToDatabase(food, userQueryVector, user, messageId)
     bestMatch = newFood
@@ -450,7 +450,7 @@ async function addFoodItemToDatabase(
 
   try {
     // Create a new variable based off the user_food_descriptive_name or full_name
-    let fullFoodName = foodToLog.food_full_name
+    let fullFoodName = foodToLog.food_database_search_name
 
     // Append the brand name if it is not present in the original string
     if (foodToLog.branded && foodToLog.brand && !fullFoodName.toLowerCase().includes(foodToLog.brand.toLowerCase())) {
@@ -459,7 +459,7 @@ async function addFoodItemToDatabase(
 
     // Construct the query for findNxFoodInfo
     const foodQuery: FoodQuery = {
-      food_name: foodToLog.food_full_name,
+      food_name: foodToLog.food_database_search_name,
       lemmatized_database_search_term: fullFoodName,
       branded: foodToLog.branded || false
     }
