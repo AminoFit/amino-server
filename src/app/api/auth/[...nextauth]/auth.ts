@@ -4,6 +4,7 @@ import { prisma } from "@/database/prisma"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { Adapter } from "next-auth/adapters"
 import Email from "next-auth/providers/email"
+import { sendVerificationRequest } from "./EmailTemplate"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter<boolean>,
@@ -21,7 +22,8 @@ export const authOptions: NextAuthOptions = {
           pass: process.env.SMTP_PASSWORD
         }
       },
-      from: process.env.EMAIL_FROM
+      from: process.env.EMAIL_FROM,
+      sendVerificationRequest
     })
   ],
   callbacks: {
