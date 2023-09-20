@@ -42,7 +42,6 @@ export function FoodTable() {
     refetchInterval: 1000 * 15
   })
 
-  console.log("foods", foods)
   const groups = _.chain(foods || [])
     .groupBy((food) => {
       const consumptionTime = moment(food.consumedOn)
@@ -55,8 +54,6 @@ export function FoodTable() {
       return "dinner"
     })
     .value()
-
-  console.log("groups", groups)
 
   const foodGroups = ["breakfast", "lunch", "dinner"]
 

@@ -386,6 +386,19 @@ async function addFoodItemPrisma(
   messageId: number
   //model: string
 ): Promise<FoodItem> {
+  // Check if a food item with the same name and brand already exists
+  const existingFoodItem = await prisma.foodItem.findFirst({
+    where: {
+      name: food.name,
+      brand: food.brand,
+    },
+  });
+
+  // If it exists, return the existing food item ID
+  if (existingFoodItem) {
+    return existingFoodItem;
+  }
+
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
 

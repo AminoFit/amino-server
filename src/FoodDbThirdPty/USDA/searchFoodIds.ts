@@ -103,6 +103,7 @@ async function filterFoodsByEmbeddingSimilarity(
     if (similarity >= COSINE_THRESHOLD) {
       food.embedding = foodResultEmbedding.data[0].embedding
       food.similarity = similarity
+      food.description = toTitleCase(food.description)
       filteredFoods.push(food)
 
       // If the similarity is above the stop threshold, return the list immediately

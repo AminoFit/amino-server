@@ -302,7 +302,7 @@ export async function foodItemCompletion(
     )
 
     // Log the OpenAI usage with the LogOpenAiUsage function
-    console.log("result", JSON.stringify(result))
+    //console.log("result", JSON.stringify(result))
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
     let foodItemInfo = JSON.parse(result.function_call.arguments);
