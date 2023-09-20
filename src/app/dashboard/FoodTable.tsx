@@ -19,6 +19,7 @@ import axios from "axios"
 
 export function FoodTable() {
   const searchParams = useSearchParams()
+  const [copyYesterdayError, setCopyYesterdayError] = useState("")
 
   let selectedDate = moment()
   if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
@@ -31,7 +32,8 @@ export function FoodTable() {
     isLoading,
     error,
     data: foods,
-    isFetching
+    isFetching,
+    refetch
   } = useQuery({
     queryKey: ["foodData", formattedDate],
     queryFn: () =>
@@ -57,6 +59,26 @@ export function FoodTable() {
 
   const foodGroups = ["breakfast", "lunch", "dinner"]
 
+  const copyYesterday = async (meal: string, today: string) => {
+    console.log("copy yesterday", meal, today)
+    const yesterday = moment(selectedDate).subtract(1, "day")
+    const yesterdayFormatted = yesterday.format("YYYY-MM-DD")
+
+    const { data } = await axios.get("/api/user/copy-meal/", {
+      params: {
+        fromDate: yesterdayFormatted,
+        toDate: moment(selectedDate).format("YYYY-MM-DD"),
+        meal
+      }
+    })
+    console.log("data", data)
+    if (!data || data.length === 0) {
+      setCopyYesterdayError("No food logged yesterday.")
+      return
+    }
+    refetch()
+  }
+
   const renderMealSections = () => {
     if (isLoading) return <FoodRowLoading />
     return (
@@ -71,11 +93,18 @@ export function FoodTable() {
               <div className="grid grid-cols-1 gap-2">
                 {!!groups[foodGroup] ? (
                   (groups[foodGroup] || []).map((foodItem) => (
-                    <FoodRow foodItem={foodItem} key={foodItem} />
+                    <FoodRow foodItem={foodItem} key={foodItem.id} />
                   ))
                 ) : (
                   <div className="py-12 text-sm text-gray-500 text-center text-zinc-700">
-                    No food logged for this meal.
+                    <div className="mb-2">No food logged for this meal.</div>
+                    <button
+                      type="button"
+                      className="rounded bg-white px-2 py-1 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                      onClick={() => copyYesterday(foodGroup, formattedDate)}
+                    >
+                      Copy Yesterday
+                    </button>
                   </div>
                 )}
               </div>
@@ -250,10 +279,8 @@ function FoodRowEmpty() {
 }
 function FoodRowLoading() {
   return (
-    <div>
-      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-200">Loading food for this day...</div>
-      </div>
+    <div className="col-span-3 whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center text-zinc-700 rounded-md bg-black/10">
+      Loading food for this day...
     </div>
   )
 }

@@ -3,59 +3,59 @@ import {
   ChevronRightIcon,
   CloudArrowUpIcon,
   LockClosedIcon,
-  ServerIcon,
-} from "@heroicons/react/20/solid";
-import Footer from "./Footer";
-import Nav from "./MarketingNav";
-import { PhoneForm } from "./PhoneForms";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+  ServerIcon
+} from "@heroicons/react/20/solid"
+import Footer from "./Footer"
+import Nav from "./MarketingNav"
+import { PhoneForm } from "./PhoneForms"
+import { XMarkIcon } from "@heroicons/react/24/outline"
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/auth";
+import { getServerSession } from "next-auth"
+import { authOptions } from "./api/auth/[...nextauth]/auth"
 
 const primaryFeatures = [
   {
     name: "Push to deploy.",
     description:
       "Lorem ipsum, dolor sit amet consectetur adipisicing elit aute id magna.",
-    icon: CloudArrowUpIcon,
+    icon: CloudArrowUpIcon
   },
   {
     name: "SSL certificates.",
     description:
       "Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo.",
-    icon: LockClosedIcon,
+    icon: LockClosedIcon
   },
   {
     name: "Database backups.",
     description:
       "Ac tincidunt sapien vehicula erat auctor pellentesque rhoncus.",
-    icon: ServerIcon,
-  },
-];
+    icon: ServerIcon
+  }
+]
 const secondaryFeatures = [
   {
     name: "Personalized recommendations",
     description:
       "Amino can analyze your individual data to provide you with personalized recommendations for your diet and fitness goals.",
     href: "#",
-    icon: CloudArrowUpIcon,
+    icon: CloudArrowUpIcon
   },
   {
     name: "Motivation",
     description:
       "Amino can provide you with motivation to stay on track, such as by sending you reminders or congratulating you on your progress.",
     href: "#",
-    icon: LockClosedIcon,
+    icon: LockClosedIcon
   },
   {
     name: "Ease of use",
     description:
       "Amino can make diet and fitness tracking easier by automating some of the tasks, such as calculating your calorie intake or generating meal plans.",
     href: "#",
-    icon: ArrowPathIcon,
-  },
-];
+    icon: ArrowPathIcon
+  }
+]
 const featuredTestimonial = {
   body: "Integer id nunc sit semper purus. Bibendum at lacus ut arcu blandit montes vitae auctor libero. Hac condimentum dignissim nibh vulputate ut nunc. Amet nibh orci mi venenatis blandit vel et proin. Non hendrerit in vel ac diam.",
   author: {
@@ -63,9 +63,9 @@ const featuredTestimonial = {
     handle: "brennagoyette",
     imageUrl:
       "https://images.unsplash.com/photo-1550525811-e5869dd03032?ixlib=rb-=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=1024&h=1024&q=80",
-    logoUrl: "https://tailwindui.com/img/logos/savvycal-logo-gray-900.svg",
-  },
-};
+    logoUrl: "https://tailwindui.com/img/logos/savvycal-logo-gray-900.svg"
+  }
+}
 const testimonials = [
   [
     [
@@ -75,9 +75,9 @@ const testimonials = [
           name: "Leslie Alexander",
           handle: "lesliealexander",
           imageUrl:
-            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        },
-      },
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+        }
+      }
       // More testimonials...
     ],
     [
@@ -87,11 +87,11 @@ const testimonials = [
           name: "Lindsay Walton",
           handle: "lindsaywalton",
           imageUrl:
-            "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        },
-      },
+            "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+        }
+      }
       // More testimonials...
-    ],
+    ]
   ],
   [
     [
@@ -101,9 +101,9 @@ const testimonials = [
           name: "Tom Cook",
           handle: "tomcook",
           imageUrl:
-            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        },
-      },
+            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+        }
+      }
       // More testimonials...
     ],
     [
@@ -113,20 +113,19 @@ const testimonials = [
           name: "Leonard Krasner",
           handle: "leonardkrasner",
           imageUrl:
-            "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        },
-      },
+            "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+        }
+      }
       // More testimonials...
-    ],
-  ],
-];
+    ]
+  ]
+]
 
 function classNames(...classes: any[]) {
-  return classes.filter(Boolean).join(" ");
+  return classes.filter(Boolean).join(" ")
 }
 
 export default async function Example() {
-
   return (
     <div className="bg-white">
       {/* Header */}
@@ -193,7 +192,14 @@ export default async function Example() {
                 app is packed with features to help you stay motivated, like
                 meal plans, recipes, and a community of supportive users.`}
               </p>
-              <PhoneForm />
+              <div className="mt-4">
+                <a
+                  href="/api/auth/signin"
+                  className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:bg-blue-300 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                >
+                  Get Started
+                </a>
+              </div>
             </div>
             <div className="mt-16 sm:mt-24 lg:mt-0 hidden lg:flex lg:flex-shrink-0 lg:flex-grow">
               <svg
@@ -468,7 +474,7 @@ export default async function Example() {
                 className="ml-[max(50%,38rem)] aspect-[1313/771] w-[82.0625rem] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc]"
                 style={{
                   clipPath:
-                    "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+                    "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
                 }}
               />
             </div>
@@ -480,7 +486,7 @@ export default async function Example() {
                 className="ml-[-22rem] aspect-[1313/771] w-[82.0625rem] flex-none origin-top-right rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] xl:ml-0 xl:mr-[calc(50%-12rem)]"
                 style={{
                   clipPath:
-                    "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+                    "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
                 }}
               />
             </div>
@@ -569,5 +575,5 @@ export default async function Example() {
 
       <Footer />
     </div>
-  );
+  )
 }

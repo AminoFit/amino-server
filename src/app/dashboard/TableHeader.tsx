@@ -59,8 +59,19 @@ export function TableHeader() {
         <div className="text-lg tracking-tight text-slate-700">
           {moment(selectedDate).format("dddd, MMMM Do")}
         </div>
-        <div className="text-sm font-medium text-slate-600 mb-4">
+        <div className="text-sm font-medium text-slate-600 mb-1">
           {renderTimeText()}
+        </div>
+
+        <div className="text-sm font-medium text-slate-600 mb-4">
+          {renderTimeText() !== "Today" && (
+            <button
+              type="button"
+              className="rounded bg-white px-2 py-1 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              Go to today
+            </button>
+          )}
         </div>
       </div>
       <div className="grow flex justify-center">

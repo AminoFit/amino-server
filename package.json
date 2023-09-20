@@ -36,8 +36,9 @@
     "eslint-config-next": "13.4.7",
     "formik": "^2.4.2",
     "moment-timezone": "^0.5.43",
-    "next": "^13.4.16-canary.1",
+    "next": "^13.4.19",
     "next-auth": "^4.22.1",
+    "nodemailer": "^6.9.5",
     "openai": "^3.3.0",
     "pgvector": "^0.1.4",
     "postcss": "8.4.24",
@@ -55,6 +56,7 @@
     "yup": "^1.2.0"
   },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.10",
     "@types/underscore": "^1.11.5",
     "@types/vcards-js": "^2.10.2",
     "prisma": "^4.16.2"
