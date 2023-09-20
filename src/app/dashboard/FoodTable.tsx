@@ -19,6 +19,7 @@ import axios from "axios"
 
 export function FoodTable() {
   const searchParams = useSearchParams()
+  const [copyYesterdayError, setCopyYesterdayError] = useState("")
 
   let selectedDate = moment()
   if (searchParams.get("date") && moment(searchParams.get("date")).isValid()) {
@@ -73,6 +74,11 @@ export function FoodTable() {
         meal
       }
     })
+    console.log("data", data)
+    if (!data || data.length === 0) {
+      setCopyYesterdayError("No food logged yesterday.")
+      return
+    }
     refetch()
   }
 
@@ -90,7 +96,7 @@ export function FoodTable() {
               <div className="grid grid-cols-1 gap-2">
                 {!!groups[foodGroup] ? (
                   (groups[foodGroup] || []).map((foodItem) => (
-                    <FoodRow foodItem={foodItem} key={foodItem} />
+                    <FoodRow foodItem={foodItem} key={foodItem.id} />
                   ))
                 ) : (
                   <div className="py-12 text-sm text-gray-500 text-center text-zinc-700">
@@ -276,10 +282,8 @@ function FoodRowEmpty() {
 }
 function FoodRowLoading() {
   return (
-    <div>
-      <div className="whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center">
-        <div className="text-zinc-200">Loading food for this day...</div>
-      </div>
+    <div className="col-span-3 whitespace-nowrap px-3 py-16 text-sm text-gray-500 text-center text-zinc-700 rounded-md bg-black/10">
+      Loading food for this day...
     </div>
   )
 }

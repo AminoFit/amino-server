@@ -1,23 +1,23 @@
-"use client";
+"use client"
 
-import { Dialog } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import classNames from "classnames";
-import { useSession } from "next-auth/react";
+import { Dialog } from "@headlessui/react"
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
+import classNames from "classnames"
+import { useSession } from "next-auth/react"
 
-import { useState } from "react";
+import { useState } from "react"
 
 const navigation = [
   { name: "Amino", href: "/" },
   // { name: "Features", href: "#" },
-  { name: "Pricing", href: "/pricing" },
-];
+  { name: "Pricing", href: "/pricing" }
+]
 
 export default function MarketingNav() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [bannerOpen, setBannerOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [bannerOpen, setBannerOpen] = useState(false)
 
-  const { data, status, update } = useSession();
+  const { data, status, update } = useSession()
 
   const renderLogin = () => {
     if (status === "loading") {
@@ -25,7 +25,7 @@ export default function MarketingNav() {
         <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
           Loading...
         </a>
-      );
+      )
     }
     if (status === "authenticated") {
       return (
@@ -35,18 +35,18 @@ export default function MarketingNav() {
         >
           My Dashboard
         </a>
-      );
+      )
     }
 
     return (
       <a
-        href="/login"
+        href="/api/auth/signin"
         className="text-sm font-semibold leading-6 text-gray-900"
       >
         Log in&nbsp;<span aria-hidden="true">&rarr;</span>
       </a>
-    );
-  };
+    )
+  }
 
   return (
     <>
@@ -82,7 +82,7 @@ export default function MarketingNav() {
       <header
         className={classNames("absolute inset-x-0 z-50", {
           "top-10": bannerOpen,
-          "top-0": !bannerOpen,
+          "top-0": !bannerOpen
         })}
       >
         <nav
@@ -92,7 +92,11 @@ export default function MarketingNav() {
           <div className="flex lg:flex-1">
             <a href="/dashboard" className="-m-1.5 p-1.5">
               <span className="sr-only">Your Company</span>
-              <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
+              <img
+                className="h-8 w-auto"
+                src="logos/logo-light.svg"
+                alt="Amino Logo"
+              />
             </a>
           </div>
           <div className="flex lg:hidden">
@@ -131,7 +135,11 @@ export default function MarketingNav() {
             <div className="flex items-center justify-between">
               <a href="#" className="-m-1.5 p-1.5">
                 <span className="sr-only">Your Company</span>
-                <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
+                <img
+                  className="h-8 w-auto"
+                  src="logos/logo-light.svg"
+                  alt="Amino Logo"
+                />
               </a>
               <button
                 type="button"
@@ -162,5 +170,5 @@ export default function MarketingNav() {
         </Dialog>
       </header>
     </>
-  );
+  )
 }
