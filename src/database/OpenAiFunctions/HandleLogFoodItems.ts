@@ -581,17 +581,20 @@ async function addFoodItemToDatabase(
     // If the highest similarity score is greater than COSINE_THRESHOLD, add the food item manually
     if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
       console.log("Found a match with similarity", highestSimilarityItem.similarityToQuery)
-      let foodItemToSave = highestSimilarityItem.foodItem
+      let foodItemToSave: FoodItemWithNutrientsAndServing = highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing
       if (
         highestSimilarityItem.foodItem.defaultServingWeightGram === 0 ||
-        highestSimilarityItem.foodItem.defaultServingWeightGram === null
+        highestSimilarityItem.foodItem.defaultServingWeightGram === null ||
+        highestSimilarityItem.foodItem.defaultServingWeightGram === undefined
       ) {
         foodItemToSave = await foodItemMissingFieldComplete(
           highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
           user
         )
+        console.log("Food item after missing field completion")
+        console.dir(foodItemToSave, { depth: null })
       }
-      const newFood = await addFoodItemPrisma(foodItemToSave as FoodItemWithNutrientsAndServing, messageId)
+      const newFood = await addFoodItemPrisma(foodItemToSave, messageId)
       return newFood
     }
 

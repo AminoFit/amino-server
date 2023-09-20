@@ -4,7 +4,7 @@ import {
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
 import { recordQuery } from "../../utils/apiUsageLogging"
-import { levenshteinDistance, wordLevenshtein } from "../../utils/nlpHelper"
+import { levenshteinDistance, wordLevenshtein, toTitleCase } from "../../utils/nlpHelper"
 
 const COSINE_THRESHOLD = 0.85
 const COSINE_THRESHOLD_STOP = 0.95
@@ -89,8 +89,8 @@ async function filterFoodsByEmbeddingSimilarity(
   for (let food of foods) {
     // Get the embedding for the food description
     const nameToEmbed = food.brandName
-      ? `${food.description} - ${food.brandName}`
-      : food.description
+      ? `${toTitleCase(food.description)} - ${food.brandName}`
+      : toTitleCase(food.description)
     const foodResultEmbedding = await getEmbedding([nameToEmbed.toLowerCase()])
 
     // Calculate the cosine similarity

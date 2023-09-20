@@ -2,6 +2,7 @@ import axios from "axios"
 import { recordQuery } from "@/utils/apiUsageLogging"
 import { UsdaFoodItem } from "./usdaInterfaceHelper"
 import { mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
+import { toTitleCase } from "../../utils/nlpHelper"
 
 function extractFoodInfo(
   foodItem: any,
@@ -120,7 +121,7 @@ function extractFoodInfo(
     })
   }
 
-  const itemName = foodItem.description
+  const itemName = toTitleCase(foodItem.description)
   const branded = foodItem.dataType === "Branded"
   const brandName = branded ? foodItem.brandName : null
   const upc = branded ? foodItem.gtinUpc : undefined
@@ -336,7 +337,7 @@ export async function getUsdaFoodsInfo(
       console.error(error.message)
     }
     throw new Error(
-      `Error fetching multiple food details from USDA API: ${error}`
+      `Error fetching multiple food details from USDA API while searching for ${params.fdcIds}: ${error}`
     )
   }
 }

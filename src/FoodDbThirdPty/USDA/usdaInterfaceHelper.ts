@@ -1,4 +1,5 @@
 import { FoodItem, Nutrient, Serving } from "@prisma/client"
+import { toTitleCase } from "../../utils/nlpHelper"
 
 interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
 
@@ -74,7 +75,7 @@ export function mapUsdaFoodItemToFoodItem(
     userId: null,
     foodInfoSource: "USDA",
     messageId: null,
-    name: usdaFoodItem.itemName,
+    name: toTitleCase(usdaFoodItem.itemName),
     brand: usdaFoodItem.brandName || "",
     weightUnknown: false,
     defaultServingWeightGram:

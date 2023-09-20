@@ -73,6 +73,12 @@ const updateFoodItem = (
     foodItem.weightUnknown = false
   }
 
+  if (foodItem.isLiquid && foodItem.defaultServingLiquidMl && autocompleteResults.liquid_density_if_liquid) {
+    if (autocompleteResults.liquid_density_if_liquid > 0.5 && autocompleteResults.liquid_density_if_liquid < 1.5) {
+      foodItem.defaultServingWeightGram = foodItem.defaultServingLiquidMl * autocompleteResults.liquid_density_if_liquid
+    }
+  }
+
   // Update servings
   foodItem.Servings = foodItem.Servings.map((serving) => {
     const newServing = autocompleteResults.servings.find(
@@ -91,6 +97,7 @@ export async function foodItemMissingFieldComplete(
   foodItem: FoodItemWithNutrientsAndServing,
   user: User
 ): Promise<FoodItemWithNutrientsAndServing> {
+  console.log("Food Item is missing some field, asking LLM: ", foodItem.name)
   const system =
     "You are a bot that autocompletes food item missing elements. Call the autocomplete_missing_fields function to do so."
 
@@ -252,7 +259,37 @@ async function testRun() {
     Servings: [serving, serving2],
     Nutrients: []
   }
-  console.dir(await foodItemMissingFieldComplete(foodItem, user), {
+
+  const fairlifeMilk: FoodItemWithNutrientsAndServing = {
+    id: 2342,
+    UPC: null,
+    externalId: '5ffefe660027528b35b714bc',
+    name: '2% Reduced Ultra-Filtered Milk',
+    brand: 'Fairlife',
+    knownAs: [],
+    description: null,
+    weightUnknown: false,
+    defaultServingWeightGram: null,
+    defaultServingLiquidMl: 240,
+    isLiquid: true,
+    kcalPerServing: 120,
+    totalFatPerServing: 4.5,
+    satFatPerServing: 3,
+    transFatPerServing: 0,
+    carbPerServing: 6,
+    fiberPerServing: 0,
+    sugarPerServing: 6,
+    addedSugarPerServing: 0,
+    proteinPerServing: 13,
+    lastUpdated: new Date("2023-09-20T17:07:06.802Z"),
+    verified: true,
+    userId: null,
+    foodInfoSource: 'NUTRITIONIX',
+    messageId: null,
+    Servings: [ serving2 ],
+    Nutrients: []
+  }
+  console.dir(await foodItemMissingFieldComplete(fairlifeMilk, user), {
     depth: null
   })
 }
