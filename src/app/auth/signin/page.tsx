@@ -97,7 +97,7 @@ export default function Example() {
           )}
 
           <p className="mt-10 text-center text-sm text-gray-500">
-            Not a member? Enter your email here and we'll get you set up!
+            {"Not a member? Enter your email here and we'll get you set up!"}
           </p>
         </div>
       </div>
