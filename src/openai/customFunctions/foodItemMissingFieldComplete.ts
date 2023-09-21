@@ -193,6 +193,45 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
 }
 
 async function testRun() {
+  const stringifyFoodItem = (foodItem: FoodItemWithNutrientsAndServing): string => {
+    let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`;
+
+    if (foodItem.brand) {
+      output += `BrandName: ${foodItem.brand}\n`;
+    }
+  
+    output += `DefaultServingGrams: ${foodItem.defaultServingWeightGram ? Number(foodItem.defaultServingWeightGram.toPrecision(4)) : 'N/A'}\n`;
+    output += `isLiquid: ${foodItem.isLiquid}\n`;
+  
+    if (foodItem.isLiquid) {
+      output += `DefaultServingMl: ${foodItem.defaultServingLiquidMl ? Number(foodItem.defaultServingLiquidMl.toPrecision(4)) : 'N/A'}\n`;
+    }
+  
+    output += `Calories: ${Number(foodItem.kcalPerServing.toPrecision(4))}\nCarbs: ${foodItem.carbPerServing}\n`;
+    output += `TotalFat: ${Number(foodItem.totalFatPerServing.toPrecision(4))}\nProtein: ${foodItem.proteinPerServing}\n`;
+  
+    // Conditional appending
+    if (foodItem.satFatPerServing != null) output += `SatFat: ${Number(foodItem.satFatPerServing.toPrecision(4))}\n`;
+    if (foodItem.transFatPerServing != null) output += `TransFat: ${Number(foodItem.transFatPerServing.toPrecision(4))}\n`;
+    if (foodItem.fiberPerServing != null) output += `Fiber: ${Number(foodItem.fiberPerServing.toPrecision(4))}\n`;
+    if (foodItem.addedSugarPerServing != null) output += `AddedSugar: ${Number(foodItem.addedSugarPerServing.toPrecision(4))}\n`;
+  
+    // Iterate through Servings and Nutrients
+    output += "Servings: [\n";
+    for (const serving of foodItem.Servings) {
+      output += `  { servingWeightGrams: ${serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : 'N/A'}, servingName: "${serving.servingName}" },\n`;
+    }
+    output += "]\n";
+  
+    output += "Nutrients: [\n";
+    for (const nutrient of foodItem.Nutrients) {
+      output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`;
+    }
+    output += "]";
+  
+    return output;
+  }
+
   const user: User = {
     id: "clklnwf090000lzssqhgfm8kr",
     firstName: "John",
@@ -270,9 +309,9 @@ async function testRun() {
     description: null,
     weightUnknown: false,
     defaultServingWeightGram: null,
-    defaultServingLiquidMl: 240,
+    defaultServingLiquidMl: 240.01,
     isLiquid: true,
-    kcalPerServing: 120,
+    kcalPerServing: 120.0005,
     totalFatPerServing: 4.5,
     satFatPerServing: 3,
     transFatPerServing: 0,
@@ -289,9 +328,11 @@ async function testRun() {
     Servings: [ serving2 ],
     Nutrients: []
   }
-  console.dir(await foodItemMissingFieldComplete(fairlifeMilk, user), {
-    depth: null
-  })
+  // console.dir(await foodItemMissingFieldComplete(fairlifeMilk, user), {
+  //   depth: null
+  // })
+
+  console.log(stringifyFoodItem(fairlifeMilk))
 }
 
 //testRun()
