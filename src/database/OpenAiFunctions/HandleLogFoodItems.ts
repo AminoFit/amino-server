@@ -43,34 +43,44 @@ type FoodItemPropertiesToRemove =
   | "verified"
   | "userId"
 
-function stringifyFoodItem(foodItem: NxFoodItemResponse): string {
-  // Create a new object excluding the properties you want to remove
-  const result: Partial<NxFoodItemResponse> = { ...foodItem }
-  ;(
-    [
-      "id",
-      "knownAs",
-      "description",
-      "transFatPerServing",
-      "addedSugarPerServing",
-      "lastUpdated",
-      "verified",
-      "userId"
-    ] as Array<FoodItemPropertiesToRemove>
-  ).forEach((prop) => {
-    delete result[prop]
-  })
-
-  // Clean up any properties with value 0 or null
-  for (const key in result) {
-    if (result[key as keyof NxFoodItemResponse] === 0 || result[key as keyof NxFoodItemResponse] === null) {
-      delete result[key as keyof NxFoodItemResponse]
+  function stringifyFoodItem(foodItem: FoodItemWithNutrientsAndServing): string {
+    let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`;
+  
+    if (foodItem.brand) {
+      output += `BrandName: ${foodItem.brand}\n`;
     }
+  
+    output += `DefaultServingGrams: ${foodItem.defaultServingWeightGram ?? 'N/A'}\n`;
+    output += `isLiquid: ${foodItem.isLiquid}\n`;
+  
+    if (foodItem.isLiquid) {
+      output += `DefaultServingMl: ${foodItem.defaultServingLiquidMl ?? 'N/A'}\n`;
+    }
+  
+    output += `Calories: ${foodItem.kcalPerServing}\nCarbs: ${foodItem.carbPerServing}\n`;
+    output += `TotalFat: ${foodItem.totalFatPerServing}\nProtein: ${foodItem.proteinPerServing}\n`;
+  
+    // Conditional appending
+    if (foodItem.satFatPerServing != null) output += `SatFat: ${foodItem.satFatPerServing}\n`;
+    if (foodItem.transFatPerServing != null) output += `TransFat: ${foodItem.transFatPerServing}\n`;
+    if (foodItem.fiberPerServing != null) output += `Fiber: ${foodItem.fiberPerServing}\n`;
+    if (foodItem.addedSugarPerServing != null) output += `AddedSugar: ${foodItem.addedSugarPerServing}\n`;
+  
+    // Iterate through Servings and Nutrients
+    output += "Servings: [\n";
+    for (const serving of foodItem.Servings) {
+      output += `  { servingWeightGrams: ${serving.servingWeightGram ?? 'N/A'}, servingName: "${serving.servingName}" },\n`;
+    }
+    output += "]\n";
+  
+    output += "Nutrients: [\n";
+    for (const nutrient of foodItem.Nutrients) {
+      output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`;
+    }
+    output += "]";
+  
+    return output;
   }
-
-  // Convert the result object to a JSON string
-  return JSON.stringify(result)
-}
 
 function constructFoodRequestString(foodToLog: FoodItemToLog) {
   let result = ""
@@ -530,7 +540,7 @@ async function addFoodItemToDatabase(
     }[] = []
 
     // create string name for food request
-    let foodItemRequestString: string = constructFoodRequestString(foodToLog)
+    let foodItemRequestString: string = "Food we need to generate info for:\n"+constructFoodRequestString(foodToLog)+"\n___\n"
 
     if (nxFoodInfoResponse != null && nxFoodInfoResponse.length > 0) {
       // If we have a match, use the first one
@@ -546,7 +556,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString + "\n Some food info that may be relevant\n" + stringifyFoodItem(food)
+          foodItemRequestString + "\nSome food info that may be relevant\n" + stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
       }
     }
 
@@ -564,7 +574,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString + "\n Some food info that may be relevant\n" + JSON.stringify(food)
+          foodItemRequestString + "\n Some food info that may be relevant\n" + stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
       }
     }
 
@@ -582,7 +592,7 @@ async function addFoodItemToDatabase(
       // Construct the request string for the OpenAI foodItemCompletion function
       if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
         foodItemRequestString =
-          foodItemRequestString + "\n Some food info that may be relevant\n" + JSON.stringify(food)
+          foodItemRequestString + "\n Some food info that may be relevant\n" + stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
       }
     }
 
@@ -617,7 +627,7 @@ async function addFoodItemToDatabase(
     console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
 
     let food: FoodInfo = foodItemInfo
-    console.log("food req string:", foodItemRequestString)
+    console.log("food req string:\n", foodItemRequestString)
     const newFood = await addFoodItemPrisma(
       mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing,
       messageId
