@@ -222,7 +222,7 @@ model FoodItem {
   Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   embedding                Unsupported("vector(1536)")?
 
-  @@unique([name, brand])
+  @@unique([name, brand], name: "name_brand")
   @@unique([externalId, foodInfoSource])
 }
 

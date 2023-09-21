@@ -26,6 +26,7 @@ export interface BrandedFoodResponse {
     serving_qty: number
     serving_unit: string
     nf_metric_qty: number
+    nf_metric_uom: string
     serving_weight_grams: number
     nf_calories: number
     nf_total_fat: number
@@ -91,4 +92,4 @@ export async function getBrandedFoodInfo(
 
 // debug
 // getBrandedFoodInfo({ nix_item_id: "61cc6887a8c268000a380d73" }).then((res) => console.log(JSON.stringify(res)))
-//getBrandedFoodInfo({ nix_item_id: "639c50154711260008df8557" }).then((res) => console.log(JSON.stringify(res)))
+//getBrandedFoodInfo({ nix_item_id: "5ffefe660027528b35b714bc" }).then((res) => console.log(JSON.stringify(res)))
