@@ -50,26 +50,26 @@ type FoodItemPropertiesToRemove =
       output += `BrandName: ${foodItem.brand}\n`;
     }
   
-    output += `DefaultServingGrams: ${foodItem.defaultServingWeightGram ?? 'N/A'}\n`;
+    output += `DefaultServingGrams: ${foodItem.defaultServingWeightGram ? foodItem.defaultServingWeightGram.toFixed(3) : 'N/A'}\n`;
     output += `isLiquid: ${foodItem.isLiquid}\n`;
   
     if (foodItem.isLiquid) {
-      output += `DefaultServingMl: ${foodItem.defaultServingLiquidMl ?? 'N/A'}\n`;
+      output += `DefaultServingMl: ${foodItem.defaultServingLiquidMl ? foodItem.defaultServingLiquidMl.toFixed(3) : 'N/A'}\n`;
     }
   
-    output += `Calories: ${foodItem.kcalPerServing}\nCarbs: ${foodItem.carbPerServing}\n`;
-    output += `TotalFat: ${foodItem.totalFatPerServing}\nProtein: ${foodItem.proteinPerServing}\n`;
+    output += `Calories: ${foodItem.kcalPerServing.toFixed(3)}\nCarbs: ${foodItem.carbPerServing}\n`;
+    output += `TotalFat: ${foodItem.totalFatPerServing.toFixed(3)}\nProtein: ${foodItem.proteinPerServing}\n`;
   
     // Conditional appending
-    if (foodItem.satFatPerServing != null) output += `SatFat: ${foodItem.satFatPerServing}\n`;
-    if (foodItem.transFatPerServing != null) output += `TransFat: ${foodItem.transFatPerServing}\n`;
-    if (foodItem.fiberPerServing != null) output += `Fiber: ${foodItem.fiberPerServing}\n`;
-    if (foodItem.addedSugarPerServing != null) output += `AddedSugar: ${foodItem.addedSugarPerServing}\n`;
+    if (foodItem.satFatPerServing != null) output += `SatFat: ${foodItem.satFatPerServing.toFixed(3)}\n`;
+    if (foodItem.transFatPerServing != null) output += `TransFat: ${foodItem.transFatPerServing.toFixed(3)}\n`;
+    if (foodItem.fiberPerServing != null) output += `Fiber: ${foodItem.fiberPerServing.toFixed(3)}\n`;
+    if (foodItem.addedSugarPerServing != null) output += `AddedSugar: ${foodItem.addedSugarPerServing.toFixed(3)}\n`;
   
     // Iterate through Servings and Nutrients
     output += "Servings: [\n";
     for (const serving of foodItem.Servings) {
-      output += `  { servingWeightGrams: ${serving.servingWeightGram ?? 'N/A'}, servingName: "${serving.servingName}" },\n`;
+      output += `  { servingWeightGrams: ${serving.servingWeightGram ? serving.servingWeightGram.toFixed(3) : 'N/A'}, servingName: "${serving.servingName}" },\n`;
     }
     output += "]\n";
   
