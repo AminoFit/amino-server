@@ -41,7 +41,7 @@ export function TableHeader() {
   }
 
   return (
-    <div className="flex justify-center text-center mt-4">
+    <div className="flex justify-center text-center mt-10 mb-6">
       <div className="grow flex justify-center">
         <button
           type="button"
