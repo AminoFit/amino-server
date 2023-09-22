@@ -53,6 +53,30 @@ export function FoodTable() {
 
   const meals = ["breakfast", "lunch", "dinner"]
 
+  const totalCalories = _.chain(foods || [])
+    .reduce((memo, food) => {
+      return memo + getNormalizedFoodValue(food, "kcalPerServing")
+    }, 0)
+    .value()
+
+  const totalCarbs = _.chain(foods || [])
+    .reduce((memo, food) => {
+      return memo + getNormalizedFoodValue(food, "carbPerServing")
+    }, 0)
+    .value()
+
+  const totalFats = _.chain(foods || [])
+    .reduce((memo, food) => {
+      return memo + getNormalizedFoodValue(food, "totalFatPerServing")
+    }, 0)
+    .value()
+
+  const totalProtein = _.chain(foods || [])
+    .reduce((memo, food) => {
+      return memo + getNormalizedFoodValue(food, "proteinPerServing")
+    }, 0)
+    .value()
+
   const copyYesterday = async (meal: string, today: string) => {
     console.log("copy yesterday", meal, today)
     const yesterday = moment(selectedDate).subtract(1, "day")
@@ -77,23 +101,47 @@ export function FoodTable() {
     if (isLoading) return <FoodRowLoading />
     return (
       <>
-        <div className="mb-2 grid  grid-cols-7 gap-4">
+        <div className="mb-2 grid  grid-cols-7 gap-2">
           <div className="col-span-3"></div>
-          <div className="bg-amino-200 rounded-md p-2 text-center">
-            <div className="font-bold">Calories</div>
-            <div className="text-sm text-zinc-600">kCals</div>
+          <div className="bg-amino-200 rounded-t-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Calories</span>
+              <span className="md:hidden">Cals</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              <span className="hidden md:inline">cals</span>
+              <span className="md:hidden"></span>
+            </div>
           </div>
-          <div className="bg-amino-200 rounded-md p-2 text-center">
-            <div className="font-bold">Carbs</div>
-            <div className="text-sm text-zinc-600">grams</div>
+          <div className="bg-amino-200 rounded-t-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Carbs</span>
+              <span className="md:hidden">C</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              <span className="hidden md:inline">grams</span>
+              <span className="md:hidden">g</span>
+            </div>
           </div>
-          <div className="bg-amino-200 rounded-md p-2 text-center">
-            <div className="font-bold">Fat</div>
-            <div className="text-sm text-zinc-600">grams</div>
+          <div className="bg-amino-200 rounded-t-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Fat</span>
+              <span className="md:hidden">F</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              <span className="hidden md:inline">grams</span>
+              <span className="md:hidden">g</span>
+            </div>
           </div>
-          <div className="bg-amino-200 rounded-md p-2 text-center">
-            <div className="font-bold">Protein</div>
-            <div className="text-sm text-zinc-600">grams</div>
+          <div className="bg-amino-200 rounded-t-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Protein</span>
+              <span className="md:hidden">P</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              <span className="hidden md:inline">grams</span>
+              <span className="md:hidden">g</span>
+            </div>
           </div>
         </div>
         {meals.map((meal) => {
@@ -120,6 +168,51 @@ export function FoodTable() {
             </div>
           )
         })}
+        <div className="mb-2 grid  grid-cols-7 gap-2">
+          <div className="col-span-3"></div>
+          <div className="bg-amino-200 rounded-b-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Total</span>
+              <span className="md:hidden">Cals</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              {Math.round(totalCalories).toLocaleString()}
+              <span className="hidden md:inline"> cals</span>
+              <span className="md:hidden"></span>
+            </div>
+          </div>
+          <div className="bg-amino-200 rounded-b-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Carb</span>
+              <span className="md:hidden">C</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              {Math.round(totalCarbs).toLocaleString()}
+              <span className="hidden md:inline"> grams</span>
+              <span className="md:hidden">g</span>
+            </div>
+          </div>
+          <div className="bg-amino-200 rounded-b-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Fat</span>
+              <span className="md:hidden">F</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              {Math.round(totalFats).toLocaleString()} <span className="hidden md:inline"> grams</span>
+              <span className="md:hidden">g</span>
+            </div>
+          </div>
+          <div className="bg-amino-200 rounded-b-md p-2 text-center">
+            <div className="font-bold">
+              <span className="hidden md:inline">Protein</span>
+              <span className="md:hidden">P</span>
+            </div>
+            <div className="text-sm text-zinc-600">
+              {Math.round(totalProtein).toLocaleString()} <span className="hidden md:inline"> grams</span>
+              <span className="md:hidden">g</span>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -184,15 +277,23 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         food={foodItem}
       />
 
-      <div className="mb-2 grid grid-cols-7 gap-4">
+      <div className="mb-1 grid grid-cols-7 gap-2 border-y-2">
         <div className="col-span-3 pl-5">
-          <div className="capitalize">{name}</div>
+          <div className="capitalize">
+            {name}{" "}
+            <PencilIcon
+              className="h-3 w-3 inline cursor-pointer text-zinc-300"
+              onClick={() => {
+                setFoodEditModalOpen(true)
+              }}
+            />
+          </div>
           <div className="text-sm text-zinc-600">{servingSubtext}</div>
         </div>
-        <div className="rounded-md p-2 text-center">
+        <div className="p-2 text-center bg-zinc-100">
           <div className="">{calories}</div>
         </div>
-        <div className="rounded-md p-2 text-center">
+        <div className="m-2 text-center">
           <div className="">{Math.round(getNormalizedFoodValue(foodItem, "carbPerServing")).toLocaleString()}</div>
         </div>
         <div className="rounded-md p-2 text-center">
