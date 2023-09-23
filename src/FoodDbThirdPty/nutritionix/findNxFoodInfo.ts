@@ -5,24 +5,18 @@ import {
   NutritionixBrandedItem,
   NutritionixCommonItem
 } from "./searchFoodIds"
-import {
-  getNonBrandedFoodInfo,
-  NxNonBrandedResponse
-} from "./getNonBrandedFoodInfo"
-import {
-  getEmbedding,
-  cosineSimilarity
-} from "../../openai/utils/embeddingsHelper"
+import { getNonBrandedFoodInfo, NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
+import { getEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { CreateEmbeddingResponseDataInner } from "openai"
-import {
-  NxFoodItemResponse,
-  mapFoodResponseToFoodItem
-} from "./nxInterfaceHelper"
+import { NxFoodItemResponse, mapFoodResponseToFoodItem } from "./nxInterfaceHelper"
+import { FoodInfoSource } from "@prisma/client"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 
 const COSINE_THRESHOLD = 0.8
 export interface FoodQuery {
   food_name: string
-  lemmatized_database_search_term: string
+  food_full_name: string
+  queryEmbedding: number[]
   branded?: boolean
   brand_name?: string
 }
@@ -39,26 +33,24 @@ function isNutritionixBrandedItem(obj: any): obj is NutritionixBrandedItem {
 
 // Utility function to decide if brand name should be added
 const includeBrandName = (description: string, brand: string) => {
-  return description.toLowerCase().includes(brand.toLowerCase())
-    ? description
-    : `${description} - ${brand}`
+  return description.toLowerCase().includes(brand.toLowerCase()) ? description : `${description} - ${brand}`
 }
 
 export async function findNxFoodInfo(
   foodQuery: FoodQuery
-): Promise<NxFoodItemResponse[] | null> {
+): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
   let foodResults: NutritionixSearchInstantResponse = await searchFoodIds({
-    query: foodQuery.lemmatized_database_search_term,
+    query: foodQuery.food_full_name,
     branded: foodQuery.branded
   })
 
   // Create an array of all queries to get embeddings for
   const mainQuery = includeBrandName(
-    foodQuery.lemmatized_database_search_term,
+    foodQuery.food_full_name,
     foodQuery.brand_name || ""
   ).toLowerCase()
 
-  const queryEmbedding = (await getEmbedding([mainQuery])).data[0].embedding
+  const queryEmbedding = foodQuery.queryEmbedding
   console.log("query NX:", mainQuery)
 
   // create an array to store cosine similarities and embeddings
@@ -71,21 +63,16 @@ export async function findNxFoodInfo(
   if (brandedFoodOptions) {
     const allQueries = [
       ...(brandedFoodOptions?.map((item) =>
-        includeBrandName(
-          item.food_name,
-          item.brand_name_item_name
-        ).toLowerCase()
+        includeBrandName(item.food_name, item.brand_name_item_name).toLowerCase()
       ) ?? [])
     ]
 
     // get all embeddings in a single API call
     const allEmbeddings = await getEmbedding(allQueries)
 
-    const itemEmbeddings = allEmbeddings.data
-      .map(
-        (embeddingObject: CreateEmbeddingResponseDataInner) =>
-          embeddingObject.embedding
-      )
+    const itemEmbeddings = allEmbeddings.data.map(
+      (embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding
+    )
 
     for (let i = 0; i < brandedFoodOptions.length; i++) {
       // calculate cosine similarity
@@ -104,15 +91,6 @@ export async function findNxFoodInfo(
     // sort items by cosine similarity
     cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
-    // Log the desired attributes for each of the top 5 items
-    /*for (let i = 0; i < cosineSimilaritiesAndEmbeddings.length; i++) {
-      const itemInfo = cosineSimilaritiesAndEmbeddings[i]
-      console.log(`Food Name: ${itemInfo.item.food_name}`)
-      console.log(`ID: ${itemInfo.item.nix_item_id}`)
-      console.log(`Cosine Similarity: ${itemInfo.similarity}`)
-      console.log(`Brand Name: ${itemInfo.item.brand_name}`)
-      console.log("-------------------------------")
-    }*/
   }
   // handle the non-branded case here...
   let commonFoodOptions: NutritionixCommonItem[] = foodResults.common
@@ -120,24 +98,19 @@ export async function findNxFoodInfo(
   // Only process if we have common food options to evaluate
   if (commonFoodOptions) {
     // create an array of all queries to get embeddings for
-    const commondFoodQueries =
-      commonFoodOptions?.map((item) => `${item.food_name}`.toLowerCase()) ?? []
+    const commondFoodQueries = commonFoodOptions?.map((item) => `${item.food_name}`.toLowerCase()) ?? []
 
     // get all embeddings in a single API call
     const commondFoodEmbeddings = await getEmbedding(commondFoodQueries)
 
     // extract item embeddings
     const commonFoodEmbeddings = commondFoodEmbeddings.data.map(
-      (embeddingObject: CreateEmbeddingResponseDataInner) =>
-        embeddingObject.embedding
+      (embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding
     )
 
     for (let i = 0; i < commonFoodOptions.length; i++) {
       // calculate cosine similarity
-      const similarity = cosineSimilarity(
-        queryEmbedding,
-        commonFoodEmbeddings[i]
-      )
+      const similarity = cosineSimilarity(queryEmbedding, commonFoodEmbeddings[i])
 
       // add to array only if similarity is 0.8 or more
       if (similarity >= COSINE_THRESHOLD) {
@@ -154,27 +127,35 @@ export async function findNxFoodInfo(
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
   console.log("Nutritionix results:")
-  cosineSimilaritiesAndEmbeddings.slice(0,3).forEach((itemInfo) => {
+  cosineSimilaritiesAndEmbeddings.slice(0, 3).forEach((itemInfo) => {
     if (isNutritionixBrandedItem(itemInfo.item)) {
-      console.log(`Item: ${itemInfo.item.food_name} by ${itemInfo.item.brand_name} has similarity ${itemInfo.similarity}`);
+      console.log(
+        `Item: ${itemInfo.item.food_name} by ${itemInfo.item.brand_name} has similarity ${itemInfo.similarity}`
+      )
     } else {
-      console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`);
+      console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`)
     }
-  });
-
-  // Define the number of top items to retrieve
-  const topItemsCount = 1
+  })
 
   // Take only the top items as per 'topItemsCount'
-  const topSimilarItems = cosineSimilaritiesAndEmbeddings.slice(
-    0,
-    topItemsCount
-  )
+  const topSimilarItems = cosineSimilaritiesAndEmbeddings.slice(0, 3)
 
   // Get the full info for each of the top items
   if (topSimilarItems.length === 0) {
     return null
   }
+
+  const mappedResults: foodSearchResultsWithSimilarityAndEmbedding[] = cosineSimilaritiesAndEmbeddings.map(item => ({
+    foodEmbedding: item.embedding,
+    similarityToQuery: item.similarity,
+    foodSource: FoodInfoSource.NUTRITIONIX,
+    foodName: item.item.food_name,
+    externalId: 'nix_item_id' in item.item ? item.item.nix_item_id : undefined,
+    foodBrand: 'nix_item_id' in item.item ? item.item.brand_name : undefined,
+  }));
+
+  return mappedResults.slice(0, 3)
+  /*
   if (isNutritionixBrandedItem(topSimilarItems[0].item)) {
     const getFoodInfoPromises = topSimilarItems.map((itemInfo) =>
       getBrandedFoodInfo({
@@ -213,6 +194,7 @@ export async function findNxFoodInfo(
 
     return commondFoodItems
   }
+  */
 }
 
 async function runTest() {
@@ -241,21 +223,18 @@ async function runTest() {
 
   const baseEmbedding = foodEmbedding[0].embedding
   for (let i = 1; i < foodEmbedding.length; i++) {
-    const similarity = cosineSimilarity(
-      baseEmbedding,
-      foodEmbedding[i].embedding
-    )
-    console.log(
-      `Similarity between "${foodEmbedding[0].query}" and "${foodEmbedding[i].query}": ${similarity}`
-    )
+    const similarity = cosineSimilarity(baseEmbedding, foodEmbedding[i].embedding)
+    console.log(`Similarity between "${foodEmbedding[0].query}" and "${foodEmbedding[i].query}": ${similarity}`)
   }
 }
 
 async function testSearch() {
+  const query = "Starbucks Iced Latte whole milk, Venti"
+  const queryEmbedding = (await getEmbedding([query])).data[0].embedding
   const latteResponse = await findNxFoodInfo({
     food_name: "Starbucks Iced Latte",
-    //user_food_descriptive_name: "Starbucks Iced Latte whole milk, Venti",
-    lemmatized_database_search_term: "Starbucks Iced Latte whole milk, Venti",
+    queryEmbedding: queryEmbedding,
+    food_full_name: "Starbucks Iced Latte whole milk, Venti",
     branded: true
   })
   console.log(JSON.stringify(latteResponse, null, 2))
@@ -285,7 +264,6 @@ async function testSearch() {
   console.log(JSON.stringify(lasagnaResponse, null, 2))*/
   /*const latteResponse: BrandedFoodResponse[] = JSON.parse(`[{"foods":[{"food_name":"Iced Caffe Latte with 2% Milk, Tall","brand_name":"Starbucks","serving_qty":12,"serving_unit":"fl oz","serving_weight_grams":null,"nf_metric_qty":null,"nf_metric_uom":null,"nf_calories":100,"nf_total_fat":3.5,"nf_saturated_fat":2,"nf_cholesterol":15,"nf_sodium":90,"nf_total_carbohydrate":10,"nf_dietary_fiber":0,"nf_sugars":9,"nf_protein":6,"nf_potassium":null,"nf_p":null,"full_nutrients":[{"attr_id":203,"value":6},{"attr_id":204,"value":3.5},{"attr_id":205,"value":10},{"attr_id":208,"value":100},{"attr_id":269,"value":9},{"attr_id":291,"value":0},{"attr_id":307,"value":90},{"attr_id":601,"value":15},{"attr_id":605,"value":0},{"attr_id":606,"value":2}],"nix_brand_name":"Starbucks","nix_brand_id":"513fbc1283aa2dc80c00001f","nix_item_name":"Iced Caffe Latte with 2% Milk, Tall","nix_item_id":"ddee444151a811d119818684","metadata":{},"source":8,"ndb_no":null,"tags":null,"alt_measures":null,"lat":null,"lng":null,"photo":{"thumb":"https://d2eawub7utcl6.cloudfront.net/images/nix-apple-grey.png","highres":null,"is_user_uploaded":false},"note":null,"class_code":null,"brick_code":null,"tag_id":null,"updated_at":"2017-09-25T20:59:13+00:00","nf_ingredient_statement":null}]}]`)
   console.dir(mapFoodResponseToFoodItem(latteResponse[0]), { depth: null })*/
-  
 }
 
 // testSearch()

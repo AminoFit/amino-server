@@ -89,7 +89,7 @@ async function filterFoodsByEmbeddingSimilarity(
   for (let food of foods) {
     // Get the embedding for the food description
     const nameToEmbed = food.brandName
-      ? `${toTitleCase(food.description)} - ${food.brandName}`
+      ? `${toTitleCase(food.description)} - ${toTitleCase(food.brandName)}`
       : toTitleCase(food.description)
     const foodResultEmbedding = await getEmbedding([nameToEmbed.toLowerCase()])
 

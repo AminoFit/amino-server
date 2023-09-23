@@ -1,6 +1,5 @@
 import { findUsdaFoodInfo } from "@/FoodDbThirdPty/USDA/findUsdaFoodInfo"
 import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
-import { NxFoodItemResponse } from "@/FoodDbThirdPty/nutritionix/nxInterfaceHelper"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
 import UpdateMessage from "@/database/UpdateMessage"
 import { FoodInfoSource, FoodItem, LoggedFoodItem, Message, User } from "@prisma/client"
@@ -12,10 +11,10 @@ import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
 import { getFoodEmbedding, foodToLogEmbedding } from "../../utils/foodEmbedding"
 import { vectorToSql } from "@/utils/pgvectorHelper"
-import { levenshteinDistance } from "../../utils/nlpHelper"
 import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { sanitizeServingName } from "../utils/textSanitize"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty//common/commonFoodInterface"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -33,53 +32,50 @@ type FoodItemIdAndEmbedding = {
   embedding: string
 }
 
-type FoodItemPropertiesToRemove =
-  | "id"
-  | "knownAs"
-  | "description"
-  | "transFatPerServing"
-  | "addedSugarPerServing"
-  | "lastUpdated"
-  | "verified"
-  | "userId"
-
 function stringifyFoodItem(foodItem: FoodItemWithNutrientsAndServing): string {
-  let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`;
+  let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`
 
   if (foodItem.brand) {
-    output += `BrandName: ${foodItem.brand}\n`;
+    output += `BrandName: ${foodItem.brand}\n`
   }
 
-  output += `DefaultServingGrams: ${foodItem.defaultServingWeightGram ? Number(foodItem.defaultServingWeightGram.toPrecision(4)) : 'N/A'}\n`;
-  output += `isLiquid: ${foodItem.isLiquid}\n`;
+  output += `DefaultServingGrams: ${
+    foodItem.defaultServingWeightGram ? Number(foodItem.defaultServingWeightGram.toPrecision(4)) : "N/A"
+  }\n`
+  output += `isLiquid: ${foodItem.isLiquid}\n`
 
   if (foodItem.isLiquid) {
-    output += `DefaultServingMl: ${foodItem.defaultServingLiquidMl ? Number(foodItem.defaultServingLiquidMl.toPrecision(4)) : 'N/A'}\n`;
+    output += `DefaultServingMl: ${
+      foodItem.defaultServingLiquidMl ? Number(foodItem.defaultServingLiquidMl.toPrecision(4)) : "N/A"
+    }\n`
   }
 
-  output += `Calories: ${Number(foodItem.kcalPerServing.toPrecision(4))}\nCarbs: ${foodItem.carbPerServing}\n`;
-  output += `TotalFat: ${Number(foodItem.totalFatPerServing.toPrecision(4))}\nProtein: ${foodItem.proteinPerServing}\n`;
+  output += `Calories: ${Number(foodItem.kcalPerServing.toPrecision(4))}\nCarbs: ${foodItem.carbPerServing}\n`
+  output += `TotalFat: ${Number(foodItem.totalFatPerServing.toPrecision(4))}\nProtein: ${foodItem.proteinPerServing}\n`
 
   // Conditional appending
-  if (foodItem.satFatPerServing != null) output += `SatFat: ${Number(foodItem.satFatPerServing.toPrecision(4))}\n`;
-  if (foodItem.transFatPerServing != null) output += `TransFat: ${Number(foodItem.transFatPerServing.toPrecision(4))}\n`;
-  if (foodItem.fiberPerServing != null) output += `Fiber: ${Number(foodItem.fiberPerServing.toPrecision(4))}\n`;
-  if (foodItem.addedSugarPerServing != null) output += `AddedSugar: ${Number(foodItem.addedSugarPerServing.toPrecision(4))}\n`;
+  if (foodItem.satFatPerServing != null) output += `SatFat: ${Number(foodItem.satFatPerServing.toPrecision(4))}\n`
+  if (foodItem.transFatPerServing != null) output += `TransFat: ${Number(foodItem.transFatPerServing.toPrecision(4))}\n`
+  if (foodItem.fiberPerServing != null) output += `Fiber: ${Number(foodItem.fiberPerServing.toPrecision(4))}\n`
+  if (foodItem.addedSugarPerServing != null)
+    output += `AddedSugar: ${Number(foodItem.addedSugarPerServing.toPrecision(4))}\n`
 
   // Iterate through Servings and Nutrients
-  output += "Servings: [\n";
+  output += "Servings: [\n"
   for (const serving of foodItem.Servings) {
-    output += `  { servingWeightGrams: ${serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : 'N/A'}, servingName: "${serving.servingName}" },\n`;
+    output += `  { servingWeightGrams: ${
+      serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : "N/A"
+    }, servingName: "${serving.servingName}" },\n`
   }
-  output += "]\n";
+  output += "]\n"
 
-  output += "Nutrients: [\n";
+  output += "Nutrients: [\n"
   for (const nutrient of foodItem.Nutrients) {
-    output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`;
+    output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`
   }
-  output += "]";
+  output += "]"
 
-  return output;
+  return output
 }
 
 function constructFoodRequestString(foodToLog: FoodItemToLog) {
@@ -233,7 +229,7 @@ export async function HandleLogFoodItem(
   if (filteredItems.length === 0) {
     console.log("No matches found for food item", food.food_database_search_name)
 
-    const newFood = await addFoodItemToDatabase(food, userQueryVector, user, messageId)
+    const newFood = await findAndAddItemInDatabase(food, userQueryVector, user, messageId)
     bestMatch = newFood
   } else {
     const match = await prisma.foodItem.findUnique({
@@ -318,7 +314,7 @@ export async function HandleLogFoodItem(
   if (matches.length === 0) {
     console.log("No matches found for food item", food.full_name)
 
-    const newFood = await addFoodItemToDatabase(food, user, messageId)
+    const newFood = await findAndAddItemInDatabase(food, user, messageId)
     matches = [newFood]
   }
 
@@ -450,7 +446,7 @@ async function addFoodItemPrisma(
   return newFood
 }
 
-async function addFoodItemToDatabase(
+async function findAndAddItemInDatabase(
   foodToLog: FoodItemToLog,
   queryEmbedding: number[],
   user: User,
@@ -470,8 +466,9 @@ async function addFoodItemToDatabase(
     // Construct the query for findNxFoodInfo
     const foodQuery: FoodQuery = {
       food_name: foodToLog.food_database_search_name,
-      lemmatized_database_search_term: fullFoodName,
-      branded: foodToLog.branded || false
+      food_full_name: fullFoodName,
+      branded: foodToLog.branded || false,
+      queryEmbedding: queryEmbedding
     }
 
     const getNxFoodInfo = async () => {
@@ -494,6 +491,7 @@ async function addFoodItemToDatabase(
       if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
         try {
           const result = await findUsdaFoodInfo({
+            queryEmbedding,
             food_name: fullFoodName,
             branded: foodToLog.branded || false,
             brand_name: foodToLog.brand || undefined
@@ -514,7 +512,8 @@ async function addFoodItemToDatabase(
         try {
           const result = await findFsFoodInfo({
             search_expression: fullFoodName,
-            branded: foodToLog.branded || false
+            branded: foodToLog.branded || false,
+            queryEmbedding: queryEmbedding
           })
           console.log("Time taken for FatSecret API:", Date.now() - startTime, "ms") // Log the time taken
           return result
@@ -533,80 +532,40 @@ async function addFoodItemToDatabase(
       getFsFoodInfo()
     ])
 
-    const foodInfoResponses: {
-      foodItem: FoodItem
-      foodEmbedding: number[]
-      similarityToQuery: number
-    }[] = []
+    const foodInfoResponses: foodSearchResultsWithSimilarityAndEmbedding[] = []
 
     // create string name for food request
     let foodItemRequestString: string =
       "Food we need to generate info for:\n" + constructFoodRequestString(foodToLog) + "\n___\n"
 
     if (nxFoodInfoResponse != null && nxFoodInfoResponse.length > 0) {
-      // If we have a match, use the first one
-      const food = nxFoodInfoResponse[0]
-      const foodEmbedding = await getFoodEmbedding(food)
-      const similarityToQuery = cosineSimilarity(queryEmbedding, foodEmbedding)
-
-      foodInfoResponses.push({
-        foodItem: food,
-        foodEmbedding,
-        similarityToQuery
-      })
-      // Construct the request string for the OpenAI foodItemCompletion function
-      if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
-        foodItemRequestString =
-          foodItemRequestString +
-          "\nSome food info that may be relevant\n" +
-          stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
-      }
+      foodInfoResponses.push(...nxFoodInfoResponse)
     }
 
     if (usdaFoodInfoResponse != null) {
-      // If we have a match, use the first one
-      const food = usdaFoodInfoResponse
-      const foodEmbedding = await getFoodEmbedding(food)
-      const similarityToQuery = cosineSimilarity(queryEmbedding, foodEmbedding)
-
-      foodInfoResponses.push({
-        foodItem: food,
-        foodEmbedding,
-        similarityToQuery
-      })
-      // Construct the request string for the OpenAI foodItemCompletion function
-      if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
-        foodItemRequestString =
-          foodItemRequestString +
-          "\n Some food info that may be relevant\n" +
-          stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
-      }
+      foodInfoResponses.push(...usdaFoodInfoResponse)
     }
 
     if (fatSecretInfoResponse != null) {
-      // If we have a match, use the first one
-      const food = fatSecretInfoResponse.item
-      const foodEmbedding = fatSecretInfoResponse.embedding
-      const similarityToQuery = cosineSimilarity(queryEmbedding, foodEmbedding)
-
-      foodInfoResponses.push({
-        foodItem: food,
-        foodEmbedding,
-        similarityToQuery
-      })
-      // Construct the request string for the OpenAI foodItemCompletion function
-      if (similarityToQuery > COSINE_THRESHOLD_LOW_QUALITY) {
-        foodItemRequestString =
-          foodItemRequestString +
-          "\n Some food info that may be relevant\n" +
-          stringifyFoodItem(food as FoodItemWithNutrientsAndServing)
-      }
+      foodInfoResponses.push(...fatSecretInfoResponse)
     }
 
     // Find the item with the highest similarity score
     let highestSimilarityItem = foodInfoResponses.reduce((prev, current) => {
       return prev.similarityToQuery > current.similarityToQuery ? prev : current
     }, foodInfoResponses[0])
+    // Sort the foodInfoResponses array in descending order based on similarityToQuery
+    foodInfoResponses.sort((a, b) => b.similarityToQuery - a.similarityToQuery)
+
+    // Iterate over the sorted array and print the desired information
+    foodInfoResponses.forEach((item, index) => {
+      const brandInfo = item.foodBrand ? ` by ${item.foodBrand}` : ""
+      console.log(`Item ${index + 1}: ${item.foodName}${brandInfo} - Similarity ${item.similarityToQuery}`)
+    })
+
+
+    return highestSimilarityItem.foodItem as FoodItem
+    /*
 
     // If the highest similarity score is greater than COSINE_THRESHOLD, add the food item manually
     if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
@@ -631,6 +590,7 @@ async function addFoodItemToDatabase(
 
     // If we didn't find a match we then rely on GPT-4
     const foodItemCompletionStartTime = Date.now() // Capture start time
+    throw new Error("Food item completion not found in DB")
     const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user)
     console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
 
@@ -642,8 +602,49 @@ async function addFoodItemToDatabase(
     )
 
     return newFood
+    */
   } catch (err) {
     console.log("Error getting food item info", err)
     throw err
   }
 }
+
+async function testFoodSearch() {
+  const foodItem: FoodItemToLog = {
+    food_database_search_name: "Hydro Whey",
+    brand: "Optimum Nutrition",
+    branded: false,
+    base_food_name: "Hydro Whey",
+    serving: {
+      serving_amount: 1,
+      serving_name: "scoop",
+      total_serving_grams: 30,
+      total_serving_calories: 140
+    }
+  }
+  const queryEmbedding = await foodToLogEmbedding(foodItem)
+  const user: User = {
+    id: "clklnwf090000lzssqhgfm8kr",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York"
+  }
+  findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
+}
+
+testFoodSearch()

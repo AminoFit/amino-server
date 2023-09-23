@@ -123,7 +123,7 @@ function extractFoodInfo(
 
   const itemName = toTitleCase(foodItem.description)
   const branded = foodItem.dataType === "Branded"
-  const brandName = branded ? foodItem.brandName : null
+  const brandName = branded ? toTitleCase(foodItem.brandName) : null
   const upc = branded ? foodItem.gtinUpc : undefined
   const fdcId = foodItem.fdcId
 

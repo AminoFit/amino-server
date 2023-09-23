@@ -76,7 +76,7 @@ export function mapUsdaFoodItemToFoodItem(
     foodInfoSource: "USDA",
     messageId: null,
     name: toTitleCase(usdaFoodItem.itemName),
-    brand: usdaFoodItem.brandName || "",
+    brand: toTitleCase(usdaFoodItem.brandName || ""),
     weightUnknown: false,
     defaultServingWeightGram:
       (usdaFoodItem.default_serving.default_serving_unit === 'g') ? usdaFoodItem.default_serving.default_serving_amount : null,
