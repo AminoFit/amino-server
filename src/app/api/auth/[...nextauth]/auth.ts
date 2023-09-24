@@ -7,7 +7,7 @@ import Email from "next-auth/providers/email"
 import { sendVerificationRequest } from "./EmailTemplate"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter<boolean>,
+  adapter: PrismaAdapter(prisma),
 
   session: {
     strategy: "jwt"
