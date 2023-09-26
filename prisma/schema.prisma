@@ -5,6 +5,12 @@ generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
+// generator client {
+//   provider             = "prisma-client-py"
+//   recursive_type_depth = 5
+//     previewFeatures = ["postgresqlExtensions"]
+
+// }
 
 datasource db {
   provider   = "postgresql"
@@ -268,4 +274,18 @@ model ApiTokens {
   apiName   String
   token     String   @unique
   expires   DateTime
+}
+
+
+
+/// @ignore
+model UsdaFoodItemEmbedding {
+  id         Int      @id @default(autoincrement())
+  fdcId      Int      @unique
+  largestFdcId Boolean @default(false)
+  foodName   String
+  foodBrand  String?
+  brandOwner String?
+  bgeEmbedding  Unsupported("vector(768)")?
+  @@index([bgeEmbedding])
 }
