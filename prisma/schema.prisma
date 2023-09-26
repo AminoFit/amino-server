@@ -6,6 +6,13 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
+// Use this when you want to generate the python client
+// generator client {
+//   provider             = "prisma-client-py"
+//   recursive_type_depth = 5
+//     previewFeatures = ["postgresqlExtensions"]
+// }
+
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
@@ -268,4 +275,14 @@ model ApiTokens {
   apiName   String
   token     String   @unique
   expires   DateTime
+}
+
+model UsdaFoodItemEmbedding {
+  id           Int                         @id @default(autoincrement())
+  fdcId        Int                         @unique
+  foodName     String
+  foodBrand    String?
+  brandOwner   String?
+  bgeEmbedding Unsupported("vector(768)")?
+  @@index([bgeEmbedding])
 }
