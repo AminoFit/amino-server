@@ -7,11 +7,7 @@ import {
 } from "@heroicons/react/20/solid"
 import Footer from "./Footer"
 import Nav from "./MarketingNav"
-import { PhoneForm } from "./PhoneForms"
-import { XMarkIcon } from "@heroicons/react/24/outline"
 
-import { getServerSession } from "next-auth"
-import { authOptions } from "./api/auth/[...nextauth]/auth"
 
 const primaryFeatures = [
   {
