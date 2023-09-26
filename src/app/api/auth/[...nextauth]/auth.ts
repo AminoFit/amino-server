@@ -2,7 +2,6 @@ import type { NextAuthOptions } from "next-auth"
 
 import { prisma } from "@/database/prisma"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import { Adapter } from "next-auth/adapters"
 import Email from "next-auth/providers/email"
 import { sendVerificationRequest } from "./EmailTemplate"
 

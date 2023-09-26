@@ -1,18 +1,17 @@
 "use client"
 
-import { User } from "@prisma/client"
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { LoggedFoodItemWithFoodItem, getNormalizedFoodValue } from "./utils/FoodHelper"
 
-import { PencilIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { PencilIcon } from "@heroicons/react/24/outline"
+import { useQuery } from "@tanstack/react-query"
+import axios from "axios"
 import { useState } from "react"
 import _ from "underscore"
 import DeleteFoodModal from "./DeleteFoodModal"
 import EditFoodModal from "./EditFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
-import { useQuery } from "@tanstack/react-query"
-import axios from "axios"
 
 export function FoodTable() {
   const searchParams = useSearchParams()
