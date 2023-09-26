@@ -45,7 +45,7 @@ After running docker postgres,
 
 ### Migrations
 You'll need to install dotenv CLI to run the migration scripts:
-`https://www.npmjs.com/package/dotenv-cli`
+`npm install -g dotenv-cli`
 
 
 ###
