@@ -283,6 +283,6 @@ model UsdaFoodItemEmbedding {
   foodName     String
   foodBrand    String?
   brandOwner   String?
-  bgeEmbedding Unsupported("vector(768)")?
+  bgeEmbedding Unsupported("vector(1024)")?
   @@index([bgeEmbedding])
 }
