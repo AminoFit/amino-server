@@ -43,7 +43,9 @@ Url to import into [TablePlus](https://tableplus.com/). This should be in your .
 After running docker postgres, 
 `npm run migrate:dev`
 
-
+### Migrations
+You'll need to install dotenv CLI to run the migration scripts:
+`https://www.npmjs.com/package/dotenv-cli`
 
 
 ###
