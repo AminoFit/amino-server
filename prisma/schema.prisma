@@ -278,11 +278,9 @@ model ApiTokens {
 
 
 
-/// @ignore
 model UsdaFoodItemEmbedding {
   id         Int      @id @default(autoincrement())
   fdcId      Int      @unique
-  largestFdcId Boolean @default(false)
   foodName   String
   foodBrand  String?
   brandOwner String?
