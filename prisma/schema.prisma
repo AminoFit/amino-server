@@ -278,11 +278,11 @@ model ApiTokens {
 }
 
 model UsdaFoodItemEmbedding {
-  id           Int                         @id @default(autoincrement())
-  fdcId        Int                         @unique
-  foodName     String
-  foodBrand    String?
-  brandOwner   String?
-  bgeEmbedding Unsupported("vector(1024)")?
-  @@index([bgeEmbedding])
+  id                Int                          @id @default(autoincrement())
+  fdcId             Int                          @unique
+  foodName          String
+  foodBrand         String?
+  brandOwner        String?
+  bgeLargeEmbedding Unsupported("vector(1024)")?
+  @@index([bgeLargeEmbedding])
 }
