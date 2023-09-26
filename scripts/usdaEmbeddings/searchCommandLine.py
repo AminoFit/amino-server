@@ -6,6 +6,7 @@ from gte_embedding import getGteEmbedding
 import torch
 
 model = FlagModel('BAAI/bge-base-en-v1.5', use_fp16=False)
+model_large = FlagModel('BAAI/bge-large-en-v1.5', use_fp16=False)
 
 def construct_sentence(item):
     if item['foodBrand']:
@@ -121,11 +122,26 @@ async def main():
             search_term_embedding_gte.unsqueeze(0),
             food_embeddings_gte
         ).tolist()
+        
+        # Generate BGE-Large Embeddings for the search term
+        search_term_embedding_large = model_large.encode([search_term])[0]
+        search_term_embedding_large = torch.tensor(search_term_embedding_large)
+
+        # Generate BGE-Large Embeddings for all food items in a single batch
+        food_embeddings_large = model_large.encode(food_sentences)
+        food_embeddings_large = torch.tensor(food_embeddings_large)
+
+        # Calculate BGE-Large similarity
+        bge_large_similarities = torch.nn.functional.cosine_similarity(
+            search_term_embedding_large.unsqueeze(0),
+            food_embeddings_large
+        ).tolist()
 
         print(f"\nTop 10 similar foods (search took {elapsed_time:.3f} s):")
 
-        for i, (food, gte_similarity) in enumerate(zip(similar_foods, gte_similarities)):
-            print(f"{i+1}. {food['fdcId']} {food['foodName']} (Brand: {food.get('foodBrand', 'N/A')}, Owner: {food.get('brandOwner', 'N/A')}, BGE Similarity: {food['cosine_similarity']:.3f}, GTE Similarity: {gte_similarity:.3f})")
+        for i, (food, gte_similarity, bge_large_similarity) in enumerate(zip(similar_foods, gte_similarities, bge_large_similarities)):
+            print(f"{i+1}. {food['fdcId']} {food['foodName']} (Brand: {food.get('foodBrand', 'N/A')}, Owner: {food.get('brandOwner', 'N/A')}, BGE Similarity: {food['cosine_similarity']:.3f}, GTE Similarity: {gte_similarity:.3f}, BGE_LARGE Similarity: {bge_large_similarity:.3f})")
+
 
     await prisma.disconnect()
 
