@@ -1,9 +1,8 @@
 "use client"
 
 import classNames from "classnames"
-import { useState } from "react"
-import { PatternFormat } from "react-number-format"
 import { signIn } from "next-auth/react"
+import { useState } from "react"
 
 export default function Example() {
   const [email, setEmail] = useState("")

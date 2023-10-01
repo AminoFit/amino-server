@@ -1,9 +1,7 @@
+import { UserProvider } from "@auth0/nextjs-auth0/client"
 import { Outfit } from "next/font/google"
-import Head from "next/head"
-import { MetaTags } from "./MetaTags"
 import "./globals.css"
 import { NextAuthProvider, QueryDataProvider } from "./providers"
-import DashNav from "@/components/DashNav"
 
 const outfit = Outfit({ subsets: ["latin"] })
 
@@ -12,17 +10,15 @@ export const metadata = {
   description: "Track your fitness and diet with Amino"
 }
 
-export default function RootLayout({
-  children
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
       <body className={`h-full ${outfit.className}`}>
-        <NextAuthProvider>
-          <QueryDataProvider>{children}</QueryDataProvider>
-        </NextAuthProvider>
+        <UserProvider>
+          <NextAuthProvider>
+            <QueryDataProvider>{children}</QueryDataProvider>
+          </NextAuthProvider>
+        </UserProvider>
       </body>
     </html>
   )
