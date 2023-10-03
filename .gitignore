@@ -37,3 +37,6 @@ next-env.d.ts
 
 #python
 .venv
+
+#api counter
+api_request_count.cfg
