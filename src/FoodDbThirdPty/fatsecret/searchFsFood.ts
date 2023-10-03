@@ -9,7 +9,7 @@ export interface FatSecretFindFoodParams {
   max_results?: number
   include_sub_categories?: boolean
   flag_default_serving?: boolean
-  queryEmbedding: number[]
+  queryBgeBaseEmbedding: number[]
 }
 
 // this function directly interacts with the FatSecret API

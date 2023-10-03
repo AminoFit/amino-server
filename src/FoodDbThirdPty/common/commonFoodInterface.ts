@@ -2,7 +2,7 @@ import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelpe
 import { FoodInfoSource } from "@prisma/client"
 
 export interface foodSearchResultsWithSimilarityAndEmbedding {
-    foodEmbedding: number[]
+    foodBgeBaseEmbedding: number[]
     similarityToQuery: number
     foodSource: FoodInfoSource
     foodName: string

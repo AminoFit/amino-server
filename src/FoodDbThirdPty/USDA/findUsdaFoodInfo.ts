@@ -1,7 +1,7 @@
 import { searchFoodIds, UsdaSearchResponse, UsdaFoodIdResults } from "./searchFoodIds"
 import { getUsdaFoodsInfo } from "./getFoodInfo"
 import { UsdaFoodItem } from "./usdaInterfaceHelper"
-import { getEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import { getAdaEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { FoodItemWithServings, mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 import { FoodInfoSource } from "@prisma/client"
@@ -45,7 +45,7 @@ export async function findUsdaFoodInfo(
       const nameToEmbed = searchResponse.foods[i].brandName
         ? `${searchResponse.foods[i].description} - ${searchResponse.foods[i].brandName}`
         : searchResponse.foods[i].description
-      embedding = (await getEmbedding([nameToEmbed.toLowerCase()])).data[0].embedding
+      embedding = (await getAdaEmbedding([nameToEmbed.toLowerCase()])).data[0].embedding
     }
 
     // if the similarity is not present, calculate it
@@ -112,7 +112,7 @@ export async function findUsdaFoodInfo(
 }
 
 async function runTests() {
-  const queryEmbedding = (await getEmbedding(["Triple Zero Strawberry Yogurt".toLowerCase()])).data[0].embedding
+  const queryEmbedding = (await getAdaEmbedding(["Triple Zero Strawberry Yogurt".toLowerCase()])).data[0].embedding
   const results = await findUsdaFoodInfo({
     queryEmbedding: queryEmbedding,
     food_name: "Triple Zero Strawberry Yogurt",

@@ -1,4 +1,4 @@
-import { getEmbedding, cosineSimilarity } from "../utils/embeddingsHelper"
+import { getAdaEmbedding, cosineSimilarity } from "../utils/embeddingsHelper"
 import * as path from "path"
 require("dotenv").config({ path: path.resolve(__dirname, "../../../.env.local") })
 
@@ -20,8 +20,8 @@ async function runSimilarityTest() {
     "Whole Foods Market, Sourdough by WHOLE FOODS MARKET"
   ]
 
-  // make a single call to getEmbedding with all queries
-  const allEmbeddings = await getEmbedding(foodNames)
+  // make a single call to getAdaEmbedding with all queries
+  const allEmbeddings = await getAdaEmbedding(foodNames)
 
   let similarityMatrix: number[][] = []
 

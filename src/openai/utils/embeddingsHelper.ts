@@ -16,7 +16,7 @@ const configuration = new Configuration({
 })
 export const openai = new OpenAIApi(configuration)
 
-export async function getEmbedding(input: string[]): Promise<CreateEmbeddingResponse> {
+export async function getAdaEmbedding(input: string[]): Promise<CreateEmbeddingResponse> {
   const embedding = await openai.createEmbedding({
     model: "text-embedding-ada-002",
     input: input

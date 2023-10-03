@@ -139,6 +139,8 @@ model LoggedFoodItem {
   Message            Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   status             String?
   extendedOpenAiData Json?
+  embeddingId        Int?                 // Changed relation to embeddingId
+  foodEmbeddingCache foodEmbeddingCache?  @relation(fields: [embeddingId], references: [id])
 }
 
 model Session {
@@ -225,8 +227,8 @@ model FoodItem {
   foodInfoSource           FoodInfoSource               @default(User) //where the foodinfo comes from
   messageId                Int?
   Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  embedding                Unsupported("vector(1536)")?
-
+  adaEmbedding             Unsupported("vector(1536)")?
+  bgeBaseEmbedding         Unsupported("vector(768)")?
   @@unique([name, brand], name: "name_brand")
   @@unique([externalId, foodInfoSource])
 }
@@ -275,14 +277,22 @@ model ApiTokens {
   expires   DateTime
 }
 
-
-
 model UsdaFoodItemEmbedding {
-  id         Int      @id @default(autoincrement())
-  fdcId      Int      @unique
-  foodName   String
-  foodBrand  String?
-  brandOwner String?
-  bgeEmbedding  Unsupported("vector(768)")?
-  @@index([bgeEmbedding])
+  id                Int                          @id @default(autoincrement())
+  fdcId             Int                          @unique
+  foodName          String
+  foodBrand         String?
+  brandOwner        String?
+  bgeLargeEmbedding Unsupported("vector(1024)")?
+  bgeBaseEmbedding Unsupported("vector(768)")?
+  @@index([bgeBaseEmbedding])
+}
+
+
+model foodEmbeddingCache {
+  id               Int               @id @default(autoincrement())
+  textToEmbed      String            @unique  // Unique constraint added
+  adaEmbedding     Unsupported("vector(1536)")?
+  bgeBaseEmbedding Unsupported("vector(768)")?
+  LoggedFoodItems  LoggedFoodItem[]  // One-to-many relation represented as an array
 }

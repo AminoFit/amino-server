@@ -1,17 +1,17 @@
-import { getEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
-import { CreateEmbeddingResponseDataInner } from "openai"
+import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import { getCachedOrFetchEmbeddings } from "../../utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { findFatSecretFoodInfo, FatSecretFindFoodParams } from "./searchFsFood"
 import { FsFoodInfo, convertFsToFoodItem, FoodItemWithServings } from "./fsInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodInfoSource } from "@prisma/client"
 
-const COSINE_THRESHOLD = 0.8
+const COSINE_THRESHOLD = 0.85
 
 interface FsFoodInfoWithEmbedding {
   item: FoodItemWithServings
   similarity: number
-  embedding: number[]
+  bgeBaseEmbedding: number[]
 }
 
 export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
@@ -20,7 +20,7 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
     search_expression: searchParams.search_expression,
     branded: searchParams.branded,
     max_results: searchParams.max_results,
-    queryEmbedding: searchParams.queryEmbedding
+    queryBgeBaseEmbedding: searchParams.queryBgeBaseEmbedding
   })
 
   // create an array of all queries to get embeddings for
@@ -31,26 +31,25 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
   console.log("query FS:", searchParams.search_expression)
 
   // get all embeddings in a single API call
-  const allEmbeddings = await getEmbedding(allQueries) // Assuming the same embedding function
-
+  const allEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',allQueries) // Assuming the same embedding function
   // extract query embedding and item embeddings
-  const queryEmbedding = searchParams.queryEmbedding
-  const itemEmbeddings = allEmbeddings.data
-    .map((embeddingObject: CreateEmbeddingResponseDataInner) => embeddingObject.embedding)
+  const queryBgeBaseEmbedding = searchParams.queryBgeBaseEmbedding
+  const itemEmbeddings = allEmbeddings
+    .map((embeddingObject: {id: number; embedding: number[]; text: string}) => embeddingObject.embedding)
 
   // Create an array to store cosine similarities and embeddings
   const foodItemsWithEmbedding: Array<FsFoodInfoWithEmbedding> = []
 
   for (let i = 0; i < searchResponse.length; i++) {
     // calculate cosine similarity
-    const similarity = cosineSimilarity(queryEmbedding, itemEmbeddings[i])
+    const similarity = cosineSimilarity(queryBgeBaseEmbedding, itemEmbeddings[i])
 
     // add to array only if similarity is 0.8 or more (or adjust the threshold as needed)
     if (similarity >= COSINE_THRESHOLD) {
       foodItemsWithEmbedding.push({
         item: convertFsToFoodItem(searchResponse[i]),
         similarity,
-        embedding: itemEmbeddings[i]
+        bgeBaseEmbedding: itemEmbeddings[i]
       })
     }
   }
@@ -81,7 +80,7 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
  */
 
   return foodItemsWithEmbedding.slice(0, 3).map(item => ({
-    foodEmbedding: item.embedding,
+    foodBgeBaseEmbedding: item.bgeBaseEmbedding,
     similarityToQuery: item.similarity,
     foodName: item.item.name,
     foodSource: FoodInfoSource.FATSECRET,
@@ -93,17 +92,17 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
 
 async function runTests() {
   const query = "Fiber Gummies"
-  const queryEmbedding = (await getEmbedding([query])).data[0].embedding
+  const queryEmbedding = (await getCachedOrFetchEmbeddings('BGE_BASE',[query]))[0].embedding
   const results = await findFsFoodInfo({
     search_expression: query,
     branded: true,
-    queryEmbedding: queryEmbedding
+    queryBgeBaseEmbedding: queryEmbedding
   })
   console.log(results)
   if (results) {
-    console.log("similarity" + JSON.stringify(results[0].similarityToQuery))
+    console.log("similarity " + JSON.stringify(results[0].similarityToQuery))
     console.dir(results[0].foodItem, { depth: null })
   }
 }
 
-// runTests()
+//runTests()
