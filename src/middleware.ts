@@ -14,14 +14,21 @@ export async function middleware(req: NextRequest) {
   try {
     // Verify the given token
     const result = await jose.jwtVerify(token.replace("Bearer ", ""), jwks)
-    console.log("Auth Result", result)
+    // console.log("Auth Result", result)
 
-    // TODO. Any other checks we should do here?
+    // Check that the token is not expired
+    const currentTime = Math.floor(Date.now() / 1000)
+    const expirationTime = result.payload.exp || 0
 
+    if (currentTime > expirationTime) {
+      return NextResponse.json({ message: "Authentication failed: Token is expired" }, { status: 401 })
+    }
+
+    // Add the user to the request headers
     const requestHeaders = new Headers(req.headers)
-
     requestHeaders.set("x-amino-user", JSON.stringify(result.payload))
-
+    
+    console.log("Auth success. Calling next")
     const returnResponse = NextResponse.next({
       request: {
         // New request headers
@@ -37,5 +44,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/protected", "/protected", "/admin"]
+  matcher: ["/api/protected/:path*"]
 }
