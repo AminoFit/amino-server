@@ -21,7 +21,7 @@ export async function getFoodEmbedding(foodItem: FoodItem): Promise<number[]> {
   ) {
     textToEmbed += ` - ${foodItem.brand}`
   }
-  const embedding = await getCachedOrFetchEmbeddings('ADA', [textToEmbed])
+  const embedding = await getCachedOrFetchEmbeddings('BGE_BASE', [textToEmbed])
   return embedding[0].embedding
 }
 

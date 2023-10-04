@@ -53,3 +53,50 @@ export async function chatCompletion(
     throw error
   }
 }
+
+
+interface ChatCompletionInstructOptions {
+  model?: string;
+  prompt: string;
+  temperature?: number;
+  max_tokens?: number;
+  stop?: string;
+  [key: string]: any;  // for other potential parameters
+}
+
+export async function chatCompletionInstruct(
+  {
+    model = "gpt-3.5-turbo-instruct",
+    prompt,
+    temperature = 0.5,
+    max_tokens = 2048,
+    stop,
+    ...options
+  }: ChatCompletionInstructOptions,
+  user: User
+) {
+  try {
+    const result = await openai.createCompletion({
+      model,
+      prompt,
+      temperature,
+      max_tokens,
+      stop,
+      ...options  // pass other options if any
+    })
+
+    if (!result.data.choices || result.data.choices.length === 0 || !result.data.choices[0].text) {
+      throw new Error("No return data from instruction completion")
+    }
+    
+    if (result.data.usage) {
+      // log usage
+      await LogOpenAiUsage(user, result.data.usage, model)
+    }
+
+    return result.data.choices[0];
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}

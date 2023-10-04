@@ -70,7 +70,7 @@ async def search_similar_foods(conn, sentence):
             AND "bgeBaseEmbedding" is not null
         ORDER BY 
         ("bgeBaseEmbedding" <#> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = $1)) ASC
-        LIMIT 10
+        LIMIT 20
         """, embedding_id
     )
     return similar_foods
@@ -138,7 +138,7 @@ async def main():
         ).tolist()
         
 
-        print(f"\nTop 10 similar foods (search took {elapsed_time:.3f} s):")
+        print(f"\nTop 20 similar foods (search took {elapsed_time:.3f} s):")
         
         for i, (food, gte_similarity) in enumerate(zip(similar_foods, gte_similarities)):
             print(f"{i+1}. {food['fdcId']} {construct_sentence_results(food)} (BGE Similarity: {food['cosine_similarity']:.3f}, GTE Similarity: {gte_similarity:.3f})")

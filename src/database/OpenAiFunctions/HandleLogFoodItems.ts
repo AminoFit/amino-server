@@ -5,6 +5,7 @@ import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import UpdateMessage from "@/database/UpdateMessage"
 import { FoodInfoSource, FoodItem, LoggedFoodItem, Message, User } from "@prisma/client"
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
+import { findBestFoodMatch } from "../../openai/customFunctions/matchFoodItemtoDb"
 import { foodItemMissingFieldComplete } from "../../openai/customFunctions/foodItemMissingFieldComplete"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "../../openai/customFunctions/foodItemInterface"
 import { checkRateLimit } from "../../utils/apiUsageLogging"
@@ -12,10 +13,10 @@ import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { prisma } from "../prisma"
 import { getFoodEmbedding, foodToLogEmbedding, FoodEmbeddingCache } from "../../utils/foodEmbedding"
 import { vectorToSql } from "@/utils/pgvectorHelper"
-import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import { getNutritionixFoodInfo } from "@/FoodDbThirdPty/nutritionix/getCombinedNutritionixFoodInfo"
 import { sanitizeServingName } from "../utils/textSanitize"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty//common/commonFoodInterface"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -158,7 +159,7 @@ export async function HandleLogFoodItem(
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
   const cosineSearchResults =
-    (await prisma.$queryRaw`SELECT id, name, brand, embedding::text, 1 - (embedding <=> (SELECT "bgeBaseEmbedding" FROM "FoodEmbeddingCache" WHERE embedding_id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
+    (await prisma.$queryRaw`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - (embedding <=> (SELECT "bgeBaseEmbedding" FROM "FoodEmbeddingCache" WHERE embedding_id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
 
   console.log("Searching in database")
   console.log("__________________________________________________________")
@@ -262,6 +263,7 @@ export async function HandleLogFoodItem(
 
 async function addFoodItemPrisma(
   food: FoodItemWithNutrientsAndServing,
+  bgeBaseEmbedding: number[],
   messageId: number
   //model: string
 ): Promise<FoodItem> {
@@ -310,10 +312,10 @@ async function addFoodItemPrisma(
   })
 
   // Save the vector to the database
-  const embeddingArray = new Float32Array(await getFoodEmbedding(newFood))
+  const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
   const result = await prisma.$executeRaw`UPDATE "FoodItem"
-    SET embedding = ${embeddingSql}::vector
+    SET "bgeBaseEmbedding" = ${embeddingSql}::vector
     WHERE id = ${newFood.id}`
 
   return newFood
@@ -420,9 +422,12 @@ async function findAndAddItemInDatabase(
     }
 
     // Find the item with the highest similarity score
-    let highestSimilarityItem = foodInfoResponses.reduce((prev, current) => {
-      return prev.similarityToQuery > current.similarityToQuery ? prev : current
-    }, foodInfoResponses[0])
+    let highestSimilarityItem: foodSearchResultsWithSimilarityAndEmbedding | null = foodInfoResponses.reduce(
+      (prev, current) => {
+        return prev.similarityToQuery > current.similarityToQuery ? prev : current
+      },
+      foodInfoResponses[0]
+    )
     // Sort the foodInfoResponses array in descending order based on similarityToQuery
     foodInfoResponses.sort((a, b) => b.similarityToQuery - a.similarityToQuery)
 
@@ -432,29 +437,46 @@ async function findAndAddItemInDatabase(
       console.log(`Item ${index + 1}: ${item.foodName}${brandInfo} - Similarity ${item.similarityToQuery}`)
     })
 
-    // If the highest similarity score is greater than COSINE_THRESHOLD, add the food item manually
-    if (highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD) {
-      console.log("Found a match with similarity", highestSimilarityItem.similarityToQuery)
-      // USDA items need to be auto-completed
+    highestSimilarityItem = foodInfoResponses.reduce((prev, current) => {
+      return prev.similarityToQuery > current.similarityToQuery ? prev : current
+    }, foodInfoResponses[0])
+
+    // If the highest similarity score is below COSINE_THRESHOLD, use findBestFoodMatch
+    if (!(highestSimilarityItem.similarityToQuery > COSINE_THRESHOLD)) {
+      highestSimilarityItem = await findBestFoodMatch(user, foodToLog, foodInfoResponses)
+    }
+
+    //console.dir(highestSimilarityItem, { depth: null });
+
+    if (highestSimilarityItem) {
+      console.log("Highest similarity item:", highestSimilarityItem!.foodName)
+      // USDA and Nutritionix have different ways of getting food info
+      // FatSecret already returns the food info
       if (highestSimilarityItem.foodItem === undefined && highestSimilarityItem.foodSource === FoodInfoSource.USDA) {
         highestSimilarityItem.foodItem = (await getUsdaFoodsInfo({
-          fdcIds: ["2628401"]
+          fdcIds: [highestSimilarityItem.externalId!]
         }))![0] as FoodItemWithNutrientsAndServing
+      } else if ( highestSimilarityItem.foodItem === undefined && highestSimilarityItem.foodSource === FoodInfoSource.NUTRITIONIX ) {
+        highestSimilarityItem.foodItem = (await getNutritionixFoodInfo(
+          highestSimilarityItem
+        ))![0] as FoodItemWithNutrientsAndServing
       }
 
       let foodItemToSave: FoodItemWithNutrientsAndServing =
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
       // If the food item is missing a field, complete it
-      if ( highestSimilarityItem.foodItem!.defaultServingWeightGram === 0 || highestSimilarityItem.foodItem!.defaultServingWeightGram === null || highestSimilarityItem.foodItem!.defaultServingWeightGram === undefined) {
-        foodItemToSave = await foodItemMissingFieldComplete(highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing, user)
+      if (!foodItemToSave.defaultServingWeightGram) {
+        foodItemToSave = await foodItemMissingFieldComplete(
+          highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
+          user
+        )
         console.log("Food item after missing field completion")
         console.dir(foodItemToSave, { depth: null })
       }
-      const newFood = await addFoodItemPrisma(foodItemToSave, messageId)
+      const newFood = await addFoodItemPrisma(foodItemToSave, highestSimilarityItem.foodBgeBaseEmbedding, messageId)
       return newFood
     }
-
     // If we didn't find a match we then rely on GPT-4
     const foodItemCompletionStartTime = Date.now() // Capture start time
     throw new Error("Food item completion not found in DB")
@@ -471,7 +493,6 @@ async function findAndAddItemInDatabase(
 
     return newFood
     */
-    
   } catch (err) {
     console.log("Error getting food item info", err)
     throw err
@@ -480,7 +501,7 @@ async function findAndAddItemInDatabase(
 
 async function testFoodSearch() {
   const foodItem: FoodItemToLog = {
-    food_database_search_name: "Hydro Whey Chocolate",
+    food_database_search_name: "Hydro Whey protein shake",
     brand: "Optimum Nutrition",
     branded: true,
     base_food_name: "Hydro Whey",
@@ -493,7 +514,7 @@ async function testFoodSearch() {
   }
   const queryEmbedding = await foodToLogEmbedding(foodItem)
   const user: User = {
-    id: "clklnwf090000lzssqhgfm8kr",
+    id: "clmzqmr2a0000la08ynm5rjju",
     firstName: "John",
     lastName: "Doe",
     email: "john.doe@example.com",
@@ -514,8 +535,8 @@ async function testFoodSearch() {
     tzIdentifier: "America/New_York"
   }
   //console.dir(queryEmbedding, { depth: null })
-  findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
-  
+  let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
+  console.dir(result, { depth: null })
 }
 
 testFoodSearch()

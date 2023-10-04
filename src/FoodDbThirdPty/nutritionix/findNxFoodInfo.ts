@@ -1,4 +1,3 @@
-import { getBrandedFoodInfo, BrandedFoodResponse } from "./getBrandedFoodInfo"
 import { getCachedOrFetchEmbeddings } from "../../utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import {
   searchFoodIds,
@@ -6,9 +5,8 @@ import {
   NutritionixBrandedItem,
   NutritionixCommonItem
 } from "./searchFoodIds"
-import { getNonBrandedFoodInfo, NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
 import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
-import { NxFoodItemResponse, mapFoodResponseToFoodItem } from "./nxInterfaceHelper"
+import { isNutritionixBrandedItem } from "./nxInterfaceHelper"
 import { FoodInfoSource } from "@prisma/client"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 
@@ -25,10 +23,6 @@ interface foodItemWithEmbeddings {
   item: NutritionixBrandedItem | NutritionixCommonItem
   similarity: number
   bgeBaseEmbedding: number[]
-}
-
-function isNutritionixBrandedItem(obj: any): obj is NutritionixBrandedItem {
-  return "nix_item_id" in obj
 }
 
 // Utility function to decide if brand name should be added

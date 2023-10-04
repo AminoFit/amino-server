@@ -10,7 +10,7 @@ type FoodItemId = {
 
 export async function embeddingBackfill() {
     // Get all IDs of items without embeddings using raw SQL
-    const itemsWithoutEmbedding = await prisma.$queryRaw`SELECT id FROM "FoodItem" WHERE embedding::text IS NULL` as FoodItemId[];
+    const itemsWithoutEmbedding = await prisma.$queryRaw`SELECT id FROM "FoodItem" WHERE "bgeBaseEmbedding"::text IS NULL` as FoodItemId[];
   
     // Iterate over the IDs and fetch the full FoodItem objects
     for (const item of itemsWithoutEmbedding) {
@@ -26,7 +26,7 @@ export async function embeddingBackfill() {
   
         // Update the database record with the new embedding
         await prisma.$executeRaw`UPDATE "FoodItem"
-          SET embedding = ${embeddingSql}::vector
+          SET "bgeBaseEmbedding" = ${embeddingSql}::vector
           WHERE id = ${foodItem.id}`;
       }
     }

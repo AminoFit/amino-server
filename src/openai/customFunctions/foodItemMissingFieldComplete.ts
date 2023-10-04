@@ -2,7 +2,7 @@ import { chatCompletion } from "./chatCompletion"
 import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 import { User, FoodInfoSource } from "@prisma/client"
-import { checkCompliesWithSchema } from "./foodItemCompletion"
+import { checkCompliesWithSchema } from "../utils/openAiHelper"
 
 const foodItemMissingFieldCompleteProperties = {
   type: "object",

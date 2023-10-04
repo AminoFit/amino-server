@@ -19,7 +19,7 @@ interface UsdaFoodSqlResult {
   cosine_similarity: number
 }
 
-const COSINE_THRESHOLD = 0.7
+const COSINE_THRESHOLD = 0.725
 
 
 
@@ -29,13 +29,9 @@ export async function searchUsdaByEmbedding(
       let t0, t1;
   
       // Get embedding ID (either cached or from Hugging Face)
-      t0 = performance.now();
       const embeddingId = searchParams.embedding_cache_id || await getCachedOrFetchEmbeddingId('BGE_BASE',searchParams.food_name, searchParams.brand_name);
-      t1 = performance.now();
-      console.log(`Fetching Embedding ID took ${t1 - t0} milliseconds.`);
     
       // Benchmark Prisma query
-      t0 = performance.now();
       const isBranded = searchParams.branded;
       const whereCondition = isBranded ? `"foodBrand" IS NOT NULL` : `"foodBrand" IS NULL OR "foodBrand" = ''"`;
       const sqlQuery = `
@@ -56,8 +52,6 @@ export async function searchUsdaByEmbedding(
           LIMIT 5;
       `;
       const usdaCosineSimilarityAndEmbeddings: UsdaFoodSqlResult[] = await prisma.$queryRaw(raw(sqlQuery)); 
-      t1 = performance.now();
-      console.log(`Prisma SQL query took ${t1 - t0} milliseconds.`);
   
       const replacer = (key:string, value: any) => {
         if (key === "bgeBaseEmbedding") {
@@ -65,9 +59,7 @@ export async function searchUsdaByEmbedding(
         }
         return value;
       };
-      
-      console.log("Query USDA results:", JSON.stringify(usdaCosineSimilarityAndEmbeddings, replacer, 2));
-      
+            
       // Filter by cosine threshold and check if there are any results left
       const filteredResults = usdaCosineSimilarityAndEmbeddings.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
   
@@ -95,4 +87,4 @@ async function test() {
   })
 }
 
-// test()
+test()

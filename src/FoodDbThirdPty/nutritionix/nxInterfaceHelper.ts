@@ -1,6 +1,7 @@
 import { FoodItem, Serving, Nutrient } from "@prisma/client"
 import { NxNonBrandedResponse } from "./getNonBrandedFoodInfo"
 import { BrandedFoodResponse } from "./getBrandedFoodInfo"
+import { NutritionixBrandedItem } from "./searchFoodIds"
 
 interface NxFoodServing extends Omit<Serving, "id" | "foodItemId"> {}
 interface NxFoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
@@ -14,6 +15,11 @@ export interface NxFoodItemResponse
 }
 
 type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse
+
+
+export function isNutritionixBrandedItem(obj: any): obj is NutritionixBrandedItem {
+  return "nix_item_id" in obj
+}
 
 function deduplicateServings(servings: NxFoodServing[]): NxFoodServing[] {
   const servingMap = new Map<string, NxFoodServing>()

@@ -1,20 +1,484 @@
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
+import { chatCompletion, chatCompletionInstruct } from "./chatCompletion"
+import { ChatCompletionRequestMessage } from "openai"
+import { User, FoodInfoSource } from "@prisma/client"
+import { checkCompliesWithSchema } from "../utils/openAiHelper"
+
 const matchFoodItemToDatatbaseSchema = {
-  type: 'object',
+  type: "object",
   properties: {
-    user_food_name: { type: 'string' },
-    closest_food_in_db: { type: 'string' },
-    closest_food_id: { type: 'number' },
-    user_and_db_same_food: { type: 'boolean' },
-    certainty_0_to_1: { type: 'number' }
+    closest_food_id: { type: "number" },
+    good_match_found: { type: "boolean" },
+    user_request_to_closest_food_similarity_0_to_1: { type: "number" }
   },
-  required: [
-    'closest_food_in_db',
-    'user_and_db_same_food',
-    'closest_food_id',
-    'matched_db_id',
-    'certainty_0_to_1'
-  ]
+  required: ["closest_food_id", "good_match_found", "user_request_to_closest_food_id_food_similarity_0_to_1"]
+}
+
+interface MatchRequest {
+  user_request: {
+    food_name: string
+    brand?: string
+  }
+  database: {
+    food_id: number
+    food_name: string
+    brand?: string
+  }[]
+}
+
+function convertToMatchRequest(
+  user_request: FoodItemToLog,
+  database_options: foodSearchResultsWithSimilarityAndEmbedding[]
+): MatchRequest {
+  const defaultFoodItem = {
+    food_id: 0,
+    food_name: "None of the below",
+    brand: undefined
+  }
+
+  const database = database_options.map((option, index) => ({
+    food_id: index + 1,
+    food_name: option.foodName,
+    brand: option.foodBrand
+  }))
+
+  return {
+    user_request: {
+      food_name: user_request.food_database_search_name,
+      brand: user_request.brand
+    },
+    database: [defaultFoodItem, ...database]
+  }
+}
+
+function correctAndParseResponse(responseText: string): any {
+  try {
+    // Replace keys without quotes to be with quotes
+    let correctedResponse = responseText.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":');
+    
+    // Convert 'False' to 'false' and 'True' to 'true'
+    correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
+    
+    return JSON.parse(correctedResponse);
+  } catch (error) {
+    console.error("Failed to correct and parse the response:", responseText);
+    return null;
+  }
+}
+
+export async function findBestFoodMatch(
+  user: User,
+  user_request: FoodItemToLog,
+  database_options: foodSearchResultsWithSimilarityAndEmbedding[]
+): Promise<foodSearchResultsWithSimilarityAndEmbedding | null> {
+  const matchRequest = convertToMatchRequest(user_request, database_options)
+  //console.log(JSON.stringify(matchRequest))
+
+  let model = "gpt-3.5-turbo-instruct-0914"
+  let max_tokens = 250
+  let temperature = 0
+  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\n${JSON.stringify(matchRequest)}\nOnly give me an answer in this form:
+{ closest_food_id: int,
+good_match_found: bool,
+user_request_to_closest_food_similarity_0_to_1: number}`.trim()
+
+  try {
+    let result = await chatCompletionInstruct(
+      {
+        prompt: prompt.trim(),
+        model: model,
+        temperature: temperature,
+        max_tokens: max_tokens,
+        stop: '}'
+      },
+      user
+    )
+
+    let response = correctAndParseResponse(result.text!.trim() + '}') 
+
+    if (response.closest_food_id < 0 || 
+        response.closest_food_id > database_options.length) {
+          console.log("Invalid food item, retrying with GPT-4")
+          const system = "Call match_user_request_to_database. Think carefully before replying and consider all food options before concluding. There are trick questions so be sure to consider the options at the end."
+          const messages: ChatCompletionRequestMessage[] = [
+            { role: "system", content: system },
+            { role: "user", content: JSON.stringify(matchRequest) }
+          ];
+          model = "gpt-4-0613";
+          let result = await chatCompletion(
+            {
+              messages,
+              functions: [{
+                name: "match_user_request_to_database",
+                description: "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match.",
+                parameters: matchFoodItemToDatatbaseSchema
+              }],
+              model,
+              temperature,
+              max_tokens
+            },
+            user
+          )
+          if(result.function_call && result.function_call.name === "match_user_request_to_database") {
+            response = JSON.parse(result.function_call!.arguments!);
+          } else {
+            throw new Error("Failed to get a valid response from GPT-4");
+          }    
+    }
+
+    // If no valid match is found, return null
+    if (response.closest_food_id === 0 || !response.good_match_found || response.user_request_to_closest_food_similarity_0_to_1 < 0.8) {
+      return null;
+    }
+    // Fetch the matched food item from database_options
+    const matchedFood = database_options[response.closest_food_id - 1] 
+    return matchedFood
+  } catch (error) {
+    console.log(error)
+    return null;
+  }
 }
 
 
-  console.dir(matchFoodItemToDatatbaseSchema, {depth: null})
+async function testFindBestFoodMatch() {
+  const food_item_to_log: FoodItemToLog = {
+    food_database_search_name: "hydro whey protein shake",
+    brand: "optimum nutrition",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "scoop", total_serving_grams: 39, total_serving_calories: 140 }
+  }
+  const foodSearchResults: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.8752489067563187,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Platinum Whey",
+      foodBrand: "Optimum Nutrition"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.8563104753793219,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Hydro Whey Protein Powder Drink Mix, Velocity Vanilla",
+      foodBrand: "ON Optimum Nutrition"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.8545991597715571,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Platinum Hydro Whey Protein Powder Drink Mix",
+      foodBrand: "Optimum Nutrition"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.7808359526591413,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Gold Standard Protein Shake, Gold Standard",
+      foodBrand: "Optimum Nutrition"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.7693964701531227,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Natural Protein Shake",
+      foodBrand: "Designer Whey"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.7658497095108032,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Gold Standard Protein Shake, Vanilla, Vanilla",
+      foodBrand: "Optimum Nutrition"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.7636003494262695,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Protein Shake",
+      foodBrand: "Designer Protein"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.7629784345626831,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "High Protein Shake",
+      foodBrand: "Premier Protein"
+    }
+  ]
+  const user: User = {
+    id: "clmzqmr2a0000la08ynm5rjju",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York"
+  }
+  const food_item_to_log_1: FoodItemToLog = {
+    food_database_search_name: "Pop",
+    brand: "PepsiCo",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "can", total_serving_grams: 355, total_serving_calories: 150 }
+  }
+
+  const foodSearchResults_1: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.5,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Fizzy Soda",
+      foodBrand: "Coca-Cola"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.85,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Carbonated Beverage",
+      foodBrand: "Pepsi"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.8,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Cola Soft Drink",
+      foodBrand: "Dr Pepper"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.78,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Sugary Liquid Refreshment",
+      foodBrand: "Sprite"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.72,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Sparkling Drink",
+      foodBrand: "7UP"
+    }
+  ]
+  const food_item_to_log_2: FoodItemToLog = {
+    food_database_search_name: "Beef Burger Patty",
+    brand: "Beyond Meat",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "patty", total_serving_grams: 113, total_serving_calories: 250 }
+  }
+
+  const foodSearchResults_2: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.9,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Chicken Burger Patty",
+      foodBrand: "Real Meat Co."
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.88,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Vegetable Patty",
+      foodBrand: "Veggie Delight"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.82,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Plant-Based Burger",
+      foodBrand: "Beyond Delicious"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.81,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Beef Alternative Patty",
+      foodBrand: "Impossible Foods"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.79,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Vegan Burger",
+      foodBrand: "Healthy Choices"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.82,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Plant-Based Burger",
+      foodBrand: "Beyond Meat"
+    }
+  ]
+  const food_item_to_log_3: FoodItemToLog = {
+    food_database_search_name: "Raspberry Yogurt",
+    brand: "Yummy Dairy",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "cup", total_serving_grams: 200, total_serving_calories: 150 }
+  }
+
+  const foodSearchResults_3: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.88,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Strawberry Yogurt",
+      foodBrand: "Dairy King"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.86,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Blueberry Yogurt",
+      foodBrand: "Fresh Dairy Co."
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.84,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Mixed Berry Yogurt",
+      foodBrand: "MooMoo Farms"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.82,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Raspberry-Flavored Yogurt",
+      foodBrand: "Yum Dairy"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.79,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Cherry Yogurt",
+      foodBrand: "Dairy Fresh"
+    }
+  ]
+  const food_item_to_log_4: FoodItemToLog = {
+    food_database_search_name: "Mangosteen",
+    brand: "Exotic Fruits Co.",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "fruit", total_serving_grams: 50, total_serving_calories: 60 }
+  }
+
+  const foodSearchResults_4: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.5,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Mango",
+      foodBrand: "Tropical Fruits Inc."
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.4,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Pineapple",
+      foodBrand: "Island Fruits Ltd."
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.3,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Dragonfruit",
+      foodBrand: "Tropical Fruits Co."
+    }
+  ]
+  const food_item_to_log_5: FoodItemToLog = {
+    food_database_search_name: "Kombucha Ginger Lime",
+    brand: "Artisan Brews",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "bottle", total_serving_grams: 240, total_serving_calories: 90 }
+  }
+
+  const foodSearchResults_5: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.5,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Green Tea",
+      foodBrand: "Leafy Brands"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.45,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Kombucha Classic",
+      foodBrand: "Ferment Delights"
+    },    
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.45,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Kombucha Pineapple",
+      foodBrand: "Wild West Bootles"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.4,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Lemon Iced Tea",
+      foodBrand: "Thirst Quenchers"
+    },
+
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.4,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Ginger Kombucha",
+      foodBrand: "Artisan Brews"
+    }
+  ]
+  const food_item_to_log_6: FoodItemToLog = {
+    food_database_search_name: "Chocolate Lava Cake with Caramel Core",
+    brand: "Dessert Heaven",
+    branded: true,
+    serving: { serving_amount: 1, serving_name: "slice", total_serving_grams: 120, total_serving_calories: 350 }
+  }
+
+  const foodSearchResults_6: foodSearchResultsWithSimilarityAndEmbedding[] = [
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.6,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Chocolate Cake",
+      foodBrand: "Cocoa Delights"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.55,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Vanilla Lava Cake",
+      foodBrand: "Sweet Indulgences"
+    },
+    {
+      foodBgeBaseEmbedding: [],
+      similarityToQuery: 0.5,
+      foodSource: FoodInfoSource.USDA,
+      foodName: "Caramel Cake",
+      foodBrand: "Golden Desserts"
+    }
+  ]
+
+  console.log(await findBestFoodMatch(user, food_item_to_log, foodSearchResults))
+  console.log(await findBestFoodMatch(user, food_item_to_log_1, foodSearchResults_1))
+  console.log(await findBestFoodMatch(user, food_item_to_log_2, foodSearchResults_2))
+  console.log(await findBestFoodMatch(user, food_item_to_log_3, foodSearchResults_3))
+  console.log(await findBestFoodMatch(user, food_item_to_log_4, foodSearchResults_4))
+  console.log(await findBestFoodMatch(user, food_item_to_log_5, foodSearchResults_5))
+  console.log(await findBestFoodMatch(user, food_item_to_log_6, foodSearchResults_6))
+}
+
+//testFindBestFoodMatch()

@@ -149,7 +149,7 @@ function createUrlWithParams(baseUrl: string, params: any): string {
   return url.toString()
 }
 
-export async function searchFoodIds(
+/*export async function searchFoodIds(
   params: UsdaSearchParams
 ): Promise<UsdaSearchResponse> {
   const API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
@@ -264,7 +264,8 @@ export async function searchFoodIds(
     throw new Error(`Error fetching data from USDA API: ${error}`)
   }
 }
-
+*/
+/*
 async function runTests() {
   await searchFoodIds({
     query: "Triple Zero Strawberry Yogurt",
@@ -278,7 +279,7 @@ async function runTests() {
       console.error(`Error: ${error}`)
     })
 
-  /*await searchFoodIds({
+  await searchFoodIds({
     query: "Apple",
     branded: false
   })
@@ -288,7 +289,7 @@ async function runTests() {
     .catch((error) => {
       console.error(`Error: ${error}`)
     })
-    */
+    
 }
-
+*/
 // runTests()
