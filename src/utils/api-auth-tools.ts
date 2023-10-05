@@ -23,15 +23,21 @@ export async function getUserFromRequest(request: NextRequest) {
     throw new Error("Error parsing user info")
   }
 
-  const user = await prisma.user.findUnique({
+  // Get or Create the user
+  const upsertUser = await prisma.user.upsert({
     where: {
       email: idTokenInfo.email
+    },
+    update: {},
+    create: {
+      email: idTokenInfo.email,
+      firstName: idTokenInfo.name
     }
   })
 
-  if (!user) {
-    throw new Error("User not found")
+  if (!upsertUser) {
+    throw new Error("User not found and could not be created")
   }
 
-  return user
+  return upsertUser
 }
