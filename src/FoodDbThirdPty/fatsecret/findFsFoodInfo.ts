@@ -14,7 +14,10 @@ interface FsFoodInfoWithEmbedding {
   bgeBaseEmbedding: number[]
 }
 
-export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
+export async function findFsFoodInfo(
+  searchParams: FatSecretFindFoodParams,
+  DEBUG = false
+): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
   // Search for food IDs based on the given query
   const searchResponse: FsFoodInfo[] = await findFatSecretFoodInfo({
     search_expression: searchParams.search_expression,
@@ -25,17 +28,18 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
 
   // create an array of all queries to get embeddings for
   const allQueries = searchResponse.map((item) =>
-      item.food_type === "Brand" ? `${item.food_name} - ${item.brand_name}` : item.food_name
-    )
-  
+    item.food_type === "Brand" ? `${item.food_name} - ${item.brand_name}` : item.food_name
+  )
+
   console.log("query FS:", searchParams.search_expression)
 
   // get all embeddings in a single API call
-  const allEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',allQueries) // Assuming the same embedding function
+  const allEmbeddings = await getCachedOrFetchEmbeddings("BGE_BASE", allQueries) // Assuming the same embedding function
   // extract query embedding and item embeddings
   const queryBgeBaseEmbedding = searchParams.queryBgeBaseEmbedding
-  const itemEmbeddings = allEmbeddings
-    .map((embeddingObject: {id: number; embedding: number[]; text: string}) => embeddingObject.embedding)
+  const itemEmbeddings = allEmbeddings.map(
+    (embeddingObject: { id: number; embedding: number[]; text: string }) => embeddingObject.embedding
+  )
 
   // Create an array to store cosine similarities and embeddings
   const foodItemsWithEmbedding: Array<FsFoodInfoWithEmbedding> = []
@@ -56,30 +60,21 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
 
   // Sort items by cosine similarity
   foodItemsWithEmbedding.sort((a, b) => b.similarity - a.similarity)
-
-  console.log("FatSecret results:")
-  foodItemsWithEmbedding.slice(0, 3).forEach((itemInfo) => {
-    if (itemInfo.item.brand) {
-      console.log(`Item: ${itemInfo.item.name} by ${itemInfo.item.brand} has similarity ${itemInfo.similarity}`)
-    } else {
-      console.log(`Item: ${itemInfo.item.name} has similarity ${itemInfo.similarity}`)
-    }
-  })
+  if (DEBUG) {
+    console.log("FatSecret results:")
+    foodItemsWithEmbedding.slice(0, 3).forEach((itemInfo) => {
+      if (itemInfo.item.brand) {
+        console.log(`Item: ${itemInfo.item.name} by ${itemInfo.item.brand} has similarity ${itemInfo.similarity}`)
+      } else {
+        console.log(`Item: ${itemInfo.item.name} has similarity ${itemInfo.similarity}`)
+      }
+    })
+  }
 
   // If there are no items that match the threshold, return null
   if (foodItemsWithEmbedding.length === 0) return null
 
-  /*
-  for (let i = 0; i < Math.min(foodItemsWithEmbedding.length, 4); i++) {
-    console.log(
-      foodItemsWithEmbedding[i].item,
-      "with similarity",
-      foodItemsWithEmbedding[i].similarity
-    )
-  }
- */
-
-  return foodItemsWithEmbedding.slice(0, 3).map(item => ({
+  return foodItemsWithEmbedding.slice(0, 3).map((item) => ({
     foodBgeBaseEmbedding: item.bgeBaseEmbedding,
     similarityToQuery: item.similarity,
     foodName: item.item.name,
@@ -87,12 +82,12 @@ export async function findFsFoodInfo(searchParams: FatSecretFindFoodParams): Pro
     externalId: String(item.item.externalId),
     foodBrand: item.item.brand ?? undefined,
     foodItem: item.item as FoodItemWithNutrientsAndServing
-  }));
+  }))
 }
 
 async function runTests() {
   const query = "Fiber Gummies"
-  const queryEmbedding = (await getCachedOrFetchEmbeddings('BGE_BASE',[query]))[0].embedding
+  const queryEmbedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [query]))[0].embedding
   const results = await findFsFoodInfo({
     search_expression: query,
     branded: true,

@@ -31,7 +31,8 @@ const includeBrandName = (description: string, brand: string) => {
 }
 
 export async function findNxFoodInfo(
-  foodQuery: FoodQuery
+  foodQuery: FoodQuery,
+  DEBUG = false
 ): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
   let foodResults: NutritionixSearchInstantResponse = await searchFoodIds({
     query: foodQuery.food_full_name,
@@ -120,6 +121,7 @@ export async function findNxFoodInfo(
   // sort items by cosine similarity
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
+  if (DEBUG){
   console.log("Nutritionix results:")
   cosineSimilaritiesAndEmbeddings.slice(0, 3).forEach((itemInfo) => {
     if (isNutritionixBrandedItem(itemInfo.item)) {
@@ -130,6 +132,7 @@ export async function findNxFoodInfo(
       console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`)
     }
   })
+}
 
   // Take only the top items as per 'topItemsCount'
   const topSimilarItems = cosineSimilaritiesAndEmbeddings.slice(0, 3)

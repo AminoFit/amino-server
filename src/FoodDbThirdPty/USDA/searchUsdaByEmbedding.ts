@@ -24,7 +24,8 @@ const COSINE_THRESHOLD = 0.725
 
 
 export async function searchUsdaByEmbedding(
-    searchParams: UsdaFindFoodParams
+    searchParams: UsdaFindFoodParams,
+    DEBUG = false
   ): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
       let t0, t1;
   
@@ -62,8 +63,9 @@ export async function searchUsdaByEmbedding(
             
       // Filter by cosine threshold and check if there are any results left
       const filteredResults = usdaCosineSimilarityAndEmbeddings.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
-  
-      console.log("Filtered USDA results:", JSON.stringify(filteredResults, replacer, 2));
+      if (DEBUG) {
+        console.log("Filtered USDA results:", JSON.stringify(filteredResults, replacer, 2));
+      }
       if (filteredResults.length === 0) {
           return null;
       }
@@ -87,4 +89,4 @@ async function test() {
   })
 }
 
-test()
+//test()
