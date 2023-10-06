@@ -27,7 +27,7 @@ export async function middleware(req: NextRequest) {
     // Add the user to the request headers
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set("x-amino-user", JSON.stringify(result.payload))
-    
+
     console.log("Auth success. Calling next")
     const returnResponse = NextResponse.next({
       request: {
@@ -38,9 +38,9 @@ export async function middleware(req: NextRequest) {
 
     return returnResponse
   } catch (e) {
-    console.error("Authentication failed: Token could not be verified")
+    console.error("Authentication failed: Token could not be verified:" + e)
   }
-  return NextResponse.json({ message: "Authentication failed: Token could not be verified" }, { status: 401 })
+  return NextResponse.json({ message: "Authentication failed: Something went wrong" }, { status: 401 })
 }
 
 export const config = {
