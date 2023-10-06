@@ -1,6 +1,6 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
-import { chatCompletion, chatCompletionInstruct } from "./chatCompletion"
+import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
 import { ChatCompletionRequestMessage } from "openai"
 import { User, FoodInfoSource } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
@@ -49,21 +49,6 @@ function convertToMatchRequest(
       brand: user_request.brand
     },
     database: [defaultFoodItem, ...database]
-  }
-}
-
-function correctAndParseResponse(responseText: string): any {
-  try {
-    // Replace keys without quotes to be with quotes
-    let correctedResponse = responseText.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":');
-    
-    // Convert 'False' to 'false' and 'True' to 'true'
-    correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
-    
-    return JSON.parse(correctedResponse);
-  } catch (error) {
-    console.error("Failed to correct and parse the response:", responseText);
-    return null;
   }
 }
 

@@ -1,6 +1,6 @@
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { chatCompletionInstruct } from "./chatCompletion"
+import { chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
 import { User } from "@prisma/client"
 
 // Token limit
@@ -11,14 +11,30 @@ function sanitizeInput(input: string): string {
     return sanitizedInput;
 }
 
-export async function getFoodToLogFromUserRequest(user: User, user_request: string): Promise<FoodItemToLog | null> {
-    const sanitizedUserRequest = sanitizeInput(user_request);
+function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
+    return {
+        food_database_search_name: outputItem.food_database_search_name,
+        brand: outputItem.brand,
+        branded: outputItem.branded,
+        base_food_name: outputItem.food_database_search_name, // Assuming the same as the comprehensive name
+        serving: {
+            serving_amount: outputItem.serving.serving_amount,
+            serving_name: outputItem.serving.serving_name,
+            total_serving_grams: outputItem.serving.total_serving_size_g_or_ml, // Using the grams value from the example, can adjust if needed
+            total_serving_calories: 0, // Placeholder as the data is not provided
+            is_liquid: outputItem.serving.g_or_ml === "ml",
+            total_serving_ml: outputItem.serving.g_or_ml === "ml" ? outputItem.serving.total_serving_size_g_or_ml : undefined
+        }
+    };
+}
 
+
+export async function getFoodToLogFromUserRequest(user: User, user_request: string): Promise<FoodItemToLog[]> {
+    const sanitizedUserRequest = sanitizeInput(user_request);
     if (!isWithinTokenLimit(sanitizedUserRequest, tokenLimit)) {
         console.log("Input too long.");
-        return null;
+        return [];
     }
-
     const prompt = `Based on user_request give a structured JSON of what foods user wants to log. Group items.
 Input:
 user_request: "${sanitizedUserRequest}"
@@ -41,30 +57,26 @@ Start of output:
     try {
         const result = await chatCompletionInstruct({
             prompt,
+            temperature: 0,
             stop: ']',
         }, user);
-
         if (!result.text) {
             throw new Error("No text in the result");
         }
-
-        const parsedOutput = JSON.parse(result.text.trim());
-        
+        const parsedOutput = correctAndParseResponse(`[`+result.text.trim()+`]`);
         if (!Array.isArray(parsedOutput) || parsedOutput.length === 0) {
+            console.log(parsedOutput);
             throw new Error("Returned data is not in the expected format");
         }
-
-        const foodItemToLog: FoodItemToLog = parsedOutput[0];
-
-        return foodItemToLog;
-
+        const foodItemsToLog: FoodItemToLog[] = parsedOutput.map(mapToFoodItemToLog);
+        return foodItemsToLog;
     } catch (error) {
         if (error instanceof Error) {
             console.log("Error:", error.message);
         } else {
             console.log("Error:", error);
         }
-        return null;
+        return [];
     }
 }
 
@@ -90,7 +102,7 @@ async function testFoodLog() {
       sendCheckins: false,
       tzIdentifier: "America/New_York"
     }
-    let userRequestString = "I ate 2 cups of Catalina Crunch Cereal"
+    let userRequestString = "I had a protein shake and a strawberry rxbar"
     let result = await getFoodToLogFromUserRequest(user, userRequestString)
     console.dir(result, { depth: null })
   }

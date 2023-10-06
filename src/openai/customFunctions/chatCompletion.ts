@@ -64,6 +64,23 @@ export interface ChatCompletionInstructOptions {
   [key: string]: any;  // for other potential parameters
 }
 
+export function correctAndParseResponse(responseText: string): any {
+  try {
+      // Remove trailing commas from JSON-like strings
+      const correctedResponse = responseText
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*\]/g, ']')
+          .replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":')
+          .replace(/\bFalse\b/g, 'false')
+          .replace(/\bTrue\b/g, 'true');
+      
+      return JSON.parse(correctedResponse);
+  } catch (error) {
+      console.error("Failed to correct and parse the response:", responseText, error);
+      return null;
+  }
+}
+
 export async function chatCompletionInstruct(
   {
     model = "gpt-3.5-turbo-instruct",
@@ -97,6 +114,45 @@ export async function chatCompletionInstruct(
     return result.data.choices[0];
   } catch (error) {
     console.log(error);
+    throw error;
+  }
+}
+
+
+export async function* chatCompletionInstructStream(
+  {
+    model = "gpt-3.5-turbo-instruct",
+    prompt,
+    temperature = 0.5,
+    max_tokens = 2048,
+    stop,
+    ...options
+  }: ChatCompletionInstructOptions,
+  user: User
+): AsyncIterable<string> {
+  try {
+    const stream = await openai.createCompletion({
+      model,
+      prompt,
+      temperature,
+      max_tokens,
+      stop,
+      stream: true,
+      ...options
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.choices && chunk.choices[0].text) {
+        yield chunk.choices[0].text;
+      }
+
+      if (chunk.usage) {
+        // log usage
+        await LogOpenAiUsage(user, chunk.usage, model);
+      }
+    }
+  } catch (error) {
+    console.error(error);
     throw error;
   }
 }
