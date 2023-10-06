@@ -1,7 +1,7 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
-import { ChatCompletionRequestMessage } from "openai"
+import OpenAI from "openai"
 import { User, FoodInfoSource } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
 
@@ -86,7 +86,7 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim()
         response.closest_food_id > database_options.length) {
           console.log("Invalid food item, retrying with GPT-4")
           const system = "Call match_user_request_to_database. Think carefully before replying and consider all food options before concluding. There are trick questions so be sure to consider the options at the end."
-          const messages: ChatCompletionRequestMessage[] = [
+          const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
             { role: "system", content: system },
             { role: "user", content: JSON.stringify(matchRequest) }
           ];

@@ -1,5 +1,5 @@
 import { chatCompletion } from "./chatCompletion"
-import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
+import OpenAI from "openai"
 import { FoodInfo } from "./foodItemInterface"
 import { User } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
@@ -96,7 +96,7 @@ export async function foodItemCompletion(
   const system =
     "You are a helpful bot that responds with nutritional information about food items. This is done by calling the get_food_information function. You respond normalising everything to 100 grams (e.g. calories per 100g), unless not possible. You will include the standard servings in the appropriate array. Kcal, Carb, Fat, Protein and Gram values cannot be 0 unless it is a calorie free item"
 
-  const functions: ChatCompletionFunctions[] = [
+  const functions: OpenAI.Chat.ChatCompletionMessageParam.Function[] = [
     {
       name: "get_food_info",
       description: "Food info, use 100g if no standard serving size.",
@@ -222,7 +222,7 @@ export async function foodItemCompletion(
 
   let result: any = {}
 
-  let messages: ChatCompletionRequestMessage[] = [
+  let messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]

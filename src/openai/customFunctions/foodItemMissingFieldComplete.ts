@@ -1,5 +1,5 @@
 import { chatCompletion } from "./chatCompletion"
-import { ChatCompletionRequestMessage, ChatCompletionFunctions } from "openai"
+import OpenAI from "openai"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 import { User, FoodInfoSource } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
@@ -101,7 +101,7 @@ export async function foodItemMissingFieldComplete(
   const system =
     "You are a bot that autocompletes food item missing elements. Call the autocomplete_missing_fields function to do so."
 
-  const functions: ChatCompletionFunctions[] = [
+  const functions: OpenAI.Chat.ChatCompletionMessageParam.Function[] = [
     {
       name: "autocomplete_missing_fields",
       description:
@@ -123,7 +123,7 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
     generateInquiryString(foodItem)
 
   let result: any = null
-  let messages: ChatCompletionRequestMessage[] = [
+  let messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]

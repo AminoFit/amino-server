@@ -14,10 +14,7 @@ import {
   updateUserInfoSchema
 } from "@/utils/openaiFunctionSchemas"
 import { Message, MessageStatus, MessageType, Role, User } from "@prisma/client"
-import {
-  ChatCompletionRequestMessage,
-  ChatCompletionRequestMessageRoleEnum
-} from "openai"
+import OpenAI from "openai"
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
 import { getOpenAICompletion } from "./utils/openAiHelper"
 
@@ -47,7 +44,7 @@ export async function GenerateResponseForUser(
   user: User
 ): Promise<ResponseForUser> {
   // Get messages
-  const messages: ChatCompletionRequestMessage[] = [
+  const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: GetSystemStartPrompt(user)
@@ -65,13 +62,13 @@ export async function GenerateResponseForUser(
 
   UpdateMessage({ id: lastUserMessage.id, status: MessageStatus.PROCESSING })
 
-  let prevMessage: ChatCompletionRequestMessage | undefined = undefined
-  const tempProcessedMessage: ChatCompletionRequestMessage = {
+  let prevMessage: OpenAI.Chat.CreateChatCompletionRequestMessage | undefined = undefined
+  const tempProcessedMessage: OpenAI.Chat.CreateChatCompletionRequestMessage = {
     role: ROLE_MAPPING.Assistant,
     content: "ok! got it."
   }
   for (const message of messagesForUser) {
-    let msg: ChatCompletionRequestMessage = {
+    let msg: OpenAI.Chat.CreateChatCompletionRequestMessage = {
       role: ROLE_MAPPING[message.role],
       content: message.content
     }

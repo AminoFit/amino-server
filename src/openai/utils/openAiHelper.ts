@@ -1,13 +1,13 @@
 import { openai } from "../../utils/openaiFunctionSchemas"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { User } from "@prisma/client"
-import { CreateCompletionResponseUsage } from "openai"
+import OpenAI from "openai"
 import { prisma } from "../../database/prisma"
 
 // Log usage
 export async function LogOpenAiUsage(
   user: User,
-  usage: CreateCompletionResponseUsage,
+  usage: OpenAI.Completion.Usage,
   modelName: string
 ) {
   //console.log(`This request used ${usage.total_tokens || "??"} tokens`)
@@ -125,7 +125,7 @@ export async function getOpenAICompletion(
   while (retries < maxRetries && !successfulResponse) {
     try {
       // get completion from OpenAI
-      completion = await openai.createChatCompletion(gptRequest)
+      completion = await openai.chat.completions.create(gptRequest)
 
       // Check for a successful response
       if (completion?.data.usage) {

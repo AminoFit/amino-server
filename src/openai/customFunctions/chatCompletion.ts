@@ -1,18 +1,18 @@
-import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai"
+import OpenAI from "openai"
 import { User } from "@prisma/client"
 import { LogOpenAiUsage } from "../utils/openAiHelper"
 
-const configuration = new Configuration({
+
+
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
-
-const openai = new OpenAIApi(configuration)
 
 interface ChatCompletionOptions {
   model?: string
   max_tokens?: number
   temperature?: number
-  messages: ChatCompletionRequestMessage[]
+  messages: OpenAI.Chat.CreateChatCompletionRequestMessage[]
   functions?: any[] // You should replace 'any' with the appropriate type.
   function_call?: string
 }
@@ -30,7 +30,7 @@ export async function chatCompletion(
   user: User
 ) {
   try {
-    const result = await openai.createChatCompletion({
+    const result = await openai.chat.completions.create({
       model,
       messages,
       max_tokens,
@@ -39,7 +39,7 @@ export async function chatCompletion(
       function_call
     })
 
-    if (!result.data.choices[0].message) {
+    if (!result.choices[0].message) {
       throw new Error("No return error from chat")
     }
     if (result.data.usage) {
@@ -47,7 +47,7 @@ export async function chatCompletion(
       await LogOpenAiUsage(user, result.data.usage, model)
     }
 
-    return result.data.choices[0].message
+    return result.choices[0].message
   } catch (error) {
     console.log(error)
     throw error
@@ -93,7 +93,7 @@ export async function chatCompletionInstruct(
   user: User
 ) {
   try {
-    const result = await openai.createCompletion({
+    const result = await openai.completions.create({
       model,
       prompt,
       temperature,
@@ -102,7 +102,7 @@ export async function chatCompletionInstruct(
       ...options  // pass other options if any
     })
 
-    if (!result.data.choices || result.data.choices.length === 0 || !result.data.choices[0].text) {
+    if (!result.choices || result.choices.length === 0 || !result.choices[0].text) {
       throw new Error("No return data from instruction completion")
     }
     
@@ -111,7 +111,7 @@ export async function chatCompletionInstruct(
       await LogOpenAiUsage(user, result.data.usage, model)
     }
 
-    return result.data.choices[0];
+    return result.choices[0];
   } catch (error) {
     console.log(error);
     throw error;
@@ -131,7 +131,7 @@ export async function* chatCompletionInstructStream(
   user: User
 ): AsyncIterable<string> {
   try {
-    const stream = await openai.createCompletion({
+    const stream = await openai.completions.create({
       model,
       prompt,
       temperature,
