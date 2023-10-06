@@ -39,6 +39,7 @@
     "eslint": "8.43.0",
     "eslint-config-next": "13.4.7",
     "formik": "^2.4.2",
+    "gpt-tokenizer": "^2.1.1",
     "moment-timezone": "^0.5.43",
     "next": "^13.4.19",
     "next-auth": "^4.22.1",

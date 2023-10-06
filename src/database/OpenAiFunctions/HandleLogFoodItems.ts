@@ -535,14 +535,14 @@ async function findAndAddItemInDatabase(
 
 async function testFoodSearch() {
   const foodItem: FoodItemToLog = {
-    food_database_search_name: "Vanilla Almond Bar",
-    brand: "RxBar",
+    food_database_search_name: "Chocolate Peanut Butter Cereal",
+    brand: "Catalina Crunch",
     branded: true,
-    base_food_name: "Vanilla Almond Bar",
+    base_food_name: "Chocolate Peanut Butter Cereal",
     serving: {
       serving_amount: 1,
-      serving_name: "bar",
-      total_serving_grams: 52,
+      serving_name: "cup",
+      total_serving_grams: 100,
       total_serving_calories: 210
     }
   }

@@ -55,7 +55,7 @@ export async function chatCompletion(
 }
 
 
-interface ChatCompletionInstructOptions {
+export interface ChatCompletionInstructOptions {
   model?: string;
   prompt: string;
   temperature?: number;

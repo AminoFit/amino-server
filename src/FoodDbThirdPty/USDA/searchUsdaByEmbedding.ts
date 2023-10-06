@@ -69,14 +69,18 @@ export async function searchUsdaByEmbedding(
       if (filteredResults.length === 0) {
           return null;
       }
-      return filteredResults.map((item) => ({
-        foodBgeBaseEmbedding: item.bgeBaseEmbedding,
+      return filteredResults.map((item) => {
+        const embeddingAsArray = JSON.parse(String(item.bgeBaseEmbedding)); // Convert string representation of array to actual array
+      
+        return {
+          foodBgeBaseEmbedding: embeddingAsArray,
           similarityToQuery: item.cosine_similarity,
           foodSource: FoodInfoSource.USDA,
           externalId: String(item.fdcId),
           foodName: item.foodName,
-          foodBrand: item.foodBrand || undefined
-      }));
+          foodBrand: item.foodBrand || undefined,
+        };
+      });
   }
 
 async function test() {

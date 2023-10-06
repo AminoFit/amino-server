@@ -210,6 +210,16 @@ export async function GenerateResponseForUser(
   }
 }
 
+// Helper function to handle error scenarios and update the message accordingly
+function handleQuickLog(inputMessageId: number, logMessage: string) {
+  console.log(logMessage)
+  UpdateMessage({
+    id: inputMessageId,
+    status: MessageStatus.FAILED,
+    resolvedAt: new Date()
+  })
+}
+
 export async function GenerateResponseForQuickLog(user: User, inputMessageId: number): Promise<ResponseForUser> {
   const systemMessage = {
     role: ChatCompletionRequestMessageRoleEnum.System,
@@ -218,7 +228,7 @@ export async function GenerateResponseForQuickLog(user: User, inputMessageId: nu
 
   const loadedMessage = await GetMessageById(inputMessageId)
   if (!loadedMessage) {
-    handleError(inputMessageId, "Message is not available. Could not find the message.")
+    handleQuickLog(inputMessageId, "Message is not available. Could not find the message.")
     return {
       resultMessage: "Sorry, we're having problems right now. Please try again later."
     }
@@ -245,7 +255,7 @@ export async function GenerateResponseForQuickLog(user: User, inputMessageId: nu
   const completion = await getOpenAICompletion(gptRequest, user, 1, "gpt-4-0613", 0.1)
 
   if (!completion) {
-    handleError(inputMessageId, "Completion not successful.")
+    handleQuickLog(inputMessageId, "Completion not successful.")
     return {
       resultMessage: "Sorry, We're having problems right now. Please try again later."
     }
@@ -253,7 +263,7 @@ export async function GenerateResponseForQuickLog(user: User, inputMessageId: nu
 
   const choice = completion.data.choices[0]
   if (!choice) {
-    handleError(inputMessageId, "Data is not available. Could not parse the response from OpenAI.")
+    handleQuickLog(inputMessageId, "Data is not available. Could not parse the response from OpenAI.")
     return {
       resultMessage: "Sorry, we're having problems right now. Please try again later."
     }
@@ -278,14 +288,4 @@ export async function GenerateResponseForQuickLog(user: User, inputMessageId: nu
     resultMessage: messageForUser,
     responseToFunctionName: functionCall?.name
   }
-}
-
-// Helper function to handle error scenarios and update the message accordingly
-function handleError(inputMessageId: number, logMessage: string) {
-  console.log(logMessage)
-  UpdateMessage({
-    id: inputMessageId,
-    status: MessageStatus.FAILED,
-    resolvedAt: new Date()
-  })
 }
