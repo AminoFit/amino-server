@@ -413,11 +413,25 @@ async function findAndAddItemInDatabase(
       return null
     }
 
+    const nullReturn = async () => {
+      let DEBUG = 1
+      if (DEBUG) {
+      return null
+      } else {
+        return [{
+          foodBgeBaseEmbedding: [],
+          similarityToQuery: 0,
+          foodSource: FoodInfoSource.NUTRITIONIX,
+          foodName: ''
+      }]
+      }
+    }
+
     // Dispatch all API calls simultaneously
     const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
-      getNxFoodInfo(),
+      nullReturn(),
       getUsdaFoodInfo(),
-      getFsFoodInfo()
+      nullReturn()
     ])
 
     if (nxFoodInfoResponse != null && nxFoodInfoResponse.length > 0) {
@@ -521,10 +535,10 @@ async function findAndAddItemInDatabase(
 
 async function testFoodSearch() {
   const foodItem: FoodItemToLog = {
-    food_database_search_name: "Chocolate mint bar",
+    food_database_search_name: "Vanilla Almond Bar",
     brand: "RxBar",
     branded: true,
-    base_food_name: "Chocolate mint bar",
+    base_food_name: "Vanilla Almond Bar",
     serving: {
       serving_amount: 1,
       serving_name: "bar",

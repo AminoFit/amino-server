@@ -89,7 +89,7 @@ export function mapUsdaFoodItemToFoodItem(
       servingAlternateUnit: portion.servingSizeUnit !== 'g' ? portion.servingSizeUnit : null,
       servingName: portion.householdServingFullText ? portion.householdServingFullText : `${portion.servingSize} ${portion.servingSizeUnit}`
     })),
-    UPC: Number(usdaFoodItem.upc) || null,
+    UPC: usdaFoodItem.upc ? BigInt(usdaFoodItem.upc) : null,
     externalId: usdaFoodItem.fdcId.toString(),
     Nutrients: [],
     kcalPerServing: 0,

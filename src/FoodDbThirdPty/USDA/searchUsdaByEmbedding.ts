@@ -15,7 +15,7 @@ interface UsdaFoodSqlResult {
   fdcId: number
   foodName: string
   foodBrand: string | null // Assuming foodBrand can be NULL in the database
-  bgeBaseEmbedding: string // Converted to text in the SQL query
+  bgeBaseEmbedding: number[] // Converted to text in the SQL query
   cosine_similarity: number
 }
 
@@ -70,7 +70,7 @@ export async function searchUsdaByEmbedding(
           return null;
       }
       return filteredResults.map((item) => ({
-        foodBgeBaseEmbedding: item.bgeBaseEmbedding.split(",").map(Number),
+        foodBgeBaseEmbedding: item.bgeBaseEmbedding,
           similarityToQuery: item.cosine_similarity,
           foodSource: FoodInfoSource.USDA,
           externalId: String(item.fdcId),

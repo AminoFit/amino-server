@@ -210,133 +210,82 @@ export async function GenerateResponseForUser(
   }
 }
 
-export async function GenerateResponseForQuickLog(
-  user: User,
-  inputMessageId: number
-): Promise<ResponseForUser> {
-  // Get messages
-  const messages: ChatCompletionRequestMessage[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: GetSystemQuickLogPrompt(user)
-    }
-  ]
-
-  UpdateMessage({ id: inputMessageId, status: MessageStatus.PROCESSING })
+export async function GenerateResponseForQuickLog(user: User, inputMessageId: number): Promise<ResponseForUser> {
+  const systemMessage = {
+    role: ChatCompletionRequestMessageRoleEnum.System,
+    content: GetSystemQuickLogPrompt(user)
+  }
 
   const loadedMessage = await GetMessageById(inputMessageId)
   if (!loadedMessage) {
-    const messageForUser =
-      "Sorry, we're having problems right now. Please try again later. Could not find the message"
-    console.log("Message is not available")
-    UpdateMessage({
-      id: inputMessageId,
-      status: MessageStatus.FAILED,
-      resolvedAt: new Date()
-    })
+    handleError(inputMessageId, "Message is not available. Could not find the message.")
     return {
-      resultMessage: messageForUser
+      resultMessage: "Sorry, we're having problems right now. Please try again later."
     }
   }
 
-  let msg: ChatCompletionRequestMessage = {
-    role: ROLE_MAPPING.User,
-    content: loadedMessage.content
-  }
-  messages.push(msg)
-
-  /* models
-  gpt-3.5-turbo-0613
-  gpt-4-0613
-  */
-
-  const modelName = "gpt-4-0613"
-
   const gptRequest = {
-    model: modelName,
-    messages,
-    functions: [
+    model: "gpt-3.5-turbo-0613",
+    messages: [
+      systemMessage,
       {
-        name: "log_food_items",
-        description:
-          "Call this function to log food items when the user says what they ate.",
-        parameters: logFoodSchema
+        role: ROLE_MAPPING.User,
+        content: loadedMessage.content
       }
     ],
+    functions: [{
+      name: "log_food_items",
+      description: "Call this function to log food items when the user says what they ate.",
+      parameters: logFoodSchema
+    }],
     function_call: "auto",
     temperature: 0.0
   }
 
-  const maxRetries = 1 // You can adjust this value as needed.
+  const completion = await getOpenAICompletion(gptRequest, user, 1, "gpt-4-0613", 0.1)
 
-  const completion = await getOpenAICompletion(
-    gptRequest,
-    user,
-    maxRetries,
-    "gpt-4-0613",
-    0.1
-  )
-
-  // Check if there was a successful completion
   if (!completion) {
-    UpdateMessage({
-      id: inputMessageId,
-      status: MessageStatus.FAILED,
-      resolvedAt: new Date()
-    })
+    handleError(inputMessageId, "Completion not successful.")
     return {
-      resultMessage:
-        "Sorry, We're having problems right now. Please try again later."
+      resultMessage: "Sorry, We're having problems right now. Please try again later."
     }
   }
 
-  let messageForUser = ""
-  let responseToFunction
-
-  if (completion?.data.choices[0]) {
-    console.log("completion choices: ", completion.data.choices[0])
-
-    const functionCall = completion.data.choices[0].message?.function_call
-
-    // We should call a function
-    if (functionCall) {
-      const messageType = functionToMessageTypeMap[functionCall.name]
-      UpdateMessage({ id: inputMessageId, messageType: messageType })
-
-      messageForUser = await ProcessFunctionCalls(
-        user,
-        functionCall,
-        inputMessageId
-      )
-      responseToFunction = functionCall.name
-
-      // We should call just return a message
-    } else {
-      messageForUser =
-        completion?.data.choices[0].message?.content ||
-        "Sorry, I don't understand. Can you try again?"
-      UpdateMessage({
-        id: inputMessageId,
-        status: MessageStatus.RESOLVED,
-        resolvedAt: new Date()
-      })
+  const choice = completion.data.choices[0]
+  if (!choice) {
+    handleError(inputMessageId, "Data is not available. Could not parse the response from OpenAI.")
+    return {
+      resultMessage: "Sorry, we're having problems right now. Please try again later."
     }
-  } else {
-    messageForUser =
-      "Sorry, we're having problems right now. Please try again later. Could not parse the response from OpenAI."
-    console.log("Data is not available")
+  }
+
+  console.log("completion choices:", choice)
+  
+  const functionCall = choice.message?.function_call
+  const messageForUser = functionCall 
+    ? await ProcessFunctionCalls(user, functionCall, inputMessageId)
+    : choice.message?.content || "Sorry, I don't understand. Can you try again?"
+
+  if (!functionCall) {
     UpdateMessage({
       id: inputMessageId,
-      status: MessageStatus.FAILED,
+      status: MessageStatus.RESOLVED,
       resolvedAt: new Date()
     })
-    return {
-      resultMessage: messageForUser
-    }
   }
 
   return {
     resultMessage: messageForUser,
-    responseToFunctionName: responseToFunction
+    responseToFunctionName: functionCall?.name
   }
+}
+
+// Helper function to handle error scenarios and update the message accordingly
+function handleError(inputMessageId: number, logMessage: string) {
+  console.log(logMessage)
+  UpdateMessage({
+    id: inputMessageId,
+    status: MessageStatus.FAILED,
+    resolvedAt: new Date()
+  })
 }

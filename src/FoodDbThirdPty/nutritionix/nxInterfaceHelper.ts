@@ -115,7 +115,7 @@ export function mapFoodResponseToFoodItem(
 
     return {
       id: 0,
-      UPC: Number(food.upc) || null,
+      UPC: food.upc ? BigInt(food.upc) : null,
       externalId: food.nix_item_id,
       name: food.food_name,
       brand: food.brand_name,

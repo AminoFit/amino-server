@@ -11,6 +11,7 @@ export async function getCompleteFoodInfo(
     switch (foodItem.foodSource) {
       case FoodInfoSource.USDA:
         try {
+          console.log("fetching fdcid:", foodItem.externalId)
           const usdaFoodInfo = await getUsdaFoodsInfo({ fdcIds: [foodItem.externalId!] });
           if (usdaFoodInfo && usdaFoodInfo.length > 0) {
             foodItem.foodItem = usdaFoodInfo[0] as FoodItemWithNutrientsAndServing;

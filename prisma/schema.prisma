@@ -217,7 +217,7 @@ model FoodItem {
   lastUpdated              DateTime                     @default(now())
   verified                 Boolean                      @default(false)
   externalId               String?
-  UPC                      Int?
+  UPC                      BigInt?
   Servings                 Serving[]
   Nutrients                Nutrient[]
   userId                   String?

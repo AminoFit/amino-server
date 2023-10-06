@@ -171,3 +171,6 @@ const exampleSchema = {
   },
   required: ["ingredients", "instructions", "time_to_cook"]
 }
+
+
+//console.log(JSON.stringify(logFoodSchema, null, 2))
