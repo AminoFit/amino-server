@@ -5,6 +5,11 @@ generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
+// generator client {
+//   provider             = "prisma-client-py"
+//   recursive_type_depth = 5
+//     previewFeatures = ["postgresqlExtensions"]
+// }
 
 // Use this when you want to generate the python client
 // generator client {
@@ -141,6 +146,8 @@ model LoggedFoodItem {
   Message            Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   status             String?
   extendedOpenAiData Json?
+  embeddingId        Int?                 // Changed relation to embeddingId
+  foodEmbeddingCache foodEmbeddingCache?  @relation(fields: [embeddingId], references: [id])
 }
 
 model Session {
@@ -217,7 +224,7 @@ model FoodItem {
   lastUpdated              DateTime                     @default(now())
   verified                 Boolean                      @default(false)
   externalId               String?
-  UPC                      Int?
+  UPC                      BigInt?
   Servings                 Serving[]
   Nutrients                Nutrient[]
   userId                   String?
@@ -227,8 +234,8 @@ model FoodItem {
   foodInfoSource           FoodInfoSource               @default(User) //where the foodinfo comes from
   messageId                Int?
   Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  embedding                Unsupported("vector(1536)")?
-
+  adaEmbedding             Unsupported("vector(1536)")?
+  bgeBaseEmbedding         Unsupported("vector(768)")?
   @@unique([name, brand], name: "name_brand")
   @@unique([externalId, foodInfoSource])
 }
@@ -284,5 +291,15 @@ model UsdaFoodItemEmbedding {
   foodBrand         String?
   brandOwner        String?
   bgeLargeEmbedding Unsupported("vector(1024)")?
-  @@index([bgeLargeEmbedding])
+  bgeBaseEmbedding Unsupported("vector(768)")?
+  @@index([bgeBaseEmbedding])
+}
+
+
+model foodEmbeddingCache {
+  id               Int               @id @default(autoincrement())
+  textToEmbed      String            @unique  // Unique constraint added
+  adaEmbedding     Unsupported("vector(1536)")?
+  bgeBaseEmbedding Unsupported("vector(768)")?
+  LoggedFoodItems  LoggedFoodItem[]  // One-to-many relation represented as an array
 }

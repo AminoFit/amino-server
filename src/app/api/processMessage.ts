@@ -6,7 +6,6 @@ import {
   SaveMessageToUser
 } from "@/twilio/SendMessageToUser"
 import { MessageStatus, MessageDirection, Role, User } from "@prisma/client"
-import { NextResponse } from "next/server"
 
 export enum MessageSource {
   Sms = "Sms",
@@ -54,7 +53,7 @@ export async function QuickLogMessage(user: User, body: string) {
   const startTime = Date.now()
   await LogSmsMessage(user, body, MessageDirection.Inbound)
 
-  const inputMessage = await SaveMessageFromUser(user, body, Role.User)
+  const inputMessage = await SaveMessageFromUser(user, body, Role.User, "quick_log_food_items", "FOOD_LOG_REQUEST")
 
   let responseMessage = await GenerateResponseForQuickLog(user, inputMessage.id)
 

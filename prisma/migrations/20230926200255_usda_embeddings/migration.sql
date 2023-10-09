@@ -6,7 +6,7 @@ CREATE TABLE "UsdaFoodItemEmbedding" (
     "foodBrand" TEXT,
     "brandOwner" TEXT,
     "bgeLargeEmbedding" vector(1024),
-
+    "bgeBaseEmbedding" vector(768),
     CONSTRAINT "UsdaFoodItemEmbedding_pkey" PRIMARY KEY ("id")
 );
 
@@ -14,7 +14,6 @@ CREATE TABLE "UsdaFoodItemEmbedding" (
 CREATE UNIQUE INDEX "UsdaFoodItemEmbedding_fdcId_key" ON "UsdaFoodItemEmbedding"("fdcId");
 
 -- CreateIndex
-CREATE INDEX "UsdaFoodItemEmbedding_bgeLargeEmbedding_idx"
+CREATE INDEX "UsdaFoodItemEmbedding_bgeBaseEmbedding_idx"
 ON "UsdaFoodItemEmbedding"
-USING hnsw ("bgeLargeEmbedding" vector_l2_ops)
-WITH (m = 4, ef_construction = 10);
+USING hnsw ("bgeBaseEmbedding" vector_ip_ops) WITH (m = 16, ef_construction = 128);

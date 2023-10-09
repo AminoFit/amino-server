@@ -1,6 +1,13 @@
 import { FoodItem } from "@prisma/client"
-import { getEmbedding } from "../openai/utils/embeddingsHelper"
+import { getCachedOrFetchEmbeddings } from "./embeddingsCache/getCachedOrFetchEmbeddings"
 import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
+
+export interface FoodEmbeddingCache {
+  search_string: string,
+  embedding_cache_id: number,
+  ada_embedding?: number[],
+  bge_base_embedding?: number[],
+}
 
 
 export async function getFoodEmbedding(foodItem: FoodItem): Promise<number[]> {
@@ -14,11 +21,11 @@ export async function getFoodEmbedding(foodItem: FoodItem): Promise<number[]> {
   ) {
     textToEmbed += ` - ${foodItem.brand}`
   }
-  const embedding = await getEmbedding([textToEmbed.toLowerCase()])
-  return embedding.data[0].embedding
+  const embedding = await getCachedOrFetchEmbeddings('BGE_BASE', [textToEmbed])
+  return embedding[0].embedding
 }
 
-export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<number[]> {
+export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<FoodEmbeddingCache> {
   // Construct the text input for the embedding
   let textToEmbed = (foodToLog.food_database_search_name).toLowerCase()
 
@@ -29,7 +36,9 @@ export async function foodToLogEmbedding(foodToLog: FoodItemToLog): Promise<numb
   ) {
     textToEmbed += ` - ${foodToLog.brand}`
   }
-  console.log("searching for ", textToEmbed)
-  const embedding = await getEmbedding([textToEmbed])
-  return embedding.data[0].embedding
+
+  const embeddings = await getCachedOrFetchEmbeddings('BGE_BASE', [textToEmbed])
+  const embedding = embeddings[0].embedding
+  const id = embeddings[0].id
+  return {search_string: textToEmbed, embedding_cache_id: id, bge_base_embedding: embedding}
 }
