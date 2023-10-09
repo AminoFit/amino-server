@@ -1,7 +1,6 @@
 "use server"
 import { prisma } from "@/database/prisma"
 import { getSession } from "@auth0/nextjs-auth0"
-import { getServerSession } from "next-auth"
 
 export async function deleteSavedFood(loggedFoodItemId: number) {
   const session = await getSession()
