@@ -4,7 +4,6 @@ import { useUser } from "@auth0/nextjs-auth0/client"
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import classNames from "classnames"
-import { useSession } from "next-auth/react"
 
 import { useState } from "react"
 
