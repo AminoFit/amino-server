@@ -8,7 +8,7 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { ScopedMutator } from "swr/_internal";
 import { mutate } from 'swr';
 
-export default function ChatBox({messages, mutate}: {messages: Message[], mutate: ScopedMutator<Message[]>}) {
+export default function ChatBox({messages, mutate}: {messages: Message[], mutate: ScopedMutator}) {
   const [messageInput, setMessageInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

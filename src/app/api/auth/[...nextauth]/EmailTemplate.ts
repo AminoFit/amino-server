@@ -483,7 +483,7 @@ function html(params: { url: string; host: string; theme: any }) {
   <![endif]-->
   </head>
   <body>
-    <span class="preheader">Thanks for trying out [Product Name]. We’ve pulled together some information and resources to help you get started.</span>
+    <span class="preheader">Your Amino Fit magic login link.</span>
     <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
         <td align="center">

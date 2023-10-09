@@ -2,12 +2,11 @@ import type { NextAuthOptions } from "next-auth"
 
 import { prisma } from "@/database/prisma"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import { Adapter } from "next-auth/adapters"
 import Email from "next-auth/providers/email"
 import { sendVerificationRequest } from "./EmailTemplate"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter<boolean>,
+  adapter: PrismaAdapter(prisma),
 
   session: {
     strategy: "jwt"
@@ -41,5 +40,12 @@ export const authOptions: NextAuthOptions = {
 
       return Promise.resolve(session)
     }
+  },
+  pages: {
+    signIn: '/auth/signin',
+    // signOut: '/auth/signout',
+    // error: '/auth/error', // Error code passed in query string as ?error=
+    verifyRequest: '/auth/verify-request', // (used for check email message)
+    // newUser: '/auth/new-user' // New users will be directed here on first sign in (leave the property out if not of interest)
   }
 }

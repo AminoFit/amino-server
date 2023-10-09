@@ -1,3 +1,7 @@
+// See docs here: https://vercel.com/docs/functions/serverless-functions/runtimes#maxduration
+export const maxDuration = 300
+
+
 import { HandleLogFoodItem } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { prisma } from "@/database/prisma"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"

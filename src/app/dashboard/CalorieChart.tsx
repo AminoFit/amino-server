@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, Title, BarChart, Subtitle } from "@tremor/react"
+import { BarChart } from "@tremor/react"
 
 const chartdata = [
   {

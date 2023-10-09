@@ -101,13 +101,14 @@ export default function CalOverviewCard() {
           <div>Total Calories</div>
           {/* <BadgeDelta deltaType="moderateIncrease">18%</BadgeDelta> */}
         </div>
-        <div className="space-x-3 truncate">
+        <div className="space-x-1 truncate">
           <span>
             {selectedIndex === 0
               ? data.metricsToday.calories.toLocaleString()
               : data.metricsYesterday.calories.toLocaleString()}
           </span>
-          <span>of {calorieGoal.toLocaleString()}</span>
+          <span>of</span>
+          <span>{calorieGoal.toLocaleString()}</span>
         </div>
         <TabGroup
           index={selectedIndex}
