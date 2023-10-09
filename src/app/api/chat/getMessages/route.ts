@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth"
 import { GetMessagesForUser } from "../../../../database/GetMessagesForUser"
 import { Message } from "@prisma/client"
-import { getServerSession } from "next-auth"
+import { getSession } from "@auth0/nextjs-auth0"
+import { prisma } from "@/database/prisma"
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
 
   if (!session) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -16,13 +16,28 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const userId = session.user.userId
+  const userEmail = session.user.email
+
+  const aminoUser = await prisma.user.findUnique({
+    where: {
+      email: userEmail
+    }
+  })
+
+  if (!aminoUser) {
+    return new Response(JSON.stringify({ error: "Could not find Amino user with that email" }), {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+  }
 
   try {
     let messages: Message[] = []
-    console.log("userId", userId)
-    if (userId) {
-      messages = await GetMessagesForUser(userId)
+    console.log("aminoUser", aminoUser)
+    if (aminoUser) {
+      messages = await GetMessagesForUser(aminoUser.id)
     }
     return new Response(JSON.stringify(messages), {
       status: 200,
@@ -33,14 +48,11 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error(error)
     const err = error as Error
-    return new Response(
-      JSON.stringify({ error: err.message || "Unable to fetch messages" }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
+    return new Response(JSON.stringify({ error: err.message || "Unable to fetch messages" }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json"
       }
-    )
+    })
   }
 }

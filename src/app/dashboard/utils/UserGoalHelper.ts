@@ -1,45 +1,55 @@
-"use server";
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
-import { prisma } from "@/database/prisma";
-import { getServerSession } from "next-auth";
+"use server"
+import { prisma } from "@/database/prisma"
+import { getSession } from "@auth0/nextjs-auth0"
+import { getServerSession } from "next-auth"
 
 export async function getUser() {
-  const session = await getServerSession(authOptions);
+  const session = await getSession()
 
   if (session) {
-    let user = await prisma.user.findUnique({
+    let aminoUser = await prisma.user.findUnique({
       where: {
-        id: session.user.userId,
-      },
-    });
-    return user;
+        email: session.user.email
+      }
+    })
+    return aminoUser
   }
-  return;
+  return
 }
 
 export type UserGoalsProps = {
-    calorieGoal?: number;
-    proteinGoal?: number;
-    carbsGoal?: number;
-    fatGoal?: number;
-    fitnessGoal?: string;
-};
-
-
+  calorieGoal?: number
+  proteinGoal?: number
+  carbsGoal?: number
+  fatGoal?: number
+  fitnessGoal?: string
+}
 
 export async function saveUserGoals(updatedSettings: UserGoalsProps) {
-  const session = await getServerSession(authOptions);
+  const session = await getSession()
 
   if (session) {
-    let user = await prisma.user.update({
-      where: {
-        id: session.user.userId,
-      },
-      data: {
-        ...updatedSettings,
-      },
-    });
-    return user;
+    if (session) {
+      let aminoUser = await prisma.user.findUnique({
+        where: {
+          email: session.user.email
+        }
+      })
+
+      if (!aminoUser) {
+        return
+      }
+
+      let user = await prisma.user.update({
+        where: {
+          id: aminoUser.id
+        },
+        data: {
+          ...updatedSettings
+        }
+      })
+      return user
+    }
   }
-  return;
+  return
 }

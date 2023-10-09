@@ -1,5 +1,6 @@
 "use client"
 
+import { useUser } from "@auth0/nextjs-auth0/client"
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import classNames from "classnames"
@@ -17,32 +18,29 @@ export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [bannerOpen, setBannerOpen] = useState(false)
 
-  const { data, status, update } = useSession()
+  const { user, error, isLoading } = useUser()
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>{error.message}</div>
 
   const renderLogin = () => {
-    if (status === "loading") {
+    if (isLoading) {
       return (
         <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
           Loading...
         </a>
       )
     }
-    if (status === "authenticated") {
+    if (user) {
       return (
-        <a
-          href="/dashboard"
-          className="text-sm font-semibold leading-6 text-gray-900"
-        >
-          My Dashboard
+        <a href="/dashboard" className="text-sm font-semibold leading-6 text-gray-900">
+          My Dashboard ({user.name})
         </a>
       )
     }
 
     return (
-      <a
-        href="/api/auth/signin"
-        className="text-sm font-semibold leading-6 text-gray-900"
-      >
+      <a href="/api/auth/login" className="text-sm font-semibold leading-6 text-gray-900">
         Log in&nbsp;<span aria-hidden="true">&rarr;</span>
       </a>
     )
@@ -55,11 +53,7 @@ export default function MarketingNav() {
         <div className="flex items-center gap-x-6 bg-gray-900 px-6 py-2.5 sm:px-3.5 sm:before:flex-1">
           <p className="text-sm leading-6 text-white">
             <strong className="font-semibold">{"We're still in Beta!"}</strong>
-            <svg
-              viewBox="0 0 2 2"
-              className="mx-2 inline h-0.5 w-0.5 fill-current"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 2 2" className="mx-2 inline h-0.5 w-0.5 fill-current" aria-hidden="true">
               <circle cx={1} cy={1} r={1} />
             </svg>
             {`Amino is just getting off the ground. We're testing cool new stuff,
@@ -85,18 +79,11 @@ export default function MarketingNav() {
           "top-0": !bannerOpen
         })}
       >
-        <nav
-          className="flex items-center justify-between p-6 lg:px-8"
-          aria-label="Global"
-        >
+        <nav className="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
           <div className="flex lg:flex-1">
             <a href="/dashboard" className="-m-1.5 p-1.5">
               <span className="sr-only">Your Company</span>
-              <img
-                className="h-8 w-auto"
-                src="logos/logo-light.svg"
-                alt="Amino Logo"
-              />
+              <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
             </a>
           </div>
           <div className="flex lg:hidden">
@@ -111,35 +98,20 @@ export default function MarketingNav() {
           </div>
           <div className="hidden lg:flex lg:gap-x-12">
             {navigation.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-sm font-semibold leading-6 text-gray-900"
-              >
+              <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900">
                 {item.name}
               </a>
             ))}
           </div>
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-            {renderLogin()}
-          </div>
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end">{renderLogin()}</div>
         </nav>
-        <Dialog
-          as="div"
-          className="lg:hidden"
-          open={mobileMenuOpen}
-          onClose={setMobileMenuOpen}
-        >
+        <Dialog as="div" className="lg:hidden" open={mobileMenuOpen} onClose={setMobileMenuOpen}>
           <div className="fixed inset-0 z-50" />
           <Dialog.Panel className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
             <div className="flex items-center justify-between">
               <a href="#" className="-m-1.5 p-1.5">
                 <span className="sr-only">Your Company</span>
-                <img
-                  className="h-8 w-auto"
-                  src="logos/logo-light.svg"
-                  alt="Amino Logo"
-                />
+                <img className="h-8 w-auto" src="logos/logo-light.svg" alt="Amino Logo" />
               </a>
               <button
                 type="button"

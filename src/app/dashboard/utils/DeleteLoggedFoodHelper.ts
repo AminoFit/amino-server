@@ -1,13 +1,19 @@
 "use server"
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth"
 import { prisma } from "@/database/prisma"
+import { getSession } from "@auth0/nextjs-auth0"
 import { getServerSession } from "next-auth"
 
 export async function deleteSavedFood(loggedFoodItemId: number) {
-  const session = await getServerSession(authOptions)
+  const session = await getSession()
+
+  let aminoUser = await prisma.user.findUnique({
+    where: {
+      email: session?.user.email
+    }
+  })
 
   console.log("Deleting food item")
-  if (session) {
+  if (session && aminoUser) {
     let food = await prisma.loggedFoodItem.findUnique({
       where: {
         id: loggedFoodItemId
@@ -18,7 +24,7 @@ export async function deleteSavedFood(loggedFoodItemId: number) {
       return
     }
 
-    if (food.userId === session.user.userId) {
+    if (food.userId === aminoUser.id) {
       await prisma.loggedFoodItem.delete({
         where: {
           id: loggedFoodItemId

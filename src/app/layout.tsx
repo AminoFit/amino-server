@@ -1,7 +1,7 @@
 import { UserProvider } from "@auth0/nextjs-auth0/client"
 import { Outfit } from "next/font/google"
 import "./globals.css"
-import { NextAuthProvider, QueryDataProvider } from "./providers"
+import { QueryDataProvider } from "./providers"
 
 const outfit = Outfit({ subsets: ["latin"] })
 
@@ -15,9 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full">
       <body className={`h-full ${outfit.className}`}>
         <UserProvider>
-          <NextAuthProvider>
-            <QueryDataProvider>{children}</QueryDataProvider>
-          </NextAuthProvider>
+          <QueryDataProvider>{children}</QueryDataProvider>
         </UserProvider>
       </body>
     </html>

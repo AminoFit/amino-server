@@ -4,14 +4,9 @@ import {
   QueryClient,
   QueryClientProvider
 } from "@tanstack/react-query"
-import { SessionProvider } from "next-auth/react"
 
 type Props = {
   children?: React.ReactNode
-}
-
-export const NextAuthProvider = ({ children }: Props) => {
-  return <SessionProvider>{children}</SessionProvider>
 }
 
 export const queryClient = new QueryClient()
