@@ -101,7 +101,7 @@ export async function foodItemMissingFieldComplete(
   const system =
     "You are a bot that autocompletes food item missing elements. Call the autocomplete_missing_fields function to do so."
 
-  const functions: OpenAI.Chat.ChatCompletionMessageParam.Function[] = [
+  const functions: OpenAI.Chat.ChatCompletionCreateParams.Function[] = [
     {
       name: "autocomplete_missing_fields",
       description:
@@ -123,7 +123,7 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
     generateInquiryString(foodItem)
 
   let result: any = null
-  let messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
+  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]

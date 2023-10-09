@@ -1,65 +1,56 @@
 import OpenAI from "openai"
 
-
 export const openai = new OpenAI({
   organization: process.env.OPENAI_ORG_ID,
   apiKey: process.env.OPENAI_API_KEY
 })
 
 export const logFoodSchema = {
-  type: 'object',
+  type: "object",
   properties: {
     food_items: {
-      type: 'array',
-      description: 'An array of food items that were eaten',
+      type: "array",
+      description: "An array of food items that were eaten",
       items: {
-        type: 'object',
-        description: 'A food item',
+        type: "object",
+        description: "A food item",
         properties: {
           food_database_search_name: {
-            type: 'string',
-            description: 'Do not include servings. Comprehensive name of the food item. Include details such as low fat version or not, cooked or uncooked etc. Fix any typos.'
+            type: "string"
           },
-          base_food_name: {
-            type: 'string',
-            description: 'Basic term for the item. Eg Apple if input is sliced apples'
+          branded: {
+            type: "boolean"
           },
-          branded: { type: 'boolean', description: 'If item is branded or not' },
           brand: {
-            type: 'string',
-            description: 'The brand of the food item. Empty for generic items.'
-          },
-          timeEaten: {
-            type: 'string',
-            description: 'Optional. Time the user consumed the food item in ISO 8601 String format. Example: 2014-09-08T08:02:17-04:00'
+            type: "string",
+            default: "" // default to an empty string
           },
           serving: {
-            type: 'object',
+            type: "object",
             properties: {
-              serving_amount: { type: 'number', description: 'Amount of the serving' },
+              serving_amount: {
+                type: "number",
+                description: "Amount of the serving"
+              },
               serving_name: {
-                type: 'string',
-                description: 'Description of the serving, e.g. large, cup, piece'
+                type: "string"
               },
-              total_serving_grams: {
-                type: 'number',
-                description: 'The weight of the item eaten in grams. CANNOT BE 0'
+              serving_g_or_ml: {
+                type: "string",
+                enum: ["g", "ml"]
               },
-              is_liquid: { type: 'boolean', description: 'Is item liquid' },
-              total_serving_ml: {
-                type: 'number',
-                description: 'The millilitre amount of the item. Only for liquid items.'
+              total_serving_g_or_ml: {
+                type: "number"
               }
             },
-            required: [ 'serving_amount', 'serving_name', 'total_serving_grams' ],
-            description: 'Serving size and description of food item'
+            required: ["serving_amount", "serving_name", "serving_g_or_ml", "total_serving_g_or_ml"]
           }
         },
-        required: [ 'food_database_search_name', 'base_food_name', 'serving' ]
+        required: ["food_database_search_name", "branded", "brand", "serving"]
       }
     }
   },
-  required: [ 'food_items' ]
+  required: ["food_items"]
 }
 
 export const showDailyFoodSummarySchema = {

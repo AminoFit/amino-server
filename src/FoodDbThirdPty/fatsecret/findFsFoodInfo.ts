@@ -86,11 +86,11 @@ export async function findFsFoodInfo(
 }
 
 async function runTests() {
-  const query = "Fiber Gummies"
+  const query = "Egg Whites"
   const queryEmbedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [query]))[0].embedding
   const results = await findFsFoodInfo({
     search_expression: query,
-    branded: true,
+    branded: false,
     queryBgeBaseEmbedding: queryEmbedding
   })
   console.log(results)

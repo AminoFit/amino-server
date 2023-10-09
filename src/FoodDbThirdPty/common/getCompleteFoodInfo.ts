@@ -34,3 +34,28 @@ export async function getCompleteFoodInfo(
   }
   return foodItem.foodItem;
 }
+
+async function testGetCompleteFoodInfo(){
+  const foodSearchResultsWithSimilarityAndEmbedding: foodSearchResultsWithSimilarityAndEmbedding = {
+    foodBgeBaseEmbedding: [0.5, 0.2, 0.8, 0.1, 0.1], 
+    similarityToQuery: 0.87, 
+    foodSource: "USDA",
+    foodName: "Chicken Breast",
+    foodBrand: "",
+    externalId: "2341386",
+    foodItem: undefined
+  };
+  const nutritionix_english_muffin: foodSearchResultsWithSimilarityAndEmbedding = {
+    foodBgeBaseEmbedding: [
+       -0.025500452,   -0.05125706,   0.013045359, -0.034442104,   0.048705615
+    ],
+    similarityToQuery: 1.0000,
+    foodSource: 'NUTRITIONIX',
+    foodName: 'english muffin',
+    externalId: undefined,
+    foodBrand: undefined
+  }
+  console.log(await getCompleteFoodInfo(nutritionix_english_muffin))
+}
+
+//testGetCompleteFoodInfo()

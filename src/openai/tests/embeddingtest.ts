@@ -64,4 +64,4 @@ async function runSimilarityTest() {
   })
 }
 
-runSimilarityTest()
+//runSimilarityTest()

@@ -16,7 +16,7 @@ export async function getAdaEmbedding(input: string[]): Promise<OpenAI.CreateEmb
     model: "text-embedding-ada-002",
     input: input
   })
-  return embedding.data
+  return embedding
 }
 
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {

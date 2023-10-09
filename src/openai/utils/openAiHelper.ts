@@ -7,7 +7,7 @@ import { prisma } from "../../database/prisma"
 // Log usage
 export async function LogOpenAiUsage(
   user: User,
-  usage: OpenAI.Completion.Usage,
+  usage: OpenAI.CompletionUsage,
   modelName: string
 ) {
   //console.log(`This request used ${usage.total_tokens || "??"} tokens`)
@@ -98,7 +98,7 @@ function checkOutput(completion: any): boolean {
         // Check if any food item has total_serving_grams as 0 and serving_amount is non-zero
         for (const item of foodItems) {
           if (
-            item.serving.total_serving_grams === 0 &&
+            item.serving.total_serving_g_or_ml === 0 &&
             item.serving.serving_amount !== 0
           ) {
             return false // This means the completion is not valid
@@ -128,8 +128,8 @@ export async function getOpenAICompletion(
       completion = await openai.chat.completions.create(gptRequest)
 
       // Check for a successful response
-      if (completion?.data.usage) {
-        await LogOpenAiUsage(user, completion.data.usage, gptRequest.model)
+      if (completion?.usage) {
+        await LogOpenAiUsage(user, completion.usage, gptRequest.model)
         successfulResponse = checkOutput(completion)
         if (successfulResponse) {
           return completion

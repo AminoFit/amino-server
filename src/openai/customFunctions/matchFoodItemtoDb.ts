@@ -63,7 +63,9 @@ export async function findBestFoodMatch(
   let model = "gpt-3.5-turbo-instruct-0914"
   let max_tokens = 250
   let temperature = 0
-  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\n${JSON.stringify(matchRequest)}\nOnly give me an answer in this form:
+  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\n${JSON.stringify(
+    matchRequest
+  )}\nOnly give me an answer in this form:
 { closest_food_id: int,
 good_match_found: bool,
 user_request_to_closest_food_similarity_0_to_1: number}`.trim()
@@ -75,63 +77,69 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim()
         model: model,
         temperature: temperature,
         max_tokens: max_tokens,
-        stop: '}'
+        stop: "}"
       },
       user
     )
 
-    let response = correctAndParseResponse(result.text!.trim() + '}') 
+    let response = correctAndParseResponse(result.text!.trim() + "}")
 
-    if (response.closest_food_id < 0 || 
-        response.closest_food_id > database_options.length) {
-          console.log("Invalid food item, retrying with GPT-4")
-          const system = "Call match_user_request_to_database. Think carefully before replying and consider all food options before concluding. There are trick questions so be sure to consider the options at the end."
-          const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
-            { role: "system", content: system },
-            { role: "user", content: JSON.stringify(matchRequest) }
-          ];
-          model = "gpt-4-0613";
-          let result = await chatCompletion(
+    if (response.closest_food_id < 0 || response.closest_food_id > database_options.length) {
+      console.log("Invalid food item, retrying with GPT-4")
+      const system =
+        "Call match_user_request_to_database. Think carefully before replying and consider all food options before concluding. There are trick questions so be sure to consider the options at the end."
+      const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
+        { role: "system", content: system },
+        { role: "user", content: JSON.stringify(matchRequest) }
+      ]
+      model = "gpt-4-0613"
+      let result = await chatCompletion(
+        {
+          messages,
+          functions: [
             {
-              messages,
-              functions: [{
-                name: "match_user_request_to_database",
-                description: "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match.",
-                parameters: matchFoodItemToDatatbaseSchema
-              }],
-              model,
-              temperature,
-              max_tokens
-            },
-            user
-          )
-          if(result.function_call && result.function_call.name === "match_user_request_to_database") {
-            response = JSON.parse(result.function_call!.arguments!);
-          } else {
-            throw new Error("Failed to get a valid response from GPT-4");
-          }    
+              name: "match_user_request_to_database",
+              description:
+                "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match.",
+              parameters: matchFoodItemToDatatbaseSchema
+            }
+          ],
+          model,
+          temperature,
+          max_tokens
+        },
+        user
+      )
+      if (result.function_call && result.function_call.name === "match_user_request_to_database") {
+        response = JSON.parse(result.function_call!.arguments!)
+      } else {
+        throw new Error("Failed to get a valid response from GPT-4")
+      }
     }
 
     // If no valid match is found, return null
-    if (response.closest_food_id === 0 || !response.good_match_found || response.user_request_to_closest_food_similarity_0_to_1 < 0.8) {
-      return null;
+    if (
+      response.closest_food_id === 0 ||
+      !response.good_match_found ||
+      response.user_request_to_closest_food_similarity_0_to_1 < 0.8
+    ) {
+      return null
     }
     // Fetch the matched food item from database_options
-    const matchedFood = database_options[response.closest_food_id - 1] 
+    const matchedFood = database_options[response.closest_food_id - 1]
     return matchedFood
   } catch (error) {
     console.log(error)
-    return null;
+    return null
   }
 }
-
 
 async function testFindBestFoodMatch() {
   const food_item_to_log: FoodItemToLog = {
     food_database_search_name: "hydro whey protein shake",
     brand: "optimum nutrition",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "scoop", total_serving_grams: 39, total_serving_calories: 140 }
+    serving: { serving_amount: 1, serving_name: "scoop", serving_g_or_ml: "g", total_serving_g_or_ml: 39 }
   }
   const foodSearchResults: foodSearchResultsWithSimilarityAndEmbedding[] = [
     {
@@ -216,7 +224,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Pop",
     brand: "PepsiCo",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "can", total_serving_grams: 355, total_serving_calories: 150 }
+    serving: { serving_amount: 1, serving_name: "can", serving_g_or_ml: "g", total_serving_g_or_ml: 355 }
   }
 
   const foodSearchResults_1: foodSearchResultsWithSimilarityAndEmbedding[] = [
@@ -260,7 +268,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Beef Burger Patty",
     brand: "Beyond Meat",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "patty", total_serving_grams: 113, total_serving_calories: 250 }
+    serving: { serving_amount: 1, serving_name: "patty", serving_g_or_ml: "g", total_serving_g_or_ml: 113 }
   }
 
   const foodSearchResults_2: foodSearchResultsWithSimilarityAndEmbedding[] = [
@@ -311,7 +319,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Raspberry Yogurt",
     brand: "Yummy Dairy",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "cup", total_serving_grams: 200, total_serving_calories: 150 }
+    serving: { serving_amount: 1, serving_name: "cup", serving_g_or_ml: "g", total_serving_g_or_ml: 200 }
   }
 
   const foodSearchResults_3: foodSearchResultsWithSimilarityAndEmbedding[] = [
@@ -355,7 +363,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Mangosteen",
     brand: "Exotic Fruits Co.",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "fruit", total_serving_grams: 50, total_serving_calories: 60 }
+    serving: { serving_amount: 1, serving_name: "fruit", serving_g_or_ml: "g", total_serving_g_or_ml: 50 }
   }
 
   const foodSearchResults_4: foodSearchResultsWithSimilarityAndEmbedding[] = [
@@ -385,7 +393,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Kombucha Ginger Lime",
     brand: "Artisan Brews",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "bottle", total_serving_grams: 240, total_serving_calories: 90 }
+    serving: { serving_amount: 1, serving_name: "bottle", serving_g_or_ml: "g", total_serving_g_or_ml: 240 }
   }
 
   const foodSearchResults_5: foodSearchResultsWithSimilarityAndEmbedding[] = [
@@ -402,7 +410,7 @@ async function testFindBestFoodMatch() {
       foodSource: FoodInfoSource.USDA,
       foodName: "Kombucha Classic",
       foodBrand: "Ferment Delights"
-    },    
+    },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.45,
@@ -430,7 +438,7 @@ async function testFindBestFoodMatch() {
     food_database_search_name: "Chocolate Lava Cake with Caramel Core",
     brand: "Dessert Heaven",
     branded: true,
-    serving: { serving_amount: 1, serving_name: "slice", total_serving_grams: 120, total_serving_calories: 350 }
+    serving: { serving_amount: 1, serving_name: "slice", serving_g_or_ml: "g", total_serving_g_or_ml: 120 }
   }
 
   const foodSearchResults_6: foodSearchResultsWithSimilarityAndEmbedding[] = [

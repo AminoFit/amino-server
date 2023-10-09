@@ -34,7 +34,7 @@ export async function searchUsdaByEmbedding(
     
       // Benchmark Prisma query
       const isBranded = searchParams.branded;
-      const whereCondition = isBranded ? `"foodBrand" IS NOT NULL` : `"foodBrand" IS NULL OR "foodBrand" = ''"`;
+      const whereCondition = isBranded ? `"foodBrand" IS NOT NULL` : `"foodBrand" IS NULL OR "foodBrand" = ''`;
       const sqlQuery = `
           SELECT 
               "fdcId", 
@@ -84,13 +84,20 @@ export async function searchUsdaByEmbedding(
   }
 
 async function test() {
-  await searchUsdaByEmbedding({
+  const params = {
+    food_name: 'peanut butter',
+    branded: false,
+    brand_name: undefined,
+    embedding_cache_id: 83
+  }
+  const params2 = {
     food_name: "hydro whey",
     branded: true,
     brand_name: "optimum nutrition",
     bge_base_embedding: [],
     embedding_cache_id: 0
-  })
+  }
+  await searchUsdaByEmbedding(params)
 }
 
 //test()

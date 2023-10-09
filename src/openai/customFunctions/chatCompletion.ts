@@ -1,7 +1,7 @@
 import OpenAI from "openai"
 import { User } from "@prisma/client"
 import { LogOpenAiUsage } from "../utils/openAiHelper"
-
+import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 
 
 const openai = new OpenAI({
@@ -12,9 +12,11 @@ interface ChatCompletionOptions {
   model?: string
   max_tokens?: number
   temperature?: number
-  messages: OpenAI.Chat.CreateChatCompletionRequestMessage[]
+  messages: OpenAI.Chat.ChatCompletionMessageParam[]
   functions?: any[] // You should replace 'any' with the appropriate type.
   function_call?: string
+  prompt?: string
+  stop?: string
 }
 
 export async function chatCompletion(
@@ -35,16 +37,16 @@ export async function chatCompletion(
       messages,
       max_tokens,
       temperature,
-      functions,
-      function_call
+      functions
     })
 
     if (!result.choices[0].message) {
       throw new Error("No return error from chat")
     }
-    if (result.data.usage) {
+    
+    if (result.usage) {
       // log usage
-      await LogOpenAiUsage(user, result.data.usage, model)
+      await LogOpenAiUsage(user, result.usage, model)
     }
 
     return result.choices[0].message
@@ -64,22 +66,36 @@ export interface ChatCompletionInstructOptions {
   [key: string]: any;  // for other potential parameters
 }
 
-export function correctAndParseResponse(responseText: string): any {
-  try {
-      // Remove trailing commas from JSON-like strings
-      const correctedResponse = responseText
-          .replace(/,\s*}/g, '}')
-          .replace(/,\s*\]/g, ']')
-          .replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":')
-          .replace(/\bFalse\b/g, 'false')
-          .replace(/\bTrue\b/g, 'true');
-      
-      return JSON.parse(correctedResponse);
-  } catch (error) {
-      console.error("Failed to correct and parse the response:", responseText, error);
-      return null;
+function removeTrailingCommas(str: string) {
+  let correctedResponse = str;
+  let previousString = "";
+  while (correctedResponse !== previousString) {
+      previousString = correctedResponse;
+      correctedResponse = correctedResponse.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
   }
+  return correctedResponse;
 }
+
+export function correctAndParseResponse(responseText: string): any {
+try {
+  // Recursive removal of trailing commas until none are left
+  let correctedResponse = removeTrailingCommas(responseText);
+
+  // Replace keys without quotes to be with quotes
+  correctedResponse = correctedResponse.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"\$1":');
+  
+  // Convert 'False' to 'false' and 'True' to 'true'
+  correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
+  
+  return JSON.parse(correctedResponse);
+} catch (error) {
+  console.error("Failed to correct and parse the response:", responseText, error);
+  return null;
+}
+}
+
+
+
 
 export async function chatCompletionInstruct(
   {
@@ -106,9 +122,9 @@ export async function chatCompletionInstruct(
       throw new Error("No return data from instruction completion")
     }
     
-    if (result.data.usage) {
+    if (result.usage) {
       // log usage
-      await LogOpenAiUsage(user, result.data.usage, model)
+      await LogOpenAiUsage(user, result.usage, model)
     }
 
     return result.choices[0];
@@ -141,18 +157,87 @@ export async function* chatCompletionInstructStream(
       ...options
     });
 
-    for await (const chunk of stream) {
-      if (chunk.choices && chunk.choices[0].text) {
-        yield chunk.choices[0].text;
-      }
+    let accumulatedContent = "";
 
-      if (chunk.usage) {
-        // log usage
-        await LogOpenAiUsage(user, chunk.usage, model);
-      }
+    for await (const chunk of stream) {
+        accumulatedContent += chunk.choices[0].text;
+    
+        while (true) {
+            let startPos = accumulatedContent.indexOf('{');
+            if (startPos === -1) {
+                break;  // If we can't find a start brace, break and wait for more chunks
+            }
+            
+            let balance = 0;
+            let endPos = -1;
+            for (let i = startPos; i < accumulatedContent.length; i++) {
+                if (accumulatedContent[i] === '{') {
+                    balance++;
+                } else if (accumulatedContent[i] === '}') {
+                    balance--;
+                }
+    
+                if (balance === 0) {
+                    endPos = i;
+                    break;
+                }
+            }
+    
+            if (endPos === -1) {
+                break;  // If we can't find a balanced closing brace, break and wait for more chunks
+            }
+    
+            const potentialJsObject = accumulatedContent.substring(startPos, endPos + 1);
+            const correctedJson = correctAndParseResponse(potentialJsObject);
+            if (correctedJson) {
+                yield correctedJson;
+            }
+            accumulatedContent = accumulatedContent.substring(endPos + 1);
+        }
     }
   } catch (error) {
     console.error(error);
     throw error;
   }
 }
+
+export async function* chatCompletionFunctionStream({
+  model = "gpt-3.5-turbo-0613",
+  messages,
+  temperature = 0.5,
+  max_tokens = 2048,
+  stop,
+  functions,
+  function_call = "auto",
+  ...options
+}: ChatCompletionOptions, user: User): AsyncIterable<string> {
+  
+  try {
+    const stream = await openai.chat.completions.create({
+      model,
+      messages: messages,
+      temperature,
+      max_tokens,
+      functions,
+      function_call,
+      stream: true,
+    } as ChatCompletionCreateParamsStreaming);
+
+    for await (const chunk of stream) {
+      
+      // Check if 'content' exists and yield it
+      if (chunk?.choices[0]?.delta?.content) {
+        yield chunk.choices[0].delta.content;
+      } 
+      // If 'content' doesn't exist, check for 'function_call.arguments' and yield that
+      else if (chunk?.choices[0]?.delta?.function_call?.arguments) {
+        yield chunk.choices[0].delta.function_call.arguments;
+      }
+    }    
+
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+

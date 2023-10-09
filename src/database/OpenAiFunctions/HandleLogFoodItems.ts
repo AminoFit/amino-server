@@ -64,12 +64,12 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
     servingDetails += foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
   }
 
-  if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_grams) {
+  if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_g_or_ml) {
     servingDetails += " - "
   }
 
-  if (foodToLog.serving.total_serving_grams) {
-    servingDetails += foodToLog.serving.total_serving_grams + "g"
+  if (foodToLog.serving.total_serving_g_or_ml) {
+    servingDetails += foodToLog.serving.total_serving_g_or_ml + "g"
   }
 
   if (servingDetails) {
@@ -83,7 +83,7 @@ export async function VerifyHandleLogFoodItems(parameters: any) {
   const foodItems: FoodItemToLog[] = parameters.food_items
   for (let food of foodItems) {
     // Ensure total_weight_grams is not 0
-    if (food.serving.total_serving_grams === 0) {
+    if (food.serving.total_serving_g_or_ml === 0) {
       throw new Error("The value for total_weight_grams cannot be 0.")
     }
   }
@@ -94,12 +94,15 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
 
   const foodItemsToLog: FoodItemToLog[] = parameters.food_items
 
-  UpdateMessage({
-    id: lastUserMessageId,
-    itemsToProcess: foodItemsToLog.length
+  // Increment itemsToProcess by foodItemsToLog.length
+  await prisma.message.update({
+    where: { id: lastUserMessageId },
+    data: {
+      itemsToProcess: {
+        increment: foodItemsToLog.length
+      }
+    }
   })
-
-  console.time("foodsProcessingTime")
 
   // Create all the pending food items
   const foodsNeedProcessing = await prisma.$transaction(
@@ -111,13 +114,11 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
           messageId: lastUserMessageId,
           status: "Needs Processing",
           extendedOpenAiData: food as any
-          // Seb, do we need more info from the function here?
         }
       })
     )
   )
 
-  console.timeEnd("foodsProcessingTime")
 
   console.log("foodsNeedProcessing", foodsNeedProcessing)
 
@@ -169,8 +170,12 @@ export async function HandleLogFoodItem(
   // Pass this on to other functions to avoid requiring
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
+  //const query =`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`
+
+  //console.log("userQuery:", query)
+
   const cosineSearchResults =
-    (await prisma.$queryRaw`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - (embedding <=> (SELECT "bgeBaseEmbedding" FROM "FoodEmbeddingCache" WHERE embedding_id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
+    (await prisma.$queryRaw`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
 
   console.log("Searching in database")
   console.log("__________________________________________________________")
@@ -252,7 +257,7 @@ export async function HandleLogFoodItem(
     servingId: serving?.id, // use the serving id, if a serving was found
     servingAmount: food.serving.serving_amount,
     loggedUnit: sanitizeServingName(food.serving.serving_name || ""),
-    grams: food.serving.total_serving_grams,
+    grams: food.serving.total_serving_g_or_ml,
     userId: user.id,
     consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
     messageId,
@@ -378,12 +383,14 @@ async function findAndAddItemInDatabase(
       const startTime = Date.now()
       if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
         try {
-          const result = await searchUsdaByEmbedding({
+          const usda_find_food_params = {
             food_name: fullFoodName,
             branded: foodToLog.branded || false,
             brand_name: foodToLog.brand || undefined,
             embedding_cache_id: queryEmbeddingCache.embedding_cache_id
-          })
+          }
+          //console.log("usda_find_food_params", usda_find_food_params)
+          const result = await searchUsdaByEmbedding(usda_find_food_params)
           console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
           return result
         } catch (err) {
@@ -416,22 +423,24 @@ async function findAndAddItemInDatabase(
     const nullReturn = async () => {
       let DEBUG = 1
       if (DEBUG) {
-      return null
+        return null
       } else {
-        return [{
-          foodBgeBaseEmbedding: [],
-          similarityToQuery: 0,
-          foodSource: FoodInfoSource.NUTRITIONIX,
-          foodName: ''
-      }]
+        return [
+          {
+            foodBgeBaseEmbedding: [],
+            similarityToQuery: 0,
+            foodSource: FoodInfoSource.NUTRITIONIX,
+            foodName: ""
+          }
+        ]
       }
     }
 
     // Dispatch all API calls simultaneously
     const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
-      nullReturn(),
+      getNxFoodInfo(),
       getUsdaFoodInfo(),
-      nullReturn()
+      getFsFoodInfo()
     ])
 
     if (nxFoodInfoResponse != null && nxFoodInfoResponse.length > 0) {
@@ -484,9 +493,12 @@ async function findAndAddItemInDatabase(
     //console.dir(highestSimilarityItem, { depth: null });
 
     if (highestSimilarityItem) {
-      console.log("Highest similarity item:", highestSimilarityItem!.foodName)
+      //console.log("Highest similarity item:", highestSimilarityItem!.foodName)
+      //console.dir(highestSimilarityItem, { depth: null })
       // Ensure we have the full food item info
       highestSimilarityItem.foodItem = await getCompleteFoodInfo(highestSimilarityItem)
+
+      //console.log("highestSimilarityItem.food", highestSimilarityItem.foodItem)
 
       let foodItemToSave: FoodItemWithNutrientsAndServing =
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
@@ -515,7 +527,7 @@ async function findAndAddItemInDatabase(
       })
     )
 
-    // Now, you can use the populated foodInfoResponses array to construct the request string
+    // Construct the request string
     const foodItemRequestString = constructFoodItemRequestString(foodToLog, top3PopulatedFoodItems)
     console.log("foodItemRequestString:\n", foodItemRequestString)
     const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user)
@@ -538,12 +550,11 @@ async function testFoodSearch() {
     food_database_search_name: "Chocolate Peanut Butter Cereal",
     brand: "Catalina Crunch",
     branded: true,
-    base_food_name: "Chocolate Peanut Butter Cereal",
     serving: {
       serving_amount: 1,
       serving_name: "cup",
-      total_serving_grams: 100,
-      total_serving_calories: 210
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 100
     }
   }
   const queryEmbedding = await foodToLogEmbedding(foodItem)
@@ -573,4 +584,4 @@ async function testFoodSearch() {
   console.dir(result, { depth: null })
 }
 
-testFoodSearch()
+//testFoodSearch()

@@ -17,7 +17,7 @@ export async function getNutritionixFoodInfo(
       const transformedBrandedItem = mapFoodResponseToFoodItem(brandedFoodInfo);
       return transformedBrandedItem ? transformedBrandedItem : null;
   
-    } else if (item.foodSource !== FoodInfoSource.NUTRITIONIX) {
+    } else if (item.foodSource == FoodInfoSource.NUTRITIONIX) {
       const nonBrandedFoodInfo = await getNonBrandedFoodInfo({ query: item.foodName });
   
       const transformedCommonItem = mapFoodResponseToFoodItem(nonBrandedFoodInfo);

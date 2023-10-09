@@ -14,7 +14,7 @@ export interface UsdaFindFoodParams {
 }
 
 const COSINE_THRESHOLD = 0.85
-
+/*
 export async function findUsdaFoodInfo(
   searchParams: UsdaFindFoodParams
 ): Promise<foodSearchResultsWithSimilarityAndEmbedding[] | null> {
@@ -100,17 +100,9 @@ export async function findUsdaFoodInfo(
 
   // Return the top 3 results
   return foodSearchResults.slice(0, 3)
-
-  /*
-  // Get the full info for the top item
-  const usdaFoodsInfo: UsdaFoodItem[] | null = await getUsdaFoodsInfo({
-    fdcIds: [String(topItemFdcId)]
-  })
-
-  return usdaFoodsInfo ? mapUsdaFoodItemToFoodItem(usdaFoodsInfo[0]) : null
-  */
 }
-
+*/
+/*
 async function runTests() {
   const queryEmbedding = (await getAdaEmbedding(["Triple Zero Strawberry Yogurt".toLowerCase()])).data[0].embedding
   const results = await findUsdaFoodInfo({
@@ -121,5 +113,5 @@ async function runTests() {
   })
   console.log(results)
 }
-
+*/
 //runTests()

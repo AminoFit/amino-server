@@ -149,7 +149,7 @@ function createUrlWithParams(baseUrl: string, params: any): string {
   return url.toString()
 }
 
-/*export async function searchFoodIds(
+export async function searchFoodIds(
   params: UsdaSearchParams
 ): Promise<UsdaSearchResponse> {
   const API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
@@ -264,7 +264,7 @@ function createUrlWithParams(baseUrl: string, params: any): string {
     throw new Error(`Error fetching data from USDA API: ${error}`)
   }
 }
-*/
+
 /*
 async function runTests() {
   await searchFoodIds({

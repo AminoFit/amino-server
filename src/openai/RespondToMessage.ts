@@ -1,29 +1,45 @@
+// Database related imports
 import {
   GetMessageById,
   GetMessagesForUser
-} from "@/database/GetMessagesForUser"
-import UpdateMessage from "@/database/UpdateMessage"
+} from "@/database/GetMessagesForUser";
+import UpdateMessage from "@/database/UpdateMessage";
+
+// Twilio related imports
 import {
-  GetSystemQuickLogPrompt,
   GetSystemStartPrompt
-} from "@/twilio/SystemPrompt"
+} from "@/twilio/SystemPrompt";
+
+// Utility and function schemas
 import {
   logExerciseSchema,
   logFoodSchema,
   showDailyFoodSummarySchema,
   updateUserInfoSchema
-} from "@/utils/openaiFunctionSchemas"
-import { Message, MessageStatus, MessageType, Role, User } from "@prisma/client"
-import OpenAI from "openai"
-import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
-import { getOpenAICompletion } from "./utils/openAiHelper"
+} from "@/utils/openaiFunctionSchemas";
+import { FoodItemToLog } from "@/utils/loggedFoodItemInterface";
+
+// Prisma client related imports
+import { Message, MessageStatus, MessageType, Role, User } from "@prisma/client";
+
+// OpenAI related imports
+import OpenAI from "openai";
+import { ChatCompletionRole } from "openai/resources/chat";
+
+// Custom functions and helpers
+import { ProcessFunctionCalls } from "./ProcessFunctionCalls";
+import { getOpenAICompletion } from "./utils/openAiHelper";
+import { logFoodItemFunctionStream } from "./customFunctions/logFoodItemStreamFunction";
+import { logFoodItemStreamInstruct } from "./customFunctions/logFoodItemStreamInstruct";
+
+
 
 const ROLE_MAPPING = {
-  [Role.User]: ChatCompletionRequestMessageRoleEnum.User,
-  [Role.System]: ChatCompletionRequestMessageRoleEnum.System,
-  [Role.Assistant]: ChatCompletionRequestMessageRoleEnum.Assistant,
-  [Role.Function]: ChatCompletionRequestMessageRoleEnum.Function
-}
+  [Role.User]: 'user' as ChatCompletionRole,
+  [Role.System]: 'system' as ChatCompletionRole,
+  [Role.Assistant]: 'assistant' as ChatCompletionRole,
+  [Role.Function]: 'function' as ChatCompletionRole
+};
 type ResponseForUser = {
   resultMessage: string
   responseToFunctionName?: string
@@ -44,9 +60,9 @@ export async function GenerateResponseForUser(
   user: User
 ): Promise<ResponseForUser> {
   // Get messages
-  const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
-      role: ChatCompletionRequestMessageRoleEnum.System,
+      role: ROLE_MAPPING.System,
       content: GetSystemStartPrompt(user)
     }
   ]
@@ -208,7 +224,7 @@ export async function GenerateResponseForUser(
 }
 
 // Helper function to handle error scenarios and update the message accordingly
-function handleQuickLog(inputMessageId: number, logMessage: string) {
+function handleQuickLogError(inputMessageId: number, logMessage: string) {
   console.log(logMessage)
   UpdateMessage({
     id: inputMessageId,
@@ -217,72 +233,47 @@ function handleQuickLog(inputMessageId: number, logMessage: string) {
   })
 }
 
+// Utility function to generate a response for the user when they send a quick log food request
 export async function GenerateResponseForQuickLog(user: User, inputMessageId: number): Promise<ResponseForUser> {
-  const systemMessage = {
-    role: ChatCompletionRequestMessageRoleEnum.System,
-    content: GetSystemQuickLogPrompt(user)
-  }
-
-  const loadedMessage = await GetMessageById(inputMessageId)
+  const loadedMessage = await GetMessageById(inputMessageId);
   if (!loadedMessage) {
-    handleQuickLog(inputMessageId, "Message is not available. Could not find the message.")
+    handleQuickLogError(inputMessageId, "Message is not available. Could not find the message.");
     return {
       resultMessage: "Sorry, we're having problems right now. Please try again later."
-    }
+    };
   }
 
-  const gptRequest = {
-    model: "gpt-3.5-turbo-0613",
-    messages: [
-      systemMessage,
-      {
-        role: ROLE_MAPPING.User,
-        content: loadedMessage.content
-      }
-    ],
-    functions: [{
-      name: "log_food_items",
-      description: "Call this function to log food items when the user says what they ate.",
-      parameters: logFoodSchema
-    }],
-    function_call: "auto",
-    temperature: 0.0
+  let foodItemsToLog: FoodItemToLog[] = [];
+
+  try {
+    // Try using the instruct model first
+    foodItemsToLog = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId);
+  } catch (error) {
+    console.log("Error using instruct model:", error);
+
+    // If an error occurs, fallback to the function stream method
+    foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId);
   }
 
-  const completion = await getOpenAICompletion(gptRequest, user, 1, "gpt-4-0613", 0.1)
-
-  if (!completion) {
-    handleQuickLog(inputMessageId, "Completion not successful.")
+  // Check if we have received any valid food items to log
+  if (foodItemsToLog.length === 0) {
     return {
-      resultMessage: "Sorry, We're having problems right now. Please try again later."
-    }
+      resultMessage: "Sorry, I couldn't understand the food items you mentioned. Please try again."
+    };
   }
 
-  const choice = completion.data.choices[0]
-  if (!choice) {
-    handleQuickLog(inputMessageId, "Data is not available. Could not parse the response from OpenAI.")
-    return {
-      resultMessage: "Sorry, we're having problems right now. Please try again later."
-    }
-  }
+  // Process the returned food items to generate a response message for the user
+  const loggedFoodItems = foodItemsToLog.map(item => item.food_database_search_name).join(", ");
+  const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`;
 
-  console.log("completion choices:", choice)
-  
-  const functionCall = choice.message?.function_call
-  const messageForUser = functionCall 
-    ? await ProcessFunctionCalls(user, functionCall, inputMessageId)
-    : choice.message?.content || "Sorry, I don't understand. Can you try again?"
-
-  if (!functionCall) {
-    UpdateMessage({
-      id: inputMessageId,
-      status: MessageStatus.RESOLVED,
-      resolvedAt: new Date()
-    })
-  }
+  // Update the message status as RESOLVED
+  UpdateMessage({
+    id: inputMessageId,
+    status: MessageStatus.RESOLVED,
+    resolvedAt: new Date()
+  });
 
   return {
-    resultMessage: messageForUser,
-    responseToFunctionName: functionCall?.name
-  }
+    resultMessage: messageForUser
+  };
 }
