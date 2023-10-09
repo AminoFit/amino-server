@@ -3,7 +3,6 @@
 import ProcessMessage, { MessageSource, QuickLogMessage } from "@/app/api/processMessage"
 import { prisma } from "@/database/prisma"
 import { getSession } from "@auth0/nextjs-auth0"
-import { getServerSession } from "next-auth"
 
 export async function sendMessage(newMessage: string) {
   if (!newMessage) return { error: "No message provided" }

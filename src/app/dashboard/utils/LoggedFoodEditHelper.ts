@@ -2,7 +2,6 @@
 import { prisma } from "@/database/prisma";
 import { getSession } from "@auth0/nextjs-auth0";
 import { Prisma, LoggedFoodItem } from "@prisma/client";
-import { getServerSession } from "next-auth";
 
 type UpdateLoggedFoodItemData = Omit<Partial<LoggedFoodItem>, 'id' | 'createdAt' | 'updatedAt' | 'extendedOpenAiData'> & {
     extendedOpenAiData?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
