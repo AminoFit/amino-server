@@ -55,7 +55,7 @@ export async function findNxFoodInfo(
   let brandedFoodOptions: NutritionixBrandedItem[] = foodResults.branded
 
   // only process if we have branded food options to evaluate
-  if (brandedFoodOptions) {
+  if (brandedFoodOptions.length > 0) {
     const allQueries = [
       ...(brandedFoodOptions?.map((item) =>
         includeBrandName(item.food_name, item.brand_name_item_name).toLowerCase()
@@ -91,12 +91,13 @@ export async function findNxFoodInfo(
   let commonFoodOptions: NutritionixCommonItem[] = foodResults.common
 
   // Only process if we have common food options to evaluate
-  if (commonFoodOptions) {
+  if (commonFoodOptions.length > 0) {
     // create an array of all queries to get embeddings for
     const commondFoodQueries = commonFoodOptions?.map((item) => `${item.food_name}`.toLowerCase()) ?? []
 
     // get all embeddings in a single API call
     const commondFoodEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',commondFoodQueries)
+
 
     // extract item embeddings
     const commonFoodEmbeddings = commondFoodEmbeddings.map(
@@ -209,7 +210,7 @@ async function runTest() {
     { query: "semi-skimmed milk", embedding: [] }
   ]
 
-  // make a single call to getAdaEmbedding with all queries
+  // make a single call get all queries
   const allQueries = foodEmbedding.map((item) => item.query)
   const allEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',allQueries)
 
@@ -226,12 +227,12 @@ async function runTest() {
 }
 
 async function testSearch() {
-  const query = "Starbucks Iced Latte whole milk, Venti"
+  const query = "RXBAR"
   const queryEmbedding = (await getCachedOrFetchEmbeddings('BGE_BASE',[query]))[0].embedding
-  const latteResponse = await findNxFoodInfo({
-    food_name: "Starbucks Iced Latte",
+  const rxbarResponse = await findNxFoodInfo({
+    food_name: query,
     queryBgeBaseEmbedding: queryEmbedding,
-    food_full_name: "Starbucks Iced Latte whole milk, Venti",
+    food_full_name: query,
     branded: true
   })
   const replacer = (key: string, value: any) => {
@@ -241,7 +242,7 @@ async function testSearch() {
     return value;
   };
   
-  console.log(JSON.stringify(latteResponse, replacer, 2));
+  //console.log(JSON.stringify(rxbarResponse, replacer, 2));
   /*
   // --------------------------------
   const yogurtResponse = await findNxFoodInfo({
@@ -270,5 +271,5 @@ async function testSearch() {
   console.dir(mapFoodResponseToFoodItem(latteResponse[0]), { depth: null })*/
 }
 
-// testSearch()
+//testSearch()
 // runTest()

@@ -80,11 +80,13 @@ export async function getCachedOrFetchEmbeddings(
     const cachedEmbeddingField = MODEL_COLUMN_MAP[modelType]
 
     const uniqueSearchItems = [...new Set(searchItems)]
+    debugLog.push("Searching for:", uniqueSearchItems.join(", "))
 
     const searchTexts = uniqueSearchItems.map((item) => format(`%L`, item)).join(",")
 
     const query = `SELECT id, "textToEmbed", "${cachedEmbeddingField}"::text as embedding
 FROM "foodEmbeddingCache" WHERE "textToEmbed" IN (${searchTexts}) AND "${cachedEmbeddingField}" IS NOT NULL`
+    debugLog.push("Executing query to get embeddings:", query)
     let cachedEmbeddings = (await prisma.$queryRawUnsafe(query)) as {
       id: number
       textToEmbed: string
