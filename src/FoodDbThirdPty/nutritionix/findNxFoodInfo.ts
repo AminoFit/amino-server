@@ -55,7 +55,7 @@ export async function findNxFoodInfo(
   let brandedFoodOptions: NutritionixBrandedItem[] = foodResults.branded
 
   // only process if we have branded food options to evaluate
-  if (brandedFoodOptions.length > 0) {
+  if (brandedFoodOptions && brandedFoodOptions.length > 0) {
     const allQueries = [
       ...(brandedFoodOptions?.map((item) =>
         includeBrandName(item.food_name, item.brand_name_item_name).toLowerCase()
@@ -91,7 +91,7 @@ export async function findNxFoodInfo(
   let commonFoodOptions: NutritionixCommonItem[] = foodResults.common
 
   // Only process if we have common food options to evaluate
-  if (commonFoodOptions.length > 0) {
+  if (commonFoodOptions && commonFoodOptions.length > 0) {
     // create an array of all queries to get embeddings for
     const commondFoodQueries = commonFoodOptions?.map((item) => `${item.food_name}`.toLowerCase()) ?? []
 

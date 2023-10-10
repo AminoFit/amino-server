@@ -34,10 +34,18 @@ export async function logFoodItemStreamInstruct(user: User, user_request: string
         console.log("Input too long.");
         return [];
     }
-    const prompt = `Based on user_request give a structured JSON of what foods user wants to log. Group items. Fix typos.
-Input:
+    const prompt = `Take a deep breath and think carefully.
+Based on user_request, give a structured JSON of what foods user wants to log.
+Important guidelines:
+- Treat similar items, like "3 oranges", as one entry.
+- Only split items with clear separators like "and", "with", or ",".
+- Keep flavor-specific items, like "chocolate peanut butter", as one entry.
+- Correct any clear typos.
+
+The input is:
 user_request: "${sanitizedUserRequest}"
-Output like this:
+
+The expected output format is as follows:
 {
     food_database_complete_search_term: string,
     serving: {
@@ -49,8 +57,7 @@ Output like this:
     branded: boolean,
     brand: string | null,
 }[]
-
-Start of output:
+Output:
 [`;
 
     const foodItemsToLog: FoodItemToLog[] = [];
