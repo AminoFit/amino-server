@@ -5,6 +5,12 @@ import { prisma } from "@/database/prisma"
 import moment from "moment-timezone"
 import { NextResponse } from "next/server"
 
+function stringifyWithBigInt(obj: any): string {
+  return JSON.stringify(obj, (_, value) => 
+    typeof value === 'bigint' ? value.toString() : value
+  );
+}
+
 export async function GET(
   _request: Request, // needed so we don't cache this request
   { params }: { params: { date: string } }
@@ -43,5 +49,6 @@ export async function GET(
     }
   })
 
-  return NextResponse.json(foods)
+  const safeFoodsString = stringifyWithBigInt(foods);
+  return NextResponse.json(JSON.parse(safeFoodsString));  
 }
