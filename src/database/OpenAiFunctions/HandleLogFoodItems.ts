@@ -413,7 +413,7 @@ async function findAndAddItemInDatabase(
           console.log("Time taken for FatSecret API:", Date.now() - startTime, "ms") // Log the time taken
           return result
         } catch (err) {
-          console.log("Error finding FatSecret food info", err) // Silently fail
+          console.log("Error finding FatSecret food info", err)
           return null
         }
       }
