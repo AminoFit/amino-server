@@ -88,7 +88,7 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim()
       console.log("Invalid food item, retrying with GPT-4")
       const system =
         "Call match_user_request_to_database. Think carefully before replying and consider all food options before concluding. There are trick questions so be sure to consider the options at the end."
-      const messages: OpenAI.Chat.CreateChatCompletionRequestMessage[] = [
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: system },
         { role: "user", content: JSON.stringify(matchRequest) }
       ]
