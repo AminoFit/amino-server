@@ -1,5 +1,5 @@
 // Schema definition
-import { FoodInfoSource, FoodItem, LoggedFoodItem, Message, User } from "@prisma/client"
+import { FoodInfoSource, FoodItem, LoggedFoodItem, Serving, User } from "@prisma/client"
 
 // FoodDbThirdPty
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
@@ -10,9 +10,11 @@ import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/co
 
 // OpenAI
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
-import { findBestFoodMatch } from "../../openai/customFunctions/matchFoodItemtoDb"
+import { findBestFoodMatchExternalDb } from "../../openai/customFunctions/matchFoodItemtoExternalDb"
+import { findBestFoodMatchtoLocalDb } from "../../openai/customFunctions/matchFoodItemToLocalDb"
 import { foodItemMissingFieldComplete } from "../../openai/customFunctions/foodItemMissingFieldComplete"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "../../openai/customFunctions/foodItemInterface"
+import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
 import { checkRateLimit } from "../../utils/apiUsageLogging"
@@ -36,14 +38,6 @@ const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
 const COSINE_THRESHOLD = 0.975
 // used to determine if an item should be included in a compare list
 const COSINE_THRESHOLD_LOW_QUALITY = 0.85
-
-type FoodItemIdAndEmbedding = {
-  id: number
-  name: string
-  brand: string
-  cosine_similarity: number
-  embedding: string
-}
 
 function constructFoodRequestString(foodToLog: FoodItemToLog) {
   let result = ""
@@ -119,7 +113,6 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
     )
   )
 
-
   console.log("foodsNeedProcessing", foodsNeedProcessing)
 
   const results = []
@@ -158,69 +151,66 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
 
   return results.join(" ")
 }
-
-export async function HandleLogFoodItem(
-  loggedFoodItem: LoggedFoodItem,
-  food: FoodItemToLog,
-  messageId: number,
-  user: User
-): Promise<string> {
-  // Get the user query vector
-  // Assuming you have a function to convert foodUserQuery to a vector
-  // Pass this on to other functions to avoid requiring
-  const userQueryVectorCache = await foodToLogEmbedding(food)
-
-  //const query =`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`
-
-  //console.log("userQuery:", query)
-
-  const cosineSearchResults =
-    (await prisma.$queryRaw`SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding, 1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5`) as FoodItemIdAndEmbedding[]
-
+function printSearchResults(results: FoodItemIdAndEmbedding[]): void {
   console.log("Searching in database")
   console.log("__________________________________________________________")
-  // Process the result as you need
-  cosineSearchResults.forEach((item) => {
+  results.forEach((item) => {
     const similarity = item.cosine_similarity.toFixed(3)
-    if (item.brand) {
-      console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name} - ${item.brand}`)
-    } else {
-      console.log(`Similarity: ${similarity} - Item: ${item.id} - ${item.name}`)
-    }
+    const description = item.brand ? `${item.name} - ${item.brand}` : item.name
+    console.log(`Similarity: ${similarity} - Item: ${item.id} - ${description}`)
   })
+}
 
-  // Filter items based on cosine similarity
-  const filteredItems = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
+async function findBestMatch(
+  cosineSearchResults: FoodItemIdAndEmbedding[],
+  food: FoodItemToLog,
+  userQueryVectorCache: FoodEmbeddingCache,
+  user: User,
+  messageId: number
+): Promise<FoodItem> {
+  // Filter items above the COSINE_THRESHOLD
+  const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 
-  let bestMatch: FoodItem
-  // If no matches found, add food item to the database
-  if (filteredItems.length === 0) {
-    console.log("No matches found for food item", food.food_database_search_name)
-
-    const newFood = await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
-    bestMatch = newFood
-  } else {
+  if (bestMatches.length) {
+    // Return the highest match instantly
     const match = await prisma.foodItem.findUnique({
-      where: {
-        id: filteredItems[0].id
-      }
+      where: { id: bestMatches[0].id }
     })
+    if (match) return match
+    throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
+  }
 
-    if (match !== null) {
-      bestMatch = match
-    } else {
-      // Handle the unexpected null case
-      throw new Error(`Failed to find FoodItem with id ${filteredItems[0].id}`)
+  // No items above COSINE_THRESHOLD, filter for items above COSINE_THRESHOLD_LOW_QUALITY
+  const lowQualityMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD_LOW_QUALITY)
+
+  if (lowQualityMatches.length) {
+    const top9Matches = lowQualityMatches.slice(0, 9)
+    // Call findBestFoodMatchtoLocalDb with top 9 matches
+    // console.log("top9Matches", JSON.stringify(top9Matches))
+    // console.log("food", JSON.stringify(food))
+    // console.log("userQueryVectorCache", JSON.stringify(userQueryVectorCache))
+    // console.log("messageId", JSON.stringify(messageId))
+    // console.log("user", JSON.stringify(user))
+    const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
+    if (localDbMatch) {
+      // Return the highest match instantly
+      const match = await prisma.foodItem.findUnique({
+        where: { id: localDbMatch.id }
+      })
+      if (match) return match
+      throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
     }
   }
 
-  // Let's find the serving
-  // split the string into an array and filter out the serving unit
+  // Fetch from external databases
+  return (await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId))
+}
+
+function extractServingSize(servingName: string): string {
   const servingUnitEnum = [
     "g",
     "ml",
     "cup",
-    "piece",
     "tbsp",
     "tsp",
     "plate",
@@ -232,15 +222,16 @@ export async function HandleLogFoodItem(
     "large",
     "serving"
   ]
-  let foodArray = food.serving.serving_name.split(" ")
-  let servingSize = foodArray.filter((word) => servingUnitEnum.includes(word))
+  const foodArray = servingName.split(" ")
+  return foodArray.find((word) => servingUnitEnum.includes(word)) || ""
+}
 
-  // Search servings table for the best match
-  let serving = await prisma.serving.findFirst({
+async function findBestServing(foodItemId: number, servingSize: string): Promise<Serving | null> {
+  return await prisma.serving.findFirst({
     where: {
-      foodItemId: bestMatch.id,
+      foodItemId: foodItemId,
       servingName: {
-        contains: servingSize[0],
+        contains: servingSize,
         mode: "insensitive"
       }
     },
@@ -248,13 +239,39 @@ export async function HandleLogFoodItem(
       servingWeightGram: "asc"
     }
   })
-  if (!serving) {
-    console.log(`No serving found for food item id ${bestMatch.id} and serving size ${servingSize[0]}`)
-  }
-  // Proceed with original logging process with some modifications
-  const data: any = {
-    foodItemId: bestMatch.id, // use the best match's ID
-    servingId: serving?.id, // use the serving id, if a serving was found
+}
+
+async function logFoodItem(loggedFoodItemId: number, data: any): Promise<LoggedFoodItem | null> {
+  return await prisma.loggedFoodItem.update({ where: { id: loggedFoodItemId }, data }).catch((err) => {
+    console.log("Error logging food item", err)
+    return null
+  })
+}
+
+export async function HandleLogFoodItem(
+  loggedFoodItem: LoggedFoodItem,
+  food: FoodItemToLog,
+  messageId: number,
+  user: User
+): Promise<string> {
+  const userQueryVectorCache = await foodToLogEmbedding(food)
+
+  const cosineSearchResults = (await prisma.$queryRaw`
+    SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
+    1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity 
+    FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
+  `) as FoodItemIdAndEmbedding[]
+
+  printSearchResults(cosineSearchResults)
+
+  const bestMatch = await findBestMatch(cosineSearchResults, food, userQueryVectorCache, user, messageId)
+
+  const servingSize = extractServingSize(food.serving.serving_name)
+  const serving = await findBestServing(bestMatch.id, servingSize)
+
+  const data = {
+    foodItemId: bestMatch.id,
+    servingId: serving?.id,
     servingAmount: food.serving.serving_amount,
     loggedUnit: sanitizeServingName(food.serving.serving_name || ""),
     grams: food.serving.total_serving_g_or_ml,
@@ -264,14 +281,9 @@ export async function HandleLogFoodItem(
     status: "Processed"
   }
 
-  const foodItem = await prisma.loggedFoodItem.update({ where: { id: loggedFoodItem.id }, data }).catch((err) => {
-    console.log("Error logging food item", err)
-  })
-  if (!foodItem) {
-    return "Sorry, I could not log your food items. Please try again later."
-  }
+  const foodItem = await logFoodItem(loggedFoodItem.id, data)
+  if (!foodItem) return "Sorry, I could not log your food items. Please try again later."
 
-  console.log("Updating messageID: ", messageId)
   UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
@@ -429,7 +441,7 @@ async function findAndAddItemInDatabase(
           {
             foodBgeBaseEmbedding: [],
             similarityToQuery: 0,
-            foodSource: FoodInfoSource.NUTRITIONIX,
+            foodSource: FoodInfoSource.User,
             foodName: ""
           }
         ]
@@ -482,7 +494,7 @@ async function findAndAddItemInDatabase(
 
     // Check the highest similarity score
     if (highestSimilarityItem.similarityToQuery <= COSINE_THRESHOLD) {
-      const betterMatchItem = await findBestFoodMatch(user, foodToLog, foodInfoResponses)
+      const betterMatchItem = await findBestFoodMatchExternalDb(user, foodToLog, foodInfoResponses)
       if (betterMatchItem) {
         highestSimilarityItem = betterMatchItem
       } else {

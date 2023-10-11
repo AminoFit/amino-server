@@ -86,7 +86,7 @@ try {
   
   // Convert 'False' to 'false' and 'True' to 'true'
   correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
-  
+  console.log("correctedResponse:", correctedResponse);
   return JSON.parse(correctedResponse);
 } catch (error) {
   console.error("Failed to correct and parse the response:", responseText, error);
