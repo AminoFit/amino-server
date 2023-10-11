@@ -5,11 +5,17 @@ import { getSession } from "@auth0/nextjs-auth0"
 export async function getUser() {
   const session = await getSession()
   if (session?.user) {
-    let aminoUser = await prisma.user.findUnique({
+    const aminoUser = await prisma.user.upsert({
       where: {
         email: session.user.email
+      },
+      update: {},
+      create: {
+        email: session.user.email,
+        firstName: session.user.name
       }
     })
+
     return aminoUser
   }
   return

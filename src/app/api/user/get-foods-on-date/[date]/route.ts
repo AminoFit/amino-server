@@ -42,7 +42,13 @@ export async function GET(
         include: { Servings: true, FoodImage: true }
       },
       foodEmbeddingCache: false,
-      embeddingId: false
+      embeddingId: false,
+      consumedOn: true,
+      grams: true,
+      servingAmount: true,
+      loggedUnit: true,
+      status: true,
+      extendedOpenAiData: true,
     }
   })
 
