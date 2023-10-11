@@ -6,9 +6,7 @@ import moment from "moment-timezone"
 import { NextResponse } from "next/server"
 
 function stringifyWithBigInt(obj: any): string {
-  return JSON.stringify(obj, (_, value) => 
-    typeof value === 'bigint' ? value.toString() : value
-  );
+  return JSON.stringify(obj, (_, value) => (typeof value === "bigint" ? value.toString() : value))
 }
 
 export async function GET(
@@ -28,10 +26,7 @@ export async function GET(
   const parsedDate = moment.tz(dateString, "YYYY-MM-DD", user.tzIdentifier)
 
   if (!parsedDate.isValid()) {
-    return new Response(
-      "Provided date is invalid. Must be in YYYY-MM-DD format",
-      { status: 400 }
-    )
+    return new Response("Provided date is invalid. Must be in YYYY-MM-DD format", { status: 400 })
   }
 
   let foods = await prisma.loggedFoodItem.findMany({
@@ -42,13 +37,15 @@ export async function GET(
         lte: parsedDate.endOf("day").toDate()
       }
     },
-    include: {
+    select: {
       FoodItem: {
         include: { Servings: true, FoodImage: true }
-      }
+      },
+      foodEmbeddingCache: false,
+      embeddingId: false
     }
   })
 
-  const safeFoodsString = stringifyWithBigInt(foods);
-  return NextResponse.json(JSON.parse(safeFoodsString));  
+  const safeFoodsString = stringifyWithBigInt(foods)
+  return NextResponse.json(JSON.parse(safeFoodsString))
 }
