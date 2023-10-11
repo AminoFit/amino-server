@@ -16,12 +16,8 @@
 */
 import QuickLogFood from "@/app/dashboard/QuickLogFood"
 import { Disclosure, Menu, Transition } from "@headlessui/react"
-import {
-  Bars3Icon,
-  XMarkIcon
-} from "@heroicons/react/24/outline"
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import classNames from "classnames"
-import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { Fragment } from "react"
 
@@ -36,11 +32,7 @@ export default function DashNav() {
             <div className="flex h-16 justify-between">
               <div className="flex px-2 lg:px-0">
                 <div className="flex flex-shrink-0 items-center">
-                  <img
-                    className="h-8 w-auto"
-                    src="/logos/logo-light.svg"
-                    alt="Amino Fit Logo"
-                  />
+                  <img className="h-8 w-auto" src="/logos/logo-light.svg" alt="Amino Fit Logo" />
                 </div>
                 <div className="hidden lg:ml-6 lg:flex lg:space-x-8">
                   {/* Current: "border-indigo-500 text-gray-900", Default: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700" */}
@@ -103,11 +95,7 @@ export default function DashNav() {
                     <Menu.Button className="relative flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                       <span className="absolute -inset-1.5" />
                       <span className="sr-only">Open user menu</span>
-                      <img
-                        className="h-8 w-8 rounded-full"
-                        src="/dashboard/user.png"
-                        alt=""
-                      />
+                      <img className="h-8 w-8 rounded-full" src="/dashboard/user.png" alt="" />
                     </Menu.Button>
                   </div>
                   <Transition
@@ -123,12 +111,8 @@ export default function DashNav() {
                       <Menu.Item>
                         {({ active }) => (
                           <a
-                            href="#"
-                            onClick={() => signOut({ callbackUrl: "/" })}
-                            className={classNames(
-                              active ? "bg-gray-100" : "",
-                              "block px-4 py-2 text-sm text-gray-700"
-                            )}
+                            href="/api/auth/signout"
+                            className={classNames(active ? "bg-gray-100" : "", "block px-4 py-2 text-sm text-gray-700")}
                           >
                             Sign out
                           </a>
@@ -190,9 +174,7 @@ export default function DashNav() {
                   />
                 </div> */}
                 <div className="">
-                  <div className="text-base font-medium text-zinc-200">
-                    Your Account
-                  </div>
+                  <div className="text-base font-medium text-zinc-200">Your Account</div>
                 </div>
                 {/* <button
                   type="button"
@@ -204,12 +186,14 @@ export default function DashNav() {
                 </button> */}
               </div>
               <div className="mt-3 space-y-1">
-                <Disclosure.Button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="block px-4 py-2 text-base font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-800"
-                >
-                  Sign out
-                </Disclosure.Button>
+                <a href="/api/auth/signout">
+                  <Disclosure.Button
+                    className="block px-4 py-2 text-base font-medium text-gray-400 hover:bg-gray-100
+                    hover:text-gray-800"
+                  >
+                    Sign out
+                  </Disclosure.Button>
+                </a>
               </div>
             </div>
           </Disclosure.Panel>

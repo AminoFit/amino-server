@@ -1,17 +1,22 @@
 "use server";
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
 import { prisma } from "@/database/prisma";
+import { getSession } from "@auth0/nextjs-auth0";
 import { Prisma, LoggedFoodItem } from "@prisma/client";
-import { getServerSession } from "next-auth";
 
 type UpdateLoggedFoodItemData = Omit<Partial<LoggedFoodItem>, 'id' | 'createdAt' | 'updatedAt' | 'extendedOpenAiData'> & {
     extendedOpenAiData?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   };
 
 export async function updateLoggedFoodItem(id: number, foodData: Partial<LoggedFoodItem>) {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
 
-  if (!session || typeof session.user.userId !== 'string') {
+  let aminoUser = await prisma.user.findUnique({
+    where: {
+      email: session?.user.email
+    }
+  })
+
+  if (!session || typeof session.user.userId !== 'string' || !aminoUser) {
     throw new Error("Not authenticated");
   }
 
@@ -21,7 +26,7 @@ export async function updateLoggedFoodItem(id: number, foodData: Partial<LoggedF
   });
 
   // Check if the food item belongs to the current user
-  if (existingFoodItem?.userId !== session.user.userId) {
+  if (existingFoodItem?.userId !== aminoUser.id) {
     throw new Error("Not authorized to edit this food item");
   }
 
