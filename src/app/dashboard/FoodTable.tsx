@@ -34,7 +34,7 @@ export function FoodTable() {
     queryKey: ["foodData", formattedDate],
     queryFn: () => axios.get("/api/user/get-foods-on-date/" + formattedDate).then((res) => res.data),
     refetchIntervalInBackground: true,
-    refetchInterval: 1000 * 15
+    refetchInterval: 1000 * 1
   })
 
   const groups = _.chain(foods || [])
