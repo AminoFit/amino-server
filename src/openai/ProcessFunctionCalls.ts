@@ -4,11 +4,11 @@ import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUse
 import UpdateMessage from "@/database/UpdateMessage"
 import { SendListOfFoodsTodayToUser } from "@/twilio/SendMessageToUser"
 import { Message, MessageStatus, User } from "@prisma/client"
-import { ChatCompletionRequestMessageFunctionCall } from "openai"
+import OpenAI from "openai"
 
 export const ProcessFunctionCalls = async (
   user: User,
-  functionCall: ChatCompletionRequestMessageFunctionCall,
+  functionCall: OpenAI.Chat.ChatCompletionMessage.FunctionCall,
   lastUserMessageId: number
 ): Promise<string> => {
   const functionName = functionCall.name

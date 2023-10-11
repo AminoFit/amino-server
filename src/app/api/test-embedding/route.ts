@@ -5,7 +5,7 @@ export async function GET() {
   console.log("Testing getting an embedding from open AI")
 
   const startTime = Date.now()
-  const embedding = await openai.createEmbedding({
+  const embedding = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: "Starbucks Iced Coffee with Classic Syrup",
   })

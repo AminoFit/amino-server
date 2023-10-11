@@ -15,6 +15,8 @@ interface Portion {
   servingSize: number
   servingSizeUnit: string
   householdServingFullText: string
+  gramWeight?: number
+  name?: string
 }
 
 export interface UsdaFoodItem {
@@ -66,6 +68,8 @@ export function mapUsdaFoodItemToFoodItem(
     "Sugars, added": "addedSugarPerServing"
   }
 
+  //console.log("portions:", JSON.stringify(usdaFoodItem.portions, null, 2))
+
   const foodItem: FoodItemWithServings = {
     id: 0,
     knownAs: [],
@@ -76,20 +80,38 @@ export function mapUsdaFoodItemToFoodItem(
     foodInfoSource: "USDA",
     messageId: null,
     name: toTitleCase(usdaFoodItem.itemName),
-    brand: usdaFoodItem.brandName || "",
+    brand: toTitleCase(usdaFoodItem.brandName || ""),
     weightUnknown: false,
     defaultServingWeightGram:
       (usdaFoodItem.default_serving.default_serving_unit === 'g') ? usdaFoodItem.default_serving.default_serving_amount : null,
     defaultServingLiquidMl: 
       (usdaFoodItem.default_serving.default_serving_unit === 'ml') ? usdaFoodItem.default_serving.default_serving_amount : null,
     isLiquid: usdaFoodItem.default_serving.default_serving_unit === 'ml',
-    Servings: usdaFoodItem.portions.map((portion) => ({
-      servingWeightGram: portion.servingSizeUnit === 'g' ? portion.servingSize : null,
-      servingAlternateAmount: portion.servingSizeUnit !== 'g' ? portion.servingSize : null,
-      servingAlternateUnit: portion.servingSizeUnit !== 'g' ? portion.servingSizeUnit : null,
-      servingName: portion.householdServingFullText ? portion.householdServingFullText : `${portion.servingSize} ${portion.servingSizeUnit}`
-    })),
-    UPC: Number(usdaFoodItem.upc) || null,
+    Servings: usdaFoodItem.portions.map((portion) => {
+      let servingWeightGram = null;
+      let servingAlternateAmount = null;
+      let servingAlternateUnit = null;
+    
+      // Prioritize gramWeight if available
+      if (portion.gramWeight) {
+        servingWeightGram = portion.gramWeight;
+      } else {
+        servingWeightGram = portion.servingSizeUnit === 'g' ? portion.servingSize : null;
+        servingAlternateAmount = portion.servingSizeUnit !== 'g' ? portion.servingSize : null;
+        servingAlternateUnit = portion.servingSizeUnit !== 'g' ? portion.servingSizeUnit : null;
+      }
+    
+      const servingName = portion.householdServingFullText || (portion.name ? portion.name : `${servingAlternateAmount || ''} ${servingAlternateUnit || ''}`.trim());
+    
+      return {
+        servingWeightGram,
+        servingAlternateAmount,
+        servingAlternateUnit,
+        servingName
+      };
+    }),
+    
+    UPC: usdaFoodItem.upc ? BigInt(usdaFoodItem.upc) : null,
     externalId: usdaFoodItem.fdcId.toString(),
     Nutrients: [],
     kcalPerServing: 0,
@@ -142,10 +164,10 @@ function runTest() {
   const almondButter: UsdaFoodItem = JSON.parse(
     `{"itemName":"Almond butter, creamy","branded":false,"brandName":null,"default_serving":{"default_serving_amount":100,"default_serving_unit":"g"},"foodInfo":{"Energy":{"amount":null,"unit":null},"Protein":{"amount":20.78734,"unit":"g"},"Total lipid (fat)":{"amount":53.04,"unit":"g"},"Carbohydrate, by difference":{"amount":21.23666,"unit":"g"},"Energy (Atwater General Factors)":{"amount":645.456,"unit":"kcal"},"Sugars, total including NLEA":{"amount":null,"unit":null},"Sugars, Total":{"amount":null,"unit":null},"Fiber, total dietary":{"amount":9.718,"unit":"g"},"Carbohydrate, by summation":{"amount":null,"unit":null},"Total fat (NLEA)":{"amount":null,"unit":null},"Fatty acids, total saturated":{"amount":4.253,"unit":"g"},"Fatty acids, total monounsaturated":{"amount":34.69,"unit":"g"},"Fatty acids, total trans":{"amount":null,"unit":null},"Sugars, added":{"amount":null,"unit":null},"Cholesterol":{"amount":null,"unit":null},"Potassium, K":{"amount":745.4,"unit":"mg"},"Sodium, Na":{"amount":0.9963,"unit":"mg"},"Calcium, Ca":{"amount":263.8,"unit":"mg"}},"portions":[]}`
   )
-  console.log(mapUsdaFoodItemToFoodItem(chiaSeeds))
-  console.log(mapUsdaFoodItemToFoodItem(peanut))
-  console.log(mapUsdaFoodItemToFoodItem(bread))
-  console.log(mapUsdaFoodItemToFoodItem(almondButter))
+  // console.log(mapUsdaFoodItemToFoodItem(chiaSeeds))
+  // console.log(mapUsdaFoodItemToFoodItem(peanut))
+  // console.log(mapUsdaFoodItemToFoodItem(bread))
+  // console.log(mapUsdaFoodItemToFoodItem(almondButter))
 }
 
 //runTest()

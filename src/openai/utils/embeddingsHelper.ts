@@ -1,27 +1,22 @@
-import {
-  Configuration,
-  CreateEmbeddingResponse,
-  CreateEmbeddingResponseDataInner,
-  OpenAIApi
-} from "openai"
+import OpenAI from "openai"
 
 import * as path from "path"
 require("dotenv").config({
   path: path.resolve(__dirname, "../../../.env.local")
 })
 
-const configuration = new Configuration({
+
+export const openai = new OpenAI({
   organization: process.env.OPENAI_ORG_ID,
   apiKey: process.env.OPENAI_API_KEY
 })
-export const openai = new OpenAIApi(configuration)
 
-export async function getEmbedding(input: string[]): Promise<CreateEmbeddingResponse> {
-  const embedding = await openai.createEmbedding({
+export async function getAdaEmbedding(input: string[]): Promise<OpenAI.CreateEmbeddingResponse> {
+  const embedding = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: input
   })
-  return embedding.data
+  return embedding
 }
 
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {

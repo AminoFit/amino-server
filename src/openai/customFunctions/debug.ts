@@ -1,8 +1,8 @@
 import {
-  foodItemCompletion,
-  checkCompliesWithSchema,
-} from "./foodItemCompletion"; // replace 'yourFile' with the name of the file that contains messageHandlingFunction
+  foodItemCompletion
+} from "./foodItemCompletion"; 
 
+import { checkCompliesWithSchema } from "src/openai/utils/openAiHelper";
 async function main() {
   const outputSchema = {
     type: "object",
@@ -242,4 +242,4 @@ async function main() {
   */
 }
 
-main();
+// main();

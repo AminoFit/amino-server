@@ -1,6 +1,6 @@
 import axios from "axios"
 import {
-  getEmbedding,
+  getAdaEmbedding,
   cosineSimilarity
 } from "../../openai/utils/embeddingsHelper"
 import { recordQuery } from "../../utils/apiUsageLogging"
@@ -89,9 +89,9 @@ async function filterFoodsByEmbeddingSimilarity(
   for (let food of foods) {
     // Get the embedding for the food description
     const nameToEmbed = food.brandName
-      ? `${toTitleCase(food.description)} - ${food.brandName}`
+      ? `${toTitleCase(food.description)} - ${toTitleCase(food.brandName)}`
       : toTitleCase(food.description)
-    const foodResultEmbedding = await getEmbedding([nameToEmbed.toLowerCase()])
+    const foodResultEmbedding = await getAdaEmbedding([nameToEmbed.toLowerCase()])
 
     // Calculate the cosine similarity
     const similarity = cosineSimilarity(
@@ -173,7 +173,7 @@ export async function searchFoodIds(
     const nameToEmbed = (params.brand_name
       ? `${params.query} - ${params.brand_name}`
       : params.query).toLowerCase()
-    queryEmbedding = (await getEmbedding([nameToEmbed])).data[0].embedding
+    queryEmbedding = (await getAdaEmbedding([nameToEmbed])).data[0].embedding
   }
 
 
@@ -265,6 +265,7 @@ export async function searchFoodIds(
   }
 }
 
+/*
 async function runTests() {
   await searchFoodIds({
     query: "Triple Zero Strawberry Yogurt",
@@ -278,7 +279,7 @@ async function runTests() {
       console.error(`Error: ${error}`)
     })
 
-  /*await searchFoodIds({
+  await searchFoodIds({
     query: "Apple",
     branded: false
   })
@@ -288,7 +289,7 @@ async function runTests() {
     .catch((error) => {
       console.error(`Error: ${error}`)
     })
-    */
+    
 }
-
+*/
 // runTests()

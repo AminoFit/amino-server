@@ -1,0 +1,170 @@
+import { chatCompletionFunctionStream } from "./chatCompletion"
+import { isWithinTokenLimit } from "gpt-tokenizer"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { User } from "@prisma/client"
+import { logFoodSchema } from "@/utils/openaiFunctionSchemas"
+import { prisma } from "../../database/prisma"
+import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
+
+const tokenLimit = 2048
+
+function sanitizeInput(input: string): string {
+  const sanitizedInput = input.replace(/[^a-zA-Z0-9\s,]/g, "")
+  return sanitizedInput
+}
+
+enum ParseState {
+  UNKNOWN,
+  START_FOOD_ITEMS,
+  IN_FOOD_ITEM,
+  END_FOOD_ITEMS
+}
+
+export async function logFoodItemFunctionStream(
+  user: User,
+  user_request: string,
+  lastUserMessageId: number
+): Promise<FoodItemToLog[]> {
+  const sanitizedUserRequest = sanitizeInput(user_request)
+  if (!isWithinTokenLimit(sanitizedUserRequest, tokenLimit)) {
+    console.log("Input too long.")
+    return []
+  }
+
+  const prompt = `Call log_food_items. Based on user request give a structured JSON of what foods user wants to log. Group items if possible. Fix typos.`
+
+  const foodItemsToLog: FoodItemToLog[] = []
+  const loggingTasks: Promise<any>[] = []
+
+  const messageInfo = await prisma.message.findUnique({
+    where: { id: lastUserMessageId },
+    select: {
+      itemsProcessed: true
+    }
+  })
+  const itemsAlreadyProcessed = messageInfo?.itemsProcessed || 0
+  let itemsExtracted = 0
+  let buffer = ""
+  let state = ParseState.UNKNOWN
+  let itemBuffer = ""
+
+  try {
+    for await (const chunk of chatCompletionFunctionStream(
+      {
+        model: "gpt-3.5-turbo-0613",
+        messages: [
+          {
+            role: "system",
+            content: prompt
+          },
+          {
+            role: "user",
+            content: user_request
+          }
+        ],
+        functions: [
+          {
+            name: "log_food_items",
+            parameters: logFoodSchema
+          }
+        ],
+        function_call: "auto"
+      },
+      user
+    )) {
+      buffer += chunk
+
+      switch (state) {
+        case ParseState.UNKNOWN:
+          if (/\{\s*"food_items"\s*:\s*\[/i.test(buffer)) {
+            buffer = buffer.replace(/\{\s*"food_items"\s*:\s*\[/i, "")
+            state = ParseState.START_FOOD_ITEMS
+          }
+          break
+
+        case ParseState.START_FOOD_ITEMS:
+        case ParseState.IN_FOOD_ITEM:
+          itemBuffer += chunk
+          const openBrackets = (itemBuffer.match(/{/g) || []).length
+          const closeBrackets = (itemBuffer.match(/}/g) || []).length
+
+          if (itemBuffer.trim() === "]") {
+            state = ParseState.END_FOOD_ITEMS
+            itemBuffer = ""
+          } else if (openBrackets === closeBrackets && itemBuffer.trim()) {
+            // Remove trailing comma if it exists
+            if (itemBuffer.trim().endsWith(",")) {
+              itemBuffer = itemBuffer.trim().slice(0, -1)
+            }
+
+            try {
+              const parsedItem = JSON.parse(itemBuffer.trim())
+              console.log("Parsed item:", parsedItem)
+              foodItemsToLog.push(parsedItem)
+              itemBuffer = ""
+              state = ParseState.IN_FOOD_ITEM
+              // increment the number of items extracted
+              itemsExtracted++
+
+              // Skip processing if this item is already processed
+              if (itemsExtracted > itemsAlreadyProcessed) {
+                // Add logging task to the tasks array
+                const loggingTask = HandleLogFoodItems(user, { food_items: [parsedItem] }, lastUserMessageId)
+                loggingTasks.push(loggingTask)
+              }
+              break
+            } catch (err) {
+              console.log("Error parsing JSON item:", itemBuffer)
+              const error = err as Error
+              console.error("Failed to parse JSON item:", error.message)
+            }
+          }
+          break
+        case ParseState.END_FOOD_ITEMS:
+          if (buffer.includes("]}")) {
+            state = ParseState.UNKNOWN // reset state if you're expecting more data or finalize processing
+            itemBuffer = ""
+            buffer = ""
+          }
+          break
+      }
+    }
+    return foodItemsToLog
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log("Error:", error.message)
+    } else {
+      console.log("Error:", error)
+    }
+    return []
+  }
+}
+
+async function testFoodLog() {
+  const user: User = {
+    id: "clmzqmr2a0000la08ynm5rjju",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    emailVerified: new Date("2022-08-09T12:00:00"),
+    phone: "123-456-7890",
+    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York"
+  }
+  let userRequestString = "1 oz of almonds, 1 fl oz of milk, 1 cup of cooked rice"
+  let result = await logFoodItemFunctionStream(user, userRequestString, 1)
+  //console.dir(result, { depth: null })
+}
+
+//testFoodLog()
