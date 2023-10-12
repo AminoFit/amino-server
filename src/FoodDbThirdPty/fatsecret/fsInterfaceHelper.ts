@@ -136,7 +136,7 @@ export function convertFsToFoodItem(
   if (Number.isNaN(serving.metric_serving_amount)) {
     console.log("Weight unknown for", fsFoodItem.food_name)
     weightUnknown = true
-    serving.metric_serving_amount = 10
+    //serving.metric_serving_amount = 10
     serving.metric_serving_unit = "g"
   }
 

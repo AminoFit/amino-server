@@ -516,7 +516,7 @@ async function findAndAddItemInDatabase(
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
       // If the food item is missing a field, complete it
-      if (!foodItemToSave.defaultServingWeightGram) {
+      if (!foodItemToSave.defaultServingWeightGram || foodItemToSave.weightUnknown) {
         foodItemToSave = await foodItemMissingFieldComplete(
           highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
           user

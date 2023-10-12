@@ -117,7 +117,7 @@ Kcal: ${foodItem.kcalPerServing}
 Carbs: ${foodItem.carbPerServing}
 Fat: ${foodItem.totalFatPerServing}
 Protein: ${foodItem.proteinPerServing}
-DefaultServingGrams: ${foodItem.defaultServingWeightGram}
+DefaultServingGrams: ${!foodItem.weightUnknown ? null : foodItem.defaultServingWeightGram}
 isLiquid: ${foodItem.isLiquid}
 DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
     generateInquiryString(foodItem)

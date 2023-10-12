@@ -77,22 +77,37 @@ function removeTrailingCommas(str: string) {
 }
 
 export function correctAndParseResponse(responseText: string): any {
-try {
-  // Recursive removal of trailing commas until none are left
-  let correctedResponse = removeTrailingCommas(responseText);
+  try {
+      // Recursive removal of trailing commas until none are left
+      let correctedResponse = removeTrailingCommas(responseText);
 
-  // Replace keys without quotes to be with quotes
-  correctedResponse = correctedResponse.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"\$1":');
-  
-  // Convert 'False' to 'false' and 'True' to 'true'
-  correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
-  console.log("correctedResponse:", correctedResponse);
-  return JSON.parse(correctedResponse);
-} catch (error) {
-  console.error("Failed to correct and parse the response:", responseText, error);
-  return null;
+      // Replace keys without quotes to be with quotes
+      correctedResponse = correctedResponse.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":');
+
+      // Convert 'False' to 'false' and 'True' to 'true'
+      correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
+
+      // Ensure there's a comma at the end of a line if the next line is not a closing bracket
+      correctedResponse = ensureCommaAtEndOfLine(correctedResponse);
+      return JSON.parse(correctedResponse);
+  } catch (error) {
+      console.error("Failed to correct and parse the response:", responseText, error);
+      return null;
+  }
 }
+
+function ensureCommaAtEndOfLine(text: string): string {
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      const nextLine = lines[i + 1].trim();
+      if (line && !line.endsWith(',') && !nextLine.startsWith('}') && !nextLine.startsWith(']') && !line.endsWith('{') && !line.endsWith('[')) {
+          lines[i] = line + ',';
+      }
+  }
+  return lines.join('\n');
 }
+
 
 
 
