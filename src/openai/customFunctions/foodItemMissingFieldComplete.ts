@@ -44,7 +44,7 @@ interface AutocompleteFoodItem {
   servings: AutocompleteServing[] // Array of "Serving" interface
 }
 
-const generateInquiryString = (foodItem: FoodItemWithNutrientsAndServing) => {
+const generateServingString = (foodItem: FoodItemWithNutrientsAndServing) => {
   const filteredServings = foodItem.Servings.filter(
     (serving) => serving.servingWeightGram === null
   ).slice(0, 3)
@@ -120,7 +120,7 @@ Protein: ${foodItem.proteinPerServing}
 DefaultServingGrams: ${!foodItem.weightUnknown ? null : foodItem.defaultServingWeightGram}
 isLiquid: ${foodItem.isLiquid}
 DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` +
-    generateInquiryString(foodItem)
+    generateServingString(foodItem)
 
   let result: any = null
   let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -328,11 +328,66 @@ async function testRun() {
     Servings: [ serving2 ],
     Nutrients: []
   }
-  // console.dir(await foodItemMissingFieldComplete(fairlifeMilk, user), {
-  //   depth: null
-  // })
 
-  console.log(stringifyFoodItem(fairlifeMilk))
+
+  const mcflurryFood: FoodItemWithNutrientsAndServing = {
+    id: 1234124,
+    externalId: '56568',
+    UPC: null,
+    knownAs: [],
+    description: null,
+    lastUpdated: new Date("2023-10-12T16:08:10.626Z"),
+    verified: true,
+    userId: null,
+    foodInfoSource: 'FATSECRET',
+    messageId: null,
+    name: 'McFlurry with Oreo Cookies',
+    brand: "McDonald's",
+    defaultServingWeightGram: NaN,
+    defaultServingLiquidMl: null,
+    isLiquid: false,
+    weightUnknown: true,
+    kcalPerServing: 510,
+    totalFatPerServing: 16,
+    carbPerServing: 80,
+    proteinPerServing: 12,
+    satFatPerServing: 8,
+    fiberPerServing: 1,
+    sugarPerServing: 60,
+    transFatPerServing: 0.5,
+    addedSugarPerServing: 48,
+    Servings: [
+      {
+        id: 12412,
+        foodItemId: 1234124,
+        servingWeightGram: null,
+        servingAlternateAmount: null,
+        servingAlternateUnit: null,
+        servingName: '1 serving'
+      }
+    ],
+    Nutrients: [
+      {
+        id: 0,
+        foodItemId: 0,
+        nutrientName: 'Cholesterol',
+        nutrientAmountPerDefaultServing: 40,
+        nutrientUnit: 'mg'
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        nutrientName: 'Potassium',
+        nutrientAmountPerDefaultServing: 540,
+        nutrientUnit: 'mg'
+      }
+    ]
+  }
+  console.dir(await foodItemMissingFieldComplete(mcflurryFood, user), {
+    depth: null
+  })
+
+  //console.log(stringifyFoodItem(mcflurryFood))
 }
 
 //testRun()

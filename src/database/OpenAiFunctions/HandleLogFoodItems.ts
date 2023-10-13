@@ -266,7 +266,7 @@ export async function HandleLogFoodItem(
 
   const bestMatch = await findBestMatch(cosineSearchResults, food, userQueryVectorCache, user, messageId)
 
-  const servingSize = extractServingSize(food.serving.serving_name)
+  const servingSize = food.serving.serving_name ? extractServingSize(food.serving.serving_name) : ""
   const serving = await findBestServing(bestMatch.id, servingSize)
 
   const data = {
