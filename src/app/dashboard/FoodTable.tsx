@@ -4,7 +4,7 @@ import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { LoggedFoodItemWithFoodItem, getNormalizedFoodValue } from "./utils/FoodHelper"
 
-import { PencilIcon } from "@heroicons/react/24/outline"
+import { ArrowPathIcon, PencilIcon } from "@heroicons/react/24/outline"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { useState } from "react"
@@ -12,6 +12,8 @@ import _ from "underscore"
 import DeleteFoodModal from "./DeleteFoodModal"
 import EditFoodModal from "./EditFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
+
+// import { getAccessToken } from "@auth0/nextjs-auth0"
 
 export function FoodTable() {
   const searchParams = useSearchParams()
@@ -253,6 +255,19 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         (foodItem.extendedOpenAiData?.valueOf() as any)?.serving?.serving_name || "Unknown Amount"
     : foodItem.servingAmount + " " + foodItem.loggedUnit
 
+  const reprocessFood = async () => {
+    console.log("FoodRow reprocessFood2")
+
+    await axios
+      .post("/api/user/reprocess-food", `${foodItem.id}`)
+      .then((res) => {
+        console.log("Reprocessing food")
+      })
+      .catch((err) => {
+        console.log("Error reprocessing food", err)
+      })
+  }
+
   return (
     <>
       {/* Mobile View */}
@@ -280,12 +295,16 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         <div className="col-span-3 pl-5">
           <div className="capitalize">
             {name}{" "}
-            <PencilIcon
-              className="h-3 w-3 inline cursor-pointer text-zinc-300"
-              onClick={() => {
-                setFoodEditModalOpen(true)
-              }}
-            />
+            {isLoading ? (
+              <ArrowPathIcon className="h-3 w-3 inline cursor-pointer text-zinc-300" onClick={reprocessFood} />
+            ) : (
+              <PencilIcon
+                className="h-3 w-3 inline cursor-pointer text-zinc-300"
+                onClick={() => {
+                  setFoodEditModalOpen(true)
+                }}
+              />
+            )}
           </div>
           <div className="text-sm text-zinc-600">{servingSubtext}</div>
         </div>

@@ -1,11 +1,31 @@
 import { withMiddlewareAuthRequired } from "@auth0/nextjs-auth0/edge"
 import { NextRequest, NextResponse } from "next/server"
 import * as jose from "jose"
+import { getSession } from "@auth0/nextjs-auth0"
 
 export async function middleware(req: NextRequest) {
+
   const token = req.headers.get("Authorization")
 
   if (!token) {
+    console.log("No token found. Checking Session")
+    const session = await getSession()
+    const user = session?.user
+
+    if (user) {
+      console.log("Session found. Adding to headers")
+      const requestHeaders = new Headers(req.headers)
+      requestHeaders.set("x-amino-user", JSON.stringify(user))
+      const returnResponse = NextResponse.next({
+        request: {
+          // New request headers
+          headers: requestHeaders
+        }
+      })
+      return returnResponse
+    }
+
+
     return NextResponse.json({ error: "Missing Authorization header" }, { status: 403 })
   }
 
