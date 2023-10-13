@@ -1,21 +1,16 @@
 export const dynamic = "force-dynamic"
 
-import { getUser } from "@/app/dashboard/settings/actions"
 import { prisma } from "@/database/prisma"
+import { getUserFromRequest } from "@/utils/api-auth-tools"
 import moment from "moment-timezone"
-import { NextResponse } from "next/server"
-
-function stringifyWithBigInt(obj: any): string {
-  return JSON.stringify(obj, (_, value) => 
-    typeof value === 'bigint' ? value.toString() : value
-  );
-}
+import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(
-  _request: Request, // needed so we don't cache this request
+  request: NextRequest, // needed so we don't cache this request
   { params }: { params: { date: string } }
 ) {
-  const user = await getUser()
+  console.log("GET request")
+  const user = await getUserFromRequest(request)
 
   if (!user) {
     return new Response("User not found", { status: 404 })
@@ -39,21 +34,14 @@ export async function GET(
         lte: parsedDate.endOf("day").toDate()
       }
     },
-    select: {
+    include: {
       FoodItem: {
         include: { Servings: true, FoodImage: true }
-      },
-      foodEmbeddingCache: false,
-      embeddingId: false,
-      consumedOn: true,
-      grams: true,
-      servingAmount: true,
-      loggedUnit: true,
-      status: true,
-      extendedOpenAiData: true,
+      }
     }
   })
 
-  const safeFoodsString = stringifyWithBigInt(foods);
-  return NextResponse.json(JSON.parse(safeFoodsString));  
+  console.log("foods", foods)
+
+  return NextResponse.json(foods)
 }

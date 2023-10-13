@@ -30,6 +30,7 @@ import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodH
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
 import { prisma } from "../prisma"
+import { processFoodItemQueue } from "@/app/api/queues/process-food-item/route"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -120,19 +121,24 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
 
   // Add each pending food item to queue
   for (let food of foodsNeedProcessing) {
-    const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/${food.id}`
-    console.log("Target URL: ", targetUrl)
+    await processFoodItemQueue.enqueue(
+      `${food.id}` // job to be enqueued
+      // { delay: "24h" } // scheduling options
+    )
 
-    const fetchUrl = `https://api.serverlessq.com?id=${process.env.SERVERLESSQ_QUEUE_ID}&target=${targetUrl}`
+    // const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/${food.id}`
+    // console.log("Target URL: ", targetUrl)
 
-    const result = await fetch(fetchUrl, {
-      headers: {
-        Accept: "application/json",
-        "x-api-key": process.env.SERVERLESSQ_API_TOKEN!
-      }
-    })
+    // const fetchUrl = `https://api.serverlessq.com?id=${process.env.SERVERLESSQ_QUEUE_ID}&target=${targetUrl}`
 
-    console.log(`Added to queue with code ${result.status} ${result.statusText}`)
+    // const result = await fetch(fetchUrl, {
+    //   headers: {
+    //     Accept: "application/json",
+    //     "x-api-key": process.env.SERVERLESSQ_API_TOKEN!
+    //   }
+    // })
+
+    console.log(`Added food id to queue: ${food.id}`)
   }
 
   // Move process food items to POST route on serverlessq

@@ -1,70 +1,71 @@
-"use server";
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
-import { prisma } from "@/database/prisma";
-import { getServerSession } from "next-auth";
+"use server"
+import { prisma } from "@/database/prisma"
+import { getSession } from "@auth0/nextjs-auth0"
 
 export async function getUser() {
-  const session = await getServerSession(authOptions);
-
-  if (session) {
-    let user = await prisma.user.findUnique({
+  const session = await getSession()
+  if (session?.user) {
+    const aminoUser = await prisma.user.upsert({
       where: {
-        id: session.user.userId,
+        email: session.user.email
       },
-    });
-    return user;
+      update: {},
+      create: {
+        email: session.user.email,
+        firstName: session.user.name
+      }
+    })
+
+    return aminoUser
   }
-  return;
+  return
 }
 
 export type UserSettingsProps = {
-  tzIdentifier?: string;
-  firstName?: string;
-  lastName?: string;
-  dateOfBirth?: Date;
-  weightKg?: number | null;
-  heightCm?: number | null;
-};
-
-
-
-export async function updateUserSettings(updatedSettings: UserSettingsProps) {
-  const session = await getServerSession(authOptions);
-
-  if (session) {
-    let user = await prisma.user.update({
-      where: {
-        id: session.user.userId,
-      },
-      data: {
-        ...updatedSettings,
-      },
-    });
-    return user;
-  }
-  return;
+  tzIdentifier?: string
+  firstName?: string
+  lastName?: string
+  dateOfBirth?: Date
+  weightKg?: number | null
+  heightCm?: number | null
 }
 
+export async function updateUserSettings(updatedSettings: UserSettingsProps) {
+  const session = await getSession()
 
-type UnitPreference = "IMPERIAL" | "METRIC";
-
-export type UserPreferencesProps = {
-  unitPreference?: UnitPreference;
-};
-
-export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
-  const session = await getServerSession(authOptions);
-
-  if (session) {
+  if (session?.user) {
     let user = await prisma.user.update({
       where: {
-        id: session.user.userId,
+        email: session.user.email
       },
       data: {
-        ...updatedSettings,
-      },
-    });
-    return user;
+        ...updatedSettings
+      }
+    })
+    return user
   }
-  return;
+  return
+}
+
+type UnitPreference = "IMPERIAL" | "METRIC"
+
+export type UserPreferencesProps = {
+  unitPreference?: UnitPreference
+}
+
+export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
+  const session = await getSession()
+
+  if (session?.user) {
+    let user = await prisma.user.update({
+      where: {
+        email: session.user.email
+      },
+      data: {
+        ...updatedSettings
+      }
+    })
+    return user
+  }
+  return
 }

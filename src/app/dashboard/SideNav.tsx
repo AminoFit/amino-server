@@ -1,42 +1,35 @@
-"use client";
+"use client"
 
-import { Dialog, Transition } from "@headlessui/react";
-import {
-  ArrowLeftOnRectangleIcon,
-  Cog6ToothIcon,
-  HomeIcon,
-  UsersIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
-import classNames from "classnames";
-import { signOut } from "next-auth/react";
-import { Fragment, useState } from "react";
-import { usePathname } from "next/navigation";
+import { Dialog, Transition } from "@headlessui/react"
+import { ArrowLeftOnRectangleIcon, Cog6ToothIcon, HomeIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import classNames from "classnames"
+import { Fragment, useState } from "react"
+import { usePathname } from "next/navigation"
 
 export default function SideNav() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const pathname = usePathname()
 
   const navigation = [
     {
       name: "Food Log",
       href: "/dashboard",
       icon: HomeIcon,
-      current: pathname === "/dashboard",
+      current: pathname === "/dashboard"
     },
     {
       name: "Chat",
       href: "/dashboard/chat",
       icon: UsersIcon,
-      current: pathname === "/dashboard/chat",
+      current: pathname === "/dashboard/chat"
     },
     {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Cog6ToothIcon,
-      current: pathname === "/dashboard/settings",
-    },
-  ];
+      current: pathname === "/dashboard/settings"
+    }
+  ]
 
   return (
     <>
@@ -180,9 +173,7 @@ export default function SideNav() {
                       >
                         <item.icon
                           className={classNames(
-                            item.current
-                              ? "text-white"
-                              : "text-indigo-200 group-hover:text-white",
+                            item.current ? "text-white" : "text-indigo-200 group-hover:text-white",
                             "h-6 w-6 shrink-0"
                           )}
                           aria-hidden="true"
@@ -194,8 +185,8 @@ export default function SideNav() {
                 </ul>
               </li>
               <li className="mt-auto">
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
+                <a
+                  href="/api/auth/logout"
                   className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-indigo-200 hover:bg-indigo-700 hover:text-white"
                 >
                   <ArrowLeftOnRectangleIcon
@@ -203,12 +194,12 @@ export default function SideNav() {
                     aria-hidden="true"
                   />
                   Logout
-                </button>
+                </a>
               </li>
             </ul>
           </nav>
         </div>
       </div>
     </>
-  );
+  )
 }
