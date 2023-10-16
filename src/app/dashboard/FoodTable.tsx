@@ -259,7 +259,7 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
     console.log("FoodRow reprocessFood2")
 
     await axios
-      .post("/api/user/reprocess-food", `${foodItem.id}`)
+      .post("/api/protected/user/reprocess-food", `${foodItem.id}`)
       .then((res) => {
         console.log("Reprocessing food")
       })
