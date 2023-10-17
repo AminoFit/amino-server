@@ -1,4 +1,5 @@
 import { prisma } from "@/database/prisma"
+import { getServerSession } from "next-auth"
 import { NextRequest } from "next/server"
 
 export type UserSettingsProps = {
@@ -11,33 +12,23 @@ export type UserSettingsProps = {
 }
 
 export async function getUserFromRequest(request: NextRequest) {
-  const userInfo = request.headers.get("x-amino-user")
+  const session = await getServerSession()
+  console.log("getUserFromRequest", request)
 
-  if (!userInfo) {
-    throw new Error("Missing user info on request")
-  }
-
-  const idTokenInfo = JSON.parse(userInfo)
-
-  if (!idTokenInfo) {
-    throw new Error("Error parsing user info")
+  if (!session?.user || !session.user.email) {
+    throw new Error("User Not Authenticated")
   }
 
   // Get or Create the user
-  const upsertUser = await prisma.user.upsert({
+  const aminoUser = await prisma.user.findUnique({
     where: {
-      email: idTokenInfo.email
-    },
-    update: {},
-    create: {
-      email: idTokenInfo.email,
-      firstName: idTokenInfo.name
+      email: session.user.email
     }
   })
 
-  if (!upsertUser) {
-    throw new Error("User not found and could not be created")
+  if (!aminoUser) {
+    throw new Error("User not found")
   }
 
-  return upsertUser
+  return aminoUser
 }

@@ -1,11 +1,12 @@
 "use server"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { prisma } from "@/database/prisma"
-import { getSession } from "@auth0/nextjs-auth0"
+import { getServerSession } from "next-auth"
 
 export async function getUser() {
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session) {
+  if (session?.user?.email) {
     let aminoUser = await prisma.user.findUnique({
       where: {
         email: session.user.email
@@ -25,30 +26,28 @@ export type UserGoalsProps = {
 }
 
 export async function saveUserGoals(updatedSettings: UserGoalsProps) {
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session) {
-    if (session) {
-      let aminoUser = await prisma.user.findUnique({
-        where: {
-          email: session.user.email
-        }
-      })
-
-      if (!aminoUser) {
-        return
+  if (session?.user?.email) {
+    let aminoUser = await prisma.user.findUnique({
+      where: {
+        email: session.user.email
       }
+    })
 
-      let user = await prisma.user.update({
-        where: {
-          id: aminoUser.id
-        },
-        data: {
-          ...updatedSettings
-        }
-      })
-      return user
+    if (!aminoUser) {
+      return
     }
+
+    let user = await prisma.user.update({
+      where: {
+        id: aminoUser.id
+      },
+      data: {
+        ...updatedSettings
+      }
+    })
+    return user
   }
   return
 }

@@ -111,7 +111,7 @@ export default function DashNav() {
                       <Menu.Item>
                         {({ active }) => (
                           <a
-                            href="/api/auth/logout"
+                            href="/api/auth/signout"
                             className={classNames(active ? "bg-gray-100" : "", "block px-4 py-2 text-sm text-gray-700")}
                           >
                             Sign out
@@ -186,7 +186,7 @@ export default function DashNav() {
                 </button> */}
               </div>
               <div className="mt-3 space-y-1">
-                <a href="/api/auth/logout">
+                <a href="/api/auth/signout">
                   <Disclosure.Button
                     className="block px-4 py-2 text-base font-medium text-gray-400 hover:bg-gray-100
                     hover:text-gray-800"

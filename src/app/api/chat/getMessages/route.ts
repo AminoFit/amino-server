@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
-import { GetMessagesForUser } from "../../../../database/GetMessagesForUser"
-import { Message } from "@prisma/client"
-import { getSession } from "@auth0/nextjs-auth0"
 import { prisma } from "@/database/prisma"
+import { Message } from "@prisma/client"
+import { getServerSession } from "next-auth"
+import { NextRequest } from "next/server"
+import { GetMessagesForUser } from "../../../../database/GetMessagesForUser"
+import { authOptions } from "../../auth/[...nextauth]/route"
 
 export async function GET(req: NextRequest) {
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session?.user?.email) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
       status: 401,
       headers: {
