@@ -1,10 +1,11 @@
 "use server"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { prisma } from "@/database/prisma"
-import { getSession } from "@auth0/nextjs-auth0"
+import { getServerSession } from "next-auth"
 
 export async function getUser() {
-  const session = await getSession()
-  if (session?.user) {
+  const session = await getServerSession(authOptions)
+  if (session?.user?.email) {
     const aminoUser = await prisma.user.upsert({
       where: {
         email: session.user.email
@@ -31,9 +32,9 @@ export type UserSettingsProps = {
 }
 
 export async function updateUserSettings(updatedSettings: UserSettingsProps) {
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session?.user) {
+  if (session?.user?.email) {
     let user = await prisma.user.update({
       where: {
         email: session.user.email
@@ -54,9 +55,9 @@ export type UserPreferencesProps = {
 }
 
 export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session?.user) {
+  if (session?.user?.email) {
     let user = await prisma.user.update({
       where: {
         email: session.user.email

@@ -8,24 +8,20 @@ import {
 import Footer from "./Footer"
 import Nav from "./MarketingNav"
 
-
 const primaryFeatures = [
   {
     name: "Push to deploy.",
-    description:
-      "Lorem ipsum, dolor sit amet consectetur adipisicing elit aute id magna.",
+    description: "Lorem ipsum, dolor sit amet consectetur adipisicing elit aute id magna.",
     icon: CloudArrowUpIcon
   },
   {
     name: "SSL certificates.",
-    description:
-      "Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo.",
+    description: "Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo.",
     icon: LockClosedIcon
   },
   {
     name: "Database backups.",
-    description:
-      "Ac tincidunt sapien vehicula erat auctor pellentesque rhoncus.",
+    description: "Ac tincidunt sapien vehicula erat auctor pellentesque rhoncus.",
     icon: ServerIcon
   }
 ]
@@ -151,31 +147,18 @@ export default async function Example() {
                 strokeWidth={0}
               />
             </svg>
-            <rect
-              width="100%"
-              height="100%"
-              strokeWidth={0}
-              fill="url(#83fd4e5a-9d52-42fc-97b6-718e5d7ee527)"
-            />
+            <rect width="100%" height="100%" strokeWidth={0} fill="url(#83fd4e5a-9d52-42fc-97b6-718e5d7ee527)" />
           </svg>
           <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:flex lg:items-center lg:gap-x-10 lg:px-8 lg:py-40">
             <div className="mx-auto max-w-2xl lg:mx-0 lg:flex-auto">
               <div className="hidden lg:flex">
                 <div className="relative flex items-center gap-x-4 rounded-full px-4 py-1 text-sm leading-6 text-gray-600 ring-1 ring-gray-900/10 hover:ring-gray-900/20">
-                  <span className="font-semibold text-blue-600">
-                    We’re helping people
-                  </span>
-                  <span
-                    className="h-4 w-px bg-gray-900/10"
-                    aria-hidden="true"
-                  />
+                  <span className="font-semibold text-blue-600">We’re helping people</span>
+                  <span className="h-4 w-px bg-gray-900/10" aria-hidden="true" />
                   <a href="#" className="flex items-center gap-x-1">
                     <span className="absolute inset-0" aria-hidden="true" />
                     See customer stories
-                    <ChevronRightIcon
-                      className="-mr-2 h-5 w-5 text-gray-400"
-                      aria-hidden="true"
-                    />
+                    <ChevronRightIcon className="-mr-2 h-5 w-5 text-gray-400" aria-hidden="true" />
                   </a>
                 </div>
               </div>
@@ -198,11 +181,7 @@ export default async function Example() {
               </div>
             </div>
             <div className="mt-16 sm:mt-24 lg:mt-0 hidden lg:flex lg:flex-shrink-0 lg:flex-grow">
-              <svg
-                viewBox="0 0 366 729"
-                role="img"
-                className="mx-auto w-[22.875rem] max-w-full drop-shadow-xl"
-              >
+              <svg viewBox="0 0 366 729" role="img" className="mx-auto w-[22.875rem] max-w-full drop-shadow-xl">
                 <title>App screenshot</title>
                 <defs>
                   <clipPath id="2ade4387-9c63-4fc4-b754-10e687a0d332">
@@ -223,10 +202,7 @@ export default async function Example() {
                   transform="translate(24 24)"
                   clipPath="url(#2ade4387-9c63-4fc4-b754-10e687a0d332)"
                 >
-                  <img
-                    src="/homepage/mobile-app-screenshot.png"
-                    alt="mobile app screenshot"
-                  />
+                  <img src="/homepage/mobile-app-screenshot.png" alt="mobile app screenshot" />
                 </foreignObject>
               </svg>
             </div>
@@ -332,9 +308,7 @@ export default async function Example() {
         {/* Feature section */}
         <div className="mx-auto mt-32 max-w-7xl px-6 sm:mt-56 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-blue-600">
-              Track with ease
-            </h2>
+            <h2 className="text-base font-semibold leading-7 text-blue-600">Track with ease</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Reach your health and fitness goals
             </p>
@@ -348,19 +322,13 @@ export default async function Example() {
               {secondaryFeatures.map((feature) => (
                 <div key={feature.name} className="flex flex-col">
                   <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
-                    <feature.icon
-                      className="h-5 w-5 flex-none text-blue-600"
-                      aria-hidden="true"
-                    />
+                    <feature.icon className="h-5 w-5 flex-none text-blue-600" aria-hidden="true" />
                     {feature.name}
                   </dt>
                   <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
                     <p className="flex-auto">{feature.description}</p>
                     <p className="mt-6">
-                      <a
-                        href={feature.href}
-                        className="text-sm font-semibold leading-6 text-blue-600"
-                      >
+                      <a href={feature.href} className="text-sm font-semibold leading-6 text-blue-600">
                         Learn more <span aria-hidden="true">→</span>
                       </a>
                     </p>
@@ -454,12 +422,7 @@ export default async function Example() {
                 strokeWidth={0}
               />
             </svg>
-            <rect
-              width="100%"
-              height="100%"
-              strokeWidth={0}
-              fill="url(#55d3d46d-692e-45f2-becd-d8bdc9344f45)"
-            />
+            <rect width="100%" height="100%" strokeWidth={0} fill="url(#55d3d46d-692e-45f2-becd-d8bdc9344f45)" />
           </svg>
           <div className="relative">
             <div
@@ -488,9 +451,7 @@ export default async function Example() {
             </div>
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
               <div className="mx-auto max-w-xl sm:text-center">
-                <h2 className="text-lg font-semibold leading-8 tracking-tight text-blue-600">
-                  Testimonials
-                </h2>
+                <h2 className="text-lg font-semibold leading-8 tracking-tight text-blue-600">Testimonials</h2>
                 <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                   We have worked with thousands of amazing people
                 </p>
@@ -507,30 +468,20 @@ export default async function Example() {
                       alt=""
                     />
                     <div className="flex-auto">
-                      <div className="font-semibold">
-                        {featuredTestimonial.author.name}
-                      </div>
+                      <div className="font-semibold">{featuredTestimonial.author.name}</div>
                       <div className="text-gray-600">{`@${featuredTestimonial.author.handle}`}</div>
                     </div>
-                    <img
-                      className="h-10 w-auto flex-none"
-                      src={featuredTestimonial.author.logoUrl}
-                      alt=""
-                    />
+                    <img className="h-10 w-auto flex-none" src={featuredTestimonial.author.logoUrl} alt="" />
                   </figcaption>
                 </figure>
                 {testimonials.map((columnGroup, columnGroupIdx) => (
-                  <div
-                    key={columnGroupIdx}
-                    className="space-y-8 xl:contents xl:space-y-0"
-                  >
+                  <div key={columnGroupIdx} className="space-y-8 xl:contents xl:space-y-0">
                     {columnGroup.map((column, columnIdx) => (
                       <div
                         key={columnIdx}
                         className={classNames(
                           (columnGroupIdx === 0 && columnIdx === 0) ||
-                            (columnGroupIdx === testimonials.length - 1 &&
-                              columnIdx === columnGroup.length - 1)
+                            (columnGroupIdx === testimonials.length - 1 && columnIdx === columnGroup.length - 1)
                             ? "xl:row-span-2"
                             : "xl:row-start-1",
                           "space-y-8"
@@ -551,9 +502,7 @@ export default async function Example() {
                                 alt=""
                               />
                               <div>
-                                <div className="font-semibold">
-                                  {testimonial.author.name}
-                                </div>
+                                <div className="font-semibold">{testimonial.author.name}</div>
                                 <div className="text-gray-600">{`@${testimonial.author.handle}`}</div>
                               </div>
                             </figcaption>

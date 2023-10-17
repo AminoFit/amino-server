@@ -1,5 +1,3 @@
-"use client"
-
 import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { LoggedFoodItemWithFoodItem, getNormalizedFoodValue } from "./utils/FoodHelper"
@@ -12,8 +10,6 @@ import _ from "underscore"
 import DeleteFoodModal from "./DeleteFoodModal"
 import EditFoodModal from "./EditFoodModal"
 import { deleteSavedFood } from "./utils/DeleteLoggedFoodHelper"
-
-// import { getAccessToken } from "@auth0/nextjs-auth0"
 
 export function FoodTable() {
   const searchParams = useSearchParams()
