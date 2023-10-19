@@ -3,6 +3,7 @@ import OpenAI from "openai"
 import { FoodInfo } from "./foodItemInterface"
 import { User } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { mapOpenAiFoodInfoToFoodItem } from "src/openai/customFunctions/foodItemInterface"
 
 const SPECIAL_CASES = ["water", "diet", "tea"]
 
@@ -201,6 +202,10 @@ export async function foodItemCompletion(
                 serving_name: {
                   type: "string",
                   description: "Serving description e.g. large, scoop, plate"
+                },
+                serving_alternate_amount: {
+                  type: "number",
+                  description: "Amount of the serving. Eg 2 oz, 28 almonds, 1 cup"
                 }
               }
             },
@@ -310,7 +315,7 @@ export async function foodItemCompletion(
 
 async function testRun() {
   const user: User = {
-    id: "some_random_id",
+    id: "clklnwf090000lzssqhgfm8kr",
     firstName: "John",
     lastName: "Doe",
     email: "john.doe@example.com",
@@ -330,7 +335,8 @@ async function testRun() {
     sendCheckins: false,
     tzIdentifier: "America/New_York"
   }
-  foodItemCompletion("apple", user)
+  const result = await foodItemCompletion("cooked apple pie", user);
+  console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model));
 }
 
-// testRun()
+//testRun()

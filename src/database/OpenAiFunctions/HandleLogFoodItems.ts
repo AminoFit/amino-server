@@ -10,9 +10,12 @@ import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/co
 
 // OpenAI
 import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
+import { findBestServingMatchInstruct } from "../../openai/customFunctions/servingMatchRequestInstruct"
+import { findBestServingMatchFunction } from "../../openai/customFunctions/servingMatchRequestFunction"
 import { findBestFoodMatchExternalDb } from "../../openai/customFunctions/matchFoodItemtoExternalDb"
 import { findBestFoodMatchtoLocalDb } from "../../openai/customFunctions/matchFoodItemToLocalDb"
 import { foodItemMissingFieldComplete } from "../../openai/customFunctions/foodItemMissingFieldComplete"
+import { foodItemCompleteMissingServingInfo } from "../../openai/customFunctions/foodItemCompleteMissingServingInfo"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "../../openai/customFunctions/foodItemInterface"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
@@ -41,40 +44,39 @@ const COSINE_THRESHOLD = 0.975
 const COSINE_THRESHOLD_LOW_QUALITY = 0.85
 
 function constructFoodRequestString(foodToLog: FoodItemToLog) {
-  let result = ""
+  let result = foodToLog.full_item_user_message_including_serving || foodToLog.food_database_search_name
 
   if (foodToLog.brand) {
     // Check if brand exists in full name
-    if (foodToLog.food_database_search_name.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
-      result += foodToLog.brand + " "
+    if (result.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
+      result += " " + foodToLog.brand
     }
   }
-  // Add full name
-  result += foodToLog.food_database_search_name
 
   // Add serving details
   let servingDetails = ""
+  if (foodToLog.serving) {
+    if (foodToLog.serving.serving_amount) {
+      servingDetails += foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
+    }
 
-  if (foodToLog.serving.serving_amount) {
-    servingDetails += foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
-  }
+    if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_g_or_ml) {
+      servingDetails += " - "
+    }
 
-  if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_g_or_ml) {
-    servingDetails += " - "
-  }
+    if (foodToLog.serving.total_serving_g_or_ml) {
+      servingDetails += foodToLog.serving.total_serving_g_or_ml + "g"
+    }
 
-  if (foodToLog.serving.total_serving_g_or_ml) {
-    servingDetails += foodToLog.serving.total_serving_g_or_ml + "g"
-  }
-
-  if (servingDetails) {
-    result += " (" + servingDetails + ")"
+    if (servingDetails) {
+      result += " (" + servingDetails + ")"
+    }
   }
 
   return result
 }
 
-export async function VerifyHandleLogFoodItems(parameters: any) {
+/* export async function VerifyHandleLogFoodItems(parameters: any) {
   const foodItems: FoodItemToLog[] = parameters.food_items
   for (let food of foodItems) {
     // Ensure total_weight_grams is not 0
@@ -82,7 +84,7 @@ export async function VerifyHandleLogFoodItems(parameters: any) {
       throw new Error("The value for total_weight_grams cannot be 0.")
     }
   }
-}
+} */
 
 export async function HandleLogFoodItems(user: User, parameters: any, lastUserMessageId: number) {
   console.log("parameters", parameters)
@@ -173,16 +175,20 @@ async function findBestMatch(
   userQueryVectorCache: FoodEmbeddingCache,
   user: User,
   messageId: number
-): Promise<FoodItem> {
+): Promise<FoodItemWithNutrientsAndServing> {
   // Filter items above the COSINE_THRESHOLD
   const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 
   if (bestMatches.length) {
     // Return the highest match instantly
     const match = await prisma.foodItem.findUnique({
-      where: { id: bestMatches[0].id }
+      where: { id: bestMatches[0].id },
+      include: {
+        Nutrients: true,
+        Servings: true
+      }
     })
-    if (match) return match
+    if (match) return match as FoodItemWithNutrientsAndServing
     throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
   }
 
@@ -201,7 +207,11 @@ async function findBestMatch(
     if (localDbMatch) {
       // Return the highest match instantly
       const match = await prisma.foodItem.findUnique({
-        where: { id: localDbMatch.id }
+        where: { id: localDbMatch.id },
+        include: {
+          Nutrients: true,
+          Servings: true
+        }
       })
       if (match) return match
       throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
@@ -209,42 +219,7 @@ async function findBestMatch(
   }
 
   // Fetch from external databases
-  return (await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId))
-}
-
-function extractServingSize(servingName: string): string {
-  const servingUnitEnum = [
-    "g",
-    "ml",
-    "cup",
-    "tbsp",
-    "tsp",
-    "plate",
-    "bottle",
-    "can",
-    "slice",
-    "small",
-    "medium",
-    "large",
-    "serving"
-  ]
-  const foodArray = servingName.split(" ")
-  return foodArray.find((word) => servingUnitEnum.includes(word)) || ""
-}
-
-async function findBestServing(foodItemId: number, servingSize: string): Promise<Serving | null> {
-  return await prisma.serving.findFirst({
-    where: {
-      foodItemId: foodItemId,
-      servingName: {
-        contains: servingSize,
-        mode: "insensitive"
-      }
-    },
-    orderBy: {
-      servingWeightGram: "asc"
-    }
-  })
+  return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
 }
 
 async function logFoodItem(loggedFoodItemId: number, data: any): Promise<LoggedFoodItem | null> {
@@ -272,15 +247,22 @@ export async function HandleLogFoodItem(
 
   const bestMatch = await findBestMatch(cosineSearchResults, food, userQueryVectorCache, user, messageId)
 
-  const servingSize = food.serving.serving_name ? extractServingSize(food.serving.serving_name) : ""
-  const serving = await findBestServing(bestMatch.id, servingSize)
+  try {
+    food = await findBestServingMatchInstruct(food, bestMatch as FoodItemWithNutrientsAndServing, user)
+  } catch (err1) {
+    try {
+      food = await findBestServingMatchFunction(food, bestMatch as FoodItemWithNutrientsAndServing, user)
+    } catch (err2) {
+      throw err2 // or handle the error in a different way if needed
+    }
+  }
 
   const data = {
     foodItemId: bestMatch.id,
-    servingId: serving?.id,
-    servingAmount: food.serving.serving_amount,
-    loggedUnit: sanitizeServingName(food.serving.serving_name || ""),
-    grams: food.serving.total_serving_g_or_ml,
+    servingId: food.serving!.serving_id,
+    servingAmount: food.serving!.serving_amount,
+    loggedUnit: food.serving!.serving_name,
+    grams: food.serving!.total_serving_g_or_ml,
     userId: user.id,
     consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
     messageId,
@@ -298,20 +280,42 @@ export async function HandleLogFoodItem(
 async function addFoodItemPrisma(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],
-  messageId: number
-  //model: string
-): Promise<FoodItem> {
+  messageId: number,
+  user: User
+): Promise<FoodItemWithNutrientsAndServing> {
   // Check if a food item with the same name and brand already exists
   const existingFoodItem = await prisma.foodItem.findFirst({
     where: {
       name: food.name,
       brand: food.brand
+    },
+    include: {
+      Nutrients: true,
+      Servings: true
     }
   })
 
   // If it exists, return the existing food item ID
   if (existingFoodItem) {
     return existingFoodItem
+  }
+
+  // If the food item is missing a field, complete it
+  if (!food.defaultServingWeightGram || food.weightUnknown) {
+    food = await foodItemMissingFieldComplete(food as FoodItemWithNutrientsAndServing, user)
+  }
+
+  // Check for missing servingAlternateAmount and servingAlternateUnit in servings
+  for (const serving of food.Servings) {
+    if (
+      serving.servingAlternateAmount === null ||
+      serving.servingAlternateAmount === undefined ||
+      serving.servingAlternateUnit === null ||
+      serving.servingAlternateUnit === undefined
+    ) {
+      food = await foodItemCompleteMissingServingInfo(food, user)
+      break
+    }
   }
 
   // Omit the id field from the food object
@@ -342,6 +346,10 @@ async function addFoodItemPrisma(
           }))
         }
       })
+    },
+    include: {
+      Nutrients: true,
+      Servings: true
     }
   })
 
@@ -360,7 +368,7 @@ async function findAndAddItemInDatabase(
   queryEmbeddingCache: FoodEmbeddingCache,
   user: User,
   messageId: number
-): Promise<FoodItem> {
+): Promise<FoodItemWithNutrientsAndServing> {
   console.log("food", foodToLog)
 
   try {
@@ -521,16 +529,12 @@ async function findAndAddItemInDatabase(
       let foodItemToSave: FoodItemWithNutrientsAndServing =
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
-      // If the food item is missing a field, complete it
-      if (!foodItemToSave.defaultServingWeightGram || foodItemToSave.weightUnknown) {
-        foodItemToSave = await foodItemMissingFieldComplete(
-          highestSimilarityItem.foodItem as FoodItemWithNutrientsAndServing,
-          user
-        )
-        console.log("Food item after missing field completion")
-        console.dir(foodItemToSave, { depth: null })
-      }
-      const newFood = await addFoodItemPrisma(foodItemToSave, highestSimilarityItem.foodBgeBaseEmbedding, messageId)
+      const newFood = await addFoodItemPrisma(
+        foodItemToSave,
+        highestSimilarityItem.foodBgeBaseEmbedding,
+        messageId,
+        user
+      )
       return newFood
     }
 
@@ -554,7 +558,12 @@ async function findAndAddItemInDatabase(
     let food: FoodInfo = foodItemInfo
     console.log("food req string:\n", foodItemRequestString)
     const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
-    const newFood = await addFoodItemPrisma(llmFoodItemToSave, await getFoodEmbedding(llmFoodItemToSave), messageId)
+    const newFood = await addFoodItemPrisma(
+      llmFoodItemToSave,
+      await getFoodEmbedding(llmFoodItemToSave),
+      messageId,
+      user
+    )
 
     return newFood
   } catch (err) {
@@ -566,9 +575,11 @@ async function findAndAddItemInDatabase(
 async function testFoodSearch() {
   const foodItem: FoodItemToLog = {
     food_database_search_name: "Chocolate Peanut Butter Cereal",
+    full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
     brand: "Catalina Crunch",
     branded: true,
     serving: {
+      serving_id: 1,
       serving_amount: 1,
       serving_name: "cup",
       serving_g_or_ml: "g",

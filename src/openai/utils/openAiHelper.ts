@@ -97,7 +97,7 @@ function checkOutput(completion: any): boolean {
 
         // Check if any food item has total_serving_grams as 0 and serving_amount is non-zero
         for (const item of foodItems) {
-          if (
+          if (item.serving &&
             item.serving.total_serving_g_or_ml === 0 &&
             item.serving.serving_amount !== 0
           ) {
