@@ -1,15 +1,16 @@
 "use server"
 
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import ProcessMessage, { MessageSource, QuickLogMessage } from "@/app/api/processMessage"
 import { prisma } from "@/database/prisma"
-import { getSession } from "@auth0/nextjs-auth0"
+import { getServerSession } from "next-auth"
 
 export async function sendMessage(newMessage: string) {
   if (!newMessage) return { error: "No message provided" }
 
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session) {
+  if (session?.user?.email) {
     let aminoUser = await prisma.user.findUnique({
       where: {
         email: session.user.email
@@ -28,9 +29,9 @@ export async function sendMessage(newMessage: string) {
 export async function QuickLogFoodMessage(newMessage: string) {
   if (!newMessage) return { error: "No message provided" }
 
-  const session = await getSession()
+  const session = await getServerSession(authOptions)
 
-  if (session) {
+  if (session?.user?.email) {
     let aminoUser = await prisma.user.findUnique({
       where: {
         email: session.user.email

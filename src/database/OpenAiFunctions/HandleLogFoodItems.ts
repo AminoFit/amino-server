@@ -123,6 +123,7 @@ export async function HandleLogFoodItems(user: User, parameters: any, lastUserMe
 
   // Add each pending food item to queue
   for (let food of foodsNeedProcessing) {
+    console.log("Adding food item to queue:", food.id)
     await processFoodItemQueue.enqueue(
       `${food.id}` // job to be enqueued
       // { delay: "24h" } // scheduling options

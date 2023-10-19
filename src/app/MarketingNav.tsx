@@ -1,11 +1,11 @@
 "use client"
 
-import { useUser } from "@auth0/nextjs-auth0/client"
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import classNames from "classnames"
-
-import { useState } from "react"
+import { Session } from "next-auth"
+import { getSession } from "next-auth/react"
+import { useEffect, useState } from "react"
 
 const navigation = [
   { name: "Amino", href: "/" },
@@ -16,31 +16,33 @@ const navigation = [
 export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [bannerOpen, setBannerOpen] = useState(false)
+  const [session, setSession] = useState<Session | null>()
 
-  const { user, error, isLoading } = useUser()
-
-  if (isLoading) return <div>Loading...</div>
-  if (error) return <div>{error.message}</div>
+  useEffect(() => {
+    getSession().then((session) => {
+      setSession(session)
+    })
+  }, [])
 
   const renderLogin = () => {
-    if (isLoading) {
+    if (!session) {
       return (
-        <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
-          Loading...
+        <a href="/api/auth/signin" className="text-sm font-semibold leading-6 text-gray-900">
+          Log in&nbsp;<span aria-hidden="true">&rarr;</span>
         </a>
       )
     }
-    if (user) {
+    if (session.user) {
       return (
         <a href="/dashboard" className="text-sm font-semibold leading-6 text-gray-900">
-          My Dashboard ({user.name})
+          My Dashboard ({session?.user?.email})
         </a>
       )
     }
 
     return (
-      <a href="/api/auth/login" className="text-sm font-semibold leading-6 text-gray-900">
-        Log in&nbsp;<span aria-hidden="true">&rarr;</span>
+      <a href="/" className="text-sm font-semibold leading-6 text-gray-900">
+        Loading...
       </a>
     )
   }

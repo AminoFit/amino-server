@@ -1,4 +1,3 @@
-import { UserProvider } from "@auth0/nextjs-auth0/client"
 import { Outfit } from "next/font/google"
 import "./globals.css"
 import { QueryDataProvider } from "./providers"
@@ -10,13 +9,11 @@ export const metadata = {
   description: "Track your fitness and diet with Amino"
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
       <body className={`h-full ${outfit.className}`}>
-        <UserProvider>
-          <QueryDataProvider>{children}</QueryDataProvider>
-        </UserProvider>
+        <QueryDataProvider>{children}</QueryDataProvider>
       </body>
     </html>
   )

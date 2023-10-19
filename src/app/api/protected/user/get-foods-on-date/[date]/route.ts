@@ -12,9 +12,6 @@ export async function GET(
   console.log("GET request")
   const user = await getUserFromRequest(request)
 
-  if (!user) {
-    return new Response("User not found", { status: 404 })
-  }
   const dateString = params.date
   if (!dateString) {
     return new Response("No date provided", { status: 400 })
