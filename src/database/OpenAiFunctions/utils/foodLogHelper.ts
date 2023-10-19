@@ -143,6 +143,7 @@ function testStringBuilder(){
     food_database_search_name: "Creamy Peanut Butter",
     branded: true,
     brand: "Nutty Delight",
+    full_item_user_message_including_serving: "2 tablespoons of Creamy Peanut Butter",
     serving: {
       serving_amount: 1, 
       serving_name: "2 tablespoons",

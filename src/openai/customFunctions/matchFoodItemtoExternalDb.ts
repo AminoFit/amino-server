@@ -136,6 +136,7 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim().replace("MATCH_R
 async function testFindBestFoodMatch() {
   const food_item_to_log: FoodItemToLog = {
     food_database_search_name: "hydro whey protein shake",
+    full_item_user_message_including_serving: "1 scoop of hydro whey protein shake",
     brand: "optimum nutrition",
     branded: true,
     serving: { serving_amount: 1, serving_name: "scoop", serving_g_or_ml: "g", total_serving_g_or_ml: 39 }
@@ -220,6 +221,7 @@ async function testFindBestFoodMatch() {
     tzIdentifier: "America/New_York"
   }
   const food_item_to_log_1: FoodItemToLog = {
+    full_item_user_message_including_serving: "1 can of Pop",
     food_database_search_name: "Pop",
     brand: "PepsiCo",
     branded: true,
@@ -265,6 +267,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_2: FoodItemToLog = {
     food_database_search_name: "Beef Burger Patty",
+    full_item_user_message_including_serving: "1 patty of Beef Burger Patty",
     brand: "Beyond Meat",
     branded: true,
     serving: { serving_amount: 1, serving_name: "patty", serving_g_or_ml: "g", total_serving_g_or_ml: 113 }
@@ -316,6 +319,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_3: FoodItemToLog = {
     food_database_search_name: "Raspberry Yogurt",
+    full_item_user_message_including_serving: "1 cup of Raspberry Yogurt",
     brand: "Yummy Dairy",
     branded: true,
     serving: { serving_amount: 1, serving_name: "cup", serving_g_or_ml: "g", total_serving_g_or_ml: 200 }
@@ -360,6 +364,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_4: FoodItemToLog = {
     food_database_search_name: "Mangosteen",
+    full_item_user_message_including_serving: "1 fruit of Mangosteen",
     brand: "Exotic Fruits Co.",
     branded: true,
     serving: { serving_amount: 1, serving_name: "fruit", serving_g_or_ml: "g", total_serving_g_or_ml: 50 }
@@ -390,6 +395,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_5: FoodItemToLog = {
     food_database_search_name: "Kombucha Ginger Lime",
+    full_item_user_message_including_serving: "1 bottle of Kombucha Ginger Lime",
     brand: "Artisan Brews",
     branded: true,
     serving: { serving_amount: 1, serving_name: "bottle", serving_g_or_ml: "g", total_serving_g_or_ml: 240 }
@@ -435,6 +441,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_6: FoodItemToLog = {
     food_database_search_name: "Chocolate Lava Cake with Caramel Core",
+    full_item_user_message_including_serving: "1 slice of Chocolate Lava Cake with Caramel Core",
     brand: "Dessert Heaven",
     branded: true,
     serving: { serving_amount: 1, serving_name: "slice", serving_g_or_ml: "g", total_serving_g_or_ml: 120 }
