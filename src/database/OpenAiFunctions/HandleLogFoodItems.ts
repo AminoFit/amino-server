@@ -260,7 +260,7 @@ export async function HandleLogFoodItem(
 
   const data = {
     foodItemId: bestMatch.id,
-    servingId: food.serving!.serving_id,
+    servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
     servingAmount: food.serving!.serving_amount,
     loggedUnit: food.serving!.serving_name,
     grams: food.serving!.total_serving_g_or_ml,
