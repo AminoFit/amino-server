@@ -164,7 +164,7 @@ async function testFoodLog() {
   }
   let userRequestString = "1 oz of almonds, 1 fl oz of milk, 1 cup of cooked rice"
   let result = await logFoodItemFunctionStream(user, userRequestString, 1)
-  //console.dir(result, { depth: null })
+  console.dir(result, { depth: null })
 }
 
-//testFoodLog()
+// testFoodLog()

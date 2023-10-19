@@ -3,23 +3,21 @@ import { HfInference } from "@huggingface/inference"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { getAdaEmbedding } from "../../openai/utils/embeddingsHelper"
 import { raw } from "@prisma/client/runtime/library"
-import { format } from '@scaleleap/pg-format'
-
+import { format } from "@scaleleap/pg-format"
 
 const hf = new HfInference(process.env.HF_API_KEY)
 
 function stringToNumberArray(embeddingStr?: string | null): number[] {
-  if (!embeddingStr || embeddingStr === '[]' || embeddingStr === '') {
-    return [];
+  if (!embeddingStr || embeddingStr === "[]" || embeddingStr === "") {
+    return []
   }
 
   // Remove square brackets and split by comma
-  const numberStrings = embeddingStr.replace(/[\[\]]/g, '').split(',');
+  const numberStrings = embeddingStr.replace(/[\[\]]/g, "").split(",")
 
   // Convert each string to a number
-  return numberStrings.map(Number);
+  return numberStrings.map(Number)
 }
-
 
 async function getHfEmbedding(sentence: string, model: string = "baai/bge-base-en-v1.5"): Promise<number[]> {
   const response = await hf.featureExtraction({
@@ -69,73 +67,106 @@ export async function getCfEmbedding(
 
 const MODEL_COLUMN_MAP: Record<string, string> = {
   ADA: "adaEmbedding",
-  BGE_BASE: "bgeBaseEmbedding",
-};
+  BGE_BASE: "bgeBaseEmbedding"
+}
 
 export async function getCachedOrFetchEmbeddings(
   modelType: "ADA" | "BGE_BASE",
-  searchItems: string[],
+  searchItems: string[]
 ): Promise<{ id: number; embedding: number[]; text: string }[]> {
-  const cachedEmbeddingField = MODEL_COLUMN_MAP[modelType];
+  const debugLog: string[] = []
 
-  const searchTexts = searchItems.map(
-    item => format(`%L`,item)
-  ).join(",");
+  try {
+    const cachedEmbeddingField = MODEL_COLUMN_MAP[modelType]
 
+    const uniqueSearchItems = [...new Set(searchItems)]
+    debugLog.push("Searching for:", uniqueSearchItems.join(", "))
 
-  const query = `SELECT id, "textToEmbed", "${cachedEmbeddingField}"::text as embedding
-  FROM "foodEmbeddingCache" WHERE "textToEmbed" IN (${searchTexts}) AND "${cachedEmbeddingField}" IS NOT NULL`;
-  let cachedEmbeddings = (await prisma.$queryRawUnsafe(query)) as { id: number; textToEmbed: string; embedding: number[] }[];
+    const searchTexts = uniqueSearchItems.map((item) => format(`%L`, item)).join(",")
 
-  cachedEmbeddings = cachedEmbeddings.map(item => ({
-    ...item,
-    embedding: stringToNumberArray(item.embedding as any) // use `as any` since your type expects number[], but it's actually a string here
-  }));
-  
-  
-  const foundTexts = new Set(cachedEmbeddings.map(ce => ce.textToEmbed));
-  const missingTexts = searchItems.filter(item => !foundTexts.has(item));
+    const query = `SELECT id, "textToEmbed", "${cachedEmbeddingField}"::text as embedding
+FROM "foodEmbeddingCache" WHERE "textToEmbed" IN (${searchTexts}) AND "${cachedEmbeddingField}" IS NOT NULL`
+    debugLog.push("Executing query to get embeddings:", query)
+    let cachedEmbeddings = (await prisma.$queryRawUnsafe(query)) as {
+      id: number
+      textToEmbed: string
+      embedding: number[]
+    }[]
 
-  let newEmbeddings: { text: string; embedding: number[] }[] = [];
+    cachedEmbeddings = cachedEmbeddings.map((item) => ({
+      ...item,
+      embedding: stringToNumberArray(item.embedding as any)
+    }))
+    debugLog.push(
+      `Processed cached embeddings: ${JSON.stringify(
+        cachedEmbeddings.map((ce) => ({ id: ce.id, textToEmbed: ce.textToEmbed }))
+      )}`
+    )
 
-  if (missingTexts.length > 0) {
-    switch (modelType) {
-      case "ADA":
-        const adaResponse = await getAdaEmbedding(missingTexts);
-        newEmbeddings = adaResponse.data.map((item, index) => ({
-          text: missingTexts[index],
-          embedding: item.embedding,
-        }));
-        break;
-      case "BGE_BASE":
-        const cfEmbeddings = await getCfEmbedding(missingTexts);
-        newEmbeddings = cfEmbeddings.map((embedding, index) => ({
-          text: missingTexts[index],
-          embedding: embedding,
-        }));
-        break;
-      default:
-        throw new Error("Invalid model type provided.");
-    }
+    const foundTexts = new Set(cachedEmbeddings.map((ce) => ce.textToEmbed))
+    debugLog.push(`Found texts: ${Array.from(foundTexts).join(", ")}`)
 
-    for (let { text, embedding } of newEmbeddings) {
-      const embeddingSql = vectorToSql(embedding);
-      const insertQuery = `
+    const missingTexts = uniqueSearchItems.filter((item) => !foundTexts.has(item))
+    debugLog.push(`Missing texts: ${missingTexts.join(", ")}`)
+
+    let newEmbeddings: { text: string; embedding: number[] }[] = []
+
+    if (missingTexts.length > 0) {
+      debugLog.push("There are missing texts, fetching new embeddings...")
+
+      switch (modelType) {
+        case "ADA":
+          const adaResponse = await getAdaEmbedding(missingTexts)
+          newEmbeddings = adaResponse.data.map((item, index) => ({
+            text: missingTexts[index],
+            embedding: item.embedding
+          }))
+          break
+
+        case "BGE_BASE":
+          debugLog.push("Fetching embeddings for BGE_BASE...")
+          const cfEmbeddings = await getCfEmbedding(missingTexts)
+          debugLog.push(`Received embeddings from getCfEmbedding`)
+
+          newEmbeddings = cfEmbeddings.map((embedding, index) => ({
+            text: missingTexts[index],
+            embedding: embedding
+          }))
+          break
+
+        default:
+          throw new Error("Invalid model type provided.")
+      }
+
+      for (let { text, embedding } of newEmbeddings) {
+        const embeddingSql = vectorToSql(embedding)
+        const insertQuery = `
         INSERT INTO "foodEmbeddingCache" ("textToEmbed", "${cachedEmbeddingField}")
         VALUES (${format(`%L`, text)}, '${embeddingSql}'::vector)
         ON CONFLICT ("textToEmbed")
         DO UPDATE SET "${cachedEmbeddingField}" = '${embeddingSql}'::vector
         WHERE "foodEmbeddingCache"."${cachedEmbeddingField}" IS NULL
-        RETURNING id`;
-      const returnedData: { id: number }[] = await prisma.$queryRaw(raw(insertQuery));
-      cachedEmbeddings.push({ id: returnedData[0].id, textToEmbed: text, embedding: embedding });
-    }
-  }
+        RETURNING id`
+        debugLog.push(`Executing insert query: ${insertQuery.replace(embeddingSql, "[EMBEDDING_DATA]")}`)
 
-  return searchItems.map(item => {
-    const found = cachedEmbeddings.find(ce => ce.textToEmbed === item);
-    return { id: found?.id ?? -1, embedding: found?.embedding as number[] ?? [], text: item };
-  });
+        const returnedData: { id: number }[] = await prisma.$queryRaw(raw(insertQuery))
+        debugLog.push(`Insert query returned: ${JSON.stringify(returnedData)}`)
+
+        cachedEmbeddings.push({ id: returnedData[0].id, textToEmbed: text, embedding: embedding })
+      }
+    }
+    const resultEmbeddings = searchItems.map((item) => {
+      const found = cachedEmbeddings.find((ce) => ce.textToEmbed === item)
+      debugLog.push(`Mapping search item: ${item}, Found cached embedding: ${JSON.stringify(found)}`)
+      return { id: found?.id ?? -1, embedding: (found?.embedding as number[]) ?? [], text: item }
+    })
+
+    return resultEmbeddings
+  } catch (error) {
+    // Dump the entire debug log if an error is caught
+    console.error("Debug Log:\n", debugLog.join("\n"))
+    throw error // re-throw the error so it's not silenced
+  }
 }
 
 export async function getCachedOrFetchEmbeddingId(
@@ -147,7 +178,7 @@ export async function getCachedOrFetchEmbeddingId(
 
   const cachedEmbeddingField = modelType === "ADA" ? "adaEmbedding" : "bgeBaseEmbedding"
   const query = `SELECT id, "${cachedEmbeddingField}"::text as embedding
-    FROM "foodEmbeddingCache" WHERE "textToEmbed" = ${format(`%L`,searchText)}`
+    FROM "foodEmbeddingCache" WHERE "textToEmbed" = ${format(`%L`, searchText)}`
   const cachedEmbedding = (await prisma.$queryRaw(raw(query))) as { id: number; embedding: number[] }[]
 
   if (cachedEmbedding && cachedEmbedding.length > 0 && cachedEmbedding[0].embedding) {
@@ -187,10 +218,6 @@ export async function getCachedOrFetchEmbeddingId(
     return returnedData[0].id
   }
 }
-
-
-
-
 
 // internal only
 
@@ -244,18 +271,18 @@ async function runPerformanceTests() {
 
 async function test() {
   const items = [
-    'Fiber Well Sugar Free Gummies - Vitafusion',
-    'Fiber Gummies - CVS',
-    'Fiber Gummies - Metamucil',
-    'Fiber Gummies - Nature Made',
-    'Fiber Gummies - Kroger',
-    'Fiber Gummies - Meijer',
-    'Fiber Good Gummies - Phillips',
-    'Fiber Gummies - Sundown Naturals',
-    'Fiber Gummies - Nutrition Now',
-    'Fiber Advance Gummies - Chromax',
+    "Fiber Well Sugar Free Gummies - Vitafusion",
+    "Fiber Gummies - CVS",
+    "Fiber Gummies - Metamucil",
+    "Fiber Gummies - Nature Made",
+    "Fiber Gummies - Kroger",
+    "Fiber Gummies - Meijer",
+    "Fiber Good Gummies - Phillips",
+    "Fiber Gummies - Sundown Naturals",
+    "Fiber Gummies - Nutrition Now",
+    "Fiber Advance Gummies - Chromax",
     "Fiber Gummies - Nature's Bounty",
-    'Mixed Berry Gummies - Fiber One'
+    "Mixed Berry Gummies - Fiber One"
   ]
   const attack_items = [
     "'; DROP TABLE members; --",
@@ -267,58 +294,108 @@ async function test() {
     "'; SHUTDOWN; --",
     "IF 1=1 SLEEP(5)",
     "' OR 'x' LIKE '%",
-    "0x3A70617373776F7264",
-  ];
-  
+    "0x3A70617373776F7264"
+  ]
+
   console.log(await getCachedOrFetchEmbeddings("BGE_BASE", attack_items))
 }
 
 async function testGetCachedOrFetchEmbeddings() {
   // Test Data
-  const foodItems = ["apple", "banana", "orange", "strawberry", "grape"];
+  const foodItems = ["apple", "banana", "orange", "strawberry", "grape"]
 
   async function printResults(modelType: "ADA" | "BGE_BASE", items: string[]) {
-    const results = await getCachedOrFetchEmbeddings(modelType, items);
-    console.log(`Results for ${modelType} with items ${items.join(', ')}:`);
-    console.log(results);
+    const results = await getCachedOrFetchEmbeddings(modelType, items)
+    console.log(`Results for ${modelType} with items ${items.join(", ")}:`)
+    console.log(results)
   }
 
   // Case: Nothing exists
-  
-  console.log('Testing case: Nothing exists');
-  await printResults("ADA", foodItems);
-  await printResults("BGE_BASE", foodItems);
-  
+
+  console.log("Testing case: Nothing exists")
+  await printResults("ADA", foodItems)
+  await printResults("BGE_BASE", foodItems)
 
   // Case: Only ADA but querying BGE and vice versa
-  console.log('Testing case: Only ADA but querying BGE');
-  await printResults("BGE_BASE", ["apple"]);
+  console.log("Testing case: Only ADA but querying BGE")
+  await printResults("BGE_BASE", ["apple"])
 
-  console.log('Testing case: Only BGE but querying ADA');
-  await printResults("ADA", ["banana"]);
+  console.log("Testing case: Only BGE but querying ADA")
+  await printResults("ADA", ["banana"])
 
   // Case: Some items in cache but not all
-  console.log('Testing case: Some items in cache but not all (Fetching ADA for apple and banana)');
-  await printResults("ADA", ["apple", "banana"]);
+  console.log("Testing case: Some items in cache but not all (Fetching ADA for apple and banana)")
+  await printResults("ADA", ["apple", "banana"])
 
-  console.log('Testing case: Some items in cache but not all (Fetching BGE_BASE for apple, banana and orange)');
-  await printResults("BGE_BASE", ["apple", "banana", "orange"]);
+  console.log("Testing case: Some items in cache but not all (Fetching BGE_BASE for apple, banana and orange)")
+  await printResults("BGE_BASE", ["apple", "banana", "orange"])
 
   // Case: All items in cache
-  console.log('Testing case: All items in cache (Fetching ADA for apple and banana)');
-  await printResults("ADA", ["apple", "banana"]);
+  console.log("Testing case: All items in cache (Fetching ADA for apple and banana)")
+  await printResults("ADA", ["apple", "banana"])
 
-  console.log('Testing case: All items in cache (Fetching BGE_BASE for apple, banana and orange)');
-  await printResults("BGE_BASE", ["apple", "banana", "orange"]);
+  console.log("Testing case: All items in cache (Fetching BGE_BASE for apple, banana and orange)")
+  await printResults("BGE_BASE", ["apple", "banana", "orange"])
 
   // Case: All items not in cache
-  console.log('Testing case: All items not in cache (Fetching ADA for strawberry and grape)');
-  await printResults("ADA", ["strawberry", "grape"]);
+  console.log("Testing case: All items not in cache (Fetching ADA for strawberry and grape)")
+  await printResults("ADA", ["strawberry", "grape"])
 
-  console.log('Testing case: All items not in cache (Fetching BGE_BASE for strawberry and grape)');
-  await printResults("BGE_BASE", ["strawberry", "grape"]);
-  
+  console.log("Testing case: All items not in cache (Fetching BGE_BASE for strawberry and grape)")
+  await printResults("BGE_BASE", ["strawberry", "grape"])
 }
+async function testGetCachedOrFetchEmbeddingsDuplicates() {
+  // Array of test inputs
+  const testInputs = [
+    ["car", "house", "House", "Car", "car"],
+    ["bridge", "town house", "bridge"],
+    ["apple", "Apple", "tree", "TREE", "apple"],
+    ["dog", "Dog", "cat", "CAT", "dog"],
+    ["book", "pen", "Pen", "BOOK", "book"],
+    ["river", "mountain", "Mountain", "RIVER", "river"],
+    ["phone", "Phone", "tablet", "TABLET", "phone"],
+    ["chair", "table", "Table", "CHAIR", "chair"],
+    ["ocean", "beach", "Beach", "OCEAN", "ocean"],
+    ["flower", "rose", "Rose", "FLOWER", "flower"],
+    ["city", "country", "Country", "CITY", "city"],
+    ["road", "path", "Path", "ROAD", "road"],
+    ["coffee", "mug", "MUG", "Coffee", "COFFEE"],
+    ["star", "planet", "Star", "PLANET", "star"],
+    ["shoe", "Shoe", "sock", "SOCK", "sock"],
+    ["pencil", "paper", "Paper", "PENCIL", "pencil"],
+    ["window", "door", "Door", "WINDOW", "window"],
+    ["sugar", "salt", "Sugar", "SALT", "salt"],
+    ["shirt", "Shirt", "hat", "HAT", "hat"],
+    ["gold", "silver", "Gold", "SILVER", "silver"],
+    ["piano", "guitar", "Guitar", "PIANO", "piano"],
+    ["plate", "bowl", "Bowl", "PLATE", "plate"]
+  ]
+
+  for (let i = 0; i < testInputs.length; i++) {
+    console.log(`Testing input set ${i + 1}:`, testInputs[i])
+    const results = await getCachedOrFetchEmbeddings("BGE_BASE", testInputs[i])
+
+    // Assertion 1: Check if the length of results matches the input
+    if (results.length !== testInputs[i].length) {
+      console.error(`Test set ${i + 1} failed: Expected ${testInputs[i].length} results but got ${results.length}`)
+    }
+
+    // Assertion 2: Check if duplicate inputs have the same id
+    const idMap = new Map()
+    for (let j = 0; j < testInputs[i].length; j++) {
+      if (idMap.has(testInputs[i][j])) {
+        if (idMap.get(testInputs[i][j]) !== results[j].id) {
+          console.error(`Test set ${i + 1} failed: Duplicate inputs "${testInputs[i][j]}" have different ids.`)
+        }
+      } else {
+        idMap.set(testInputs[i][j], results[j].id)
+      }
+    }
+  }
+}
+
+// Run the test function
+//testGetCachedOrFetchEmbeddingsDuplicates()
 
 // Run the tests
 //testGetCachedOrFetchEmbeddings();

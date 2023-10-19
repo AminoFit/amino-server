@@ -14,6 +14,7 @@ export interface GptNutrient {
 export interface GptFoodServing {
   serving_weight_g: number // Serving weight in grams
   serving_name: string // Serving description e.g. large, scoop, plate
+  serving_alternate_amount: number
 }
 
 export interface FoodInfo {
@@ -92,8 +93,8 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     Servings: food.servings?.map((serving) => ({
       servingWeightGram: serving.serving_weight_g,
       servingName: sanitizeServingName(serving.serving_name),
-      servingAlternateAmount: null,
-      servingAlternateUnit: null
+      servingAlternateAmount: serving.serving_alternate_amount,
+      servingAlternateUnit: sanitizeServingName(serving.serving_name)
     })) || [],
     Nutrients: food.nutrients?.map((nutrient) => ({
       nutrientName: nutrient.nutrient_name,

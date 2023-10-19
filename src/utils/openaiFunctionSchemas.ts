@@ -18,6 +18,9 @@ export const logFoodSchema = {
           food_database_search_name: {
             type: "string"
           },
+          full_item_user_message_including_serving: {  // New field added
+            type: "string"
+          },
           branded: {
             type: "boolean"
           },
@@ -25,32 +28,53 @@ export const logFoodSchema = {
             type: "string",
             default: "" // default to an empty string
           },
-          serving: {
-            type: "object",
-            properties: {
-              serving_amount: {
-                type: "number",
-                description: "Amount of the serving"
-              },
-              serving_name: {
-                type: "string"
-              },
-              serving_g_or_ml: {
-                type: "string",
-                enum: ["g", "ml"]
-              },
-              total_serving_g_or_ml: {
-                type: "number"
-              }
-            },
-            required: ["serving_amount", "serving_name", "serving_g_or_ml", "total_serving_g_or_ml"]
-          }
         },
-        required: ["food_database_search_name", "branded", "brand", "serving"]
+        required: ["food_database_search_name", "full_item_user_message_including_serving", "branded", "brand"]
       }
     }
   },
   required: ["food_items"]
+}
+
+export const extractServingAmount = {
+  "type": "object",
+  "properties": {
+    "serving_unit_in_user_message": {
+      "type": "string",
+      "description": "Unit of serving provided in the user_message such as a serving of a weight/volume amount"
+    },
+    "serving_amount_in_user_message": {
+      "type": "number",
+      "description": "Amount of serving provided in the user_message"
+    },
+    "serving_id_match_to_user_message": {
+      "type": "integer",
+      "description": "ID of the serving that matches the user's message"
+    },
+    "user_serving_total_weight_equation_g_or_ml": {
+      "type": "string",
+      "description": "Equation to calculate total weight in g or ml. e.g. 1 * 3 or 1/3 * 3.1 etc"
+    },
+    "user_serving_total_weight_estimate_g_or_ml": {
+      "type": "number",
+      "description": "Estimated total weight in g or ml provided by the user, rounded"
+    },
+    "unit_g_or_ml": {
+      "enum": [
+        "g",
+        "ml"
+      ],
+      "type": "string",
+      "description": "use g if weight or ml if volume/liquid"
+    }
+  },
+  "required": [
+    "serving_unit_in_user_message",
+    "serving_amount_in_user_message",
+    "user_serving_total_weight_equation_g_or_ml",
+    "user_serving_total_weight_estimate_g_or_ml",
+    "unit_g_or_ml"
+  ]
 }
 
 export const showDailyFoodSummarySchema = {
@@ -164,4 +188,4 @@ const exampleSchema = {
 }
 
 
-//console.log(JSON.stringify(logFoodSchema, null, 2))
+//console.log(JSON.stringify(extractServingAmount, null, 2))

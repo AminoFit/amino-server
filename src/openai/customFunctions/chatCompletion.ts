@@ -2,6 +2,7 @@ import OpenAI from "openai"
 import { User } from "@prisma/client"
 import { LogOpenAiUsage } from "../utils/openAiHelper"
 import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
+import * as math from 'mathjs';
 
 
 const openai = new OpenAI({
@@ -75,24 +76,75 @@ function removeTrailingCommas(str: string) {
   }
   return correctedResponse;
 }
+function correctMathExpressions(text: string): string {
+  // Match mathematical expressions that end with a comma (after optional spaces)
+  // Ensuring either enclosed by two quotation marks or without quotation marks.
+  const mathExpressionPattern = /:\s*(?:(["])([\d\s\.\+\-\*\/]+)\1|([\d\s\.\+\-\*\/]+))\s*,/g;
+
+  return text.replace(mathExpressionPattern, (match, quote1, expressionWithQuote, expressionWithoutQuote) => {
+      const expression = expressionWithQuote || expressionWithoutQuote;
+
+      try {
+          const evaluatedValue = math.evaluate(expression);
+          return `: ${evaluatedValue},`;
+      } catch (e) {
+          // If mathjs fails to evaluate, return the original expression.
+          return match;
+      }
+  });
+}
+
 
 export function correctAndParseResponse(responseText: string): any {
-try {
-  // Recursive removal of trailing commas until none are left
-  let correctedResponse = removeTrailingCommas(responseText);
+  try {
+      // Recursive removal of trailing commas until none are left
+      let correctedResponse = removeTrailingCommas(responseText);
 
-  // Replace keys without quotes to be with quotes
-  correctedResponse = correctedResponse.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"\$1":');
-  
-  // Convert 'False' to 'false' and 'True' to 'true'
-  correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
-  
-  return JSON.parse(correctedResponse);
-} catch (error) {
-  console.error("Failed to correct and parse the response:", responseText, error);
-  return null;
+      // Replace keys without quotes to be with quotes
+      correctedResponse = correctedResponse.replace(/(?<!["'])\b(\w+)\b(?!["']):/g, '"$1":');
+
+      // Convert 'False' to 'false' and 'True' to 'true'
+      correctedResponse = correctedResponse.replace(/\bFalse\b/g, 'false').replace(/\bTrue\b/g, 'true');
+
+      // Replace fractions with their decimal representation
+      correctedResponse = replaceFractionsWithDecimals(correctedResponse);
+
+      // fix math expressions
+      correctedResponse = correctMathExpressions(correctedResponse);
+
+      // Ensure there's a comma at the end of a line if the next line is not a closing bracket
+      correctedResponse = ensureCommaAtEndOfLine(correctedResponse);
+
+      return JSON.parse(correctedResponse);
+  } catch (error) {
+      console.error("Failed to correct and parse the response:", responseText, error);
+      return null;
+  }
 }
+
+function replaceFractionsWithDecimals(text: string): string {
+  // Match the fraction pattern and possible guessed decimal value
+  const fractionPattern = /(\b\d+)\s*\/\s*(\d+\b)(?:\s*=\s*([\d.]+))?/g;
+
+  return text.replace(fractionPattern, (match, numerator, denominator) => {
+      const decimalValue = (Number(numerator) / Number(denominator)).toFixed(2);  // Truncate to 3 significant figures
+      return decimalValue.toString();
+  });
 }
+
+
+function ensureCommaAtEndOfLine(text: string): string {
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      const nextLine = lines[i + 1].trim();
+      if (line && !line.endsWith(',') && !nextLine.startsWith('}') && !nextLine.startsWith(']') && !line.endsWith('{') && !line.endsWith('[')) {
+          lines[i] = line + ',';
+      }
+  }
+  return lines.join('\n');
+}
+
 
 
 

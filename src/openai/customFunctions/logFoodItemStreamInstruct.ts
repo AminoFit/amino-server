@@ -1,5 +1,5 @@
 import { isWithinTokenLimit } from "gpt-tokenizer"
-import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { chatCompletionInstructStream } from "./chatCompletion"
 import { User } from "@prisma/client"
 import { prisma } from "../../database/prisma"
@@ -14,18 +14,26 @@ function sanitizeInput(input: string): string {
 }
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
-    return {
-        food_database_search_name: outputItem.food_database_complete_search_term,
-        brand: outputItem.brand,
-        branded: outputItem.branded,
-        serving: {
+    // Since serving is no longer available in the output, we need to handle its absence
+    let serving: LoggedFoodServing | undefined;
+    if (outputItem.serving) {
+        serving = {
             serving_amount: outputItem.serving.serving_amount,
             serving_name: outputItem.serving.serving_name,
             total_serving_g_or_ml: outputItem.serving.total_serving_size_g_or_ml,
             serving_g_or_ml: outputItem.serving.g_or_ml,
         }
+    }
+
+    return {
+        food_database_search_name: outputItem.food_database_complete_search_term,
+        full_item_user_message_including_serving: outputItem.full_item_user_message_including_serving,
+        brand: outputItem.brand,
+        branded: outputItem.branded,
+        serving
     };
 }
+
 
 
 export async function logFoodItemStreamInstruct(user: User, user_request: string, lastUserMessageId: number): Promise<FoodItemToLog[]> {
@@ -34,23 +42,27 @@ export async function logFoodItemStreamInstruct(user: User, user_request: string
         console.log("Input too long.");
         return [];
     }
-    const prompt = `Based on user_request give a structured JSON of what foods user wants to log. Group items. Fix typos.
-Input:
+    const prompt = `Please analyze the user's request carefully and produce a structured JSON representation of the foods they want to log.
+
+Instructions:
+1. Identify distinct food items or beverages in the user_request.
+2. Correct any typos you find.
+3. Group identical items with their respective quantities, such as "3 oranges" as a single entry.
+4. Examine combinations of words closely. If a descriptor (like a flavor, variant, or type) is positioned around a food item or brand (either before or after), it should be interpreted as part of the main item description and not as separate entities. For example, "chocolate protein powder" or "protein powder chocolate" means a chocolate-flavored protein powder, not chocolate and a protein bar separately.
+5. If a brand is mentioned, mark the item as "branded" and specify the brand. For items with no brands, set "brand" to null.
+6. If there's any confusion regarding the serving size, use the details provided by the user to determine the most probable serving size.
+
 user_request: "${sanitizedUserRequest}"
-Output like this:
+
+Expected output format:
 {
     food_database_complete_search_term: string,
-    serving: {
-        serving_amount: number,
-        serving_name: string,
-        g_or_ml: "g"|"ml"
-        total_serving_size_g_or_ml: number,
-    },
+    full_item_user_message_including_serving: string,
     branded: boolean,
     brand: string | null,
 }[]
 
-Start of output:
+Output: 
 [`;
 
     const foodItemsToLog: FoodItemToLog[] = [];

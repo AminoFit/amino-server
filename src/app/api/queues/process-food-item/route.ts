@@ -43,9 +43,6 @@ export const processFoodItemQueue = Queue(
     if (!openAiData.food_database_search_name) {
       throw new Error("No food_database_search_name")
     }
-    if (!openAiData.serving) {
-      throw new Error("No serving")
-    }
 
     if (loggedFoodItem.messageId) {
       await HandleLogFoodItem(

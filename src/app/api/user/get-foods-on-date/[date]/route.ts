@@ -6,7 +6,9 @@ import moment from "moment-timezone"
 import { NextResponse } from "next/server"
 
 function stringifyWithBigInt(obj: any): string {
-  return JSON.stringify(obj, (_, value) => (typeof value === "bigint" ? value.toString() : value))
+  return JSON.stringify(obj, (_, value) => 
+    typeof value === 'bigint' ? value.toString() : value
+  );
 }
 
 export async function GET(
@@ -52,6 +54,6 @@ export async function GET(
     }
   })
 
-  const safeFoodsString = stringifyWithBigInt(foods)
-  return NextResponse.json(JSON.parse(safeFoodsString))
+  const safeFoodsString = stringifyWithBigInt(foods);
+  return NextResponse.json(JSON.parse(safeFoodsString));  
 }

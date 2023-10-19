@@ -5,7 +5,9 @@ import OpenAI from "openai"
 import { User, FoodInfoSource } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
 
-const matchFoodItemToDatatbaseSchema = {
+const matchFoodItemsToDatabaseFunctionDescription = "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match."
+
+const matchFoodItemsToDatabaseFunctionSchema = {
   type: "object",
   properties: {
     closest_food_id: { type: "number" },
@@ -52,7 +54,7 @@ function convertToMatchRequest(
   }
 }
 
-export async function findBestFoodMatch(
+export async function findBestFoodMatchExternalDb(
   user: User,
   user_request: FoodItemToLog,
   database_options: foodSearchResultsWithSimilarityAndEmbedding[]
@@ -63,12 +65,10 @@ export async function findBestFoodMatch(
   let model = "gpt-3.5-turbo-instruct-0914"
   let max_tokens = 250
   let temperature = 0
-  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\n${JSON.stringify(
-    matchRequest
-  )}\nOnly give me an answer in this form:
+  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\nMATCH_REQUEST_HERE\nOnly give me an answer in this form:
 { closest_food_id: int,
 good_match_found: bool,
-user_request_to_closest_food_similarity_0_to_1: number}`.trim()
+user_request_to_closest_food_similarity_0_to_1: number}`.trim().replace("MATCH_REQUEST_HERE", JSON.stringify(matchRequest))
 
   try {
     let result = await chatCompletionInstruct(
@@ -99,9 +99,8 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim()
           functions: [
             {
               name: "match_user_request_to_database",
-              description:
-                "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match.",
-              parameters: matchFoodItemToDatatbaseSchema
+              description:matchFoodItemsToDatabaseFunctionDescription,
+              parameters: matchFoodItemsToDatabaseFunctionSchema
             }
           ],
           model,
@@ -137,6 +136,7 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim()
 async function testFindBestFoodMatch() {
   const food_item_to_log: FoodItemToLog = {
     food_database_search_name: "hydro whey protein shake",
+    full_item_user_message_including_serving: "1 scoop of hydro whey protein shake",
     brand: "optimum nutrition",
     branded: true,
     serving: { serving_amount: 1, serving_name: "scoop", serving_g_or_ml: "g", total_serving_g_or_ml: 39 }
@@ -221,6 +221,7 @@ async function testFindBestFoodMatch() {
     tzIdentifier: "America/New_York"
   }
   const food_item_to_log_1: FoodItemToLog = {
+    full_item_user_message_including_serving: "1 can of Pop",
     food_database_search_name: "Pop",
     brand: "PepsiCo",
     branded: true,
@@ -266,6 +267,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_2: FoodItemToLog = {
     food_database_search_name: "Beef Burger Patty",
+    full_item_user_message_including_serving: "1 patty of Beef Burger Patty",
     brand: "Beyond Meat",
     branded: true,
     serving: { serving_amount: 1, serving_name: "patty", serving_g_or_ml: "g", total_serving_g_or_ml: 113 }
@@ -317,6 +319,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_3: FoodItemToLog = {
     food_database_search_name: "Raspberry Yogurt",
+    full_item_user_message_including_serving: "1 cup of Raspberry Yogurt",
     brand: "Yummy Dairy",
     branded: true,
     serving: { serving_amount: 1, serving_name: "cup", serving_g_or_ml: "g", total_serving_g_or_ml: 200 }
@@ -361,6 +364,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_4: FoodItemToLog = {
     food_database_search_name: "Mangosteen",
+    full_item_user_message_including_serving: "1 fruit of Mangosteen",
     brand: "Exotic Fruits Co.",
     branded: true,
     serving: { serving_amount: 1, serving_name: "fruit", serving_g_or_ml: "g", total_serving_g_or_ml: 50 }
@@ -391,6 +395,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_5: FoodItemToLog = {
     food_database_search_name: "Kombucha Ginger Lime",
+    full_item_user_message_including_serving: "1 bottle of Kombucha Ginger Lime",
     brand: "Artisan Brews",
     branded: true,
     serving: { serving_amount: 1, serving_name: "bottle", serving_g_or_ml: "g", total_serving_g_or_ml: 240 }
@@ -436,6 +441,7 @@ async function testFindBestFoodMatch() {
   ]
   const food_item_to_log_6: FoodItemToLog = {
     food_database_search_name: "Chocolate Lava Cake with Caramel Core",
+    full_item_user_message_including_serving: "1 slice of Chocolate Lava Cake with Caramel Core",
     brand: "Dessert Heaven",
     branded: true,
     serving: { serving_amount: 1, serving_name: "slice", serving_g_or_ml: "g", total_serving_g_or_ml: 120 }
@@ -465,13 +471,13 @@ async function testFindBestFoodMatch() {
     }
   ]
 
-  console.log(await findBestFoodMatch(user, food_item_to_log, foodSearchResults))
-  console.log(await findBestFoodMatch(user, food_item_to_log_1, foodSearchResults_1))
-  console.log(await findBestFoodMatch(user, food_item_to_log_2, foodSearchResults_2))
-  console.log(await findBestFoodMatch(user, food_item_to_log_3, foodSearchResults_3))
-  console.log(await findBestFoodMatch(user, food_item_to_log_4, foodSearchResults_4))
-  console.log(await findBestFoodMatch(user, food_item_to_log_5, foodSearchResults_5))
-  console.log(await findBestFoodMatch(user, food_item_to_log_6, foodSearchResults_6))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log, foodSearchResults))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_1, foodSearchResults_1))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_2, foodSearchResults_2))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_3, foodSearchResults_3))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_4, foodSearchResults_4))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_5, foodSearchResults_5))
+  console.log(await findBestFoodMatchExternalDb(user, food_item_to_log_6, foodSearchResults_6))
 }
 
 //testFindBestFoodMatch()
