@@ -252,6 +252,7 @@ export async function HandleLogFoodItem(
     food = await findBestServingMatchInstruct(food, bestMatch as FoodItemWithNutrientsAndServing, user)
   } catch (err1) {
     try {
+      console.log("Error finding best serving match with instruct model, retrying with function", err1)
       food = await findBestServingMatchFunction(food, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err2) {
       throw err2 // or handle the error in a different way if needed
@@ -265,7 +266,7 @@ export async function HandleLogFoodItem(
     loggedUnit: food.serving!.serving_name,
     grams: food.serving!.total_serving_g_or_ml,
     userId: user.id,
-    consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+    //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
     messageId,
     status: "Processed"
   }
@@ -482,6 +483,12 @@ async function findAndAddItemInDatabase(
       foodInfoResponses.push(...fatSecretInfoResponse)
     }
 
+    // Check if the consolidated array is empty
+    if (foodInfoResponses.length === 0) {
+      console.error("All food sources returned no results.");
+      // You can throw an error or return a default value here
+      throw new Error("No food information found.");
+    }
     // Find the item with the highest similarity score
     let highestSimilarityItem: foodSearchResultsWithSimilarityAndEmbedding | null = foodInfoResponses.reduce(
       (prev, current) => {

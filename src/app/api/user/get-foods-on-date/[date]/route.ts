@@ -43,6 +43,7 @@ export async function GET(
       FoodItem: {
         include: { Servings: true, FoodImage: true }
       },
+      id: true,
       foodEmbeddingCache: false,
       embeddingId: false,
       consumedOn: true,

@@ -2,7 +2,7 @@ import moment from "moment-timezone"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { LoggedFoodItemWithFoodItem, getNormalizedFoodValue } from "./utils/FoodHelper"
 
-import { ArrowPathIcon, PencilIcon } from "@heroicons/react/24/outline"
+import { ArrowPathIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { useState } from "react"
@@ -263,22 +263,22 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         console.log("Error reprocessing food", err)
       })
   }
+  const [isRowHovered, setIsRowHovered] = useState(false); // add this at the beginning of your component
 
   return (
     <>
-      {/* Mobile View */}
       <DeleteFoodModal
         food={foodItem}
         isOpen={deleteModalOpen}
         setOpen={setDeleteModalOpen}
         confirmDelete={async () => {
-          console.log("Delete confirmed")
+          console.log("foodItem:", foodItem)
           setDeleteModalOpen(false)
           await deleteSavedFood(foodItem.id)
           router.replace(path)
         }}
       />
-
+  
       <EditFoodModal
         isOpen={foodEditModalOpen}
         onRequestClose={() => {
@@ -286,96 +286,56 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         }}
         food={foodItem}
       />
-
-      <div className="mb-1 grid grid-cols-7 gap-2 border-y-2">
-        <div className="col-span-3 pl-5">
-          <div className="capitalize">
-            {name}{" "}
-            {isLoading ? (
-              <ArrowPathIcon className="h-3 w-3 inline cursor-pointer text-zinc-300" onClick={reprocessFood} />
-            ) : (
-              <PencilIcon
-                className="h-3 w-3 inline cursor-pointer text-zinc-300"
-                onClick={() => {
-                  setFoodEditModalOpen(true)
-                }}
-              />
-            )}
+  
+      {/* The main container div that listens to hover events */}
+      <div 
+        onMouseEnter={() => setIsRowHovered(true)}
+        onMouseLeave={() => setIsRowHovered(false)}
+      >
+        <div className="mb-1 grid grid-cols-7 gap-2 border-y-2">
+          <div className="col-span-3 pl-5">
+            <div className="capitalize">
+              {name}{" "}
+              {isLoading ? (
+                <ArrowPathIcon className="h-3 w-3 inline cursor-pointer text-zinc-300" onClick={reprocessFood} />
+              ) : (
+                <>
+                  <PencilIcon
+                    className="h-3 w-3 inline cursor-pointer text-zinc-300"
+                    onClick={() => {
+                      setFoodEditModalOpen(true)
+                    }}
+                  />
+                  {/* The TrashIcon rendered based on hover state */}
+                  {isRowHovered && (
+                    <TrashIcon
+                      className="h-3 w-3 inline cursor-pointer text-zinc-300 ml-2"
+                      onClick={() => {
+                        setDeleteModalOpen(true)
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+            <div className="text-sm text-zinc-600">{servingSubtext}</div>
           </div>
-          <div className="text-sm text-zinc-600">{servingSubtext}</div>
-        </div>
-        <div className="p-2 text-center bg-zinc-100">
-          <div className="">{calories}</div>
-        </div>
-        <div className="m-2 text-center">
-          <div className="">{Math.round(getNormalizedFoodValue(foodItem, "carbPerServing")).toLocaleString()}</div>
-        </div>
-        <div className="rounded-md p-2 text-center">
-          <div className="">{Math.round(getNormalizedFoodValue(foodItem, "totalFatPerServing")).toLocaleString()}</div>
-        </div>
-        <div className="rounded-md p-2 text-center">
-          <div className="">{Math.round(getNormalizedFoodValue(foodItem, "proteinPerServing")).toLocaleString()}</div>
-        </div>
-      </div>
-
-      {/*<div className="rounded-lg bg-zinc-100 overflow-hidden flex mb-2">
-        <div className="inline capitalize">{name}</div>
-        <div className="inline">{subtext}</div>
-        <div className="">
-          <XMarkIcon
-            className="h-4 w-4 inline cursor-pointer"
-            onClick={() => {
-              setDeleteModalOpen(true)
-            }}
-          />
-        </div>
-
-        <div className="">{servingSubtext}</div>
-        <div className="flex">
-          <div className="">
-            <div className="">
-              <div className="">Carbs</div>
-              <div className="">
-                <span className="">
-                  {Math.round(getNormalizedFoodValue(foodItem, "carbPerServing")).toLocaleString()}
-                </span>
-                g
-              </div>
-            </div>
-            <div className="">
-              <div className="">Fats</div>
-              <div className="">
-                <span className="">
-                  {Math.round(getNormalizedFoodValue(foodItem, "totalFatPerServing")).toLocaleString()}
-                </span>
-                g
-              </div>
-            </div>
-            <div className="">
-              <div className="">Protein</div>
-              <div className="">
-                <span className="">
-                  {Math.round(getNormalizedFoodValue(foodItem, "proteinPerServing")).toLocaleString()}
-                </span>
-                g
-              </div>
-            </div>
+          <div className="p-2 text-center bg-zinc-100">
+            <div className="">{calories}</div>
           </div>
-          <div className="text-zinc-400 text-right self-end grow pb-4 px-4">
-            <PencilIcon
-              className="h-4 w-4 inline cursor-pointer"
-              onClick={() => {
-                setFoodEditModalOpen(true)
-              }}
-            />
+          <div className="m-2 text-center">
+            <div className="">{Math.round(getNormalizedFoodValue(foodItem, "carbPerServing")).toLocaleString()}</div>
+          </div>
+          <div className="rounded-md p-2 text-center">
+            <div className="">{Math.round(getNormalizedFoodValue(foodItem, "totalFatPerServing")).toLocaleString()}</div>
+          </div>
+          <div className="rounded-md p-2 text-center">
+            <div className="">{Math.round(getNormalizedFoodValue(foodItem, "proteinPerServing")).toLocaleString()}</div>
           </div>
         </div>
       </div>
-      {/* <div className="text-gray-600 text-sm mb-3 text-right ">
-        {moment(foodItem.consumedOn).tz(user.tzIdentifier).format("h:mm a")}
-      </div> */}
     </>
-  )
+  );
 }
 
 function FoodRowEmpty() {

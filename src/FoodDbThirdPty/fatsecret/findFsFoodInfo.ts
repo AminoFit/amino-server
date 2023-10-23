@@ -26,6 +26,11 @@ export async function findFsFoodInfo(
     queryBgeBaseEmbedding: searchParams.queryBgeBaseEmbedding
   })
 
+  // Check if the result is null or an empty array
+  if (!searchResponse || searchResponse.length === 0) {
+    return null;
+  }
+
   // create an array of all queries to get embeddings for
   const allQueries = searchResponse.map((item) =>
     item.food_type === "Brand" ? `${item.food_name} - ${item.brand_name}` : item.food_name
@@ -86,11 +91,11 @@ export async function findFsFoodInfo(
 }
 
 async function runTests() {
-  const query = "Egg Whites"
+  const query = "Triple Zero Nonfat Blended Greek Yogurt, Peach By Oikos"
   const queryEmbedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [query]))[0].embedding
   const results = await findFsFoodInfo({
     search_expression: query,
-    branded: false,
+    branded: true,
     queryBgeBaseEmbedding: queryEmbedding
   })
   console.log(results)
