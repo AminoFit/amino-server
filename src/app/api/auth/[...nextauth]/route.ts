@@ -102,9 +102,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }: any) {
       // This is called every time we request the session
-      console.log("session callback")
-      console.log("session session", session)
-      console.log("session token", token)
+      //console.log("session callback")
+      //console.log("session session", session)
+      //console.log("session token", token)
 
       // Add the access_token from the token to the session
       session.accessToken = token.accessToken

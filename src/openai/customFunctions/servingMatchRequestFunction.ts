@@ -3,7 +3,7 @@ import { chatCompletion, correctAndParseResponse } from "./chatCompletion"
 import { User } from "@prisma/client"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
-import * as math from 'mathjs';
+import * as math from "mathjs"
 import { extractServingAmount } from "@/utils/openaiFunctionSchemas"
 
 interface ServingMatchRequest {
@@ -48,94 +48,93 @@ function mapToCorrectUnit(unit: string): "g" | "ml" {
 }
 
 function mapServingMatchRequest(request: ServingMatchRequest) {
-  const epsilon = 0.03; // Tolerance for weight comparison
+  const epsilon = 0.03 // Tolerance for weight comparison
 
   // Add "no options" option
   let servings: ServingToMatch[] = [
-      {
-          serving_id: 0,
-          type: "no serving match",
-      },
-  ];
+    {
+      serving_id: 0,
+      type: "no serving match"
+    }
+  ]
 
-  const defaultServingWeight = parseFloat(request.item_properties.default_serving_size_grams!.toFixed(2));
+  const defaultServingWeight = parseFloat(request.item_properties.default_serving_size_grams!.toFixed(2))
 
   // Function to check if the default serving already exists
   const hasDefaultServing = (weight: number): boolean => {
-      return Math.abs(weight - defaultServingWeight) < epsilon;
-  };
+    return Math.abs(weight - defaultServingWeight) < epsilon
+  }
 
-  let hasDefault = false;
+  let hasDefault = false
 
   for (let serving of request.item_properties.servings) {
-      if (hasDefaultServing(serving.serving_weight_grams!)) {
-          hasDefault = true;
-          break;
-      }
+    if (hasDefaultServing(serving.serving_weight_grams!)) {
+      hasDefault = true
+      break
+    }
   }
 
   // Dedupe servings based on normalized weight and unit
-  const uniqueServings: Record<string, any> = {};
+  const uniqueServings: Record<string, any> = {}
 
   for (let serving of request.item_properties.servings) {
-      if (!serving.serving_weight_grams) continue;
+    if (!serving.serving_weight_grams) continue
 
-      let normalizedWeight = serving.serving_weight_grams;
-      if (serving.serving_alternate_amount && serving.serving_alternate_amount !== 1) {
-          normalizedWeight = serving.serving_weight_grams / serving.serving_alternate_amount!;
+    let normalizedWeight = serving.serving_weight_grams
+    if (serving.serving_alternate_amount && serving.serving_alternate_amount !== 1) {
+      normalizedWeight = serving.serving_weight_grams / serving.serving_alternate_amount!
+    }
+
+    normalizedWeight = parseFloat(normalizedWeight.toFixed(3))
+
+    if (hasDefaultServing(normalizedWeight)) {
+      hasDefault = true
+    }
+
+    const key = `${normalizedWeight}_${serving.serving_alternate_unit || "g"}`
+    if (!(key in uniqueServings)) {
+      uniqueServings[key] = {
+        ...serving,
+        serving_weight_grams: normalizedWeight,
+        serving_amount: 1,
+        serving_unit: serving.serving_alternate_unit
       }
-
-      normalizedWeight = parseFloat(normalizedWeight.toFixed(3));
-
-      if (hasDefaultServing(normalizedWeight)) {
-          hasDefault = true;
-      }
-
-      const key = `${normalizedWeight}_${serving.serving_alternate_unit || 'g'}`;
-      if (!(key in uniqueServings)) {
-          uniqueServings[key] = {
-              ...serving,
-              serving_weight_grams: normalizedWeight,
-              serving_amount: 1,
-              serving_unit: serving.serving_alternate_unit,
-          };
-          delete uniqueServings[key].name;
-          delete uniqueServings[key].serving_alternate_amount;
-          delete uniqueServings[key].serving_alternate_unit;
-      }
+      delete uniqueServings[key].name
+      delete uniqueServings[key].serving_alternate_amount
+      delete uniqueServings[key].serving_alternate_unit
+    }
   }
 
-  servings.push(...Object.values(uniqueServings));
+  servings.push(...Object.values(uniqueServings))
 
-  const defaultServingLiquidMl = request.item_properties.default_serving_size_ml;
+  const defaultServingLiquidMl = request.item_properties.default_serving_size_ml
 
   let defaultServing: any = {
-      serving_id: servings.length,
-      serving_type: "default",
-      serving_weight_grams: defaultServingWeight
-  };
+    serving_id: servings.length,
+    serving_type: "default",
+    serving_weight_grams: defaultServingWeight
+  }
 
   if (defaultServingLiquidMl) {
-      defaultServing.serving_liquid_ml = defaultServingLiquidMl;
+    defaultServing.serving_liquid_ml = defaultServingLiquidMl
   }
 
   if (!hasDefault) {
-      servings.push(defaultServing);
+    servings.push(defaultServing)
   }
 
   // Reassign serving IDs in sequential order
-  servings.forEach((s, index) => s.serving_id = index);
+  servings.forEach((s, index) => (s.serving_id = index))
 
   // Construct the final response
   let result = {
-      name: request.item_name,
-      brand: request.item_brand,
-      servings: servings,
-  };
+    name: request.item_name,
+    brand: request.item_brand,
+    servings: servings
+  }
 
-  return result;
+  return result
 }
-
 
 function customStringify(obj: any) {
   let jsonString = JSON.stringify(obj, null, 2) // prettify with indentation of 2
@@ -205,7 +204,8 @@ Output:
   let result: any = null
   let messages: any[] = [
     { role: "system", content: system },
-    { role: "user", content: inquiry }]
+    { role: "user", content: inquiry }
+  ]
 
   try {
     const result = await chatCompletion(
@@ -219,8 +219,8 @@ Output:
       user
     )
 
-    let response;
-    if (result.function_call){
+    let response
+    if (result.function_call) {
       response = correctAndParseResponse(result.function_call.arguments)
     } else {
       throw new Error("No function call found in result")
@@ -228,34 +228,36 @@ Output:
 
     console.log("response", response.user_serving_total_weight_equation_g_or_ml)
     // Evaluate the equation safely
-    let totalWeight = response.user_serving_total_weight_equation_g_or_ml || response.user_serving_total_weight_estimate_g_or_ml;
-    
-    let lastServingIsDefault = match_request_obj.servings[match_request_obj.servings.length - 1].serving_type === "default";
+    let totalWeight =
+      response.user_serving_total_weight_equation_g_or_ml || response.user_serving_total_weight_estimate_g_or_ml
+
+    let lastServingIsDefault =
+      match_request_obj.servings[match_request_obj.servings.length - 1].serving_type === "default"
 
     // Map chatCompletion output to the actual serving ID
-    let actualServingId = null;
-    if (
-      response.serving_id_match_to_user_message !== null &&
-      response.serving_id_match_to_user_message !== 0
-    ) {
+    let actualServingId = null
+    if (response.serving_id_match_to_user_message !== null && response.serving_id_match_to_user_message !== 0) {
       if (!lastServingIsDefault || response.serving_id_match_to_user_message !== match_request_obj.servings.length) {
         if (food_item.Servings[response.serving_id_match_to_user_message - 1]) {
-          actualServingId = food_item.Servings[response.serving_id_match_to_user_message - 1].id;
+          actualServingId = food_item.Servings[response.serving_id_match_to_user_message - 1].id
         }
       }
     }
-    
-    
+
+    // Check if casting to Number fails
+    if (isNaN(Number(totalWeight))) {
+      throw new Error("Failed to cast totalWeight to a number, totalWeight: " + totalWeight)
+    }
+
     // Update the serving details in food_item_to_log
     food_item_to_log.serving = {
       serving_amount: response.serving_amount_in_user_message,
       serving_name: response.serving_unit_in_user_message || "",
       serving_g_or_ml: mapToCorrectUnit(response.unit_g_or_ml),
-      total_serving_g_or_ml: totalWeight,
+      total_serving_g_or_ml: Number(totalWeight),
       serving_id: actualServingId || 0,
       full_serving_string: `${response.serving_amount_in_user_message} ${response.serving_unit_in_user_message}`
     }
-    
 
     return food_item_to_log
   } catch (error) {
