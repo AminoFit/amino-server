@@ -5,6 +5,12 @@ import { getUserFromRequest } from "@/utils/api-auth-tools"
 import moment from "moment-timezone"
 import { NextRequest, NextResponse } from "next/server"
 
+function stringifyWithBigInt(obj: any): string {
+  return JSON.stringify(obj, (_, value) => 
+    typeof value === 'bigint' ? value.toString() : value
+  );
+}
+
 export async function GET(
   request: NextRequest, // needed so we don't cache this request
   { params }: { params: { date: string } }
@@ -40,5 +46,6 @@ export async function GET(
 
   console.log("foods", foods)
 
-  return NextResponse.json(foods)
+  const safeFoodsString = stringifyWithBigInt(foods);
+  return NextResponse.json(JSON.parse(safeFoodsString)); 
 }
