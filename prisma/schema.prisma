@@ -1,60 +1,27 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
 }
-// generator client {
-//   provider             = "prisma-client-py"
-//   recursive_type_depth = 5
-//     previewFeatures = ["postgresqlExtensions"]
-// }
-
-// Use this when you want to generate the python client
-// generator client {
-//   provider             = "prisma-client-py"
-//   recursive_type_depth = 5
-//     previewFeatures = ["postgresqlExtensions"]
-// }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [pgvector(map: "vector")]
-}
-
-enum MessageStatus {
-  RECEIVED
-  PROCESSING
-  RESOLVED
-  FAILED
-}
-
-enum MessageType {
-  CONVERSATION
-  ASSISTANT
-  FOOD_LOG_REQUEST
-  SHOW_FOOD_LOG
-  LOG_EXERCISE
-  UPDATE_USER_INFO
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Message {
   id              Int              @id @default(autoincrement())
   createdAt       DateTime         @default(now())
-  resolvedAt      DateTime? // This will be updated once processing is complete
   content         String
   function_name   String?
   role            Role
-  status          MessageStatus    @default(RECEIVED)
-  messageType     MessageType      @default(CONVERSATION)
-  itemsToProcess  Int?             @default(0) // Used for debug and progress display
-  itemsProcessed  Int?             @default(0)
   userId          String
-  User            User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  itemsProcessed  Int?             @default(0)
+  itemsToProcess  Int?             @default(0)
+  messageType     MessageType      @default(CONVERSATION)
+  resolvedAt      DateTime?
+  status          MessageStatus    @default(RECEIVED)
   FoodItems       FoodItem[]
   LoggedFoodItems LoggedFoodItem[]
+  User            User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model SmsMessage {
@@ -86,15 +53,10 @@ model OpenAiUsage {
   User             User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-enum UnitPreference {
-  IMPERIAL
-  METRIC
-}
-
 model User {
   id             String           @id @default(cuid())
-  firstName      String?          @db.VarChar(255)
-  lastName       String?          @db.VarChar(255)
+  fullName       String?          @db.VarChar(255)
+  avatarUrl      String?          @db.VarChar(2048)
   email          String?          @unique @db.VarChar(255)
   emailVerified  DateTime?
   phone          String?          @unique @db.VarChar(255)
@@ -109,45 +71,38 @@ model User {
   unitPreference UnitPreference?  @default(IMPERIAL)
   setupCompleted Boolean          @default(false)
   sentContact    Boolean          @default(false)
-  sendCheckins   Boolean          @default(false)
   tzIdentifier   String           @default("America/New_York")
-  Message        Message[]
-  Foods          LoggedFoodItem[]
+  sendCheckins   Boolean          @default(false)
+  Account        Account[]
   CustomFood     FoodItem[]
-  SmsMessage     SmsMessage[]
+  Foods          LoggedFoodItem[]
+  Message        Message[]
   OpenAiUsage    OpenAiUsage[]
   Session        Session[]
-  Account        Account[]
   SmsAuthCode    SmsAuthCode[]
-}
-
-enum Role {
-  Assistant
-  User
-  System
-  Function
+  SmsMessage     SmsMessage[]
 }
 
 model LoggedFoodItem {
-  id                 Int       @id @default(autoincrement())
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now())
-  consumedOn         DateTime  @default(now())
+  id                 Int                 @id @default(autoincrement())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @default(now())
+  consumedOn         DateTime            @default(now())
   foodItemId         Int?
-  grams              Float     @default(0)
+  grams              Float               @default(0)
   servingId          Int?
   servingAmount      Float?
   loggedUnit         String?
-  userId             String    @default("0")
-  User               User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  FoodItem           FoodItem? @relation(fields: [foodItemId], references: [id])
-  Serving            Serving?  @relation(fields: [servingId], references: [id])
+  userId             String              @default("0")
   messageId          Int?
-  Message            Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   status             String?
   extendedOpenAiData Json?
-  embeddingId        Int?                 // Changed relation to embeddingId
-  foodEmbeddingCache foodEmbeddingCache?  @relation(fields: [embeddingId], references: [id])
+  embeddingId        Int?
+  foodEmbeddingCache foodEmbeddingCache? @relation(fields: [embeddingId], references: [id])
+  FoodItem           FoodItem?           @relation(fields: [foodItemId], references: [id])
+  Message            Message?            @relation(fields: [messageId], references: [id], onUpdate: NoAction)
+  Serving            Serving?            @relation(fields: [servingId], references: [id])
+  User               User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Session {
@@ -172,70 +127,53 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
-enum MessageDirection {
-  Inbound
-  Outbound
-}
-
-enum FoodInfoSource {
-  User
-  Online
-  GPT3
-  GPT4
-  LLAMA
-  LLAMA2
-  USDA
-  FATSECRET
-  NUTRITIONIX
-}
-
 model FoodItem {
-  id                       Int                          @id @default(autoincrement())
-  name                     String                       @default("")
+  id                       Int                    @id @default(autoincrement())
+  name                     String                 @default("")
   brand                    String?
-  knownAs                  String[]                     @default([])
+  knownAs                  String[]               @default([])
   description              String?
   defaultServingWeightGram Float?
-  defaultServingLiquidMl   Float?
-  isLiquid                 Boolean                      @default(false)
-  weightUnknown            Boolean                      @default(false)
-  kcalPerServing           Float                        @default(0)
-  totalFatPerServing       Float                        @default(0)
+  kcalPerServing           Float                  @default(0)
+  totalFatPerServing       Float                  @default(0)
   satFatPerServing         Float?
   transFatPerServing       Float?
-  carbPerServing           Float                        @default(0)
-  fiberPerServing          Float?
+  carbPerServing           Float                  @default(0)
   sugarPerServing          Float?
   addedSugarPerServing     Float?
-  proteinPerServing        Float                        @default(0)
-  lastUpdated              DateTime                     @default(now())
-  verified                 Boolean                      @default(false)
-  externalId               String?
-  UPC                      BigInt?
-  Servings                 Serving[]
-  Nutrients                Nutrient[]
+  proteinPerServing        Float                  @default(0)
+  lastUpdated              DateTime               @default(now())
+  verified                 Boolean                @default(false)
   userId                   String?
-  User                     User?                        @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  LoggedFoodItems          LoggedFoodItem[]
-  FoodImage                FoodImage[]
-  foodInfoSource           FoodInfoSource               @default(User) //where the foodinfo comes from
   messageId                Int?
-  Message                  Message?                     @relation(fields: [messageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  adaEmbedding             Unsupported("vector(1536)")?
-  bgeBaseEmbedding         Unsupported("vector(768)")?
+  foodInfoSource           FoodInfoSource         @default(User)
+  adaEmbedding             Unsupported("vector")?
+  UPC                      BigInt?
+  defaultServingLiquidMl   Float?
+  externalId               String?
+  fiberPerServing          Float?
+  isLiquid                 Boolean                @default(false)
+  weightUnknown            Boolean                @default(false)
+  bgeBaseEmbedding         Unsupported("vector")?
+  FoodImage                FoodImage[]
+  Message                  Message?               @relation(fields: [messageId], references: [id], onUpdate: NoAction)
+  User                     User?                  @relation(fields: [userId], references: [id], onUpdate: NoAction)
+  LoggedFoodItems          LoggedFoodItem[]
+  Nutrients                Nutrient[]
+  Servings                 Serving[]
+
   @@unique([name, brand], name: "name_brand")
   @@unique([externalId, foodInfoSource])
 }
@@ -243,12 +181,12 @@ model FoodItem {
 model Serving {
   id                     Int              @id @default(autoincrement())
   servingWeightGram      Float?
-  servingAlternateAmount Float?
-  servingAlternateUnit   String?
   servingName            String
   foodItemId             Int
-  FoodItem               FoodItem         @relation(fields: [foodItemId], references: [id])
+  servingAlternateAmount Float?
+  servingAlternateUnit   String?
   LoggedFoodItems        LoggedFoodItem[]
+  FoodItem               FoodItem         @relation(fields: [foodItemId], references: [id])
 }
 
 model Nutrient {
@@ -285,21 +223,66 @@ model ApiTokens {
 }
 
 model UsdaFoodItemEmbedding {
-  id                Int                          @id @default(autoincrement())
-  fdcId             Int                          @unique
+  id                Int                    @id @default(autoincrement())
+  fdcId             Int                    @unique
   foodName          String
   foodBrand         String?
   brandOwner        String?
-  bgeLargeEmbedding Unsupported("vector(1024)")?
-  bgeBaseEmbedding Unsupported("vector(768)")?
+  bgeLargeEmbedding Unsupported("vector")?
+  bgeBaseEmbedding  Unsupported("vector")?
+
   @@index([bgeBaseEmbedding])
 }
 
-
 model foodEmbeddingCache {
-  id               Int               @id @default(autoincrement())
-  textToEmbed      String            @unique  // Unique constraint added
-  adaEmbedding     Unsupported("vector(1536)")?
-  bgeBaseEmbedding Unsupported("vector(768)")?
-  LoggedFoodItems  LoggedFoodItem[]  // One-to-many relation represented as an array
+  id               Int                    @id @default(autoincrement())
+  textToEmbed      String                 @unique
+  adaEmbedding     Unsupported("vector")?
+  bgeBaseEmbedding Unsupported("vector")?
+  LoggedFoodItems  LoggedFoodItem[]
+}
+
+enum MessageStatus {
+  RECEIVED
+  PROCESSING
+  RESOLVED
+  FAILED
+}
+
+enum MessageType {
+  CONVERSATION
+  ASSISTANT
+  FOOD_LOG_REQUEST
+  SHOW_FOOD_LOG
+  LOG_EXERCISE
+  UPDATE_USER_INFO
+}
+
+enum UnitPreference {
+  IMPERIAL
+  METRIC
+}
+
+enum Role {
+  Assistant
+  User
+  System
+  Function
+}
+
+enum MessageDirection {
+  Inbound
+  Outbound
+}
+
+enum FoodInfoSource {
+  User
+  Online
+  GPT3
+  GPT4
+  LLAMA
+  LLAMA2
+  USDA
+  FATSECRET
+  NUTRITIONIX
 }
