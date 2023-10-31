@@ -1,14 +1,6 @@
 // Database related imports
-import {
-  GetMessageById,
-  GetMessagesForUser
-} from "@/database/GetMessagesForUser";
-import UpdateMessage from "@/database/UpdateMessage";
-
-// Twilio related imports
-import {
-  GetSystemStartPrompt
-} from "@/twilio/SystemPrompt";
+import { GetMessageById, GetMessagesForUser } from "@/database/GetMessagesForUser"
+import UpdateMessage from "@/database/UpdateMessage"
 
 // Utility and function schemas
 import {
@@ -16,49 +8,44 @@ import {
   logFoodSchema,
   showDailyFoodSummarySchema,
   updateUserInfoSchema
-} from "@/utils/openaiFunctionSchemas";
-import { FoodItemToLog } from "@/utils/loggedFoodItemInterface";
-
-// Prisma client related imports
-import { Message, MessageStatus, MessageType, Role, User } from "@prisma/client";
+} from "@/utils/openaiFunctionSchemas"
+import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 // OpenAI related imports
-import OpenAI from "openai";
-import { ChatCompletionRole } from "openai/resources/chat";
+import OpenAI from "openai"
+import { ChatCompletionRole } from "openai/resources/chat"
 
 // Custom functions and helpers
-import { ProcessFunctionCalls } from "./ProcessFunctionCalls";
-import { getOpenAICompletion } from "./utils/openAiHelper";
-import { logFoodItemFunctionStream } from "./customFunctions/logFoodItemStreamFunction";
-import { logFoodItemStreamInstruct } from "./customFunctions/logFoodItemStreamInstruct";
-
-
+import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
+import { getOpenAICompletion } from "./utils/openAiHelper"
+import { logFoodItemFunctionStream } from "./customFunctions/logFoodItemStreamFunction"
+import { logFoodItemStreamInstruct } from "./customFunctions/logFoodItemStreamInstruct"
+import { Enums, Tables } from "types/supabase"
+import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 
 const ROLE_MAPPING = {
-  [Role.User]: 'user' as ChatCompletionRole,
-  [Role.System]: 'system' as ChatCompletionRole,
-  [Role.Assistant]: 'assistant' as ChatCompletionRole,
-  [Role.Function]: 'function' as ChatCompletionRole
-};
+  User: "user" as ChatCompletionRole,
+  System: "system" as ChatCompletionRole,
+  Assistant: "assistant" as ChatCompletionRole,
+  Function: "function" as ChatCompletionRole
+}
 type ResponseForUser = {
   resultMessage: string
   responseToFunctionName?: string
 }
 
 // Define a mapping from function_call name to MessageType enum
-const functionToMessageTypeMap: { [key: string]: MessageType } = {
-  log_food_items: MessageType.FOOD_LOG_REQUEST,
-  show_daily_food: MessageType.SHOW_FOOD_LOG,
-  log_exercise: MessageType.LOG_EXERCISE,
-  update_user_info: MessageType.UPDATE_USER_INFO
+const functionToMessageTypeMap: { [key: string]: Enums<"MessageType"> } = {
+  log_food_items: "FOOD_LOG_REQUEST",
+  show_daily_food: "SHOW_FOOD_LOG",
+  log_exercise: "LOG_EXERCISE",
+  update_user_info: "UPDATE_USER_INFO"
 }
 
 /*
 Loads the messages for the user and gets a new response from OpenAI
 */
-export async function GenerateResponseForUser(
-  user: User
-): Promise<ResponseForUser> {
+export async function GenerateResponseForUser(user: Tables<"User">): Promise<ResponseForUser> {
   // Get messages
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
@@ -74,9 +61,9 @@ export async function GenerateResponseForUser(
   const lastUserMessage = messagesForUser
     .slice()
     .reverse()
-    .find((message) => message.role === "User") as Message
+    .find((message) => message.role === "User") as Tables<"Message">
 
-  UpdateMessage({ id: lastUserMessage.id, status: MessageStatus.PROCESSING })
+  UpdateMessage({ id: lastUserMessage.id, status: "PROCESSING" })
 
   let prevMessage: OpenAI.Chat.CreateChatCompletionRequestMessage | undefined = undefined
   const tempProcessedMessage: OpenAI.Chat.CreateChatCompletionRequestMessage = {
@@ -91,20 +78,13 @@ export async function GenerateResponseForUser(
     if (message.function_name) msg.name = message.function_name
 
     // Check if the message ID matches and the user's first name is not known or is an empty string
-    if (
-      message.id === lastUserMessage.id &&
-      (!user.firstName || user.firstName.trim() === "")
-    ) {
-      msg.content +=
-        "\nIf you don't know my name as for it. Be sure to call update_user_info whenever I tell you my name."
-    }
+    // if (message.id === lastUserMessage.id && (!user.firstName || user.firstName.trim() === "")) {
+    //   msg.content +=
+    //     "\nIf you don't know my name as for it. Be sure to call update_user_info whenever I tell you my name."
+    // }
 
     // We don't want to send two user messages in a row, so we add a temp message in between that says the previous message was processed.
-    if (
-      prevMessage &&
-      prevMessage.role === ROLE_MAPPING.User &&
-      msg.role === ROLE_MAPPING.User
-    ) {
+    if (prevMessage && prevMessage.role === ROLE_MAPPING.User && msg.role === ROLE_MAPPING.User) {
       messages.push(tempProcessedMessage)
     }
     messages.push(msg)
@@ -151,24 +131,17 @@ export async function GenerateResponseForUser(
 
   const maxRetries = 1 // You can adjust this value as needed.
 
-  const completion = await getOpenAICompletion(
-    gptRequest,
-    user,
-    maxRetries,
-    "gpt-4-0613",
-    0.1
-  )
+  const completion = await getOpenAICompletion(gptRequest, user, maxRetries, "gpt-4-0613", 0.1)
 
   // Check if there was a successful completion
   if (!completion) {
     UpdateMessage({
       id: lastUserMessage.id,
-      status: MessageStatus.FAILED,
+      status: "FAILED",
       resolvedAt: new Date()
     })
     return {
-      resultMessage:
-        "Sorry, We're having problems right now. Please try again later."
+      resultMessage: "Sorry, We're having problems right now. Please try again later."
     }
   }
 
@@ -185,21 +158,15 @@ export async function GenerateResponseForUser(
       const messageType = functionToMessageTypeMap[functionCall.name]
       UpdateMessage({ id: lastUserMessage.id, messageType: messageType })
 
-      messageForUser = await ProcessFunctionCalls(
-        user,
-        functionCall,
-        lastUserMessage.id
-      )
+      messageForUser = await ProcessFunctionCalls(user, functionCall, lastUserMessage.id)
       responseToFunction = functionCall.name
 
       // We should call just return a message
     } else {
-      messageForUser =
-        completion?.data.choices[0].message?.content ||
-        "Sorry, I don't understand. Can you try again?"
+      messageForUser = completion?.data.choices[0].message?.content || "Sorry, I don't understand. Can you try again?"
       UpdateMessage({
         id: lastUserMessage.id,
-        status: MessageStatus.RESOLVED,
+        status: "RESOLVED",
         resolvedAt: new Date()
       })
     }
@@ -209,7 +176,7 @@ export async function GenerateResponseForUser(
     console.log("Data is not available")
     UpdateMessage({
       id: lastUserMessage.id,
-      status: MessageStatus.FAILED,
+      status: "FAILED",
       resolvedAt: new Date()
     })
     return {
@@ -228,52 +195,55 @@ function handleQuickLogError(inputMessageId: number, logMessage: string) {
   console.log(logMessage)
   UpdateMessage({
     id: inputMessageId,
-    status: MessageStatus.FAILED,
+    status: "FAILED",
     resolvedAt: new Date()
   })
 }
 
 // Utility function to generate a response for the user when they send a quick log food request
-export async function GenerateResponseForQuickLog(user: User, inputMessageId: number): Promise<ResponseForUser> {
-  const loadedMessage = await GetMessageById(inputMessageId);
+export async function GenerateResponseForQuickLog(
+  user: Tables<"User">,
+  inputMessageId: number
+): Promise<ResponseForUser> {
+  const loadedMessage = await GetMessageById(inputMessageId)
   if (!loadedMessage) {
-    handleQuickLogError(inputMessageId, "Message is not available. Could not find the message.");
+    handleQuickLogError(inputMessageId, "Message is not available. Could not find the message.")
     return {
       resultMessage: "Sorry, we're having problems right now. Please try again later."
-    };
+    }
   }
 
-  let foodItemsToLog: FoodItemToLog[] = [];
+  let foodItemsToLog: FoodItemToLog[] = []
 
   try {
     // Try using the instruct model first
-    foodItemsToLog = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId);
+    foodItemsToLog = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId)
   } catch (error) {
-    console.log("Error using instruct model:", error);
+    console.log("Error using instruct model:", error)
 
     // If an error occurs, fallback to the function stream method
-    foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId);
+    foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
   }
 
   // Check if we have received any valid food items to log
   if (foodItemsToLog.length === 0) {
     return {
       resultMessage: "Sorry, I couldn't understand the food items you mentioned. Please try again."
-    };
+    }
   }
 
   // Process the returned food items to generate a response message for the user
-  const loggedFoodItems = foodItemsToLog.map(item => item.food_database_search_name).join(", ");
-  const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`;
+  const loggedFoodItems = foodItemsToLog.map((item) => item.food_database_search_name).join(", ")
+  const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`
 
   // Update the message status as RESOLVED
   UpdateMessage({
     id: inputMessageId,
-    status: MessageStatus.RESOLVED,
+    status: "RESOLVED",
     resolvedAt: new Date()
-  });
+  })
 
   return {
     resultMessage: messageForUser
-  };
+  }
 }

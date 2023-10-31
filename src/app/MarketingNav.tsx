@@ -5,8 +5,9 @@ import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { UserResponse } from "@supabase/supabase-js"
 import classNames from "classnames"
+import { e } from "mathjs"
 import { useEffect, useState } from "react"
-import { Database } from "types/supabase"
+import { Database } from "types/supabase-generated.types"
 
 const navigation = [
   { name: "Amino", href: "/" },
@@ -21,13 +22,15 @@ export default function MarketingNav() {
 
   const supabase = createClientComponentClient<Database>()
 
-  supabase.auth.getUser
-
   useEffect(() => {
     const loadUser = async () => {
-      const user = await supabase.auth.getUser()
-      setLoadedUser(user)
-      console.log(user)
+      const user = await supabase.auth.getUser().catch((e) => {
+        console.log("Error loading user in marketing nav", e)
+      })
+      if (user) {
+        setLoadedUser(user)
+        console.log(user)
+      }
     }
 
     loadUser()

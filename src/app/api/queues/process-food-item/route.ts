@@ -2,10 +2,13 @@
 export const maxDuration = 300
 
 import { HandleLogFoodItem } from "@/database/OpenAiFunctions/HandleLogFoodItems"
-import { prisma } from "@/database/prisma"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 import { Queue } from "quirrel/next-app"
+
+import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
+import { createClient } from "@supabase/supabase-js"
+import { Database } from "types/supabase-generated.types"
 
 export const processFoodItemQueue = Queue(
   "api/queues/process-food-item", // 👈 the route it's reachable on
@@ -18,14 +21,24 @@ export const processFoodItemQueue = Queue(
       throw new Error("Invalid loggedFoodId")
     }
 
-    const loggedFoodItem = await prisma.loggedFoodItem.findUnique({
-      where: {
-        id: loggedFoodId
-      },
-      include: {
-        User: true
+    const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
     })
+
+    const { error, data: loggedFoodItem } = await supabase
+      .from("LoggedFoodItem")
+      .select("*, User(*)")
+      .eq("id", loggedFoodId)
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    console.log("api/queues/process-food-item", loggedFoodItem)
 
     if (!loggedFoodItem) {
       throw new Error("No Logged Food with that ID")
@@ -33,6 +46,9 @@ export const processFoodItemQueue = Queue(
 
     if (loggedFoodItem.status !== "Needs Processing") {
       throw new Error("Food does not need processing.")
+    }
+    if (!loggedFoodItem.User) {
+      throw new Error("No user for food item")
     }
 
     const openAiData = loggedFoodItem?.extendedOpenAiData?.valueOf() as any

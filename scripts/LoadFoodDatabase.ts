@@ -7,7 +7,6 @@ import fs from "fs";
 
 import { program } from "commander";
 import csvParser from "csv-parser";
-import { prisma } from "../src/database/prisma";
 
 program
   .name("OtterDoc CLI")

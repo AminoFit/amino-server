@@ -32,7 +32,7 @@ export function FoodTable() {
     queryKey: ["foodData", formattedDate],
     queryFn: () => axios.get("/api/user/get-foods-on-date/" + formattedDate).then((res) => res.data),
     refetchIntervalInBackground: true,
-    refetchInterval: 1000 * 15
+    refetchInterval: 1000 * 60 // 1 minute
   })
 
   const groups = _.chain(foods || [])
@@ -279,13 +279,13 @@ function FoodRow({ foodItem }: { foodItem: LoggedFoodItemWithFoodItem }) {
         }}
       />
   
-      <EditFoodModal
+      {/* <EditFoodModal
         isOpen={foodEditModalOpen}
         onRequestClose={() => {
           setFoodEditModalOpen(false)
         }}
         food={foodItem}
-      />
+      /> */}
   
       {/* The main container div that listens to hover events */}
       <div 

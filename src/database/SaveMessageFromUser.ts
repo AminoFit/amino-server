@@ -1,21 +1,22 @@
-import { User, Role, MessageType } from "@prisma/client";
-import { prisma } from "./prisma";
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { Enums, Tables } from "types/supabase"
 
 export default async function SaveMessageFromUser(
-  user: User,
+  user: Tables<"User">,
   content: string,
-  role: Role,
+  role: Enums<"Role">,
   functionName?: string,
-  messageType?: MessageType
+  messageType?: Enums<"MessageType">
 ) {
-  const newMessage = await prisma.message.create({
-    data: {
-      userId: user.id,
-      content,
-      role,
-      function_name: functionName,
-      messageType,
-    },
-  });
-  return newMessage;
+  const supabase = createAdminSupabase()
+
+  const { data: newMessage, error } = await supabase
+    .from("Message")
+    .insert({ userId: user.id, content, role, function_name: functionName, messageType })
+    .select()
+    .single()
+
+  if (error || !newMessage) throw error
+
+  return newMessage
 }

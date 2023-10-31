@@ -1,41 +1,15 @@
 "use server"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { prisma } from "@/database/prisma"
-import { getServerSession } from "next-auth"
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
 export async function deleteSavedFood(loggedFoodItemId: number) {
-  const session = await getServerSession(authOptions)
+  const supabase = createServerActionClient({ cookies })
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
-  if (!session?.user?.email) {
-    return
+  if (!user) {
+    return new Response("User not found", { status: 404 })
   }
-
-  let aminoUser = await prisma.user.findUnique({
-    where: {
-      email: session?.user.email
-    }
-  })
-
-  console.log("Deleting food item")
-  if (session && aminoUser) {
-    let food = await prisma.loggedFoodItem.findUnique({
-      where: {
-        id: loggedFoodItemId
-      }
-    })
-    if (!food) {
-      console.error("Food not found")
-      return
-    }
-
-    if (food.userId === aminoUser.id) {
-      await prisma.loggedFoodItem.delete({
-        where: {
-          id: loggedFoodItemId
-        }
-      })
-    }
-
-    return
-  }
+  const { error } = await supabase.from("loggedFoodItem").delete().eq("id", loggedFoodItemId).eq("userId", user.id)
 }

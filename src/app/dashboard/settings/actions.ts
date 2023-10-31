@@ -1,26 +1,7 @@
 "use server"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { prisma } from "@/database/prisma"
-import { getServerSession } from "next-auth"
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
-export async function getUser() {
-  const session = await getServerSession(authOptions)
-  if (session?.user?.email) {
-    const aminoUser = await prisma.user.upsert({
-      where: {
-        email: session.user.email
-      },
-      update: {},
-      create: {
-        email: session.user.email,
-        firstName: session.user.name
-      }
-    })
-
-    return aminoUser
-  }
-  return
-}
 
 export type UserSettingsProps = {
   tzIdentifier?: string
@@ -32,20 +13,15 @@ export type UserSettingsProps = {
 }
 
 export async function updateUserSettings(updatedSettings: UserSettingsProps) {
-  const session = await getServerSession(authOptions)
+  const supabase = createServerActionClient({ cookies })
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
-  if (session?.user?.email) {
-    let user = await prisma.user.update({
-      where: {
-        email: session.user.email
-      },
-      data: {
-        ...updatedSettings
-      }
-    })
-    return user
+  if (!user) {
+    return new Response("User not found", { status: 404 })
   }
-  return
+  const { error } = await supabase.from("User").update({ updatedSettings }).eq("id", user.id)
 }
 
 type UnitPreference = "IMPERIAL" | "METRIC"
@@ -55,18 +31,13 @@ export type UserPreferencesProps = {
 }
 
 export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
-  const session = await getServerSession(authOptions)
+  const supabase = createServerActionClient({ cookies })
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
-  if (session?.user?.email) {
-    let user = await prisma.user.update({
-      where: {
-        email: session.user.email
-      },
-      data: {
-        ...updatedSettings
-      }
-    })
-    return user
+  if (!user) {
+    return new Response("User not found", { status: 404 })
   }
-  return
+  const { error } = await supabase.from("User").update({ updatedSettings }).eq("id", user.id)
 }

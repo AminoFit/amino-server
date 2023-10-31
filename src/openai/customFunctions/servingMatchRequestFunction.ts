@@ -1,10 +1,10 @@
-import { prisma } from "../../database/prisma"
 import { chatCompletion, correctAndParseResponse } from "./chatCompletion"
-import { User } from "@prisma/client"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
 import * as math from "mathjs"
 import { extractServingAmount } from "@/utils/openaiFunctionSchemas"
+import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 interface ServingMatchRequest {
   item_name: string
@@ -145,7 +145,7 @@ function customStringify(obj: any) {
 export async function findBestServingMatchFunction(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemToLog> {
   const matchRequest: ServingMatchRequest = {
     item_name: food_item.name,
@@ -156,7 +156,7 @@ export async function findBestServingMatchFunction(
       default_serving_size_grams: food_item.defaultServingWeightGram,
       default_serving_size_ml: food_item.defaultServingLiquidMl,
       default_serving_calories: food_item.kcalPerServing,
-      servings: food_item.Servings.map((serving) => {
+      servings: food_item.Servings.map((serving: any) => {
         let servingSize = {
           serving_weight_grams: serving.servingWeightGram
         }
@@ -314,14 +314,11 @@ async function testServingMatchRequest() {
     ],
     Nutrients: [] // No nutrient data provided in the example so initializing an empty array
   }
-  const user: User = {
+  const user: Tables<"User"> = {
     id: "clklnwf090000lzssqhgfm8kr",
-    firstName: "Sebastian",
-    lastName: "",
+    fullName: "Sebastian",
     email: "seb.grubb@gmail.com",
-    emailVerified: new Date("2023-10-09 22:45:35.771"),
     phone: "+16503079963",
-    dateOfBirth: new Date("1992-05-06 04:00:00"),
     weightKg: 75,
     heightCm: 175,
     calorieGoal: 2440,
@@ -333,7 +330,10 @@ async function testServingMatchRequest() {
     setupCompleted: false,
     sentContact: true,
     sendCheckins: false,
-    tzIdentifier: "America/New_York"
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    dateOfBirth: null,
+    emailVerified: null
   }
   const food_item_to_log: FoodItemToLog = {
     timeEaten: "2023-10-16T12:00:00Z",
@@ -405,13 +405,11 @@ async function testServingMatchRequest() {
     food_database_search_name: "Metamucil Fiber Gummies",
     full_item_user_message_including_serving: "9 Metamucil Fiber Gummies"
   }
-  const gummiesFood = (await prisma.foodItem.findUnique({
-    where: { id: 80 },
-    include: {
-      Nutrients: true,
-      Servings: true
-    }
-  })) as FoodItemWithNutrientsAndServing
+
+  const supabase = createAdminSupabase()
+
+  const { data } = await supabase.from("Message").select("*, Nutrients(*), Servings(*)").eq("id", 80).single()
+  const gummiesFood = data as FoodItemWithNutrientsAndServing
   // Testing Orange Juice
   // const oj_result = await findBestServingMatchInstruct(orangeJuiceLog, orangeJuice, user);
   // console.log(oj_result);

@@ -1,11 +1,11 @@
-import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
-import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
 import OpenAI from "openai"
-import { User, FoodInfoSource } from "@prisma/client"
-import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
+import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
+import { Tables } from "types/supabase"
 
-const matchFoodItemsToDatabaseFunctionDescription = "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match."
+const matchFoodItemsToDatabaseFunctionDescription =
+  "This function attempts to match user_request to a database entry. For user_request_to_closest_food_similarity_0_to_1 0 is a bad match, 0.5 is a similar match with issues like brand and 1 is a perfect match."
 
 const matchFoodItemsToDatabaseFunctionSchema = {
   type: "object",
@@ -55,7 +55,7 @@ function convertToMatchRequest(
 }
 
 export async function findBestFoodMatchExternalDb(
-  user: User,
+  user: Tables<"User">,
   user_request: FoodItemToLog,
   database_options: foodSearchResultsWithSimilarityAndEmbedding[]
 ): Promise<foodSearchResultsWithSimilarityAndEmbedding | null> {
@@ -65,10 +65,13 @@ export async function findBestFoodMatchExternalDb(
   let model = "gpt-3.5-turbo-instruct-0914"
   let max_tokens = 250
   let temperature = 0
-  let prompt = `Match user_request to the best food_id in the below. If no good matches output 0.:\nMATCH_REQUEST_HERE\nOnly give me an answer in this form:
+  let prompt =
+    `Match user_request to the best food_id in the below. If no good matches output 0.:\nMATCH_REQUEST_HERE\nOnly give me an answer in this form:
 { closest_food_id: int,
 good_match_found: bool,
-user_request_to_closest_food_similarity_0_to_1: number}`.trim().replace("MATCH_REQUEST_HERE", JSON.stringify(matchRequest))
+user_request_to_closest_food_similarity_0_to_1: number}`
+      .trim()
+      .replace("MATCH_REQUEST_HERE", JSON.stringify(matchRequest))
 
   try {
     let result = await chatCompletionInstruct(
@@ -99,7 +102,7 @@ user_request_to_closest_food_similarity_0_to_1: number}`.trim().replace("MATCH_R
           functions: [
             {
               name: "match_user_request_to_database",
-              description:matchFoodItemsToDatabaseFunctionDescription,
+              description: matchFoodItemsToDatabaseFunctionDescription,
               parameters: matchFoodItemsToDatabaseFunctionSchema
             }
           ],
@@ -145,68 +148,65 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.8752489067563187,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Platinum Whey",
       foodBrand: "Optimum Nutrition"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.8563104753793219,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Hydro Whey Protein Powder Drink Mix, Velocity Vanilla",
       foodBrand: "ON Optimum Nutrition"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.8545991597715571,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Platinum Hydro Whey Protein Powder Drink Mix",
       foodBrand: "Optimum Nutrition"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.7808359526591413,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Gold Standard Protein Shake, Gold Standard",
       foodBrand: "Optimum Nutrition"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.7693964701531227,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Natural Protein Shake",
       foodBrand: "Designer Whey"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.7658497095108032,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Gold Standard Protein Shake, Vanilla, Vanilla",
       foodBrand: "Optimum Nutrition"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.7636003494262695,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Protein Shake",
       foodBrand: "Designer Protein"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.7629784345626831,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "High Protein Shake",
       foodBrand: "Premier Protein"
     }
   ]
-  const user: User = {
+  const user: Tables<"User"> = {
     id: "clmzqmr2a0000la08ynm5rjju",
-    firstName: "John",
-    lastName: "Doe",
+    fullName: "John",
     email: "john.doe@example.com",
-    emailVerified: new Date("2022-08-09T12:00:00"),
     phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00"),
     weightKg: 70.5,
     heightCm: 180,
     calorieGoal: 2000,
@@ -218,7 +218,10 @@ async function testFindBestFoodMatch() {
     setupCompleted: false,
     sentContact: false,
     sendCheckins: false,
-    tzIdentifier: "America/New_York"
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    dateOfBirth: null,
+    emailVerified: null
   }
   const food_item_to_log_1: FoodItemToLog = {
     full_item_user_message_including_serving: "1 can of Pop",
@@ -232,35 +235,35 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.5,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Fizzy Soda",
       foodBrand: "Coca-Cola"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.85,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Carbonated Beverage",
       foodBrand: "Pepsi"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.8,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Cola Soft Drink",
       foodBrand: "Dr Pepper"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.78,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Sugary Liquid Refreshment",
       foodBrand: "Sprite"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.72,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Sparkling Drink",
       foodBrand: "7UP"
     }
@@ -277,42 +280,42 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.9,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Chicken Burger Patty",
       foodBrand: "Real Meat Co."
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.88,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Vegetable Patty",
       foodBrand: "Veggie Delight"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.82,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Plant-Based Burger",
       foodBrand: "Beyond Delicious"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.81,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Beef Alternative Patty",
       foodBrand: "Impossible Foods"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.79,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Vegan Burger",
       foodBrand: "Healthy Choices"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.82,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Plant-Based Burger",
       foodBrand: "Beyond Meat"
     }
@@ -329,35 +332,35 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.88,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Strawberry Yogurt",
       foodBrand: "Dairy King"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.86,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Blueberry Yogurt",
       foodBrand: "Fresh Dairy Co."
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.84,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Mixed Berry Yogurt",
       foodBrand: "MooMoo Farms"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.82,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Raspberry-Flavored Yogurt",
       foodBrand: "Yum Dairy"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.79,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Cherry Yogurt",
       foodBrand: "Dairy Fresh"
     }
@@ -374,21 +377,21 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.5,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Mango",
       foodBrand: "Tropical Fruits Inc."
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.4,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Pineapple",
       foodBrand: "Island Fruits Ltd."
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.3,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Dragonfruit",
       foodBrand: "Tropical Fruits Co."
     }
@@ -405,28 +408,28 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.5,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Green Tea",
       foodBrand: "Leafy Brands"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.45,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Kombucha Classic",
       foodBrand: "Ferment Delights"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.45,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Kombucha Pineapple",
       foodBrand: "Wild West Bootles"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.4,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Lemon Iced Tea",
       foodBrand: "Thirst Quenchers"
     },
@@ -434,7 +437,7 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.4,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Ginger Kombucha",
       foodBrand: "Artisan Brews"
     }
@@ -451,21 +454,21 @@ async function testFindBestFoodMatch() {
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.6,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Chocolate Cake",
       foodBrand: "Cocoa Delights"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.55,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Vanilla Lava Cake",
       foodBrand: "Sweet Indulgences"
     },
     {
       foodBgeBaseEmbedding: [],
       similarityToQuery: 0.5,
-      foodSource: FoodInfoSource.USDA,
+      foodSource: "USDA",
       foodName: "Caramel Cake",
       foodBrand: "Golden Desserts"
     }

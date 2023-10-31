@@ -1,8 +1,6 @@
-import { prisma } from "../../database/prisma"
 import { HfInference } from "@huggingface/inference"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { getAdaEmbedding } from "../../openai/utils/embeddingsHelper"
-import { raw } from "@prisma/client/runtime/library"
 import { format } from "@scaleleap/pg-format"
 
 const hf = new HfInference(process.env.HF_API_KEY)

@@ -1,10 +1,8 @@
-import { prisma } from "../../database/prisma"
 import { chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
-import { User } from "@prisma/client"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
 import * as math from "mathjs"
-import { Serving } from "@prisma/client"
+import { Tables } from "types/supabase"
 
 interface ServingMatchRequest {
   item_name: string
@@ -78,43 +76,42 @@ function mapServingMatchRequest(request: ServingMatchRequest) {
   const uniqueServings: Record<string, any> = {}
 
   for (let serving of request.item_properties.servings) {
-      if (!serving.serving_weight_grams) continue
-  
-      let normalizedWeight = serving.serving_weight_grams;
-      let shouldNormalize = serving.serving_alternate_amount && serving.serving_alternate_amount !== 1;
-  
-      // Check if the serving's alternate amount is equal to its weight in grams, indicating the unit is grams
-      if (serving.serving_weight_grams === serving.serving_alternate_amount) {
-          shouldNormalize = false;
+    if (!serving.serving_weight_grams) continue
+
+    let normalizedWeight = serving.serving_weight_grams
+    let shouldNormalize = serving.serving_alternate_amount && serving.serving_alternate_amount !== 1
+
+    // Check if the serving's alternate amount is equal to its weight in grams, indicating the unit is grams
+    if (serving.serving_weight_grams === serving.serving_alternate_amount) {
+      shouldNormalize = false
+    }
+
+    if (shouldNormalize) {
+      normalizedWeight = serving.serving_weight_grams / serving.serving_alternate_amount!
+    }
+
+    normalizedWeight = parseFloat(normalizedWeight.toFixed(3))
+
+    if (hasDefaultServing(normalizedWeight)) {
+      hasDefault = true
+    }
+
+    const key = shouldNormalize
+      ? `${normalizedWeight}_${serving.serving_alternate_unit || "g"}`
+      : `${serving.serving_weight_grams}_${serving.serving_alternate_unit || "g"}`
+
+    if (!(key in uniqueServings)) {
+      uniqueServings[key] = {
+        ...serving,
+        serving_weight_grams: normalizedWeight,
+        serving_amount: shouldNormalize ? 1 : serving.serving_alternate_amount, // Retain original serving amount if not normalized
+        serving_unit: serving.serving_alternate_unit
       }
-  
-      if (shouldNormalize) {
-          normalizedWeight = serving.serving_weight_grams / serving.serving_alternate_amount!
-      }
-  
-      normalizedWeight = parseFloat(normalizedWeight.toFixed(3))
-  
-      if (hasDefaultServing(normalizedWeight)) {
-          hasDefault = true
-      }
-  
-      const key = shouldNormalize
-          ? `${normalizedWeight}_${serving.serving_alternate_unit || "g"}`
-          : `${serving.serving_weight_grams}_${serving.serving_alternate_unit || "g"}`;
-  
-      if (!(key in uniqueServings)) {
-          uniqueServings[key] = {
-              ...serving,
-              serving_weight_grams: normalizedWeight,
-              serving_amount: shouldNormalize ? 1 : serving.serving_alternate_amount,  // Retain original serving amount if not normalized
-              serving_unit: serving.serving_alternate_unit
-          }
-          delete uniqueServings[key].name
-          delete uniqueServings[key].serving_alternate_amount
-          delete uniqueServings[key].serving_alternate_unit
-      }
+      delete uniqueServings[key].name
+      delete uniqueServings[key].serving_alternate_amount
+      delete uniqueServings[key].serving_alternate_unit
+    }
   }
-  
 
   servings.push(...Object.values(uniqueServings))
 
@@ -156,7 +153,7 @@ function customStringify(obj: any) {
 export async function findBestServingMatchInstruct(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemToLog> {
   const matchRequest: ServingMatchRequest = {
     item_name: food_item.name,
@@ -167,7 +164,7 @@ export async function findBestServingMatchInstruct(
       default_serving_size_grams: food_item.defaultServingWeightGram,
       default_serving_size_ml: food_item.defaultServingLiquidMl,
       default_serving_calories: food_item.kcalPerServing,
-      servings: food_item.Servings.map((serving) => {
+      servings: food_item.Servings.map((serving: any) => {
         let servingSize = {
           serving_weight_grams: serving.servingWeightGram
         }
@@ -267,46 +264,46 @@ Output:
   return food_item_to_log
 }
 
-async function testServingMatchRequest() {
-  const user: User = {
-    id: "clklnwf090000lzssqhgfm8kr",
-    firstName: "Sebastian",
-    lastName: "",
-    email: "seb.grubb@gmail.com",
-    emailVerified: new Date("2023-10-09 22:45:35.771"),
-    phone: "+16503079963",
-    dateOfBirth: new Date("1992-05-06 04:00:00"),
-    weightKg: 75,
-    heightCm: 175,
-    calorieGoal: 2440,
-    proteinGoal: 200,
-    carbsGoal: 230,
-    fatGoal: 80,
-    fitnessGoal: "Lose weight",
-    unitPreference: "METRIC",
-    setupCompleted: false,
-    sentContact: true,
-    sendCheckins: false,
-    tzIdentifier: "America/New_York"
-  }
+// async function testServingMatchRequest() {
+//   const user: User = {
+//     id: "clklnwf090000lzssqhgfm8kr",
+//     firstName: "Sebastian",
+//     lastName: "",
+//     email: "seb.grubb@gmail.com",
+//     emailVerified: new Date("2023-10-09 22:45:35.771"),
+//     phone: "+16503079963",
+//     dateOfBirth: new Date("1992-05-06 04:00:00"),
+//     weightKg: 75,
+//     heightCm: 175,
+//     calorieGoal: 2440,
+//     proteinGoal: 200,
+//     carbsGoal: 230,
+//     fatGoal: 80,
+//     fitnessGoal: "Lose weight",
+//     unitPreference: "METRIC",
+//     setupCompleted: false,
+//     sentContact: true,
+//     sendCheckins: false,
+//     tzIdentifier: "America/New_York"
+//   }
 
-  const oikos_serving = {
-    brand: "Oikos",
-    branded: true,
-    food_database_search_name: "Peach Yogurt",
-    full_item_user_message_including_serving: "1 Oikos Peach Yogurt"
-  }
-  const oikos_food = (await prisma.foodItem.findUnique({
-    where: { id: 94 },
-    include: {
-      Nutrients: true,
-      Servings: true
-    }
-  })) as FoodItemWithNutrientsAndServing
-  console.dir(oikos_food, { depth: null })
+//   const oikos_serving = {
+//     brand: "Oikos",
+//     branded: true,
+//     food_database_search_name: "Peach Yogurt",
+//     full_item_user_message_including_serving: "1 Oikos Peach Yogurt"
+//   }
+//   const oikos_food = (await prisma.foodItem.findUnique({
+//     where: { id: 94 },
+//     include: {
+//       Nutrients: true,
+//       Servings: true
+//     }
+//   })) as FoodItemWithNutrientsAndServing
+//   console.dir(oikos_food, { depth: null })
 
-  const oikos_result = await findBestServingMatchInstruct(oikos_serving, oikos_food, user)
-  console.log(oikos_result)
-}
+//   const oikos_result = await findBestServingMatchInstruct(oikos_serving, oikos_food, user)
+//   console.log(oikos_result)
+// }
 
 //testServingMatchRequest()

@@ -1,11 +1,7 @@
-// Schema definition
-import { FoodInfoSource, FoodItem, LoggedFoodItem, Serving, User } from "@prisma/client"
-
 // FoodDbThirdPty
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
 import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 
 // OpenAI
@@ -32,8 +28,12 @@ import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodH
 
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
-import { prisma } from "../prisma"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/route"
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { Database } from "types/supabase-generated.types"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -86,37 +86,39 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
   }
 } */
 
-export async function HandleLogFoodItems(user: User, parameters: any, lastUserMessageId: number) {
+export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, lastUserMessageId: number) {
   console.log("parameters", parameters)
 
   const foodItemsToLog: FoodItemToLog[] = parameters.food_items
 
+  const supabase = await createAdminSupabase()
+
   // Increment itemsToProcess by foodItemsToLog.length
-  await prisma.message.update({
-    where: { id: lastUserMessageId },
-    data: {
-      itemsToProcess: {
-        increment: foodItemsToLog.length
-      }
-    }
-  })
+  await supabase.from("message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
 
   // Create all the pending food items
-  const foodsNeedProcessing = await prisma.$transaction(
-    foodItemsToLog.map((food) =>
-      prisma.loggedFoodItem.create({
-        data: {
+  let { data: foodsNeedProcessing, error } = await supabase
+    .from("LoggedFoodItem")
+    .insert(
+      foodItemsToLog.map((food) => {
+        return {
           userId: user.id,
-          consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+          consumedOn: food.timeEaten ? new Date(food.timeEaten).toDateString() : new Date().toDateString(),
           messageId: lastUserMessageId,
           status: "Needs Processing",
           extendedOpenAiData: food as any
         }
       })
     )
-  )
+    .select()
+
+  if (error) {
+    console.error("Foods need processing error", error)
+  }
 
   console.log("foodsNeedProcessing", foodsNeedProcessing)
+
+  foodsNeedProcessing = foodsNeedProcessing || []
 
   const results = []
   foodItemsToLog.forEach((food) => results.push(constructFoodRequestString(food)))
@@ -174,21 +176,30 @@ async function findBestMatch(
   cosineSearchResults: FoodItemIdAndEmbedding[],
   food: FoodItemToLog,
   userQueryVectorCache: FoodEmbeddingCache,
-  user: User,
+  user: Tables<"User">,
   messageId: number
 ): Promise<FoodItemWithNutrientsAndServing> {
   // Filter items above the COSINE_THRESHOLD
   const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 
+  const supabase = createAdminSupabase()
+
   if (bestMatches.length) {
     // Return the highest match instantly
-    const match = await prisma.foodItem.findUnique({
-      where: { id: bestMatches[0].id },
-      include: {
-        Nutrients: true,
-        Servings: true
-      }
-    })
+
+    const { data: match } = await supabase
+      .from("foodItem")
+      .select(`*, Nutrients(*), Servings(*)`)
+      .eq("id", bestMatches[0].id)
+      .single()
+
+    // const match = await prisma.foodItem.findUnique({
+    //   where: { id: bestMatches[0].id },
+    //   include: {
+    //     Nutrients: true,
+    //     Servings: true
+    //   }
+    // })
     if (match) return match as FoodItemWithNutrientsAndServing
     throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
   }
@@ -207,13 +218,11 @@ async function findBestMatch(
     const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
     if (localDbMatch) {
       // Return the highest match instantly
-      const match = await prisma.foodItem.findUnique({
-        where: { id: localDbMatch.id },
-        include: {
-          Nutrients: true,
-          Servings: true
-        }
-      })
+      const { data: match } = await supabase
+        .from("foodItem")
+        .select(`*, Nutrients(*), Servings(*)`)
+        .eq("id", localDbMatch.id)
+        .single()
       if (match) return match
       throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
     }
@@ -223,26 +232,41 @@ async function findBestMatch(
   return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
 }
 
-async function logFoodItem(loggedFoodItemId: number, data: any): Promise<LoggedFoodItem | null> {
-  return await prisma.loggedFoodItem.update({ where: { id: loggedFoodItemId }, data }).catch((err) => {
-    console.log("Error logging food item", err)
-    return null
-  })
+async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
+  const supabase = createAdminSupabase()
+
+  const { data: result, error } = await supabase.from("LoggedFoodItem").update(data).eq("id", loggedFoodItemId).single()
+
+  return result
 }
 
 export async function HandleLogFoodItem(
-  loggedFoodItem: LoggedFoodItem,
+  loggedFoodItem: Tables<"LoggedFoodItem">,
   food: FoodItemToLog,
   messageId: number,
-  user: User
+  user: Tables<"User">
 ): Promise<string> {
+  const supabase = createServerActionClient<Database>({ cookies })
+
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
-  const cosineSearchResults = (await prisma.$queryRaw`
-    SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
-    1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity 
-    FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
-  `) as FoodItemIdAndEmbedding[]
+  let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
+    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
+  })
+
+  if (!cosineSearchResults) cosineSearchResults = []
+
+  if (error) {
+    console.error(error)
+  } else console.log(cosineSearchResults)
+
+  console.log("result", cosineSearchResults)
+
+  // const cosineSearchResults = (await prisma.$queryRaw`
+  //   SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
+  //   1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity
+  //   FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
+  // `) as FoodItemIdAndEmbedding[]
 
   printSearchResults(cosineSearchResults)
 
@@ -283,19 +307,19 @@ async function addFoodItemPrisma(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],
   messageId: number,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemWithNutrientsAndServing> {
   // Check if a food item with the same name and brand already exists
-  const existingFoodItem = await prisma.foodItem.findFirst({
-    where: {
-      name: food.name,
-      brand: food.brand
-    },
-    include: {
-      Nutrients: true,
-      Servings: true
-    }
-  })
+
+  const supabase = createAdminSupabase()
+
+  const { data: existingFoodItem, error } = await supabase
+    .from("foodItem")
+    .select("*, Nutrients(*), Servings(*)")
+    .eq("name", food.name)
+    .eq("brand", food.brand)
+    .limit(1)
+    .single()
 
   // If it exists, return the existing food item ID
   if (existingFoodItem) {
@@ -323,15 +347,17 @@ async function addFoodItemPrisma(
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
 
-  const newFood = await prisma.foodItem.create({
-    data: {
+  // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
+  const { data: newFood } = await supabase
+    .from("foodItem")
+    .insert({
       ...foodWithoutId,
       messageId: messageId,
       //foodInfoSource: mapModelToEnum(model),
       // Check if nutrients exist before adding them
       ...(food.Nutrients && {
         Nutrients: {
-          create: food.Nutrients.map((nutrient) => ({
+          create: food.Nutrients.map((nutrient: any) => ({
             nutrientName: nutrient.nutrientName,
             nutrientUnit: nutrient.nutrientUnit,
             nutrientAmountPerDefaultServing: nutrient.nutrientAmountPerDefaultServing
@@ -340,7 +366,7 @@ async function addFoodItemPrisma(
       }),
       ...(food.Servings && {
         Servings: {
-          create: food.Servings.map((serving) => ({
+          create: food.Servings.map((serving: any) => ({
             servingWeightGram: serving.servingWeightGram,
             servingAlternateAmount: serving.servingAlternateAmount,
             servingAlternateUnit: serving.servingAlternateUnit,
@@ -348,19 +374,19 @@ async function addFoodItemPrisma(
           }))
         }
       })
-    },
-    include: {
-      Nutrients: true,
-      Servings: true
-    }
-  })
+    })
+    .select(`*, Nutrients(*), Servings(*)`)
+    .single()
 
   // Save the vector to the database
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
-  const result = await prisma.$executeRaw`UPDATE "FoodItem"
-    SET "bgeBaseEmbedding" = ${embeddingSql}::vector
-    WHERE id = ${newFood.id}`
+
+  await supabase.from("foodItem").update({ bgeBaseEmbedding: embeddingSql }).eq("id", newFood.id)
+
+  // const result = await prisma.$executeRaw`UPDATE "FoodItem"
+  //   SET "bgeBaseEmbedding" = ${embeddingSql}::vector
+  //   WHERE id = ${newFood.id}`
 
   return newFood
 }
@@ -368,7 +394,7 @@ async function addFoodItemPrisma(
 async function findAndAddItemInDatabase(
   foodToLog: FoodItemToLog,
   queryEmbeddingCache: FoodEmbeddingCache,
-  user: User,
+  user: Tables<"User">,
   messageId: number
 ): Promise<FoodItemWithNutrientsAndServing> {
   console.log("food", foodToLog)
@@ -408,24 +434,26 @@ async function findAndAddItemInDatabase(
     }
 
     const getUsdaFoodInfo = async () => {
-      const startTime = Date.now()
-      if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
-        try {
-          const usda_find_food_params = {
-            food_name: fullFoodName,
-            branded: foodToLog.branded || false,
-            brand_name: foodToLog.brand || undefined,
-            embedding_cache_id: queryEmbeddingCache.embedding_cache_id
-          }
-          //console.log("usda_find_food_params", usda_find_food_params)
-          const result = await searchUsdaByEmbedding(usda_find_food_params)
-          console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
-          return result
-        } catch (err) {
-          console.log("Error finding USDA food info", err) // Silently fail
-          return null
-        }
-      }
+      // SEB CHRIS : CHRIS disabled this for the moment. Need to fix query
+
+      // const startTime = Date.now()
+      // if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
+      //   try {
+      //     const usda_find_food_params = {
+      //       food_name: fullFoodName,
+      //       branded: foodToLog.branded || false,
+      //       brand_name: foodToLog.brand || undefined,
+      //       embedding_cache_id: queryEmbeddingCache.embedding_cache_id
+      //     }
+      //     //console.log("usda_find_food_params", usda_find_food_params)
+      //     const result = await searchUsdaByEmbedding(usda_find_food_params)
+      //     console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
+      //     return result
+      //   } catch (err) {
+      //     console.log("Error finding USDA food info", err) // Silently fail
+      //     return null
+      //   }
+      // }
       return null
     }
 
@@ -457,7 +485,7 @@ async function findAndAddItemInDatabase(
           {
             foodBgeBaseEmbedding: [],
             similarityToQuery: 0,
-            foodSource: FoodInfoSource.User,
+            // foodSource: FoodInfoSource.User,
             foodName: ""
           }
         ]
@@ -475,9 +503,9 @@ async function findAndAddItemInDatabase(
       foodInfoResponses.push(...nxFoodInfoResponse)
     }
 
-    if (usdaFoodInfoResponse != null) {
-      foodInfoResponses.push(...usdaFoodInfoResponse)
-    }
+    // if (usdaFoodInfoResponse != null) {
+    //   foodInfoResponses.push(...usdaFoodInfoResponse)
+    // }
 
     if (fatSecretInfoResponse != null) {
       foodInfoResponses.push(...fatSecretInfoResponse)
@@ -485,9 +513,9 @@ async function findAndAddItemInDatabase(
 
     // Check if the consolidated array is empty
     if (foodInfoResponses.length === 0) {
-      console.error("All food sources returned no results.");
+      console.error("All food sources returned no results.")
       // You can throw an error or return a default value here
-      throw new Error("No food information found.");
+      throw new Error("No food information found.")
     }
     // Find the item with the highest similarity score
     let highestSimilarityItem: foodSearchResultsWithSimilarityAndEmbedding | null = foodInfoResponses.reduce(
@@ -580,45 +608,45 @@ async function findAndAddItemInDatabase(
   }
 }
 
-async function testFoodSearch() {
-  const foodItem: FoodItemToLog = {
-    food_database_search_name: "Chocolate Peanut Butter Cereal",
-    full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
-    brand: "Catalina Crunch",
-    branded: true,
-    serving: {
-      serving_id: 1,
-      serving_amount: 1,
-      serving_name: "cup",
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  }
-  const queryEmbedding = await foodToLogEmbedding(foodItem)
-  const user: User = {
-    id: "clmzqmr2a0000la08ynm5rjju",
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    emailVerified: new Date("2022-08-09T12:00:00"),
-    phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00"),
-    weightKg: 70.5,
-    heightCm: 180,
-    calorieGoal: 2000,
-    proteinGoal: 100,
-    carbsGoal: 200,
-    fatGoal: 50,
-    fitnessGoal: "Maintain",
-    unitPreference: "IMPERIAL",
-    setupCompleted: false,
-    sentContact: false,
-    sendCheckins: false,
-    tzIdentifier: "America/New_York"
-  }
-  //console.dir(queryEmbedding, { depth: null })
-  let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
-  console.dir(result, { depth: null })
-}
+// async function testFoodSearch() {
+//   const foodItem: FoodItemToLog = {
+//     food_database_search_name: "Chocolate Peanut Butter Cereal",
+//     full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
+//     brand: "Catalina Crunch",
+//     branded: true,
+//     serving: {
+//       serving_id: 1,
+//       serving_amount: 1,
+//       serving_name: "cup",
+//       serving_g_or_ml: "g",
+//       total_serving_g_or_ml: 100
+//     }
+//   }
+//   const queryEmbedding = await foodToLogEmbedding(foodItem)
+//   const user: User = {
+//     id: "clmzqmr2a0000la08ynm5rjju",
+//     firstName: "John",
+//     lastName: "Doe",
+//     email: "john.doe@example.com",
+//     emailVerified: new Date("2022-08-09T12:00:00"),
+//     phone: "123-456-7890",
+//     dateOfBirth: new Date("1990-01-01T00:00:00"),
+//     weightKg: 70.5,
+//     heightCm: 180,
+//     calorieGoal: 2000,
+//     proteinGoal: 100,
+//     carbsGoal: 200,
+//     fatGoal: 50,
+//     fitnessGoal: "Maintain",
+//     unitPreference: "IMPERIAL",
+//     setupCompleted: false,
+//     sentContact: false,
+//     sendCheckins: false,
+//     tzIdentifier: "America/New_York"
+//   }
+//   //console.dir(queryEmbedding, { depth: null })
+//   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
+//   console.dir(result, { depth: null })
+// }
 
 //testFoodSearch()

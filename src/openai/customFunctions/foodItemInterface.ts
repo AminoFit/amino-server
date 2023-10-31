@@ -1,4 +1,4 @@
-import { FoodItem, Nutrient, Serving, FoodInfoSource } from "@prisma/client"
+import { Enums, Tables } from "types/supabase"
 import { sanitizeServingName } from "../../database/utils/textSanitize"
 
 export interface FoodItems {
@@ -36,39 +36,40 @@ export interface FoodInfo {
   servings: GptFoodServing[] // Serving sizes & descriptions
 }
 
-interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
-interface FoodServing extends Omit<Serving, "id" | "foodItemId"> {}
+interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
+interface FoodServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings extends Omit<FoodItem, "Servings" | "Nutrients"> {
+export interface FoodItemWithServings
+  extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients" | "adaEmbedding" | "bgeBaseEmbedding"> {
   Servings: FoodServing[]
   Nutrients: FoodNutrient[]
 }
 
-function mapModelToEnum(model: string): FoodInfoSource {
+function mapModelToEnum(model: string): Enums<"FoodInfoSource"> {
   if (model.startsWith("gpt-4")) {
-    return FoodInfoSource.GPT4
+    return "GPT4"
   }
 
   if (model.startsWith("gpt-3.5")) {
-    return FoodInfoSource.GPT3
+    return "GPT3"
   }
 
-  return FoodInfoSource.User // Default to 'User'
+  return "User"
 }
 
 export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): FoodItemWithServings {
   const castToFloatOrNull = (value: any): number | null => {
     if (value === null || value === undefined) {
-      return null;
+      return null
     }
-    const floatVal = parseFloat(value);
-    return isNaN(floatVal) ? null : floatVal;
-  };  
+    const floatVal = parseFloat(value)
+    return isNaN(floatVal) ? null : floatVal
+  }
   let prismaFoodItem: FoodItemWithServings = {
     id: 0,
-    lastUpdated: new Date(),
+    lastUpdated: new Date().toDateString(),
     verified: false,
-    userId: null, 
+    userId: null,
     externalId: null,
     UPC: null,
     name: food.name,
@@ -90,17 +91,19 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     proteinPerServing: Number(food.protein_per_serving),
     messageId: 0,
     foodInfoSource: mapModelToEnum(model),
-    Servings: food.servings?.map((serving) => ({
-      servingWeightGram: serving.serving_weight_g,
-      servingName: sanitizeServingName(serving.serving_name),
-      servingAlternateAmount: serving.serving_alternate_amount,
-      servingAlternateUnit: sanitizeServingName(serving.serving_name)
-    })) || [],
-    Nutrients: food.nutrients?.map((nutrient) => ({
-      nutrientName: nutrient.nutrient_name,
-      nutrientUnit: nutrient.nutrient_unit,
-      nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
-    })) || []
+    Servings:
+      food.servings?.map((serving) => ({
+        servingWeightGram: serving.serving_weight_g,
+        servingName: sanitizeServingName(serving.serving_name),
+        servingAlternateAmount: serving.serving_alternate_amount,
+        servingAlternateUnit: sanitizeServingName(serving.serving_name)
+      })) || [],
+    Nutrients:
+      food.nutrients?.map((nutrient) => ({
+        nutrientName: nutrient.nutrient_name,
+        nutrientUnit: nutrient.nutrient_unit,
+        nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
+      })) || []
   }
   return prismaFoodItem
 }

@@ -1,60 +1,82 @@
 export const dynamic = "force-dynamic"
+import { createRouteHandlerClient, createServerActionClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
-import { getUser } from "@/app/dashboard/settings/actions"
-import { prisma } from "@/database/prisma"
 import moment from "moment-timezone"
 import { NextResponse } from "next/server"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 function stringifyWithBigInt(obj: any): string {
-  return JSON.stringify(obj, (_, value) => 
-    typeof value === 'bigint' ? value.toString() : value
-  );
+  return JSON.stringify(obj, (_, value) => (typeof value === "bigint" ? value.toString() : value))
 }
 
 export async function GET(
   _request: Request, // needed so we don't cache this request
   { params }: { params: { date: string } }
 ) {
-  const user = await getUser()
+  console.log("Entry: Get Foods on date")
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
   if (!user) {
-    return new Response("User not found", { status: 404 })
+    console.log("No authenticated user")
+    return new Response("No authenticated user", { status: 404 })
   }
+
+  const { error, data: aminoUser } = await supabase.from("User").select().eq("id", user.id).single()
+
   const dateString = params.date
+  if (!aminoUser) {
+    console.log("No amino user for authenticated user")
+    return new Response("No amino user for authenticated user", { status: 400 })
+  }
+
   if (!dateString) {
+    console.log("No date provided")
     return new Response("No date provided", { status: 400 })
   }
 
-  const parsedDate = moment.tz(dateString, "YYYY-MM-DD", user.tzIdentifier)
+  const parsedDate = moment.tz(dateString, "YYYY-MM-DD", aminoUser.tzIdentifier)
 
   if (!parsedDate.isValid()) {
+    console.log("Provided date is invalid. Must be in YYYY-MM-DD format")
     return new Response("Provided date is invalid. Must be in YYYY-MM-DD format", { status: 400 })
   }
 
-  let foods = await prisma.loggedFoodItem.findMany({
-    where: {
-      userId: user.id,
-      consumedOn: {
-        gte: parsedDate.startOf("day").toDate(),
-        lte: parsedDate.endOf("day").toDate()
-      }
-    },
-    select: {
-      FoodItem: {
-        include: { Servings: true, FoodImage: true }
-      },
-      id: true,
-      foodEmbeddingCache: false,
-      embeddingId: false,
-      consumedOn: true,
-      grams: true,
-      servingAmount: true,
-      loggedUnit: true,
-      status: true,
-      extendedOpenAiData: true,
-    }
-  })
+  const { data: foods } = await supabase
+    .from("loggedFoodItem")
+    .select("*, FoodItem(*, Servings(*), FoodImage(*))")
+    .eq("userId", user.id)
+    .gte("consumedOn", parsedDate.startOf("day").toDate())
+    .lte("consumedOn", parsedDate.endOf("day").toDate())
 
-  const safeFoodsString = stringifyWithBigInt(foods);
-  return NextResponse.json(JSON.parse(safeFoodsString));  
+  // let foods = await prisma.loggedFoodItem.findMany({
+  //   where: {
+  //     userId: user.id,
+  //     consumedOn: {
+  //       gte: parsedDate.startOf("day").toDate(),
+  //       lte: parsedDate.endOf("day").toDate()
+  //     }
+  //   },
+  //   select: {
+  //     FoodItem: {
+  //       include: { Servings: true, FoodImage: true }
+  //     },
+  //     id: true,
+  //     foodEmbeddingCache: false,
+  //     embeddingId: false,
+  //     consumedOn: true,
+  //     grams: true,
+  //     servingAmount: true,
+  //     loggedUnit: true,
+  //     status: true,
+  //     extendedOpenAiData: true
+  //   }
+  // })
+
+  const safeFoodsString = stringifyWithBigInt(foods)
+  return NextResponse.json(JSON.parse(safeFoodsString))
 }

@@ -29,7 +29,7 @@ export function FoodLogHeader({
           {/* <FoodLogStreak /> */}
         </div>
         <div>
-          <CalOverviewCard />
+          {/* <CalOverviewCard /> */}
         </div>
       </div>
     </>

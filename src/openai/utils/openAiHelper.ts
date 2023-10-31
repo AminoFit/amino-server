@@ -1,15 +1,11 @@
 import { openai } from "../../utils/openaiFunctionSchemas"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
-import { User } from "@prisma/client"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import OpenAI from "openai"
-import { prisma } from "../../database/prisma"
+import { Tables } from "types/supabase"
 
 // Log usage
-export async function LogOpenAiUsage(
-  user: User,
-  usage: OpenAI.CompletionUsage,
-  modelName: string
-) {
+export async function LogOpenAiUsage(user: Tables<"User">, usage: OpenAI.CompletionUsage, modelName: string) {
   //console.log(`This request used ${usage.total_tokens || "??"} tokens`)
   //console.log(`user id: ${user.id}`)
   const data = {
@@ -19,24 +15,18 @@ export async function LogOpenAiUsage(
     userId: user.id,
     modelName
   }
-  return await prisma.openAiUsage.create({
-    data
-  })
+  const supabase = createAdminSupabase()
+  const { error } = await supabase.from("OpenAiUsage").insert(data)
 }
 
 function checkType(actual: any, expected: any) {
   if (expected === "array") return Array.isArray(actual)
-  else if (expected === "object")
-    return actual !== null && typeof actual === "object"
-  else if (expected === "integer" || expected === "number")
-    return typeof actual === "number"
+  else if (expected === "object") return actual !== null && typeof actual === "object"
+  else if (expected === "integer" || expected === "number") return typeof actual === "number"
   else return typeof actual === expected
 }
 
-export function checkCompliesWithSchema(
-  schema: { [key: string]: any },
-  obj: any
-) {
+export function checkCompliesWithSchema(schema: { [key: string]: any }, obj: any) {
   if (!schema || typeof obj !== "object" || obj === null) {
     console.error(`The input object is either null or not an object.`)
     return false
@@ -51,9 +41,7 @@ export function checkCompliesWithSchema(
 
     if (!checkType(obj[field], schema.properties[field].type)) {
       console.error(
-        `The field ${field} is of incorrect type (${typeof obj[
-          field
-        ]}). Expected ${schema.properties[field].type}.`
+        `The field ${field} is of incorrect type (${typeof obj[field]}). Expected ${schema.properties[field].type}.`
       )
       return false
     }
@@ -61,12 +49,7 @@ export function checkCompliesWithSchema(
     // If it's an object or an array, do a recursive check
     if (schema.properties[field].type === "object") {
       // Make sure to check the properties of the object
-      if (
-        !checkCompliesWithSchema(
-          schema.properties[field].properties,
-          obj[field]
-        )
-      ) {
+      if (!checkCompliesWithSchema(schema.properties[field].properties, obj[field])) {
         console.error(`The object ${field} does not comply with its schema.`)
         return false
       }
@@ -74,9 +57,7 @@ export function checkCompliesWithSchema(
       // Check each object in the array
       for (const item of obj[field]) {
         if (!checkCompliesWithSchema(schema.properties[field].items, item)) {
-          console.error(
-            `An item in the array ${field} does not comply with its schema.`
-          )
+          console.error(`An item in the array ${field} does not comply with its schema.`)
           return false
         }
       }
@@ -97,10 +78,7 @@ function checkOutput(completion: any): boolean {
 
         // Check if any food item has total_serving_grams as 0 and serving_amount is non-zero
         for (const item of foodItems) {
-          if (item.serving &&
-            item.serving.total_serving_g_or_ml === 0 &&
-            item.serving.serving_amount !== 0
-          ) {
+          if (item.serving && item.serving.total_serving_g_or_ml === 0 && item.serving.serving_amount !== 0) {
             return false // This means the completion is not valid
           }
         }
@@ -113,7 +91,7 @@ function checkOutput(completion: any): boolean {
 // Will do a first try with GPT3.5 and then fall back on GPT4
 export async function getOpenAICompletion(
   gptRequest: any,
-  user: User,
+  user: Tables<"User">,
   maxRetries: number = 1,
   retryModel: string = "gpt-4-0613",
   retryTemperature: number = 0.1
@@ -137,11 +115,7 @@ export async function getOpenAICompletion(
       }
     } catch (err) {
       const error = err as { message: string; response?: { data: any } }
-      console.error(
-        "Error getting req from OpenAi",
-        error.message,
-        error.response?.data
-      )
+      console.error("Error getting req from OpenAi", error.message, error.response?.data)
     }
 
     if (!successfulResponse && retries === 0) {
