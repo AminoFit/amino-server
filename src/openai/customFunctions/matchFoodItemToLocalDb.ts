@@ -1,10 +1,10 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
 import OpenAI from "openai"
-import { User } from "@prisma/client"
 import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
 import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { Tables } from "types/supabase"
 
 /**
  * Discriminative Food Item Matcher
@@ -71,7 +71,7 @@ export async function findBestFoodMatchtoLocalDb(
   user_request: FoodItemToLog,
   user_query_vector_cache: FoodEmbeddingCache,
   message_id: number,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemIdAndEmbedding | null> {
   const matchRequest = convertToMatchRequest(user_request, database_options)
 
@@ -178,12 +178,10 @@ function testMatching() {
   const messageId = 84
   const user = {
     id: "clklnwf090000lzssqhgfm8kr",
-    firstName: "Sebastian",
-    lastName: "",
+    fullName: "Sebastian",
     email: "seb.grubb@gmail.com",
-    emailVerified: new Date("2023-10-09T22:45:35.771Z"),
     phone: "+16503079963",
-    dateOfBirth: new Date("1992-05-06T04:00:00.000Z"),
+    dateOfBirth: new Date("1992-05-06T04:00:00.000Z").toDateString(),
     weightKg: 75,
     heightCm: 175,
     calorieGoal: 2440,
@@ -196,7 +194,7 @@ function testMatching() {
     sentContact: true,
     sendCheckins: false,
     tzIdentifier: "America/New_York"
-  } as User
+  } as Tables<"User">
   findBestFoodMatchtoLocalDb(topMatches, food as FoodItemToLog, userQueryVectorCache, messageId, user)
 }
 
@@ -205,7 +203,7 @@ function testMatching() {
 async function testMatchingFunctionality() {
   const user = {
     id: "clklnwf090000lzssqhgfm8kr"
-  } as User
+  } as Tables<"User">
   const messageId = 84
   const testCases = [
     {
@@ -268,7 +266,7 @@ async function testMatchingFunctionality() {
   let passedCount = 0
 
   for (let i = 0; i < testCases.length; i++) {
-  //for (let i = 0; i < 1; i++) {
+    //for (let i = 0; i < 1; i++) {
     const result = await findBestFoodMatchtoLocalDb(
       topMatches,
       testCases[i].food as FoodItemToLog,

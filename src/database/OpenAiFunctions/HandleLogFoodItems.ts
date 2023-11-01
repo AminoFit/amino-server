@@ -94,7 +94,7 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
   const supabase = await createAdminSupabase()
 
   // Increment itemsToProcess by foodItemsToLog.length
-  await supabase.from("message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
+  await supabase.from("Message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
 
   // Create all the pending food items
   let { data: foodsNeedProcessing, error } = await supabase
@@ -188,7 +188,7 @@ async function findBestMatch(
     // Return the highest match instantly
 
     const { data: match } = await supabase
-      .from("foodItem")
+      .from("FoodItem")
       .select(`*, Nutrients(*), Servings(*)`)
       .eq("id", bestMatches[0].id)
       .single()
@@ -219,7 +219,7 @@ async function findBestMatch(
     if (localDbMatch) {
       // Return the highest match instantly
       const { data: match } = await supabase
-        .from("foodItem")
+        .from("FoodItem")
         .select(`*, Nutrients(*), Servings(*)`)
         .eq("id", localDbMatch.id)
         .single()
@@ -314,7 +314,7 @@ async function addFoodItemPrisma(
   const supabase = createAdminSupabase()
 
   const { data: existingFoodItem, error } = await supabase
-    .from("foodItem")
+    .from("FoodItem")
     .select("*, Nutrients(*), Servings(*)")
     .eq("name", food.name)
     .eq("brand", food.brand)
@@ -347,12 +347,17 @@ async function addFoodItemPrisma(
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
 
+  // Save the vector to the database
+  const embeddingArray = new Float32Array(bgeBaseEmbedding)
+  const embeddingSql = vectorToSql(Array.from(embeddingArray))
+
   // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
   const { data: newFood } = await supabase
-    .from("foodItem")
+    .from("FoodItem")
     .insert({
       ...foodWithoutId,
       messageId: messageId,
+      bgeBaseEmbedding: embeddingSql,
       //foodInfoSource: mapModelToEnum(model),
       // Check if nutrients exist before adding them
       ...(food.Nutrients && {
@@ -377,12 +382,6 @@ async function addFoodItemPrisma(
     })
     .select(`*, Nutrients(*), Servings(*)`)
     .single()
-
-  // Save the vector to the database
-  const embeddingArray = new Float32Array(bgeBaseEmbedding)
-  const embeddingSql = vectorToSql(Array.from(embeddingArray))
-
-  await supabase.from("foodItem").update({ bgeBaseEmbedding: embeddingSql }).eq("id", newFood.id)
 
   // const result = await prisma.$executeRaw`UPDATE "FoodItem"
   //   SET "bgeBaseEmbedding" = ${embeddingSql}::vector
@@ -436,24 +435,24 @@ async function findAndAddItemInDatabase(
     const getUsdaFoodInfo = async () => {
       // SEB CHRIS : CHRIS disabled this for the moment. Need to fix query
 
-      // const startTime = Date.now()
-      // if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
-      //   try {
-      //     const usda_find_food_params = {
-      //       food_name: fullFoodName,
-      //       branded: foodToLog.branded || false,
-      //       brand_name: foodToLog.brand || undefined,
-      //       embedding_cache_id: queryEmbeddingCache.embedding_cache_id
-      //     }
-      //     //console.log("usda_find_food_params", usda_find_food_params)
-      //     const result = await searchUsdaByEmbedding(usda_find_food_params)
-      //     console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
-      //     return result
-      //   } catch (err) {
-      //     console.log("Error finding USDA food info", err) // Silently fail
-      //     return null
-      //   }
-      // }
+      const startTime = Date.now()
+      if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
+        try {
+          const usda_find_food_params = {
+            food_name: fullFoodName,
+            branded: foodToLog.branded || false,
+            brand_name: foodToLog.brand || undefined,
+            embedding_cache_id: queryEmbeddingCache.embedding_cache_id
+          }
+          //console.log("usda_find_food_params", usda_find_food_params)
+          const result = await searchUsdaByEmbedding(usda_find_food_params)
+          console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
+          return result
+        } catch (err) {
+          console.log("Error finding USDA food info", err) // Silently fail
+          return null
+        }
+      }
       return null
     }
 
@@ -608,45 +607,45 @@ async function findAndAddItemInDatabase(
   }
 }
 
-// async function testFoodSearch() {
-//   const foodItem: FoodItemToLog = {
-//     food_database_search_name: "Chocolate Peanut Butter Cereal",
-//     full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
-//     brand: "Catalina Crunch",
-//     branded: true,
-//     serving: {
-//       serving_id: 1,
-//       serving_amount: 1,
-//       serving_name: "cup",
-//       serving_g_or_ml: "g",
-//       total_serving_g_or_ml: 100
-//     }
-//   }
-//   const queryEmbedding = await foodToLogEmbedding(foodItem)
-//   const user: User = {
-//     id: "clmzqmr2a0000la08ynm5rjju",
-//     firstName: "John",
-//     lastName: "Doe",
-//     email: "john.doe@example.com",
-//     emailVerified: new Date("2022-08-09T12:00:00"),
-//     phone: "123-456-7890",
-//     dateOfBirth: new Date("1990-01-01T00:00:00"),
-//     weightKg: 70.5,
-//     heightCm: 180,
-//     calorieGoal: 2000,
-//     proteinGoal: 100,
-//     carbsGoal: 200,
-//     fatGoal: 50,
-//     fitnessGoal: "Maintain",
-//     unitPreference: "IMPERIAL",
-//     setupCompleted: false,
-//     sentContact: false,
-//     sendCheckins: false,
-//     tzIdentifier: "America/New_York"
-//   }
-//   //console.dir(queryEmbedding, { depth: null })
-//   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
-//   console.dir(result, { depth: null })
-// }
+async function testFoodSearch() {
+  const foodItem: FoodItemToLog = {
+    food_database_search_name: "Chocolate Peanut Butter Cereal",
+    full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
+    brand: "Catalina Crunch",
+    branded: true,
+    serving: {
+      serving_id: 1,
+      serving_amount: 1,
+      serving_name: "cup",
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 100
+    }
+  }
+  const queryEmbedding = await foodToLogEmbedding(foodItem)
+  const user: Tables<"User"> = {
+    id: "clmzqmr2a0000la08ynm5rjju",
+    fullName: "John",
+    email: "john.doe@example.com",
+    phone: "123-456-7890",
+    weightKg: 70.5,
+    heightCm: 180,
+    calorieGoal: 2000,
+    proteinGoal: 100,
+    carbsGoal: 200,
+    fatGoal: 50,
+    fitnessGoal: "Maintain",
+    unitPreference: "IMPERIAL",
+    setupCompleted: false,
+    sentContact: false,
+    sendCheckins: false,
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    dateOfBirth: null,
+    emailVerified: null
+  }
+  //console.dir(queryEmbedding, { depth: null })
+  let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
+  console.dir(result, { depth: null })
+}
 
-//testFoodSearch()
+testFoodSearch()

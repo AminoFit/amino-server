@@ -768,6 +768,18 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      get_branded_usda_embedding: {
+        Args: {
+          embeddingId: number
+        }
+        Returns: {
+          fdcId: number
+          foodName: string
+          foodBrand: string
+          bgeBaseEmbedding: string
+          cosineSimilarity: number
+        }[]
+      }
       get_cosine_results: {
         Args: {
           p_embedding_cache_id: number
@@ -778,6 +790,18 @@ export interface Database {
           brand: string
           embedding: string
           cosine_similarity: number
+        }[]
+      }
+      get_unbranded_usda_embedding: {
+        Args: {
+          embeddingId: number
+        }
+        Returns: {
+          fdcId: number
+          foodName: string
+          foodBrand: string
+          bgeBaseEmbedding: string
+          cosineSimilarity: number
         }[]
       }
       hnswhandler: {

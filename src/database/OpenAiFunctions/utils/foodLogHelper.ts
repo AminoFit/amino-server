@@ -1,7 +1,7 @@
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
-
+import { Tables } from "types/supabase"
 
 export function constructFoodItemRequestString(
   foodToLog: FoodItemToLog,
@@ -48,7 +48,7 @@ export function constructFoodItemRequestString(
 
       if (item.foodItem.Servings && item.foodItem.Servings.length > 0) {
         const servingsString = item.foodItem.Servings.slice(0, 3)
-          .map((serving) => {
+          .map((serving: Tables<"Serving">) => {
             let servingDetails = `${serving.servingName}`
             if (serving.servingWeightGram) {
               servingDetails += ` (${serving.servingWeightGram}g)`
@@ -66,10 +66,9 @@ export function constructFoodItemRequestString(
   return foodItemRequestString
 }
 
-
-function testStringBuilder(){
+function testStringBuilder() {
   const sampleFoodItem: FoodItemWithNutrientsAndServing = {
-    userId: '2341p9jf39n4',
+    userId: "2341p9jf39n4",
     id: 12345,
     name: "Creamy Peanut Butter",
     brand: "Nutty Delight",
@@ -108,7 +107,7 @@ function testStringBuilder(){
         servingAlternateUnit: null,
         servingName: "1 jar",
         foodItemId: 12345
-      },
+      }
     ],
     Nutrients: [
       {
@@ -128,16 +127,16 @@ function testStringBuilder(){
     ],
     foodInfoSource: "GPT4",
     messageId: null
-  };
+  }
   const foodSearchResultsWithSimilarityAndEmbedding: foodSearchResultsWithSimilarityAndEmbedding = {
-    foodBgeBaseEmbedding: [0.5, 0.2, 0.8, 0.1, 0.1], 
-    similarityToQuery: 0.87, 
+    foodBgeBaseEmbedding: [0.5, 0.2, 0.8, 0.1, 0.1],
+    similarityToQuery: 0.87,
     foodSource: "GPT4",
     foodName: "Creamy Peanut Butter",
     foodBrand: "Nutty Delight",
     externalId: "PBNUTTY01",
     foodItem: sampleFoodItem
-  };
+  }
   const sampleFoodItemToLog: FoodItemToLog = {
     timeEaten: new Date().toISOString(),
     food_database_search_name: "Creamy Peanut Butter",
@@ -145,12 +144,12 @@ function testStringBuilder(){
     brand: "Nutty Delight",
     full_item_user_message_including_serving: "2 tablespoons of Creamy Peanut Butter",
     serving: {
-      serving_amount: 1, 
+      serving_amount: 1,
       serving_name: "2 tablespoons",
       serving_g_or_ml: "g",
       total_serving_g_or_ml: 32
     }
-  };
+  }
   console.log(constructFoodItemRequestString(sampleFoodItemToLog, [foodSearchResultsWithSimilarityAndEmbedding]))
 }
 

@@ -1,11 +1,10 @@
-import { FoodItem, Nutrient, Serving } from "@prisma/client"
+import { Tables } from "types/supabase"
 
-interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
+interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 
-interface AminoServing extends Omit<Serving, "id" | "foodItemId"> {}
+interface AminoServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings
-  extends Omit<FoodItem, "Servings" | "Nutrients"> {
+export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients"> {
   Servings: AminoServing[]
   Nutrients: FoodNutrient[]
 }
@@ -59,10 +58,7 @@ function deduplicateServings(servings: FsServing[]): FsServing[] {
     if (!existingServing) {
       servingMap.set(weight, serving)
     } else {
-      if (
-        serving.serving_description.length <
-        existingServing.serving_description.length
-      ) {
+      if (serving.serving_description.length < existingServing.serving_description.length) {
         servingMap.set(weight, serving)
       }
     }
@@ -71,10 +67,7 @@ function deduplicateServings(servings: FsServing[]): FsServing[] {
   return Array.from(servingMap.values())
 }
 
-function mapNutrients(
-  serving: FsServing,
-  unitConversionFactor: number
-): FoodNutrient[] {
+function mapNutrients(serving: FsServing, unitConversionFactor: number): FoodNutrient[] {
   const formatNutrientName = (name: string): string => {
     return name
       .split("_")
@@ -95,25 +88,17 @@ function mapNutrients(
     .map(({ name, unit }) => {
       return {
         nutrientName: formatNutrientName(name),
-        nutrientAmountPerDefaultServing: parseFloat(
-          (
-            Number(serving[name as keyof FsServing])
-          ).toFixed(3)
-        ),
+        nutrientAmountPerDefaultServing: parseFloat(Number(serving[name as keyof FsServing]).toFixed(3)),
         nutrientUnit: unit
       }
     })
 }
 
-export function convertFsToFoodItem(
-  fsFoodItem: FsFoodInfo
-): FoodItemWithServings {
+export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
   const deduplicatedServings = deduplicateServings(fsFoodItem.servings.serving)
 
   let serving = deduplicatedServings.find(
-    (serving) =>
-      Number(serving.metric_serving_amount) === 100 &&
-      serving.metric_serving_unit === "g"
+    (serving) => Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g"
   )
 
   if (!serving) {
@@ -150,21 +135,15 @@ export function convertFsToFoodItem(
     UPC: null,
     knownAs: [],
     description: null,
-    lastUpdated: new Date(),
+    lastUpdated: new Date().toDateString(),
     verified: true,
     userId: null,
     foodInfoSource: "FATSECRET",
     messageId: null,
     name: fsFoodItem.food_name,
     brand: fsFoodItem.brand_name,
-    defaultServingWeightGram:
-      serving.metric_serving_unit === "g"
-        ? Number(serving.metric_serving_amount)
-        : null,
-    defaultServingLiquidMl:
-      serving.metric_serving_unit === "ml"
-        ? serving.metric_serving_amount
-        : null,
+    defaultServingWeightGram: serving.metric_serving_unit === "g" ? Number(serving.metric_serving_amount) : null,
+    defaultServingLiquidMl: serving.metric_serving_unit === "ml" ? serving.metric_serving_amount : null,
     isLiquid: serving.metric_serving_unit === "ml",
     weightUnknown: weightUnknown,
 
@@ -182,31 +161,20 @@ export function convertFsToFoodItem(
     addedSugarPerServing: serving.added_sugars ? Number(serving.added_sugars) : null,
     Servings: deduplicatedServings
       .filter(
-        (serving) =>
-          !(
-            Number(serving.metric_serving_amount) === 100 &&
-            serving.metric_serving_unit === "g"
-          ) &&
-          !(
-            Number(serving.metric_serving_amount) === 28.35 &&
-            serving.measurement_description === "oz"
-          )
+        (serving) => !(Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g") &&
+          !(Number(serving.metric_serving_amount) === 28.35 && serving.measurement_description === "oz")
       )
       .map((serving) => ({
-        servingWeightGram:
-          serving.metric_serving_unit === "g"
-            ?  Number(serving.metric_serving_amount)
-            : null,
-        servingAlternateAmount:
-          serving.metric_serving_unit !== "g" && serving.number_of_units
-            ? Number(serving.number_of_units)
-            : null,
+        servingWeightGram: serving.metric_serving_unit === "g" ? Number(serving.metric_serving_amount) : null,
+        servingAlternateAmount: serving.metric_serving_unit !== "g" && serving.number_of_units ? Number(serving.number_of_units) : null,
         servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
-            ? serving.measurement_description
-            : null,
+          ? serving.measurement_description
+          : null,
         servingName: serving.serving_description
       })),
-    Nutrients: nutrients
+    Nutrients: nutrients,
+    adaEmbedding: null,
+    bgeBaseEmbedding: null
   }
 
   return foodItem

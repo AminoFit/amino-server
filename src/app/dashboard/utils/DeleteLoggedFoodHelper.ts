@@ -11,5 +11,5 @@ export async function deleteSavedFood(loggedFoodItemId: number) {
   if (!user) {
     return new Response("User not found", { status: 404 })
   }
-  const { error } = await supabase.from("loggedFoodItem").delete().eq("id", loggedFoodItemId).eq("userId", user.id)
+  const { error } = await supabase.from("LoggedFoodItem").delete().eq("id", loggedFoodItemId).eq("userId", user.id)
 }

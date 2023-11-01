@@ -13,7 +13,7 @@ import { Database } from "types/supabase-generated.types"
 export const processFoodItemQueue = Queue(
   "api/queues/process-food-item", // 👈 the route it's reachable on
   async (loggedFoodIdString: string) => {
-    console.log("The payload:", loggedFoodIdString)
+    console.log("Enter api/queues/process-food-item with payload:", loggedFoodIdString)
 
     const loggedFoodId = parseInt(loggedFoodIdString)
 

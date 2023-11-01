@@ -47,7 +47,7 @@ export async function GET(
   }
 
   const { data: foods } = await supabase
-    .from("loggedFoodItem")
+    .from("LoggedFoodItem")
     .select("*, FoodItem(*, Servings(*), FoodImage(*))")
     .eq("userId", user.id)
     .gte("consumedOn", parsedDate.startOf("day").toDate())
