@@ -13,6 +13,7 @@ export default function Signup() {
   const supabase = createClientComponentClient<Database>()
 
   const handleSignUpGoogle = async () => {
+    console.log("Using redirect:", `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`)
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
