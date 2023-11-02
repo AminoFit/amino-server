@@ -4,6 +4,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Database } from "types/supabase-generated.types"
+import AuthForm from "./auth-form"
 
 export default function Signup() {
   const [email, setEmail] = useState("")
@@ -146,6 +147,9 @@ export default function Signup() {
               Start a 14 day free trial
             </a>
           </p>
+        </div>
+        <div>
+          <AuthForm />
         </div>
       </div>
     </>
