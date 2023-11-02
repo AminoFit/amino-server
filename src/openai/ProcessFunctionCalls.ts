@@ -1,4 +1,3 @@
-import { HandleLogExercise } from "@/database/OpenAiFunctions/HandleLogExercise"
 import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo"
 import UpdateMessage from "@/database/UpdateMessage"
@@ -21,14 +20,6 @@ export const ProcessFunctionCalls = async (
       console.log("log_food_items", parameters)
       const resultMessage = await HandleLogFoodItems(user, parameters, lastUserMessageId)
       return resultMessage
-    case "log_exercise":
-      const exercise_reply = await HandleLogExercise(user, parameters)
-      UpdateMessage({
-        id: lastUserMessageId,
-        status: "RESOLVED",
-        resolvedAt: new Date()
-      })
-      return exercise_reply
     case "update_user_info":
       const user_info_reply = await HandleUpdateUserInfo(user, parameters)
       UpdateMessage({

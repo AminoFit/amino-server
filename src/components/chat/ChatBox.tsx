@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { sendMessage } from "./actions";
-import { Message } from "@prisma/client";
 import classNames from "classnames";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { ScopedMutator } from "swr/_internal";
-import { mutate } from 'swr';
+import { Tables } from "types/supabase";
 
-export default function ChatBox({messages, mutate}: {messages: Message[], mutate: ScopedMutator}) {
+export default function ChatBox({messages, mutate}: {messages: Tables<"Message">[], mutate: ScopedMutator}) {
   const [messageInput, setMessageInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,9 +24,9 @@ export default function ChatBox({messages, mutate}: {messages: Message[], mutate
     setMessageInput("");
     setSubmitting(true);
   
-    let newMessage: Message = {
+    let newMessage: Tables<"Message"> = {
       id: messages.length + 1,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       content: messageInput,
       function_name: null,
       role: 'User', 
@@ -41,15 +39,16 @@ export default function ChatBox({messages, mutate}: {messages: Message[], mutate
     };    
   
     // Optimistically update the UI
-    mutate((currentData: Message[]) => [...currentData, newMessage], false);
+    mutate((currentData: Tables<"Message">[]) => [...currentData, newMessage], false);
   
     try {
-      const sentMessage = await sendMessage(messageInput);
-      // Update the message id after it has been successfully sent
-      // newMessage.id = sentMessage.id;
-      mutate((currentData: Message[]) => currentData.map(
-        (msg) => msg.id === 0 ? sentMessage : msg
-      ));
+      alert("Chat broken at the moment")
+      // const sentMessage = await sendMessage(messageInput);
+      // // Update the message id after it has been successfully sent
+      // // newMessage.id = sentMessage.id;
+      // mutate((currentData: Tables<"Message">[]) => currentData.map(
+      //   (msg) => msg.id === 0 ? sentMessage : msg
+      // ));
     } catch (err) {
       // Handle the error
       setSubmitting(false);

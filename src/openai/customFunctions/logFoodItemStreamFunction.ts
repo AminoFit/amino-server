@@ -44,7 +44,7 @@ export async function logFoodItemFunctionStream(
     .eq("id", lastUserMessageId)
     .single()
 
-  // const messageInfo = await prisma.message.findUnique({
+  // const messageInfo = await pris.message.findUnique({
   //   where: { id: lastUserMessageId },
   //   select: {
   //     itemsProcessed: true
@@ -154,7 +154,7 @@ async function testFoodLog() {
     fullName: "John",
     email: "john.doe@example.com",
     phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00").toDateString(),
+    dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
     weightKg: 70.5,
     heightCm: 180,
     calorieGoal: 2000,

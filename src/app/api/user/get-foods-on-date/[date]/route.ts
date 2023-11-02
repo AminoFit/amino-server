@@ -46,36 +46,19 @@ export async function GET(
     return new Response("Provided date is invalid. Must be in YYYY-MM-DD format", { status: 400 })
   }
 
-  const { data: foods } = await supabase
-    .from("LoggedFoodItem")
-    .select("*, FoodItem(*, Servings(*), FoodImage(*))")
-    .eq("userId", user.id)
-    .gte("consumedOn", parsedDate.startOf("day").toDate())
-    .lte("consumedOn", parsedDate.endOf("day").toDate())
+  console.log("datestring", parsedDate.startOf("day").toDate().toISOString())
 
-  // let foods = await prisma.loggedFoodItem.findMany({
-  //   where: {
-  //     userId: user.id,
-  //     consumedOn: {
-  //       gte: parsedDate.startOf("day").toDate(),
-  //       lte: parsedDate.endOf("day").toDate()
-  //     }
-  //   },
-  //   select: {
-  //     FoodItem: {
-  //       include: { Servings: true, FoodImage: true }
-  //     },
-  //     id: true,
-  //     foodEmbeddingCache: false,
-  //     embeddingId: false,
-  //     consumedOn: true,
-  //     grams: true,
-  //     servingAmount: true,
-  //     loggedUnit: true,
-  //     status: true,
-  //     extendedOpenAiData: true
-  //   }
-  // })
+  const { data: foods, error: getFoodError } = await supabase
+    .from("LoggedFoodItem")
+    .select("*, FoodItem(*, Serving(*), FoodImage(*))")
+    .eq("userId", user.id)
+    .gte("consumedOn", parsedDate.startOf("day").toDate().toISOString())
+    .lte("consumedOn", parsedDate.endOf("day").toDate().toUTCString())
+
+  if (!foods) {
+    console.log("Error getting foods", getFoodError)
+    return new Response(getFoodError.message, { status: 500 })
+  }
 
   const safeFoodsString = stringifyWithBigInt(foods)
   return NextResponse.json(JSON.parse(safeFoodsString))

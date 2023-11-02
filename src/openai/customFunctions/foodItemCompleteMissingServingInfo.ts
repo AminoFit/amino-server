@@ -95,7 +95,7 @@ ${generateServingString(foodItem)}
       throw new Error("Invalid serving info completion")
     }
 
-    foodItem.Servings = updateServingInfo(foodItem.Servings, servingInfoCompletionResult.servings)
+    foodItem.Serving = updateServingInfo(foodItem.Serving, servingInfoCompletionResult.servings)
     return foodItem
   } catch (error) {
     throw error
@@ -104,7 +104,7 @@ ${generateServingString(foodItem)}
 
 const generateServingString = (foodItem: FoodItemWithNutrientsAndServing): string => {
   // Filter servings that have empty servingAlternateAmount and servingAlternateUnit
-  const incompleteServings = foodItem.Servings.filter(
+  const incompleteServings = foodItem.Serving.filter(
     (serving: any) => !serving.servingAlternateAmount || !serving.servingAlternateUnit
   ).slice(0, 5) // Take up to 5 servings only
 
@@ -123,7 +123,7 @@ async function getFoodItemWithServingAndNutrient(id: number) {
     const supabase = createAdminSupabase()
     const { data: foodItem } = await supabase
       .from("FoodItem")
-      .select("*, Servings(*), Nutrients(*)")
+      .select("*, Serving(*), Nutrient(*)")
       .eq("id", id)
       .single()
 

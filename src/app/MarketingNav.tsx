@@ -5,7 +5,6 @@ import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { UserResponse } from "@supabase/supabase-js"
 import classNames from "classnames"
-import { e } from "mathjs"
 import { useEffect, useState } from "react"
 import { Database } from "types/supabase-generated.types"
 

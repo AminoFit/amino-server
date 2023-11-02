@@ -11,7 +11,7 @@ export async function GET(
   //   return new Response("User not found", { status: 404 })
   // }
 
-  // let foods = await prisma.loggedFoodItem.findMany({
+  // let foods = await pris.loggedFoodItem.findMany({
   //   where: {
   //     userId: user.id
   //   },

@@ -6,9 +6,9 @@ import { Tables } from "types/supabase"
 interface NxFoodServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 interface NxFoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 
-export interface NxFoodItemResponse extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients"> {
-  Servings: NxFoodServing[]
-  Nutrients: NxFoodNutrient[]
+export interface NxFoodItemResponse extends Omit<Tables<"FoodItem">, "Serving" | "Nutrient"> {
+  Serving: NxFoodServing[]
+  Nutrient: NxFoodNutrient[]
   embedding?: number[]
 }
 
@@ -127,14 +127,14 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
       sugarPerServing: food.nf_sugars,
       addedSugarPerServing: addedSugar,
       proteinPerServing: food.nf_protein || 0,
-      lastUpdated: new Date().toDateString(),
+      lastUpdated: new Date().toISOString(),
       verified: true,
       userId: null,
       adaEmbedding: null,
       bgeBaseEmbedding: null,
       foodInfoSource: "NUTRITIONIX",
       messageId: null,
-      Servings: deduplicateServings([
+      Serving: deduplicateServings([
         {
           servingWeightGram: food.serving_weight_grams,
           servingAlternateUnit: food.serving_unit,
@@ -150,7 +150,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
             }))
           : [])
       ]),
-      Nutrients: nutrients
+      Nutrient: nutrients
     }
   })
 }

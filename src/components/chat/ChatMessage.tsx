@@ -1,11 +1,11 @@
 "use client";
 
-import { Message } from "@prisma/client";
 import classNames from "classnames";
 import moment from "moment-timezone";
 import { Fragment } from "react";
+import { Tables } from "types/supabase";
 
-export function ChatMessage({ message }: { message: Message }) {
+export function ChatMessage({ message }: { message: Tables<"Message"> }) {
   const messageDate = new Date(message.createdAt);
   const now = new Date();
   const timeDiff = now.getTime() - messageDate.getTime(); // in milliseconds

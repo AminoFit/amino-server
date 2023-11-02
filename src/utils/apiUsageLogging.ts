@@ -8,7 +8,7 @@ export async function checkRateLimit(apiName: string, maxCount: number, timeFram
 
   // const supabase = createAdminSupabase()
 
-  // const groupedRecords = await prisma.apiCalls.groupBy({
+  // const groupedRecords = await prism.apiCalls.groupBy({
   //   by: ["apiName"],
   //   where: {
   //     apiName: apiName,
@@ -25,38 +25,36 @@ export async function checkRateLimit(apiName: string, maxCount: number, timeFram
   // let total = groupedRecords[0]?._sum?.count || 0
 
   // return total < maxCount
-  return false
+  return true
 }
 
 export async function recordQuery(apiName: string, queryType: string) {
-  // Chris TODO
-  
-  // let bucketStartTime = new Date()
-  // bucketStartTime.setMinutes(0, 0, 0) // Bucketing by the hour
+  let bucketStartTime = new Date()
+  bucketStartTime.setMinutes(0, 0, 0) // Bucketing by the hour
 
-  // const supabase = createAdminSupabase()
+  const supabase = createAdminSupabase()
 
-  // const existingRecord = await prisma.apiCalls.findFirst({
-  //   where: {
-  //     apiName: apiName,
-  //     queryType: queryType,
-  //     timestamp: bucketStartTime
-  //   }
-  // })
+  const { data, error } = await supabase
+    .from("api_calls")
+    .select("*")
+    .eq("apiName", apiName)
+    .eq("queryType", queryType)
+    .eq("timestamp", bucketStartTime)
+    .single()
 
-  // if (existingRecord) {
-  //   await prisma.apiCalls.update({
-  //     where: { id: existingRecord.id },
-  //     data: { count: { increment: 1 } }
-  //   })
-  // } else {
-  //   await prisma.apiCalls.create({
-  //     data: {
-  //       apiName: apiName,
-  //       queryType: queryType,
-  //       timestamp: bucketStartTime,
-  //       count: 1
-  //     }
-  //   })
-  // }
+  if (data) {
+    await supabase
+      .from("api_calls")
+      .update({
+        count: data.count + 1
+      })
+      .eq("id", data.id)
+  } else {
+    await supabase.from("api_calls").insert({
+      apiName,
+      queryType,
+      timestamp: bucketStartTime,
+      count: 1
+    })
+  }
 }

@@ -40,9 +40,9 @@ interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 interface FoodServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
 export interface FoodItemWithServings
-  extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients" | "adaEmbedding" | "bgeBaseEmbedding"> {
-  Servings: FoodServing[]
-  Nutrients: FoodNutrient[]
+  extends Omit<Tables<"FoodItem">, "Serving" | "Nutrient" | "adaEmbedding" | "bgeBaseEmbedding"> {
+  Serving: FoodServing[]
+  Nutrient: FoodNutrient[]
 }
 
 function mapModelToEnum(model: string): Enums<"FoodInfoSource"> {
@@ -65,9 +65,9 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     const floatVal = parseFloat(value)
     return isNaN(floatVal) ? null : floatVal
   }
-  let prismaFoodItem: FoodItemWithServings = {
+  let dbFoodItem: FoodItemWithServings = {
     id: 0,
-    lastUpdated: new Date().toDateString(),
+    lastUpdated: new Date().toISOString(),
     verified: false,
     userId: null,
     externalId: null,
@@ -91,19 +91,19 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     proteinPerServing: Number(food.protein_per_serving),
     messageId: 0,
     foodInfoSource: mapModelToEnum(model),
-    Servings:
+    Serving:
       food.servings?.map((serving) => ({
         servingWeightGram: serving.serving_weight_g,
         servingName: sanitizeServingName(serving.serving_name),
         servingAlternateAmount: serving.serving_alternate_amount,
         servingAlternateUnit: sanitizeServingName(serving.serving_name)
       })) || [],
-    Nutrients:
+    Nutrient:
       food.nutrients?.map((nutrient) => ({
         nutrientName: nutrient.nutrient_name,
         nutrientUnit: nutrient.nutrient_unit,
         nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
       })) || []
   }
-  return prismaFoodItem
+  return dbFoodItem
 }

@@ -93,7 +93,7 @@ export async function searchUsdaByEmbedding(
   //         WHERE id = ${embeddingId})) ASC
   //         LIMIT 5;
   //     `
-  // const usdaCosineSimilarityAndEmbeddings: UsdaFoodSqlResult[] = await prisma.$queryRaw(raw(sqlQuery))
+  // const usdaCosineSimilarityAndEmbeddings: UsdaFoodSqlResult[] = await pris.$queryRaw(raw(sqlQuery))
 
   const replacer = (key: string, value: any) => {
     if (key === "bgeBaseEmbedding") {

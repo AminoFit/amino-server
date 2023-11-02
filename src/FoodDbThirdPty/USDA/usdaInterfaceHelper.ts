@@ -5,9 +5,9 @@ interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 
 interface UsdaServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients"> {
-  Servings: UsdaServing[]
-  Nutrients: FoodNutrient[]
+export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Serving" | "Nutrient"> {
+  Serving: UsdaServing[]
+  Nutrient: FoodNutrient[]
 }
 
 interface Portion {
@@ -71,7 +71,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     id: 0,
     knownAs: [],
     description: null,
-    lastUpdated: new Date().toDateString(),
+    lastUpdated: new Date().toISOString(),
     verified: true,
     userId: null,
     foodInfoSource: "USDA",
@@ -88,7 +88,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
         ? usdaFoodItem.default_serving.default_serving_amount
         : null,
     isLiquid: usdaFoodItem.default_serving.default_serving_unit === "ml",
-    Servings: usdaFoodItem.portions.map((portion) => {
+    Serving: usdaFoodItem.portions.map((portion) => {
       let servingWeightGram = null
       let servingAlternateAmount = null
       let servingAlternateUnit = null
@@ -116,7 +116,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
 
     UPC: usdaFoodItem.upc ? Number(usdaFoodItem.upc) : null,
     externalId: usdaFoodItem.fdcId.toString(),
-    Nutrients: [],
+    Nutrient: [],
     kcalPerServing: 0,
     proteinPerServing: 0,
     totalFatPerServing: 0,
@@ -139,7 +139,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
       }
     } else if (nutrientInfo.amount !== null) {
       // Only push if nutrientInfo.amount is not null
-      foodItem.Nutrients.push({
+      foodItem.Nutrient.push({
         nutrientName,
         nutrientUnit: nutrientInfo.unit || "g", // Use the unit from nutrientInfo if available
         nutrientAmountPerDefaultServing: parseFloat((nutrientInfo.amount as number).toFixed(3))

@@ -1,38 +1,35 @@
-"use client";
+"use client"
 
-import { XMarkIcon } from "@heroicons/react/20/solid";
-import { User } from "@prisma/client";
-import moment from "moment-timezone";
-import { useEffect, useState } from "react";
-import { updateUserSettings } from "./settings/actions";
-import classNames from "classnames";
+import { XMarkIcon } from "@heroicons/react/20/solid"
+import moment from "moment-timezone"
+import { useEffect, useState } from "react"
+import { updateUserSettings } from "./settings/actions"
+import classNames from "classnames"
+import { Tables } from "types/supabase"
 
-export function TimeZoneBanner({ user }: { user: User }) {
-  const tz = moment.tz.guess();
+export function TimeZoneBanner({ user }: { user: Tables<"User"> }) {
+  const tz = moment.tz.guess()
 
-  const [showing, setShowing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [showing, setShowing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (moment.tz(tz).format() !== moment.tz(user.tzIdentifier).format()) {
-      console.log("moment.tz(tz)", moment.tz(tz).format());
-      console.log("user.tzIdentifier", user.tzIdentifier);
-      console.log(
-        "moment.tz(user.tzIdentifier)",
-        moment.tz(user.tzIdentifier).format()
-      );
-      setShowing(true);
+      console.log("moment.tz(tz)", moment.tz(tz).format())
+      console.log("user.tzIdentifier", user.tzIdentifier)
+      console.log("moment.tz(user.tzIdentifier)", moment.tz(user.tzIdentifier).format())
+      setShowing(true)
     }
-  }, [user.tzIdentifier, tz]);
+  }, [user.tzIdentifier, tz])
 
   const handleUpdate = async () => {
-    setSubmitting(true);
-    await updateUserSettings({ tzIdentifier: tz });
-    setShowing(false);
-    setSubmitting(false);
-  };
+    setSubmitting(true)
+    await updateUserSettings({ tzIdentifier: tz })
+    setShowing(false)
+    setSubmitting(false)
+  }
 
-  if (!showing) return;
+  if (!showing) return
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 sm:flex sm:justify-center sm:px-6 sm:pb-5 lg:px-8">
@@ -40,21 +37,17 @@ export function TimeZoneBanner({ user }: { user: User }) {
         <p className="text-sm leading-6 text-white">
           <a href="#">
             <strong className="font-semibold">Time Zone</strong>
-            <svg
-              viewBox="0 0 2 2"
-              className="mx-2 inline h-0.5 w-0.5 fill-current"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 2 2" className="mx-2 inline h-0.5 w-0.5 fill-current" aria-hidden="true">
               <circle cx={1} cy={1} r={1} />
             </svg>
-            You are currently in the <strong>{tz}</strong> time zone, but your
-            profile is set to <strong>{user.tzIdentifier}</strong>.
+            You are currently in the <strong>{tz}</strong> time zone, but your profile is set to{" "}
+            <strong>{user.tzIdentifier}</strong>.
           </a>
         </p>
         <button
           type="button"
           className={classNames("text-white", {
-            "opacity-50": submitting,
+            "opacity-50": submitting
           })}
           onClick={handleUpdate}
           disabled={submitting}
@@ -68,5 +61,5 @@ export function TimeZoneBanner({ user }: { user: User }) {
         </button>
       </div>
     </div>
-  );
+  )
 }

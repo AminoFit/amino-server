@@ -107,7 +107,8 @@ function mapServingMatchRequest(request: ServingMatchRequest) {
         serving_amount: shouldNormalize ? 1 : serving.serving_alternate_amount, // Retain original serving amount if not normalized
         serving_unit: serving.serving_alternate_unit
       }
-      delete uniqueServings[key].name
+      console.log("Seb, check this:", uniqueServings)
+      if (uniqueServings[key].name) delete uniqueServings[key].name
       delete uniqueServings[key].serving_alternate_amount
       delete uniqueServings[key].serving_alternate_unit
     }
@@ -164,7 +165,7 @@ export async function findBestServingMatchInstruct(
       default_serving_size_grams: food_item.defaultServingWeightGram,
       default_serving_size_ml: food_item.defaultServingLiquidMl,
       default_serving_calories: food_item.kcalPerServing,
-      servings: food_item.Servings.map((serving: any) => {
+      servings: food_item.Serving.map((serving: any) => {
         let servingSize = {
           serving_weight_grams: serving.servingWeightGram
         }
@@ -240,8 +241,8 @@ Output:
   let actualServingId = null
   if (response.serving_id_match_to_user_message !== null && response.serving_id_match_to_user_message !== 0) {
     if (!lastServingIsDefault || response.serving_id_match_to_user_message !== match_request_obj.servings.length) {
-      if (food_item.Servings[response.serving_id_match_to_user_message - 1]) {
-        actualServingId = food_item.Servings[response.serving_id_match_to_user_message - 1].id
+      if (food_item.Serving[response.serving_id_match_to_user_message - 1]) {
+        actualServingId = food_item.Serving[response.serving_id_match_to_user_message - 1].id
       }
     }
   }
@@ -293,7 +294,7 @@ Output:
 //     food_database_search_name: "Peach Yogurt",
 //     full_item_user_message_including_serving: "1 Oikos Peach Yogurt"
 //   }
-//   const oikos_food = (await prisma.foodItem.findUnique({
+//   const oikos_food = (await pris.foodItem.findUnique({
 //     where: { id: 94 },
 //     include: {
 //       Nutrients: true,

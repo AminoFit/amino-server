@@ -7,7 +7,7 @@ require("dotenv").config({
 })
 
 async function storeAccessToken(apiName: string, token: string, expiresIn: number) {
-  const expires = new Date(Date.now() + expiresIn * 1000).toDateString()
+  const expires = new Date(Date.now() + expiresIn * 1000).toISOString()
 
   const supabase = createAdminSupabase()
 

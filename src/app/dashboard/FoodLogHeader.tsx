@@ -1,36 +1,28 @@
-import { User } from "@prisma/client"
-
-import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
-import CalOverviewCard from "./CalOverviewCard"
+import { Tables } from "types/supabase"
+import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 
 export function FoodLogHeader({
   foods,
   user
 }: {
   foods: LoggedFoodItemWithFoodItem[]
-  user: User | undefined
+  user: Tables<"User"> | undefined
 }) {
   return (
     <>
       <div className="px-4 sm:px-6 lg:px-0 mb-8">
         <div className="mt-5 flex justify-between mb-4">
           <div>
-            {user?.firstName && (
-              <div className="text-sm font-light text-amino-600">
-                Welcome Back
-              </div>
-            )}
+            {user?.fullName && <div className="text-sm font-light text-amino-600">Welcome Back</div>}
             <h2 className="mb-3 text-4xl font-bold leading-7 text-zinc-800 sm:truncate sm:text-3xl sm:tracking-tight">
-              {user?.firstName || "Welcome Back"}
+              {user?.fullName || "Welcome Back"}
             </h2>
           </div>
           {/* <FoodLogStreak /> */}
         </div>
-        <div>
-          {/* <CalOverviewCard /> */}
-        </div>
+        <div>{/* <CalOverviewCard /> */}</div>
       </div>
     </>
   )

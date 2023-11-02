@@ -47,7 +47,6 @@
     "mathjs": "^11.11.2",
     "moment-timezone": "^0.5.43",
     "next": "^13.5.2",
-    "next-auth": "^4.23.2",
     "nodemailer": "^6.9.5",
     "openai": "4.11.1",
     "pgvector": "^0.1.5",

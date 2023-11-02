@@ -5,8 +5,7 @@ import { cookies } from "next/headers"
 
 export type UserSettingsProps = {
   tzIdentifier?: string
-  firstName?: string
-  lastName?: string
+  fullName?: string
   dateOfBirth?: Date
   weightKg?: number | null
   heightCm?: number | null

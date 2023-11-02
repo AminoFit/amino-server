@@ -44,7 +44,7 @@ interface AutocompleteFoodItem {
 }
 
 const generateServingString = (foodItem: FoodItemWithNutrientsAndServing) => {
-  const filteredServings = foodItem.Servings.filter((serving: any) => serving.servingWeightGram === null).slice(0, 3)
+  const filteredServings = foodItem.Serving.filter((serving: any) => serving.servingWeightGram === null).slice(0, 3)
 
   let inquiry = filteredServings
     .map(
@@ -76,7 +76,7 @@ const updateFoodItem = (
   }
 
   // Update servings
-  foodItem.Servings = foodItem.Servings.map((serving: any) => {
+  foodItem.Serving = foodItem.Serving.map((serving: any) => {
     const newServing = autocompleteResults.servings.find((r) => r.serving_id === serving.id)
     if (newServing) {
       serving.servingWeightGram = newServing.serving_weight_gram
@@ -210,7 +210,7 @@ async function testRun() {
 
     // Iterate through Servings and Nutrients
     output += "Servings: [\n"
-    for (const serving of foodItem.Servings) {
+    for (const serving of foodItem.Serving) {
       output += `  { servingWeightGrams: ${
         serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : "N/A"
       }, servingName: "${serving.servingName}" },\n`
@@ -218,7 +218,7 @@ async function testRun() {
     output += "]\n"
 
     output += "Nutrients: [\n"
-    for (const nutrient of foodItem.Nutrients) {
+    for (const nutrient of foodItem.Nutrient) {
       output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`
     }
     output += "]"
@@ -231,7 +231,7 @@ async function testRun() {
     fullName: "John",
     email: "john.doe@example.com",
     phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00").toDateString(),
+    dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
     weightKg: 70.5,
     heightCm: 180,
     calorieGoal: 2000,
@@ -279,7 +279,7 @@ async function testRun() {
     sugarPerServing: 6,
     addedSugarPerServing: null,
     proteinPerServing: 13,
-    lastUpdated: new Date("2023-09-18 20:00:38.115"),
+    lastUpdated: new Date("2023-09-18 20:00:38.115").toISOString(),
     verified: true,
     userId: null,
     messageId: 489,

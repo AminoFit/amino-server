@@ -24,7 +24,7 @@ export async function HandleUpdateUserInfo(
     console.log("updating user DOB to", parameters.user_date_of_birth)
     const dob = new Date(parameters.user_date_of_birth)
     console.log("dob", dob)
-    await supabase.from("User").update({ dateOfBirth: dob.toDateString() }).eq("id", user.id)
+    await supabase.from("User").update({ dateOfBirth: dob.toISOString() }).eq("id", user.id)
 
     updates.push(`Your date of birth has been updated, ${moment(dob).format("MMMM Do YYYY")}.`)
   }

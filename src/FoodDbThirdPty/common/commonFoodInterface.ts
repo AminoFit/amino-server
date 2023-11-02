@@ -1,12 +1,12 @@
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
-import { FoodInfoSource } from "@prisma/client"
+import { Enums } from "types/supabase"
 
 export interface foodSearchResultsWithSimilarityAndEmbedding {
-    foodBgeBaseEmbedding: number[]
-    similarityToQuery: number
-    foodSource: FoodInfoSource
-    foodName: string
-    foodBrand?: string
-    externalId?: string
-    foodItem?: FoodItemWithNutrientsAndServing
+  foodBgeBaseEmbedding: number[]
+  similarityToQuery: number
+  foodSource: Enums<"FoodInfoSource">
+  foodName: string
+  foodBrand?: string
+  externalId?: string
+  foodItem?: FoodItemWithNutrientsAndServing
 }

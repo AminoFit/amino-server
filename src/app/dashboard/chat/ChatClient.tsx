@@ -1,47 +1,39 @@
-"use client";
-import useSWR from "swr";
-import { ChatMessage } from "../../../components/chat/ChatMessage";
-import { Message } from "@prisma/client";
-import ChatBox from "../../../components/chat/ChatBox";
-import React from "react";
+"use client"
+import useSWR from "swr"
+import { ChatMessage } from "../../../components/chat/ChatMessage"
+import ChatBox from "../../../components/chat/ChatBox"
+import React from "react"
+import { Tables } from "types/supabase"
 
 async function fetcher(url: string) {
-  const response = await fetch(url);
+  const response = await fetch(url)
   if (!response.ok) {
-    throw new Error("An error occurred while fetching the data.");
+    throw new Error("An error occurred while fetching the data.")
   }
-  return response.json();
+  return response.json()
 }
 
 export default function ChatClient() {
-  const {
-    data: messages,
-    mutate,
-    error,
-  } = useSWR("/api/chat/getMessages", fetcher);
-  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+  const { data: messages, mutate, error } = useSWR("/api/chat/getMessages", fetcher)
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null)
   React.useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;
+      messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight
     }
-  }, [messages]);
+  }, [messages])
 
-  if (error) return <div>Failed to load</div>;
+  if (error) return <div>Failed to load</div>
 
   return (
     <div className="flex flex-col h-full border divide-y divide-gray-200">
       <div className="p-4">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">
-          Chat with Amino
-        </h3>
+        <h3 className="text-lg leading-6 font-medium text-gray-900">Chat with Amino</h3>
       </div>
       <div className="flex-grow overflow-y-auto p-4" ref={messagesEndRef}>
         {!messages ? (
-          <div className="flex items-center justify-center h-full">
-            Loading...
-          </div>
+          <div className="flex items-center justify-center h-full">Loading...</div>
         ) : (
-          messages.map((message: Message) =>
+          messages.map((message: Tables<"Message">) =>
             message.role === "User" || message.role === "Assistant" ? (
               <ChatMessage message={message} key={message.id} />
             ) : null
@@ -54,5 +46,5 @@ export default function ChatClient() {
         </div>
       </div>
     </div>
-  );
+  )
 }

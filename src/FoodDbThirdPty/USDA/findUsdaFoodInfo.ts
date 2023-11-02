@@ -4,7 +4,6 @@ import { UsdaFoodItem } from "./usdaInterfaceHelper"
 import { getAdaEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { FoodItemWithServings, mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
-import { FoodInfoSource } from "@prisma/client"
 
 export interface UsdaFindFoodParams {
   queryEmbedding: number[]

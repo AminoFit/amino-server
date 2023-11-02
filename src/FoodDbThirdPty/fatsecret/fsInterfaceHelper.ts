@@ -4,9 +4,9 @@ interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 
 interface AminoServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Servings" | "Nutrients"> {
-  Servings: AminoServing[]
-  Nutrients: FoodNutrient[]
+export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Serving" | "Nutrient"> {
+  Serving: AminoServing[]
+  Nutrient: FoodNutrient[]
 }
 
 export interface FsServing {
@@ -135,7 +135,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
     UPC: null,
     knownAs: [],
     description: null,
-    lastUpdated: new Date().toDateString(),
+    lastUpdated: new Date().toISOString(),
     verified: true,
     userId: null,
     foodInfoSource: "FATSECRET",
@@ -159,7 +159,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
     sugarPerServing: serving.sugar ? Number(serving.sugar) : null,
     transFatPerServing: serving.trans_fat ? Number(serving.trans_fat) : null,
     addedSugarPerServing: serving.added_sugars ? Number(serving.added_sugars) : null,
-    Servings: deduplicatedServings
+    Serving: deduplicatedServings
       .filter(
         (serving) => !(Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g") &&
           !(Number(serving.metric_serving_amount) === 28.35 && serving.measurement_description === "oz")
@@ -172,7 +172,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
           : null,
         servingName: serving.serving_description
       })),
-    Nutrients: nutrients,
+    Nutrient: nutrients,
     adaEmbedding: null,
     bgeBaseEmbedding: null
   }

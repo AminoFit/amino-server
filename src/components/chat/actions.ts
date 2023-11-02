@@ -17,8 +17,6 @@ export async function QuickLogFoodMessage(newMessage: string) {
     return { error: "No user authenticated" }
   }
 
-  console.log("Authed User", user)
-
   const { error, data: aminoUser } = await supabase.from("User").select().eq("id", user.id).single()
   console.log("QuickLogFoodMessage")
 

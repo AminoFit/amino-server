@@ -34,6 +34,7 @@ import { cookies } from "next/headers"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
+import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -103,7 +104,7 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
       foodItemsToLog.map((food) => {
         return {
           userId: user.id,
-          consumedOn: food.timeEaten ? new Date(food.timeEaten).toDateString() : new Date().toDateString(),
+          consumedOn: food.timeEaten ? new Date(food.timeEaten).toISOString() : new Date().toISOString(),
           messageId: lastUserMessageId,
           status: "Needs Processing",
           extendedOpenAiData: food as any
@@ -189,17 +190,10 @@ async function findBestMatch(
 
     const { data: match } = await supabase
       .from("FoodItem")
-      .select(`*, Nutrients(*), Servings(*)`)
+      .select(`*, Nutrient(*), Serving(*)`)
       .eq("id", bestMatches[0].id)
       .single()
 
-    // const match = await prisma.foodItem.findUnique({
-    //   where: { id: bestMatches[0].id },
-    //   include: {
-    //     Nutrients: true,
-    //     Servings: true
-    //   }
-    // })
     if (match) return match as FoodItemWithNutrientsAndServing
     throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
   }
@@ -220,10 +214,10 @@ async function findBestMatch(
       // Return the highest match instantly
       const { data: match } = await supabase
         .from("FoodItem")
-        .select(`*, Nutrients(*), Servings(*)`)
+        .select(`*, Nutrient(*), Serving(*)`)
         .eq("id", localDbMatch.id)
         .single()
-      if (match) return match
+      if (match) return match as FoodItemWithNutrientsAndServing
       throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
     }
   }
@@ -262,7 +256,7 @@ export async function HandleLogFoodItem(
 
   console.log("result", cosineSearchResults)
 
-  // const cosineSearchResults = (await prisma.$queryRaw`
+  // const cosineSearchResults = (await pris.$queryRaw`
   //   SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
   //   1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity
   //   FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
@@ -315,15 +309,15 @@ async function addFoodItemPrisma(
 
   const { data: existingFoodItem, error } = await supabase
     .from("FoodItem")
-    .select("*, Nutrients(*), Servings(*)")
+    .select("*, Nutrient(*), Serving(*)")
     .eq("name", food.name)
-    .eq("brand", food.brand)
+    .eq("brand", food.brand || "")
     .limit(1)
     .single()
 
   // If it exists, return the existing food item ID
   if (existingFoodItem) {
-    return existingFoodItem
+    return existingFoodItem as FoodItemWithNutrientsAndServing
   }
 
   // If the food item is missing a field, complete it
@@ -332,7 +326,7 @@ async function addFoodItemPrisma(
   }
 
   // Check for missing servingAlternateAmount and servingAlternateUnit in servings
-  for (const serving of food.Servings) {
+  for (const serving of food.Serving || []) {
     if (
       serving.servingAlternateAmount === null ||
       serving.servingAlternateAmount === undefined ||
@@ -346,48 +340,53 @@ async function addFoodItemPrisma(
 
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
+  delete (foodWithoutId as any).Nutrient
+  delete (foodWithoutId as any).Serving
 
   // Save the vector to the database
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
 
+  console.log("foodWithoutId", foodWithoutId)
+
   // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
-  const { data: newFood } = await supabase
+  const { data: newFood, error: insertError } = await supabase
     .from("FoodItem")
     .insert({
       ...foodWithoutId,
       messageId: messageId,
-      bgeBaseEmbedding: embeddingSql,
-      //foodInfoSource: mapModelToEnum(model),
-      // Check if nutrients exist before adding them
-      ...(food.Nutrients && {
-        Nutrients: {
-          create: food.Nutrients.map((nutrient: any) => ({
-            nutrientName: nutrient.nutrientName,
-            nutrientUnit: nutrient.nutrientUnit,
-            nutrientAmountPerDefaultServing: nutrient.nutrientAmountPerDefaultServing
-          }))
-        }
-      }),
-      ...(food.Servings && {
-        Servings: {
-          create: food.Servings.map((serving: any) => ({
-            servingWeightGram: serving.servingWeightGram,
-            servingAlternateAmount: serving.servingAlternateAmount,
-            servingAlternateUnit: serving.servingAlternateUnit,
-            servingName: serving.servingName
-          }))
-        }
-      })
+      bgeBaseEmbedding: embeddingSql
     })
-    .select(`*, Nutrients(*), Servings(*)`)
+    .select(`*, Nutrient(*), Serving(*)`)
     .single()
 
-  // const result = await prisma.$executeRaw`UPDATE "FoodItem"
-  //   SET "bgeBaseEmbedding" = ${embeddingSql}::vector
-  //   WHERE id = ${newFood.id}`
+  console.log("Insert FoodItem result data:", newFood)
+  console.log("Insert FoodItem result error:", insertError)
 
-  return newFood
+  if (newFood) {
+    const { error: addNutrientsError } = await supabase.from("Nutrient").insert(
+      food.Nutrient.map((nutrient: any) => ({
+        foodItemId: newFood.id,
+        nutrientName: nutrient.nutrientName,
+        nutrientUnit: nutrient.nutrientUnit,
+        nutrientAmountPerDefaultServing: nutrient.nutrientAmountPerDefaultServing
+      }))
+    )
+
+    if (addNutrientsError) console.error("Error adding nutrients", addNutrientsError)
+    const { error: addServingsError } = await supabase.from("Serving").insert(
+      food.Serving.map((serving: any) => ({
+        foodItemId: newFood.id,
+        servingWeightGram: serving.servingWeightGram,
+        servingAlternateAmount: serving.servingAlternateAmount,
+        servingAlternateUnit: serving.servingAlternateUnit,
+        servingName: serving.servingName
+      }))
+    )
+    if (addServingsError) console.error("Error adding servings", addServingsError)
+  }
+
+  return newFood as FoodItemWithNutrientsAndServing
 }
 
 async function findAndAddItemInDatabase(
@@ -433,8 +432,6 @@ async function findAndAddItemInDatabase(
     }
 
     const getUsdaFoodInfo = async () => {
-      // SEB CHRIS : CHRIS disabled this for the moment. Need to fix query
-
       const startTime = Date.now()
       if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
         try {

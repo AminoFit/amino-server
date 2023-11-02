@@ -46,8 +46,8 @@ export function constructFoodItemRequestString(
         item.foodItem.addedSugarPerServing ?? 0
       }g added sugar, ${item.foodItem.proteinPerServing}g protein`
 
-      if (item.foodItem.Servings && item.foodItem.Servings.length > 0) {
-        const servingsString = item.foodItem.Servings.slice(0, 3)
+      if (item.foodItem.Serving && item.foodItem.Serving.length > 0) {
+        const servingsString = item.foodItem.Serving.slice(0, 3)
           .map((serving: Tables<"Serving">) => {
             let servingDetails = `${serving.servingName}`
             if (serving.servingWeightGram) {
@@ -87,11 +87,11 @@ function testStringBuilder() {
     sugarPerServing: 3,
     addedSugarPerServing: 1,
     proteinPerServing: 8,
-    lastUpdated: new Date(),
+    lastUpdated: new Date().toISOString(),
     verified: true,
     externalId: "PBNUTTY01",
-    UPC: BigInt(123456789012),
-    Servings: [
+    UPC: Number(123456789012),
+    Serving: [
       {
         id: 101,
         servingWeightGram: 32,
@@ -109,7 +109,7 @@ function testStringBuilder() {
         foodItemId: 12345
       }
     ],
-    Nutrients: [
+    Nutrient: [
       {
         id: 201,
         nutrientName: "Iron",

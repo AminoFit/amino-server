@@ -181,7 +181,7 @@ function testMatching() {
     fullName: "Sebastian",
     email: "seb.grubb@gmail.com",
     phone: "+16503079963",
-    dateOfBirth: new Date("1992-05-06T04:00:00.000Z").toDateString(),
+    dateOfBirth: new Date("1992-05-06T04:00:00.000Z").toISOString(),
     weightKg: 75,
     heightCm: 175,
     calorieGoal: 2440,
