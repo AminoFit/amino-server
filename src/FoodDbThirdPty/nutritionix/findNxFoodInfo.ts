@@ -7,7 +7,6 @@ import {
 } from "./searchFoodIds"
 import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
 import { isNutritionixBrandedItem } from "./nxInterfaceHelper"
-import { FoodInfoSource } from "@prisma/client"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 
 const COSINE_THRESHOLD = 0.8
@@ -40,10 +39,7 @@ export async function findNxFoodInfo(
   })
 
   // Create an array of all queries to get embeddings for
-  const mainQuery = includeBrandName(
-    foodQuery.food_full_name,
-    foodQuery.brand_name || ""
-  ).toLowerCase()
+  const mainQuery = includeBrandName(foodQuery.food_full_name, foodQuery.brand_name || "").toLowerCase()
 
   const queryEmbedding = foodQuery.queryBgeBaseEmbedding
   console.log("query NX:", mainQuery)
@@ -63,11 +59,11 @@ export async function findNxFoodInfo(
     ]
 
     // get all embeddings in a single API call
-    const allEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE', allQueries)
+    const allEmbeddings = await getCachedOrFetchEmbeddings("BGE_BASE", allQueries)
 
     const itemEmbeddings = allEmbeddings.map(
       (embeddingObject: { id: number; embedding: number[]; text: string }) => embeddingObject.embedding
-      )
+    )
 
     for (let i = 0; i < brandedFoodOptions.length; i++) {
       // calculate cosine similarity
@@ -85,7 +81,6 @@ export async function findNxFoodInfo(
 
     // sort items by cosine similarity
     cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
-
   }
   // handle the non-branded case here...
   let commonFoodOptions: NutritionixCommonItem[] = foodResults.common
@@ -96,13 +91,12 @@ export async function findNxFoodInfo(
     const commondFoodQueries = commonFoodOptions?.map((item) => `${item.food_name}`.toLowerCase()) ?? []
 
     // get all embeddings in a single API call
-    const commondFoodEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',commondFoodQueries)
-
+    const commondFoodEmbeddings = await getCachedOrFetchEmbeddings("BGE_BASE", commondFoodQueries)
 
     // extract item embeddings
     const commonFoodEmbeddings = commondFoodEmbeddings.map(
       (embeddingObject: { id: number; embedding: number[]; text: string }) => embeddingObject.embedding
-      )
+    )
 
     for (let i = 0; i < commonFoodOptions.length; i++) {
       // calculate cosine similarity
@@ -122,18 +116,18 @@ export async function findNxFoodInfo(
   // sort items by cosine similarity
   cosineSimilaritiesAndEmbeddings.sort((a, b) => b.similarity - a.similarity)
 
-  if (DEBUG){
-  console.log("Nutritionix results:")
-  cosineSimilaritiesAndEmbeddings.slice(0, 3).forEach((itemInfo) => {
-    if (isNutritionixBrandedItem(itemInfo.item)) {
-      console.log(
-        `Item: ${itemInfo.item.food_name} by ${itemInfo.item.brand_name} has similarity ${itemInfo.similarity}`
-      )
-    } else {
-      console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`)
-    }
-  })
-}
+  if (DEBUG) {
+    console.log("Nutritionix results:")
+    cosineSimilaritiesAndEmbeddings.slice(0, 3).forEach((itemInfo) => {
+      if (isNutritionixBrandedItem(itemInfo.item)) {
+        console.log(
+          `Item: ${itemInfo.item.food_name} by ${itemInfo.item.brand_name} has similarity ${itemInfo.similarity}`
+        )
+      } else {
+        console.log(`Item: ${itemInfo.item.food_name} has similarity ${itemInfo.similarity}`)
+      }
+    })
+  }
 
   // Take only the top items as per 'topItemsCount'
   const topSimilarItems = cosineSimilaritiesAndEmbeddings.slice(0, 3)
@@ -143,14 +137,14 @@ export async function findNxFoodInfo(
     return null
   }
 
-  const mappedResults: foodSearchResultsWithSimilarityAndEmbedding[] = cosineSimilaritiesAndEmbeddings.map(item => ({
+  const mappedResults: foodSearchResultsWithSimilarityAndEmbedding[] = cosineSimilaritiesAndEmbeddings.map((item) => ({
     foodBgeBaseEmbedding: item.bgeBaseEmbedding,
     similarityToQuery: item.similarity,
-    foodSource: FoodInfoSource.NUTRITIONIX,
+    foodSource: "NUTRITIONIX",
     foodName: item.item.food_name,
-    externalId: 'nix_item_id' in item.item ? item.item.nix_item_id : undefined,
-    foodBrand: 'nix_item_id' in item.item ? item.item.brand_name : undefined,
-  }));
+    externalId: "nix_item_id" in item.item ? item.item.nix_item_id : undefined,
+    foodBrand: "nix_item_id" in item.item ? item.item.brand_name : undefined
+  }))
 
   return mappedResults.slice(0, 3)
   /*
@@ -212,7 +206,7 @@ async function runTest() {
 
   // make a single call get all queries
   const allQueries = foodEmbedding.map((item) => item.query)
-  const allEmbeddings = await getCachedOrFetchEmbeddings('BGE_BASE',allQueries)
+  const allEmbeddings = await getCachedOrFetchEmbeddings("BGE_BASE", allQueries)
 
   // assign returned embeddings to the correct items
   for (let i = 0; i < foodEmbedding.length; i++) {
@@ -228,7 +222,7 @@ async function runTest() {
 
 async function testSearch() {
   const query = "RXBAR"
-  const queryEmbedding = (await getCachedOrFetchEmbeddings('BGE_BASE',[query]))[0].embedding
+  const queryEmbedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [query]))[0].embedding
   const rxbarResponse = await findNxFoodInfo({
     food_name: query,
     queryBgeBaseEmbedding: queryEmbedding,
@@ -237,11 +231,11 @@ async function testSearch() {
   })
   const replacer = (key: string, value: any) => {
     if (key === "foodEmbedding" && Array.isArray(value)) {
-      return "[VECTOR_TO_SHORTEN]";
+      return "[VECTOR_TO_SHORTEN]"
     }
-    return value;
-  };
-  
+    return value
+  }
+
   //console.log(JSON.stringify(rxbarResponse, replacer, 2));
   /*
   // --------------------------------

@@ -1,48 +1,50 @@
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { chatCompletionInstructStream } from "./chatCompletion"
-import { User } from "@prisma/client"
-import { prisma } from "../../database/prisma"
-import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems";
+import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
+import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 // Token limit
-const tokenLimit = 2048;
+const tokenLimit = 2048
 
 function sanitizeInput(input: string): string {
-    const sanitizedInput = input.replace(/[^a-zA-Z0-9\s,]/g, '');
-    return sanitizedInput;
+  const sanitizedInput = input.replace(/[^a-zA-Z0-9\s,]/g, "")
+  return sanitizedInput
 }
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
-    // Since serving is no longer available in the output, we need to handle its absence
-    let serving: LoggedFoodServing | undefined;
-    if (outputItem.serving) {
-        serving = {
-            serving_amount: outputItem.serving.serving_amount,
-            serving_name: outputItem.serving.serving_name,
-            total_serving_g_or_ml: outputItem.serving.total_serving_size_g_or_ml,
-            serving_g_or_ml: outputItem.serving.g_or_ml,
-        }
+  // Since serving is no longer available in the output, we need to handle its absence
+  let serving: LoggedFoodServing | undefined
+  if (outputItem.serving) {
+    serving = {
+      serving_amount: outputItem.serving.serving_amount,
+      serving_name: outputItem.serving.serving_name,
+      total_serving_g_or_ml: outputItem.serving.total_serving_size_g_or_ml,
+      serving_g_or_ml: outputItem.serving.g_or_ml
     }
+  }
 
-    return {
-        food_database_search_name: outputItem.food_database_complete_search_term,
-        full_item_user_message_including_serving: outputItem.full_item_user_message_including_serving,
-        brand: outputItem.brand,
-        branded: outputItem.branded,
-        serving
-    };
+  return {
+    food_database_search_name: outputItem.food_database_complete_search_term,
+    full_item_user_message_including_serving: outputItem.full_item_user_message_including_serving,
+    brand: outputItem.brand,
+    branded: outputItem.branded,
+    serving
+  }
 }
 
-
-
-export async function logFoodItemStreamInstruct(user: User, user_request: string, lastUserMessageId: number): Promise<FoodItemToLog[]> {
-    const sanitizedUserRequest = sanitizeInput(user_request);
-    if (!isWithinTokenLimit(sanitizedUserRequest, tokenLimit)) {
-        console.log("Input too long.");
-        return [];
-    }
-    const prompt = `Please analyze the user's request carefully and produce a structured JSON representation of the foods they want to log.
+export async function logFoodItemStreamInstruct(
+  user: Tables<"User">,
+  user_request: string,
+  lastUserMessageId: number
+): Promise<FoodItemToLog[]> {
+  const sanitizedUserRequest = sanitizeInput(user_request)
+  if (!isWithinTokenLimit(sanitizedUserRequest, tokenLimit)) {
+    console.log("Input too long.")
+    return []
+  }
+  const prompt = `Please analyze the user's request carefully and produce a structured JSON representation of the foods they want to log.
 
 Instructions:
 1. Identify distinct food items or beverages in the user_request.
@@ -63,74 +65,75 @@ Expected output format:
 }[]
 
 Output: 
-[`;
+[`
 
-    const foodItemsToLog: FoodItemToLog[] = [];
-    const loggingTasks: Promise<any>[] = [];
-    const messageInfo = await prisma.message.findUnique({
-        where: { id: lastUserMessageId },
-        select: {
-            itemsProcessed: true
-        }
-    });
-    const itemsAlreadyProcessed = messageInfo?.itemsProcessed || 0;
+  const foodItemsToLog: FoodItemToLog[] = []
+  const loggingTasks: Promise<any>[] = []
 
-    let itemsExtracted = 0;
+  const supabase = createAdminSupabase()
 
-    try {
-        for await (const chunk of chatCompletionInstructStream({
-            prompt,
-            temperature: 0,
-            stop: ']',
-        }, user)) {
-            // increment the number of items extracted
-            itemsExtracted++;
-            // map to a FoodItemToLog schema
-            const foodItemToLog: FoodItemToLog = mapToFoodItemToLog(chunk);
-            itemsExtracted++;
-            console.dir(foodItemToLog);
-            foodItemsToLog.push(foodItemToLog);
-            // Skip processing if this item is already processed
-            if (itemsExtracted <= itemsAlreadyProcessed) {
-                continue;
-            }
-            // Add logging task to the tasks array
-            const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, lastUserMessageId);
-            loggingTasks.push(loggingTask);
-        }
+  const { data: messageInfo } = await supabase
+    .from("Message")
+    .select("itemsProcessed")
+    .eq("id", lastUserMessageId)
+    .single()
+  const itemsAlreadyProcessed = messageInfo?.itemsProcessed || 0
 
-        // Wait for all logging tasks to complete
-        const results = await Promise.allSettled(loggingTasks);
-        
-        // Optionally, you can handle the results:
-        // e.g., to log errors if any task failed
-        for (const result of results) {
-            if (result.status === 'rejected') {
-                console.error("Error while logging food item:", result.reason);
-            }
-        }
+  let itemsExtracted = 0
 
-        return foodItemsToLog;
-    } catch (error) {
-        if (error instanceof Error) {
-            console.log("Error:", error.message);
-        } else {
-            console.log("Error:", error);
-        }
-        return [];
+  try {
+    for await (const chunk of chatCompletionInstructStream(
+      {
+        prompt,
+        temperature: 0,
+        stop: "]"
+      },
+      user
+    )) {
+      // increment the number of items extracted
+      itemsExtracted++
+      // map to a FoodItemToLog schema
+      const foodItemToLog: FoodItemToLog = mapToFoodItemToLog(chunk)
+      itemsExtracted++
+      console.dir(foodItemToLog)
+      foodItemsToLog.push(foodItemToLog)
+      // Skip processing if this item is already processed
+      if (itemsExtracted <= itemsAlreadyProcessed) {
+        continue
+      }
+      // Add logging task to the tasks array
+      const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, lastUserMessageId)
+      loggingTasks.push(loggingTask)
     }
+
+    // Wait for all logging tasks to complete
+    const results = await Promise.allSettled(loggingTasks)
+
+    // Optionally, you can handle the results:
+    // e.g., to log errors if any task failed
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.error("Error while logging food item:", result.reason)
+      }
+    }
+
+    return foodItemsToLog
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log("Error:", error.message)
+    } else {
+      console.log("Error:", error)
+    }
+    return []
+  }
 }
 
-
 async function testFoodLog() {
-    const user: User = {
+  const user: Tables<"User"> = {
       id: "clmzqmr2a0000la08ynm5rjju",
-      firstName: "John",
-      lastName: "Doe",
+      fullName: "John",
       email: "john.doe@example.com",
-      emailVerified: new Date("2022-08-09T12:00:00"),
       phone: "123-456-7890",
-      dateOfBirth: new Date("1990-01-01T00:00:00"),
       weightKg: 70.5,
       heightCm: 180,
       calorieGoal: 2000,
@@ -142,12 +145,14 @@ async function testFoodLog() {
       setupCompleted: false,
       sentContact: false,
       sendCheckins: false,
-      tzIdentifier: "America/New_York"
-    }
-    let userRequestString = "20g of peanut butter"
-    let result = await logFoodItemStreamInstruct(user, userRequestString, 1)
-    //console.dir(result, { depth: null })
+      tzIdentifier: "America/New_York",
+      avatarUrl: null,
+      dateOfBirth: null,
+      emailVerified: null
   }
-  
-  //testFoodLog()
-  
+  let userRequestString = "20g of peanut butter"
+  let result = await logFoodItemStreamInstruct(user, userRequestString, 1)
+  //console.dir(result, { depth: null })
+}
+
+//testFoodLog()

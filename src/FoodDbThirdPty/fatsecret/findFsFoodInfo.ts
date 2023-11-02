@@ -4,7 +4,6 @@ import { findFatSecretFoodInfo, FatSecretFindFoodParams } from "./searchFsFood"
 import { FsFoodInfo, convertFsToFoodItem, FoodItemWithServings } from "./fsInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
-import { FoodInfoSource } from "@prisma/client"
 
 const COSINE_THRESHOLD = 0.85
 
@@ -28,7 +27,7 @@ export async function findFsFoodInfo(
 
   // Check if the result is null or an empty array
   if (!searchResponse || searchResponse.length === 0) {
-    return null;
+    return null
   }
 
   // create an array of all queries to get embeddings for
@@ -83,7 +82,7 @@ export async function findFsFoodInfo(
     foodBgeBaseEmbedding: item.bgeBaseEmbedding,
     similarityToQuery: item.similarity,
     foodName: item.item.name,
-    foodSource: FoodInfoSource.FATSECRET,
+    foodSource: "FATSECRET",
     externalId: String(item.item.externalId),
     foodBrand: item.item.brand ?? undefined,
     foodItem: item.item as FoodItemWithNutrientsAndServing

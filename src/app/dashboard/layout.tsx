@@ -1,17 +1,18 @@
-import SideNav from "./SideNav"
-import { getUser } from "./settings/actions"
 
-import { TimeZoneBanner } from "./TimeZoneBanner"
 import DashNav from "@/components/DashNav"
 
-import foodBackground from "@/images/backgrounds/food-icon-bg.png"
 
-export default async function Example({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  const user = await getUser()
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { Database } from "types/supabase-generated.types"
+
+export default async function Example({ children }: { children: React.ReactNode }) {
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore })
+
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
   if (!user) {
     console.log("no user found")
@@ -20,10 +21,7 @@ export default async function Example({
 
   return (
     <div className="relative isolate bg-white px-1 md:px-6">
-      <div
-        className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl"
-        aria-hidden="true"
-      >
+      <div className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl" aria-hidden="true">
         <div
           className="mx-auto aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-[#80ffa7] to-[#fcb489] opacity-30"
           style={{
@@ -38,7 +36,7 @@ export default async function Example({
         {/* We've used 3xl here, but feel free to try other max-widths based on your needs */}
         <div className="">{children}</div>
       </div>
-      <TimeZoneBanner user={user} />
+      {/* <TimeZoneBanner user={user} /> */}
     </div>
   )
 }

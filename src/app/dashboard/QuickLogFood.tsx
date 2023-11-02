@@ -26,6 +26,7 @@ export default function QuickLogFood() {
     setRequestStatus(RequestStatus.PENDING)
     setModalOpen(true)
     const result = await QuickLogFoodMessage(quickLogInput)
+    console.log("We have result", result)
     if (result.error) {
       setRequestMessage(result.error)
       setRequestStatus(RequestStatus.ERROR)
@@ -67,7 +68,7 @@ export default function QuickLogFood() {
                 cy="12"
                 r="10"
                 stroke="black"
-                stroke-width="4"
+                strokeWidth="4"
               ></circle>
               <path
                 className="opacity-75"
@@ -195,7 +196,7 @@ function LoadingSpinner() {
         cy="12"
         r="10"
         stroke="currentColor"
-        stroke-width="4"
+        strokeWidth="4"
       ></circle>
       <path
         className="opacity-75"

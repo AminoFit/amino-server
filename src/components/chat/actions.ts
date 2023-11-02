@@ -1,48 +1,33 @@
 "use server"
 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import ProcessMessage, { MessageSource, QuickLogMessage } from "@/app/api/processMessage"
-import { prisma } from "@/database/prisma"
-import { getServerSession } from "next-auth"
-
-export async function sendMessage(newMessage: string) {
-  if (!newMessage) return { error: "No message provided" }
-
-  const session = await getServerSession(authOptions)
-
-  if (session?.user?.email) {
-    let aminoUser = await prisma.user.findUnique({
-      where: {
-        email: session.user.email
-      }
-    })
-
-    if (aminoUser) {
-      const message = await ProcessMessage(aminoUser, newMessage, MessageSource.Web)
-      console.log("message", message)
-      return { message }
-    }
-  }
-  return { error: "No session" }
-}
+import { QuickLogMessage } from "@/app/api/processMessage"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
 export async function QuickLogFoodMessage(newMessage: string) {
   if (!newMessage) return { error: "No message provided" }
 
-  const session = await getServerSession(authOptions)
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
 
-  if (session?.user?.email) {
-    let aminoUser = await prisma.user.findUnique({
-      where: {
-        email: session.user.email
-      }
-    })
+  if (!user) {
+    return { error: "No user authenticated" }
+  }
 
-    if (aminoUser) {
-      const message = await QuickLogMessage(aminoUser, newMessage)
-      console.log("message", message)
-      return { message }
-    }
+  const { error, data: aminoUser } = await supabase.from("User").select().eq("id", user.id).single()
+  console.log("QuickLogFoodMessage")
+
+  if (!aminoUser) {
+    return { error: "No user found" }
+  }
+
+  if (aminoUser) {
+    const message = await QuickLogMessage(aminoUser, newMessage)
+    console.log("message", message)
+    return { message }
   }
   return { error: "No session" }
 }

@@ -1,14 +1,13 @@
-import { FoodItem, Nutrient, Serving } from "@prisma/client"
+import { Tables } from "types/supabase"
 import { toTitleCase } from "../../utils/nlpHelper"
 
-interface FoodNutrient extends Omit<Nutrient, "id" | "foodItemId"> {}
+interface FoodNutrient extends Omit<Tables<"Nutrient">, "id" | "foodItemId"> {}
 
-interface UsdaServing extends Omit<Serving, "id" | "foodItemId"> {}
+interface UsdaServing extends Omit<Tables<"Serving">, "id" | "foodItemId"> {}
 
-export interface FoodItemWithServings
-  extends Omit<FoodItem, "Servings" | "Nutrients"> {
-  Servings: UsdaServing[]
-  Nutrients: FoodNutrient[]
+export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Serving" | "Nutrient"> {
+  Serving: UsdaServing[]
+  Nutrient: FoodNutrient[]
 }
 
 interface Portion {
@@ -37,9 +36,7 @@ export interface UsdaFoodItem {
   upc?: string
 }
 
-export function mapUsdaFoodItemToFoodItem(
-  usdaFoodItem: UsdaFoodItem
-): FoodItemWithServings {
+export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemWithServings {
   const nutrientNameToFoodItemKey: {
     [key: string]: keyof FoodItemWithServings
   } = {
@@ -74,7 +71,7 @@ export function mapUsdaFoodItemToFoodItem(
     id: 0,
     knownAs: [],
     description: null,
-    lastUpdated: new Date(),
+    lastUpdated: new Date().toISOString(),
     verified: true,
     userId: null,
     foodInfoSource: "USDA",
@@ -83,37 +80,43 @@ export function mapUsdaFoodItemToFoodItem(
     brand: toTitleCase(usdaFoodItem.brandName || ""),
     weightUnknown: false,
     defaultServingWeightGram:
-      (usdaFoodItem.default_serving.default_serving_unit === 'g') ? usdaFoodItem.default_serving.default_serving_amount : null,
-    defaultServingLiquidMl: 
-      (usdaFoodItem.default_serving.default_serving_unit === 'ml') ? usdaFoodItem.default_serving.default_serving_amount : null,
-    isLiquid: usdaFoodItem.default_serving.default_serving_unit === 'ml',
-    Servings: usdaFoodItem.portions.map((portion) => {
-      let servingWeightGram = null;
-      let servingAlternateAmount = null;
-      let servingAlternateUnit = null;
-    
+      usdaFoodItem.default_serving.default_serving_unit === "g"
+        ? usdaFoodItem.default_serving.default_serving_amount
+        : null,
+    defaultServingLiquidMl:
+      usdaFoodItem.default_serving.default_serving_unit === "ml"
+        ? usdaFoodItem.default_serving.default_serving_amount
+        : null,
+    isLiquid: usdaFoodItem.default_serving.default_serving_unit === "ml",
+    Serving: usdaFoodItem.portions.map((portion) => {
+      let servingWeightGram = null
+      let servingAlternateAmount = null
+      let servingAlternateUnit = null
+
       // Prioritize gramWeight if available
       if (portion.gramWeight) {
-        servingWeightGram = portion.gramWeight;
+        servingWeightGram = portion.gramWeight
       } else {
-        servingWeightGram = portion.servingSizeUnit === 'g' ? portion.servingSize : null;
-        servingAlternateAmount = portion.servingSizeUnit !== 'g' ? portion.servingSize : null;
-        servingAlternateUnit = portion.servingSizeUnit !== 'g' ? portion.servingSizeUnit : null;
+        servingWeightGram = portion.servingSizeUnit === "g" ? portion.servingSize : null
+        servingAlternateAmount = portion.servingSizeUnit !== "g" ? portion.servingSize : null
+        servingAlternateUnit = portion.servingSizeUnit !== "g" ? portion.servingSizeUnit : null
       }
-    
-      const servingName = portion.householdServingFullText || (portion.name ? portion.name : `${servingAlternateAmount || ''} ${servingAlternateUnit || ''}`.trim());
-    
+
+      const servingName =
+        portion.householdServingFullText ||
+        (portion.name ? portion.name : `${servingAlternateAmount || ""} ${servingAlternateUnit || ""}`.trim())
+
       return {
         servingWeightGram,
         servingAlternateAmount,
         servingAlternateUnit,
         servingName
-      };
+      }
     }),
-    
-    UPC: usdaFoodItem.upc ? BigInt(usdaFoodItem.upc) : null,
+
+    UPC: usdaFoodItem.upc ? Number(usdaFoodItem.upc) : null,
     externalId: usdaFoodItem.fdcId.toString(),
-    Nutrients: [],
+    Nutrient: [],
     kcalPerServing: 0,
     proteinPerServing: 0,
     totalFatPerServing: 0,
@@ -122,12 +125,12 @@ export function mapUsdaFoodItemToFoodItem(
     sugarPerServing: null,
     satFatPerServing: null,
     transFatPerServing: null,
-    addedSugarPerServing: null
+    addedSugarPerServing: null,
+    adaEmbedding: null,
+    bgeBaseEmbedding: null
   }
 
-  for (const [nutrientName, nutrientInfo] of Object.entries(
-    usdaFoodItem.foodInfo
-  )) {
+  for (const [nutrientName, nutrientInfo] of Object.entries(usdaFoodItem.foodInfo)) {
     const foodItemKey = nutrientNameToFoodItemKey[nutrientName]
     if (foodItemKey) {
       // Only set the value if it hasn't been set yet and nutrientInfo.amount is not null
@@ -136,14 +139,10 @@ export function mapUsdaFoodItemToFoodItem(
       }
     } else if (nutrientInfo.amount !== null) {
       // Only push if nutrientInfo.amount is not null
-      foodItem.Nutrients.push({
+      foodItem.Nutrient.push({
         nutrientName,
         nutrientUnit: nutrientInfo.unit || "g", // Use the unit from nutrientInfo if available
-        nutrientAmountPerDefaultServing: parseFloat(
-          (
-            (nutrientInfo.amount as number)
-          ).toFixed(3)
-        )
+        nutrientAmountPerDefaultServing: parseFloat((nutrientInfo.amount as number).toFixed(3))
       })
     }
   }

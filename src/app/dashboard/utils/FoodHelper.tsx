@@ -1,26 +1,23 @@
-import { LoggedFoodItem, FoodItem, FoodImage, Serving, Nutrient } from "@prisma/client"
+import { Tables } from "types/supabase"
 
-export type LoggedFoodItemWithFoodItem = LoggedFoodItem & {
-  FoodItem: FoodItem & {
-    Servings: Serving[]; // Change this line
-    FoodImage?: FoodImage[];
-  } | null; // From the main branch
-};
+export type LoggedFoodItemWithFoodItem = Tables<"LoggedFoodItem"> & {
+  FoodItem:
+    | (Tables<"FoodItem"> & {
+        Serving: Tables<"Serving">[] // Change this line
+        FoodImage?: Tables<"FoodImage">[]
+      })
+    | null // From the main branch
+}
 
-export type FoodItemWithNutrientsAndServing = FoodItem & {
-  Nutrients: Nutrient[];
-  Servings: Serving[];
-};
+export type FoodItemWithNutrientsAndServing = Tables<"FoodItem"> & {
+  Nutrient: Tables<"Nutrient">[]
+  Serving: Tables<"Serving">[]
+}
 
-export function getNormalizedFoodValue(
-  LoggedFoodItem: LoggedFoodItemWithFoodItem,
-  value: string
-) {
-  if (LoggedFoodItem.FoodItem) { // From the main branch
-    const nutrientPerServing =
-      (LoggedFoodItem.FoodItem[
-        value as keyof typeof LoggedFoodItem.FoodItem
-      ] as number) || 0
+export function getNormalizedFoodValue(LoggedFoodItem: LoggedFoodItemWithFoodItem, value: string) {
+  if (LoggedFoodItem.FoodItem) {
+    // From the main branch
+    const nutrientPerServing = (LoggedFoodItem.FoodItem[value as keyof typeof LoggedFoodItem.FoodItem] as number) || 0
     const grams = LoggedFoodItem.grams || 1
     const defaultServingSize = LoggedFoodItem.FoodItem.defaultServingWeightGram || 1
     return (nutrientPerServing / defaultServingSize) * grams

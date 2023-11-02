@@ -2,10 +2,11 @@
 
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { UserResponse } from "@supabase/supabase-js"
 import classNames from "classnames"
-import { Session } from "next-auth"
-import { getSession } from "next-auth/react"
 import { useEffect, useState } from "react"
+import { Database } from "types/supabase-generated.types"
 
 const navigation = [
   { name: "Amino", href: "/" },
@@ -16,26 +17,36 @@ const navigation = [
 export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [bannerOpen, setBannerOpen] = useState(false)
-  const [session, setSession] = useState<Session | null>()
+  const [loadedUser, setLoadedUser] = useState<UserResponse>()
+
+  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
-    getSession().then((session) => {
-      setSession(session)
-    })
+    const loadUser = async () => {
+      const user = await supabase.auth.getUser().catch((e) => {
+        console.log("Error loading user in marketing nav", e)
+      })
+      if (user) {
+        setLoadedUser(user)
+        console.log(user)
+      }
+    }
+
+    loadUser()
   }, [])
 
   const renderLogin = () => {
-    if (!session) {
+    if (!loadedUser) {
       return (
         <a href="/api/auth/signin" className="text-sm font-semibold leading-6 text-gray-900">
           Log in&nbsp;<span aria-hidden="true">&rarr;</span>
         </a>
       )
     }
-    if (session.user) {
+    if (loadedUser?.data?.user) {
       return (
         <a href="/dashboard" className="text-sm font-semibold leading-6 text-gray-900">
-          My Dashboard ({session?.user?.email})
+          My Dashboard ({loadedUser.data.user.id})
         </a>
       )
     }

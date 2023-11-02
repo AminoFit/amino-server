@@ -1,10 +1,10 @@
 import { chatCompletionFunctionStream } from "./chatCompletion"
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { User } from "@prisma/client"
 import { logFoodSchema } from "@/utils/openaiFunctionSchemas"
-import { prisma } from "../../database/prisma"
 import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { Tables } from "types/supabase"
 
 const tokenLimit = 2048
 
@@ -21,7 +21,7 @@ enum ParseState {
 }
 
 export async function logFoodItemFunctionStream(
-  user: User,
+  user: Tables<"User">,
   user_request: string,
   lastUserMessageId: number
 ): Promise<FoodItemToLog[]> {
@@ -36,12 +36,20 @@ export async function logFoodItemFunctionStream(
   const foodItemsToLog: FoodItemToLog[] = []
   const loggingTasks: Promise<any>[] = []
 
-  const messageInfo = await prisma.message.findUnique({
-    where: { id: lastUserMessageId },
-    select: {
-      itemsProcessed: true
-    }
-  })
+  const supabase = createAdminSupabase()
+
+  const { data: messageInfo } = await supabase
+    .from("Message")
+    .select("itemsProcessed")
+    .eq("id", lastUserMessageId)
+    .single()
+
+  // const messageInfo = await pris.message.findUnique({
+  //   where: { id: lastUserMessageId },
+  //   select: {
+  //     itemsProcessed: true
+  //   }
+  // })
   const itemsAlreadyProcessed = messageInfo?.itemsProcessed || 0
   let itemsExtracted = 0
   let buffer = ""
@@ -141,14 +149,12 @@ export async function logFoodItemFunctionStream(
 }
 
 async function testFoodLog() {
-  const user: User = {
+  const user: Tables<"User"> = {
     id: "clmzqmr2a0000la08ynm5rjju",
-    firstName: "John",
-    lastName: "Doe",
+    fullName: "John",
     email: "john.doe@example.com",
-    emailVerified: new Date("2022-08-09T12:00:00"),
     phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
     weightKg: 70.5,
     heightCm: 180,
     calorieGoal: 2000,
@@ -160,7 +166,9 @@ async function testFoodLog() {
     setupCompleted: false,
     sentContact: false,
     sendCheckins: false,
-    tzIdentifier: "America/New_York"
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    emailVerified: null
   }
   let userRequestString = "1 oz of almonds, 1 fl oz of milk, 1 cup of cooked rice"
   let result = await logFoodItemFunctionStream(user, userRequestString, 1)

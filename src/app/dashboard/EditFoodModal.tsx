@@ -1,11 +1,6 @@
 import { Fragment, useState, useEffect } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import {
-  ScaleIcon,
-  XMarkIcon,
-  FireIcon,
-  CheckCircleIcon
-} from "@heroicons/react/24/outline"
+import { ScaleIcon, XMarkIcon, FireIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
 import { LoggedFoodItemWithFoodItem } from "./utils/FoodHelper"
 import {
   Accordion,
@@ -20,13 +15,13 @@ import {
 } from "@tremor/react"
 import { getNormalizedFoodValue } from "./utils/FoodHelper"
 import moment from "moment-timezone"
-import { FoodItem, User } from "@prisma/client"
 import { TimePicker } from "@/components/timePicker/timePicker"
 import { updateLoggedFoodItem } from "./utils/LoggedFoodEditHelper"
 import { queryClient } from "../providers"
+import { Tables } from "types/supabase"
 
 const renderSmallNutrientRow = (
-  nutrientKey: keyof FoodItem,
+  nutrientKey: keyof Tables<"FoodItem">,
   label: string,
   food: LoggedFoodItemWithFoodItem
 ) => {
@@ -38,10 +33,7 @@ const renderSmallNutrientRow = (
         <div className="pl-4 flex justify-between items-end">
           <span className="font-extralight text-zinc-100">{label}</span>
           <span className="font-extralight text-s">
-            {Math.round(
-              getNormalizedFoodValue(food, nutrientKey)
-            ).toLocaleString() + " "}
-            g
+            {Math.round(getNormalizedFoodValue(food, nutrientKey)).toLocaleString() + " "}g
           </span>
         </div>
       </>
@@ -83,18 +75,14 @@ export default function EditFoodModal({
     minutes: string
     ampm: string
   }>(timeEaten)
-  const [servingWeightGramsValue, setServingGramsValue] = useState(
-    food.grams / (food.servingAmount || 1) || 0
-  )
+  const [servingWeightGramsValue, setServingGramsValue] = useState(food.grams / (food.servingAmount || 1) || 0)
   const [servingValue, setServingValue] = useState(food.loggedUnit || "")
   const [portionAmount, setPortionAmount] = useState(food.servingAmount ?? 0)
   const [isSaving, setIsSaving] = useState(false)
 
   const handleServingChange = (value: string) => {
     if (food.FoodItem) {
-      const selectedServing = food.FoodItem.Servings.find(
-        (serving) => serving.servingName === value
-      )
+      const selectedServing = food.FoodItem.Serving.find((serving) => serving.servingName === value)
       if (selectedServing) {
         setServingValue(value)
         setServingGramsValue(selectedServing.servingWeightGram || 0)
@@ -106,11 +94,7 @@ export default function EditFoodModal({
     setPortionAmount(value)
   }
 
-  const handleTimeChange = (time: {
-    hours: string
-    minutes: string
-    ampm: string
-  }) => {
+  const handleTimeChange = (time: { hours: string; minutes: string; ampm: string }) => {
     setSelectedTime(time)
   }
 
@@ -135,7 +119,7 @@ export default function EditFoodModal({
     const localMoment = moment(selectedDate).tz(moment.tz.guess())
     localMoment.hour(hours24Format).minute(parseInt(selectedTime.minutes))
 
-    const consumedOn = localMoment.toDate()
+    const consumedOn = localMoment.toDate().toISOString()
 
     const foodData = {
       consumedOn: consumedOn,
@@ -144,13 +128,13 @@ export default function EditFoodModal({
       loggedUnit: servingValue
     }
 
-    const updatedFoodItem = await updateLoggedFoodItem(food.id, foodData)
+    await updateLoggedFoodItem(food.id, foodData)
 
-    if (updatedFoodItem) {
-      console.log("Food item updated successfully")
-    } else {
-      console.error("Failed to update food item")
-    }
+    // if (updatedFoodItem) {
+    //   console.log("Food item updated successfully")
+    // } else {
+    //   console.error("Failed to update food item")
+    // }
     setIsSaving(false)
     queryClient.invalidateQueries({ queryKey: ["foodData"] })
   }
@@ -185,14 +169,9 @@ export default function EditFoodModal({
                 <div>
                   <div className="flex justify-between items-center px-4 py-5 pt-5">
                     <div className="text-center sm:text-left">
-                      <Dialog.Title
-                        as="h2"
-                        className="text-lg font-semibold leading-4 text-white capitalize"
-                      >
+                      <Dialog.Title as="h2" className="text-lg font-semibold leading-4 text-white capitalize">
                         {brand ? `${foodName} by ${brand}` : foodName}{" "}
-                        {food.FoodItem?.verified && (
-                          <CheckCircleIcon className="h-4 w-4 inline-block" />
-                        )}
+                        {food.FoodItem?.verified && <CheckCircleIcon className="h-4 w-4 inline-block" />}
                       </Dialog.Title>
                     </div>
                     <button
@@ -210,9 +189,7 @@ export default function EditFoodModal({
                         <div className="grid grid-cols-5 gap-x-6 gap-y-8 flex-1 text-zinc-200">
                           <div className="inline-flex col-span-1 min-w-100">
                             <FireIcon className="h-6 w-6" aria-hidden="true" />
-                            {Math.round(
-                              getNormalizedFoodValue(food, "kcalPerServing")
-                            ).toLocaleString()}
+                            {Math.round(getNormalizedFoodValue(food, "kcalPerServing")).toLocaleString()}
                           </div>
                           <div className="inline-flex col-span-1 min-w-100">
                             <ScaleIcon className="h-6 w-6" aria-hidden="true" />
@@ -220,91 +197,48 @@ export default function EditFoodModal({
                           </div>
                           <div className="inline-flex col-span-1 min-w-100">
                             {"P "}
-                            {Math.round(
-                              getNormalizedFoodValue(food, "proteinPerServing")
-                            ).toLocaleString()}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "proteinPerServing")).toLocaleString()}g
                           </div>
                           <div className="inline-flex col-span-1 min-w-100">
                             {"C "}
-                            {Math.round(
-                              getNormalizedFoodValue(food, "carbPerServing")
-                            ).toLocaleString()}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "carbPerServing")).toLocaleString()}g
                           </div>
                           <div className="inline-flex col-span-1 min-w-100">
                             {"F "}
-                            {Math.round(
-                              getNormalizedFoodValue(food, "totalFatPerServing")
-                            ).toLocaleString()}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "totalFatPerServing")).toLocaleString()}g
                           </div>
                         </div>
                       </AccordionHeader>
                       <AccordionBody className="text-zinc-200 flex-1">
                         <div className="flex justify-between items-end">
-                          <span className="text-zinc-100 text-xl">
-                            Calories
-                          </span>
+                          <span className="text-zinc-100 text-xl">Calories</span>
                           <span className="text-base">
-                            {Math.round(
-                              getNormalizedFoodValue(food, "kcalPerServing")
-                            ).toLocaleString()}
+                            {Math.round(getNormalizedFoodValue(food, "kcalPerServing")).toLocaleString()}
                             kcal
                           </span>
                         </div>
                         <Divider className="my-1" color="text-zinc-600" />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-zinc-100 text-lg">
-                            Total Fat
-                          </span>
+                          <span className="font-light text-zinc-100 text-lg">Total Fat</span>
                           <span className="font-light text-base">
-                            {Math.round(
-                              getNormalizedFoodValue(food, "totalFatPerServing")
-                            ).toLocaleString() + " "}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "totalFatPerServing")).toLocaleString() + " "}g
                           </span>
                         </div>
-                        {renderSmallNutrientRow(
-                          "transFatPerServing",
-                          "Trans Fat",
-                          food
-                        )}
-                        {renderSmallNutrientRow(
-                          "satFatPerServing",
-                          "Saturated Fat",
-                          food
-                        )}
-                        <Divider
-                          className="pl-4 my-1 h-px"
-                          color="text-zinc-600"
-                        />
+                        {renderSmallNutrientRow("transFatPerServing", "Trans Fat", food)}
+                        {renderSmallNutrientRow("satFatPerServing", "Saturated Fat", food)}
+                        <Divider className="pl-4 my-1 h-px" color="text-zinc-600" />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-zinc-100 text-lg">
-                            Total Carbohydrates
-                          </span>
+                          <span className="font-light text-zinc-100 text-lg">Total Carbohydrates</span>
                           <span className="font-light text-base">
-                            {Math.round(
-                              getNormalizedFoodValue(food, "carbPerServing")
-                            ).toLocaleString() + " "}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "carbPerServing")).toLocaleString() + " "}g
                           </span>
                         </div>
-                        {renderSmallNutrientRow(
-                          "sugarPerServing",
-                          "Sugar",
-                          food
-                        )}
+                        {renderSmallNutrientRow("sugarPerServing", "Sugar", food)}
                         <Divider className="my-1 h-px" color="text-zinc-600" />
                         <div className="flex justify-between items-end">
-                          <span className="font-light text-zinc-100 text-lg">
-                            Protein
-                          </span>
+                          <span className="font-light text-zinc-100 text-lg">Protein</span>
                           <span className="font-light text-base">
-                            {Math.round(
-                              getNormalizedFoodValue(food, "proteinPerServing")
-                            ).toLocaleString() + " "}
-                            g
+                            {Math.round(getNormalizedFoodValue(food, "proteinPerServing")).toLocaleString() + " "}g
                           </span>
                         </div>
                       </AccordionBody>
@@ -314,33 +248,23 @@ export default function EditFoodModal({
                 <div className="bg-zinc-800 px-4 pb-4 pt-2">
                   {" "}
                   {/* Portion Section with Grey Background */}
-                  <p className="text-lg text-zinc-100 font-light py-2">
-                    Portion
-                  </p>
+                  <p className="text-lg text-zinc-100 font-light py-2">Portion</p>
                   <div className="grid grid-cols-4 gap-x-6 gap-y-8 sm:max-w-xl sm:grid-cols-4">
                     <div className="col-span-2">
-                      <NumberInput
-                        defaultValue={portionAmount}
-                        onValueChange={handlePortionChange}
-                      />
+                      <NumberInput defaultValue={portionAmount} onValueChange={handlePortionChange} />
                     </div>
                     <div className="text-aligned text-lg col-span-2 self-center text-zinc-100">
                       {/*
                       {food.loggedUnit} <span className="text-zinc-200 text-base font-extralight">({food.grams}g)</span>
                             */}
                       <SearchSelect
-                        placeholder={
-                          servingValue + " (" + servingWeightGramsValue + " g)"
-                        }
+                        placeholder={servingValue + " (" + servingWeightGramsValue + " g)"}
                         value={servingValue}
                         onValueChange={handleServingChange}
                       >
                         {food.FoodItem ? (
-                          food.FoodItem.Servings.map((serving) => (
-                            <SearchSelectItem
-                              key={serving.id}
-                              value={serving.servingName}
-                            >
+                          food.FoodItem.Serving.map((serving) => (
+                            <SearchSelectItem key={serving.id} value={serving.servingName}>
                               {serving.servingName} ({serving.servingWeightGram}
                               g)
                             </SearchSelectItem>
@@ -356,9 +280,7 @@ export default function EditFoodModal({
                   </p>
                 </div>
                 <div className="bg-zinc-700 px-4 pb-4 pt-2">
-                  <p className="text-lg text-zinc-100 font-light py-2">
-                    Time eaten
-                  </p>
+                  <p className="text-lg text-zinc-100 font-light py-2">Time eaten</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="inset-0 z-50 overflow-visible">
                       <DatePicker
@@ -369,10 +291,7 @@ export default function EditFoodModal({
                         enableYearNavigation={false}
                       />
                     </div>
-                    <TimePicker
-                      onChange={handleTimeChange}
-                      defaultValue={timeEaten}
-                    />
+                    <TimePicker onChange={handleTimeChange} defaultValue={timeEaten} />
                   </div>
                 </div>
                 <div className="bg-zinc-800 px-4 py-4 rounded-b-lg flex justify-end">

@@ -1,9 +1,7 @@
-import { prisma } from "../../database/prisma"
 import { HfInference } from "@huggingface/inference"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { getAdaEmbedding } from "../../openai/utils/embeddingsHelper"
-import { raw } from "@prisma/client/runtime/library"
-import { format } from "@scaleleap/pg-format"
+import { createAdminSupabase } from "../supabase/serverAdmin"
 
 const hf = new HfInference(process.env.HF_API_KEY)
 
@@ -76,34 +74,43 @@ export async function getCachedOrFetchEmbeddings(
 ): Promise<{ id: number; embedding: number[]; text: string }[]> {
   const debugLog: string[] = []
 
+  const supabase = createAdminSupabase()
+
   try {
     const cachedEmbeddingField = MODEL_COLUMN_MAP[modelType]
 
     const uniqueSearchItems = [...new Set(searchItems)]
     debugLog.push("Searching for:", uniqueSearchItems.join(", "))
 
-    const searchTexts = uniqueSearchItems.map((item) => format(`%L`, item)).join(",")
+    let { data: cachedEmbeddings, error } = await supabase
+      .from("foodEmbeddingCache")
+      .select()
+      .in("textToEmbed", uniqueSearchItems)
+      .not(cachedEmbeddingField, "is", null)
 
-    const query = `SELECT id, "textToEmbed", "${cachedEmbeddingField}"::text as embedding
-FROM "foodEmbeddingCache" WHERE "textToEmbed" IN (${searchTexts}) AND "${cachedEmbeddingField}" IS NOT NULL`
-    debugLog.push("Executing query to get embeddings:", query)
-    let cachedEmbeddings = (await prisma.$queryRawUnsafe(query)) as {
-      id: number
-      textToEmbed: string
-      embedding: number[]
-    }[]
+    if (!cachedEmbeddings) cachedEmbeddings = []
 
-    cachedEmbeddings = cachedEmbeddings.map((item) => ({
-      ...item,
-      embedding: stringToNumberArray(item.embedding as any)
-    }))
+    let newCachedEmbeddings = cachedEmbeddings.map((item) => {
+      if (cachedEmbeddingField === "adaEmbedding") {
+        return {
+          ...item,
+          embedding: stringToNumberArray(item.adaEmbedding)
+        }
+      } else {
+        return {
+          ...item,
+          embedding: stringToNumberArray(item.bgeBaseEmbedding)
+        }
+      }
+    })
+
     debugLog.push(
       `Processed cached embeddings: ${JSON.stringify(
-        cachedEmbeddings.map((ce) => ({ id: ce.id, textToEmbed: ce.textToEmbed }))
+        newCachedEmbeddings.map((ce) => ({ id: ce.id, textToEmbed: ce.textToEmbed }))
       )}`
     )
 
-    const foundTexts = new Set(cachedEmbeddings.map((ce) => ce.textToEmbed))
+    const foundTexts = new Set(newCachedEmbeddings.map((ce) => ce.textToEmbed))
     debugLog.push(`Found texts: ${Array.from(foundTexts).join(", ")}`)
 
     const missingTexts = uniqueSearchItems.filter((item) => !foundTexts.has(item))
@@ -140,23 +147,30 @@ FROM "foodEmbeddingCache" WHERE "textToEmbed" IN (${searchTexts}) AND "${cachedE
 
       for (let { text, embedding } of newEmbeddings) {
         const embeddingSql = vectorToSql(embedding)
-        const insertQuery = `
-        INSERT INTO "foodEmbeddingCache" ("textToEmbed", "${cachedEmbeddingField}")
-        VALUES (${format(`%L`, text)}, '${embeddingSql}'::vector)
-        ON CONFLICT ("textToEmbed")
-        DO UPDATE SET "${cachedEmbeddingField}" = '${embeddingSql}'::vector
-        WHERE "foodEmbeddingCache"."${cachedEmbeddingField}" IS NULL
-        RETURNING id`
-        debugLog.push(`Executing insert query: ${insertQuery.replace(embeddingSql, "[EMBEDDING_DATA]")}`)
 
-        const returnedData: { id: number }[] = await prisma.$queryRaw(raw(insertQuery))
-        debugLog.push(`Insert query returned: ${JSON.stringify(returnedData)}`)
+        const { data: insertedEmbedding, error } = await supabase
+          .from("foodEmbeddingCache")
+          .upsert(
+            {
+              textToEmbed: text,
+              [cachedEmbeddingField]: embeddingSql
+            },
+            { onConflict: "textToEmbed" }
+          )
+          .eq("textToEmbed", text)
+          .select()
+          .single()
 
-        cachedEmbeddings.push({ id: returnedData[0].id, textToEmbed: text, embedding: embedding })
+        if (insertedEmbedding) {
+          console.log("Inserted to embedding at id", insertedEmbedding)
+          newCachedEmbeddings.push({ ...insertedEmbedding, embedding: embedding })
+        } else {
+          console.log("Failed ot insert embedding", error)
+        }
       }
     }
     const resultEmbeddings = searchItems.map((item) => {
-      const found = cachedEmbeddings.find((ce) => ce.textToEmbed === item)
+      const found = newCachedEmbeddings.find((ce) => ce.textToEmbed === item)
       debugLog.push(`Mapping search item: ${item}, Found cached embedding: ${JSON.stringify(found)}`)
       return { id: found?.id ?? -1, embedding: (found?.embedding as number[]) ?? [], text: item }
     })
@@ -173,13 +187,24 @@ export async function getCachedOrFetchEmbeddingId(
   modelType: "ADA" | "BGE_BASE",
   food_name: string,
   brand_name?: string
-): Promise<number> {
+): Promise<number | undefined> {
   const searchText = `${food_name}${brand_name ? ` - ${brand_name}` : ""}`
 
   const cachedEmbeddingField = modelType === "ADA" ? "adaEmbedding" : "bgeBaseEmbedding"
-  const query = `SELECT id, "${cachedEmbeddingField}"::text as embedding
-    FROM "foodEmbeddingCache" WHERE "textToEmbed" = ${format(`%L`, searchText)}`
-  const cachedEmbedding = (await prisma.$queryRaw(raw(query))) as { id: number; embedding: number[] }[]
+
+  const supabase = createAdminSupabase()
+
+  const { data, error } = await supabase.from("foodEmbeddingCache").select().eq("textToEmbed", searchText)
+
+  let cachedEmbedding: { id: number; embedding: number[]; textToEmbed: string }[]
+  if (data) {
+    cachedEmbedding = data.map((item) => ({
+      ...item,
+      embedding: stringToNumberArray(item[cachedEmbeddingField])
+    }))
+  } else {
+    cachedEmbedding = []
+  }
 
   if (cachedEmbedding && cachedEmbedding.length > 0 && cachedEmbedding[0].embedding) {
     console.log("Using cached embedding for", searchText)
@@ -206,16 +231,40 @@ export async function getCachedOrFetchEmbeddingId(
 
     const embeddingSql = vectorToSql(newEmbeddingArray)
 
-    const query = `
-    INSERT INTO "foodEmbeddingCache" ("textToEmbed", "${cachedEmbeddingField}")
-    VALUES ('${searchText}', '${embeddingSql}'::vector)
-    ON CONFLICT ("textToEmbed")
-    DO UPDATE SET "${cachedEmbeddingField}" = '${embeddingSql}'::vector
-    WHERE "foodEmbeddingCache"."${cachedEmbeddingField}" IS NULL
-    RETURNING id`
-    const returnedData: { id: number }[] = await prisma.$queryRaw(raw(query))
+    const upsertData: {
+      adaEmbedding?: string
+      bgeBaseEmbedding?: string
+      id?: number
+      textToEmbed: string
+      embedding?: string
+    } = {
+      textToEmbed: searchText
+    }
 
-    return returnedData[0].id
+    upsertData[cachedEmbeddingField] = embeddingSql
+
+    const { data: insertedEmbedding, error } = await supabase
+      .from("foodEmbeddingCache")
+      .upsert(
+        {
+          textToEmbed: searchText,
+          [cachedEmbeddingField]: newEmbeddingArray
+        },
+        { onConflict: "textToEmbed" }
+      )
+      .eq("textToEmbed", searchText)
+      .is(cachedEmbeddingField, null)
+      .select("id")
+      .single()
+
+    if (insertedEmbedding) {
+      console.log("Inserted to embedding at id", insertedEmbedding)
+    } else {
+      console.log("Failed ot insert embedding", error)
+    }
+    if (insertedEmbedding) {
+      return insertedEmbedding.id
+    }
   }
 }
 
@@ -395,7 +444,7 @@ async function testGetCachedOrFetchEmbeddingsDuplicates() {
 }
 
 // Run the test function
-//testGetCachedOrFetchEmbeddingsDuplicates()
+// testGetCachedOrFetchEmbeddingsDuplicates()
 
 // Run the tests
-//testGetCachedOrFetchEmbeddings();
+// testGetCachedOrFetchEmbeddings()

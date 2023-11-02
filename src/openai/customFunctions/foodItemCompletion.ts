@@ -1,9 +1,9 @@
 import { chatCompletion } from "./chatCompletion"
 import OpenAI from "openai"
 import { FoodInfo } from "./foodItemInterface"
-import { User } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
 import { mapOpenAiFoodInfoToFoodItem } from "src/openai/customFunctions/foodItemInterface"
+import { Tables } from "types/supabase"
 
 const SPECIAL_CASES = ["water", "diet", "tea"]
 
@@ -13,83 +13,66 @@ function isSpecialCase(name: string): boolean {
 }
 
 function checkFoodHasNonZeroValues(food: FoodInfo): boolean {
-  
-    // Check if all values are zero
-    if (
-      food.default_serving_weight_g === 0 &&
-      food.kcal_per_serving === 0 &&
-      food.total_fat_per_serving === 0 &&
-      food.carb_per_serving === 0 &&
-      food.protein_per_serving === 0
-    ) {
-      console.log("Invalid food entry due to all zero values:", food.name)
-      return false
-    }
+  // Check if all values are zero
+  if (
+    food.default_serving_weight_g === 0 &&
+    food.kcal_per_serving === 0 &&
+    food.total_fat_per_serving === 0 &&
+    food.carb_per_serving === 0 &&
+    food.protein_per_serving === 0
+  ) {
+    console.log("Invalid food entry due to all zero values:", food.name)
+    return false
+  }
 
-    // If there are macros but no calories (or vice versa)
-    if (
-      (food.total_fat_per_serving > 0 ||
-        food.carb_per_serving > 0 ||
-        food.protein_per_serving > 0) &&
-      food.kcal_per_serving === 0
-    ) {
-      console.log(
-        "Invalid food entry due to non-zero macros but zero calories:",
-        food.name
-      )
-      return false
-    }
+  // If there are macros but no calories (or vice versa)
+  if (
+    (food.total_fat_per_serving > 0 || food.carb_per_serving > 0 || food.protein_per_serving > 0) &&
+    food.kcal_per_serving === 0
+  ) {
+    console.log("Invalid food entry due to non-zero macros but zero calories:", food.name)
+    return false
+  }
 
-    // If there are calories but no macros
-    if (
-      food.kcal_per_serving > 0 &&
-      food.total_fat_per_serving === 0 &&
-      food.carb_per_serving === 0 &&
-      food.protein_per_serving === 0
-    ) {
-      console.log(
-        "Invalid food entry due to calories but zero macros:",
-        food.name
-      )
-      return false
-    }
+  // If there are calories but no macros
+  if (
+    food.kcal_per_serving > 0 &&
+    food.total_fat_per_serving === 0 &&
+    food.carb_per_serving === 0 &&
+    food.protein_per_serving === 0
+  ) {
+    console.log("Invalid food entry due to calories but zero macros:", food.name)
+    return false
+  }
 
-    // If the food has grams but all its macros and calories are 0 (and it's not a special case)
-    if (
-      food.default_serving_weight_g! > 0 &&
-      !isSpecialCase(food.name) &&
-      food.kcal_per_serving === 0 &&
-      food.total_fat_per_serving === 0 &&
-      food.carb_per_serving === 0 &&
-      food.protein_per_serving === 0
-    ) {
-      console.log(
-        "Invalid food entry due to 0 macros & calories with grams:",
-        food.name
-      )
-      return false
-    }
-  
+  // If the food has grams but all its macros and calories are 0 (and it's not a special case)
+  if (
+    food.default_serving_weight_g! > 0 &&
+    !isSpecialCase(food.name) &&
+    food.kcal_per_serving === 0 &&
+    food.total_fat_per_serving === 0 &&
+    food.carb_per_serving === 0 &&
+    food.protein_per_serving === 0
+  ) {
+    console.log("Invalid food entry due to 0 macros & calories with grams:", food.name)
+    return false
+  }
+
   return true
 }
 function addDefaultValues(foodItemInfo: any) {
-  foodItemInfo.total_fat_per_serving = foodItemInfo.total_fat_per_serving || 0;
-  foodItemInfo.sat_fat_per_serving = foodItemInfo.sat_fat_per_serving || 0;
-  foodItemInfo.trans_fat_per_serving = foodItemInfo.trans_fat_per_serving || 0;
-  foodItemInfo.carb_per_serving = foodItemInfo.carb_per_serving || 0;
-  foodItemInfo.sugar_per_serving = foodItemInfo.sugar_per_serving || 0;
-  foodItemInfo.added_sugar_per_serving = foodItemInfo.added_sugar_per_serving || 0;
-  foodItemInfo.protein_per_serving = foodItemInfo.protein_per_serving || 0;
-  
-  return foodItemInfo;
+  foodItemInfo.total_fat_per_serving = foodItemInfo.total_fat_per_serving || 0
+  foodItemInfo.sat_fat_per_serving = foodItemInfo.sat_fat_per_serving || 0
+  foodItemInfo.trans_fat_per_serving = foodItemInfo.trans_fat_per_serving || 0
+  foodItemInfo.carb_per_serving = foodItemInfo.carb_per_serving || 0
+  foodItemInfo.sugar_per_serving = foodItemInfo.sugar_per_serving || 0
+  foodItemInfo.added_sugar_per_serving = foodItemInfo.added_sugar_per_serving || 0
+  foodItemInfo.protein_per_serving = foodItemInfo.protein_per_serving || 0
+
+  return foodItemInfo
 }
 
-
-
-export async function foodItemCompletion(
-  inquiry: string,
-  user: User
-): Promise<any> {
+export async function foodItemCompletion(inquiry: string, user: Tables<"User">): Promise<any> {
   if (!inquiry) {
     throw new Error("Bad prompt")
   }
@@ -106,8 +89,7 @@ export async function foodItemCompletion(
         properties: {
           name: {
             type: "string",
-            description:
-              "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
+            description: "Food item name. Use the single version of the food item (e.g. apple instead of apples)"
           },
           brand: {
             type: "string",
@@ -175,8 +157,7 @@ export async function foodItemCompletion(
               properties: {
                 nutrient_name: {
                   type: "string",
-                  description:
-                    "Nutrient name (e.g. Sodium, Potassium, Vitamin C)"
+                  description: "Nutrient name (e.g. Sodium, Potassium, Vitamin C)"
                 },
                 nutrient_unit: {
                   type: "string",
@@ -231,7 +212,7 @@ export async function foodItemCompletion(
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-4-0613"//"gpt-3.5-turbo-0613"
+  let model = "gpt-4-0613" //"gpt-3.5-turbo-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
@@ -251,16 +232,11 @@ export async function foodItemCompletion(
     //console.log("result", JSON.stringify(result))
     // console.log("Schema", functions[0].parameters)
     //console.log("Result Args", JSON.parse(result.function_call.arguments))
-    let foodItemInfo = JSON.parse(result.function_call.arguments);
-    foodItemInfo = addDefaultValues(foodItemInfo);
-    
-    let has_valid_schema = checkCompliesWithSchema(
-      functions[0].parameters!,
-      foodItemInfo
-    )
-    let has_valid_data = checkFoodHasNonZeroValues(
-      foodItemInfo
-    )
+    let foodItemInfo = JSON.parse(result.function_call.arguments)
+    foodItemInfo = addDefaultValues(foodItemInfo)
+
+    let has_valid_schema = checkCompliesWithSchema(functions[0].parameters!, foodItemInfo)
+    let has_valid_data = checkFoodHasNonZeroValues(foodItemInfo)
 
     if (!has_valid_data || !has_valid_schema) {
       console.log("Invalid food item, retrying with different parameters")
@@ -290,17 +266,12 @@ export async function foodItemCompletion(
       )
       console.log("Second retry", result.function_call.arguments)
     }
-    foodItemInfo = JSON.parse(result.function_call.arguments);
-    foodItemInfo = addDefaultValues(foodItemInfo);
+    foodItemInfo = JSON.parse(result.function_call.arguments)
+    foodItemInfo = addDefaultValues(foodItemInfo)
 
     // check again for schema and data
-    has_valid_data = checkFoodHasNonZeroValues(
-      foodItemInfo
-    )
-    has_valid_schema = checkCompliesWithSchema(
-      functions[0].parameters!,
-      foodItemInfo
-    )
+    has_valid_data = checkFoodHasNonZeroValues(foodItemInfo)
+    has_valid_schema = checkCompliesWithSchema(functions[0].parameters!, foodItemInfo)
     if (!has_valid_data || !has_valid_schema) {
       throw console.error("Could not find food item")
     }
@@ -314,14 +285,12 @@ export async function foodItemCompletion(
 }
 
 async function testRun() {
-  const user: User = {
+  const user: Tables<"User"> = {
     id: "clklnwf090000lzssqhgfm8kr",
-    firstName: "John",
-    lastName: "Doe",
+    fullName: "John",
     email: "john.doe@example.com",
-    emailVerified: new Date("2022-08-09T12:00:00"),
     phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00"),
+    dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
     weightKg: 70.5,
     heightCm: 180,
     calorieGoal: 2000,
@@ -333,10 +302,12 @@ async function testRun() {
     setupCompleted: false,
     sentContact: false,
     sendCheckins: false,
-    tzIdentifier: "America/New_York"
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    emailVerified: null
   }
-  const result = await foodItemCompletion("cooked apple pie", user);
-  console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model));
+  const result = await foodItemCompletion("cooked apple pie", user)
+  console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model))
 }
 
 //testRun()

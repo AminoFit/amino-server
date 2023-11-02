@@ -1,36 +1,36 @@
 import { chatCompletion } from "./chatCompletion"
 import OpenAI from "openai"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { User, Serving } from "@prisma/client"
 import { checkCompliesWithSchema } from "../utils/openAiHelper"
-import { prisma } from "../../database/prisma"
+import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 const servingInfoCompleteProperties = {
-    type: 'object',
-    properties: {
-        servings: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    serving_id: {
-                        type: 'number'
-                    },
-                    servingAlternateAmount: {
-                        type: 'number'
-                    },
-                    servingAlternateUnit: {
-                        type: 'string'
-                    }
-                },
-                required: ['serving_id', 'servingAlternateAmount', 'servingAlternateUnit']
-            }
-        }
-    },
-    required: ['servings']
-};
+  type: "object",
+  properties: {
+    servings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          serving_id: {
+            type: "number"
+          },
+          servingAlternateAmount: {
+            type: "number"
+          },
+          servingAlternateUnit: {
+            type: "string"
+          }
+        },
+        required: ["serving_id", "servingAlternateAmount", "servingAlternateUnit"]
+      }
+    }
+  },
+  required: ["servings"]
+}
 
-const updateServingInfo = (servings: Serving[], autocompleteResults: any[]): Serving[] => {
+const updateServingInfo = (servings: Tables<"Serving">[], autocompleteResults: any[]): Tables<"Serving">[] => {
   return servings.map((serving) => {
     const newServing = autocompleteResults.find((result) => result.serving_id === serving.id)
     if (newServing) {
@@ -43,7 +43,7 @@ const updateServingInfo = (servings: Serving[], autocompleteResults: any[]): Ser
 
 export async function foodItemCompleteMissingServingInfo(
   foodItem: FoodItemWithNutrientsAndServing,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemWithNutrientsAndServing> {
   const system =
     "You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so."
@@ -95,7 +95,7 @@ ${generateServingString(foodItem)}
       throw new Error("Invalid serving info completion")
     }
 
-    foodItem.Servings = updateServingInfo(foodItem.Servings, servingInfoCompletionResult.servings)
+    foodItem.Serving = updateServingInfo(foodItem.Serving, servingInfoCompletionResult.servings)
     return foodItem
   } catch (error) {
     throw error
@@ -104,13 +104,13 @@ ${generateServingString(foodItem)}
 
 const generateServingString = (foodItem: FoodItemWithNutrientsAndServing): string => {
   // Filter servings that have empty servingAlternateAmount and servingAlternateUnit
-  const incompleteServings = foodItem.Servings.filter(
-    (serving) => !serving.servingAlternateAmount || !serving.servingAlternateUnit
+  const incompleteServings = foodItem.Serving.filter(
+    (serving: any) => !serving.servingAlternateAmount || !serving.servingAlternateUnit
   ).slice(0, 5) // Take up to 5 servings only
 
   const servingsData = incompleteServings
     .map(
-      (serving) => `---
+      (serving: any) => `---
   servingId: ${serving.id}
   servingName: ${serving.servingName}`
     )
@@ -120,14 +120,12 @@ const generateServingString = (foodItem: FoodItemWithNutrientsAndServing): strin
 }
 async function getFoodItemWithServingAndNutrient(id: number) {
   try {
-    const foodItem = await prisma.foodItem.findUnique({
-      where: { id: id },
-      include: {
-        Servings: true, // Include related Serving data
-        // Assuming there is a relation called Nutrients on the FoodItem model
-        Nutrients: true // Include related Nutrient data
-      }
-    })
+    const supabase = createAdminSupabase()
+    const { data: foodItem } = await supabase
+      .from("FoodItem")
+      .select("*, Serving(*), Nutrient(*)")
+      .eq("id", id)
+      .single()
 
     if (!foodItem) {
       throw new Error(`FoodItem with ID ${id} not found.`)
@@ -141,10 +139,9 @@ async function getFoodItemWithServingAndNutrient(id: number) {
 }
 
 async function getUserById(userId: string) {
+  const supabase = createAdminSupabase()
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    const { data: user } = await supabase.from("User").select().eq("id", userId).single()
 
     if (!user) {
       throw new Error(`User with ID ${userId} not found.`)

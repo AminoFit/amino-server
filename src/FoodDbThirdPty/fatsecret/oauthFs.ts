@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import axios from "axios"
 
 import * as path from "path"
@@ -6,33 +6,27 @@ require("dotenv").config({
   path: path.resolve(__dirname, "../../../.env.local")
 })
 
-const prisma = new PrismaClient()
+async function storeAccessToken(apiName: string, token: string, expiresIn: number) {
+  const expires = new Date(Date.now() + expiresIn * 1000).toISOString()
 
-async function storeAccessToken(
-  apiName: string,
-  token: string,
-  expiresIn: number
-) {
-  const expires = new Date(Date.now() + expiresIn * 1000)
+  const supabase = createAdminSupabase()
 
-  await prisma.apiTokens.create({
-    data: {
-      apiName,
-      token,
-      expires
-    }
+  await supabase.from("ApiTokens").insert({
+    apiName,
+    token,
+    expires
   })
 }
 
 async function getStoredAccessToken(apiName: string): Promise<string | null> {
-  const tokenRecord = await prisma.apiTokens.findFirst({
-    where: {
-      apiName,
-      expires: {
-        gt: new Date() // Check that the token has not expired
-      }
-    }
-  })
+  const supabase = createAdminSupabase()
+
+  const { data: tokenRecord } = await supabase
+    .from("ApiTokens")
+    .select()
+    .eq("apiName", apiName)
+    .gt("expires", new Date())
+    .single()
 
   return tokenRecord?.token || null
 }
@@ -67,7 +61,9 @@ export async function getFsAccessToken(): Promise<string> {
   try {
     const response = await axios(options)
     const { access_token: token, expires_in: expiresIn } = response.data
-    if (!debug){await storeAccessToken(apiName, token, expiresIn) }
+    if (!debug) {
+      await storeAccessToken(apiName, token, expiresIn)
+    }
     return token
   } catch (err) {
     const error = err as {

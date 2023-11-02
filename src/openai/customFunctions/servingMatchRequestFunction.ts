@@ -1,10 +1,10 @@
-import { prisma } from "../../database/prisma"
 import { chatCompletion, correctAndParseResponse } from "./chatCompletion"
-import { User } from "@prisma/client"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
 import * as math from "mathjs"
 import { extractServingAmount } from "@/utils/openaiFunctionSchemas"
+import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 interface ServingMatchRequest {
   item_name: string
@@ -145,7 +145,7 @@ function customStringify(obj: any) {
 export async function findBestServingMatchFunction(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
-  user: User
+  user: Tables<"User">
 ): Promise<FoodItemToLog> {
   const matchRequest: ServingMatchRequest = {
     item_name: food_item.name,
@@ -156,7 +156,7 @@ export async function findBestServingMatchFunction(
       default_serving_size_grams: food_item.defaultServingWeightGram,
       default_serving_size_ml: food_item.defaultServingLiquidMl,
       default_serving_calories: food_item.kcalPerServing,
-      servings: food_item.Servings.map((serving) => {
+      servings: food_item.Serving.map((serving: any) => {
         let servingSize = {
           serving_weight_grams: serving.servingWeightGram
         }
@@ -238,8 +238,8 @@ Output:
     let actualServingId = null
     if (response.serving_id_match_to_user_message !== null && response.serving_id_match_to_user_message !== 0) {
       if (!lastServingIsDefault || response.serving_id_match_to_user_message !== match_request_obj.servings.length) {
-        if (food_item.Servings[response.serving_id_match_to_user_message - 1]) {
-          actualServingId = food_item.Servings[response.serving_id_match_to_user_message - 1].id
+        if (food_item.Serving[response.serving_id_match_to_user_message - 1]) {
+          actualServingId = food_item.Serving[response.serving_id_match_to_user_message - 1].id
         }
       }
     }
@@ -268,60 +268,57 @@ Output:
 
 async function testServingMatchRequest() {
   const messageId = 116
-  const food_item: FoodItemWithNutrientsAndServing = {
-    id: 33,
-    name: "English Muffin",
-    brand: "Thomas'",
-    knownAs: [], // Assuming knownAs should be an array, given the empty "{}" provided
-    description: null,
-    defaultServingWeightGram: 57,
-    defaultServingLiquidMl: null,
-    isLiquid: false,
-    weightUnknown: false,
-    kcalPerServing: 100,
-    totalFatPerServing: 1,
-    satFatPerServing: 0,
-    transFatPerServing: 0,
-    carbPerServing: 26,
-    fiberPerServing: 8,
-    sugarPerServing: 0.5,
-    addedSugarPerServing: 0,
-    proteinPerServing: 4,
-    lastUpdated: new Date("2023-10-10 15:12:38.482"),
-    verified: true,
-    externalId: "65097fd7b67c11000af38692",
-    UPC: null,
-    userId: null,
-    messageId: 28,
-    foodInfoSource: "NUTRITIONIX",
-    Servings: [
-      {
-        id: 111,
-        servingWeightGram: 57,
-        servingName: "1 muffin",
-        foodItemId: 33,
-        servingAlternateAmount: 1,
-        servingAlternateUnit: "muffin"
-      },
-      {
-        id: 112,
-        servingWeightGram: 75,
-        servingName: "1 large muffin",
-        foodItemId: 33,
-        servingAlternateAmount: 1,
-        servingAlternateUnit: "large muffin"
-      }
-    ],
-    Nutrients: [] // No nutrient data provided in the example so initializing an empty array
-  }
-  const user: User = {
+  // const food_item: FoodItemWithNutrientsAndServing = {
+  //   id: 33,
+  //   name: "English Muffin",
+  //   brand: "Thomas'",
+  //   knownAs: [], // Assuming knownAs should be an array, given the empty "{}" provided
+  //   description: null,
+  //   defaultServingWeightGram: 57,
+  //   defaultServingLiquidMl: null,
+  //   isLiquid: false,
+  //   weightUnknown: false,
+  //   kcalPerServing: 100,
+  //   totalFatPerServing: 1,
+  //   satFatPerServing: 0,
+  //   transFatPerServing: 0,
+  //   carbPerServing: 26,
+  //   fiberPerServing: 8,
+  //   sugarPerServing: 0.5,
+  //   addedSugarPerServing: 0,
+  //   proteinPerServing: 4,
+  //   lastUpdated: new Date("2023-10-10 15:12:38.482").toISOString(),
+  //   verified: true,
+  //   externalId: "65097fd7b67c11000af38692",
+  //   UPC: null,
+  //   userId: null,
+  //   messageId: 28,
+  //   foodInfoSource: "NUTRITIONIX",
+  //   Serving: [
+  //     {
+  //       id: 111,
+  //       servingWeightGram: 57,
+  //       servingName: "1 muffin",
+  //       foodItemId: 33,
+  //       servingAlternateAmount: 1,
+  //       servingAlternateUnit: "muffin"
+  //     },
+  //     {
+  //       id: 112,
+  //       servingWeightGram: 75,
+  //       servingName: "1 large muffin",
+  //       foodItemId: 33,
+  //       servingAlternateAmount: 1,
+  //       servingAlternateUnit: "large muffin"
+  //     }
+  //   ],
+  //   Nutrient: [] // No nutrient data provided in the example so initializing an empty array
+  // }
+  const user: Tables<"User"> = {
     id: "clklnwf090000lzssqhgfm8kr",
-    firstName: "Sebastian",
-    lastName: "",
+    fullName: "Sebastian",
     email: "seb.grubb@gmail.com",
-    emailVerified: new Date("2023-10-09 22:45:35.771"),
     phone: "+16503079963",
-    dateOfBirth: new Date("1992-05-06 04:00:00"),
     weightKg: 75,
     heightCm: 175,
     calorieGoal: 2440,
@@ -333,7 +330,10 @@ async function testServingMatchRequest() {
     setupCompleted: false,
     sentContact: true,
     sendCheckins: false,
-    tzIdentifier: "America/New_York"
+    tzIdentifier: "America/New_York",
+    avatarUrl: null,
+    dateOfBirth: null,
+    emailVerified: null
   }
   const food_item_to_log: FoodItemToLog = {
     timeEaten: "2023-10-16T12:00:00Z",
@@ -344,52 +344,52 @@ async function testServingMatchRequest() {
     // serving information is omitted since it's not provided yet
   }
 
-  const orangeJuice: FoodItemWithNutrientsAndServing = {
-    id: 34,
-    name: "Orange Juice",
-    brand: "Tropicana",
-    knownAs: [],
-    description: null,
-    defaultServingWeightGram: null,
-    defaultServingLiquidMl: 240, // 240 ml is roughly 8 fl oz
-    isLiquid: true,
-    weightUnknown: false,
-    kcalPerServing: 110,
-    totalFatPerServing: 0,
-    satFatPerServing: 0,
-    transFatPerServing: 0,
-    carbPerServing: 26,
-    fiberPerServing: 0.5,
-    sugarPerServing: 22,
-    addedSugarPerServing: 0,
-    proteinPerServing: 2,
-    lastUpdated: new Date("2023-10-10 15:15:38.482"),
-    verified: true,
-    externalId: "65097fd7b67c11000af38693",
-    UPC: null,
-    userId: null,
-    messageId: 29,
-    foodInfoSource: "NUTRITIONIX",
-    Servings: [
-      {
-        id: 113,
-        servingWeightGram: null,
-        servingName: "1 cup",
-        foodItemId: 34,
-        servingAlternateAmount: 240,
-        servingAlternateUnit: "ml"
-      },
-      {
-        id: 114,
-        servingWeightGram: null,
-        servingName: "1 glass",
-        foodItemId: 34,
-        servingAlternateAmount: 355, // roughly 12 fl oz
-        servingAlternateUnit: "ml"
-      }
-    ],
-    Nutrients: []
-  }
+  // const orangeJuice: FoodItemWithNutrientsAndServing = {
+  //   id: 34,
+  //   name: "Orange Juice",
+  //   brand: "Tropicana",
+  //   knownAs: [],
+  //   description: null,
+  //   defaultServingWeightGram: null,
+  //   defaultServingLiquidMl: 240, // 240 ml is roughly 8 fl oz
+  //   isLiquid: true,
+  //   weightUnknown: false,
+  //   kcalPerServing: 110,
+  //   totalFatPerServing: 0,
+  //   satFatPerServing: 0,
+  //   transFatPerServing: 0,
+  //   carbPerServing: 26,
+  //   fiberPerServing: 0.5,
+  //   sugarPerServing: 22,
+  //   addedSugarPerServing: 0,
+  //   proteinPerServing: 2,
+  //   lastUpdated: new Date("2023-10-10 15:15:38.482").toISOString(),
+  //   verified: true,
+  //   externalId: "65097fd7b67c11000af38693",
+  //   UPC: null,
+  //   userId: null,
+  //   messageId: 29,
+  //   foodInfoSource: "NUTRITIONIX",
+  //   Serving: [
+  //     {
+  //       id: 113,
+  //       servingWeightGram: null,
+  //       servingName: "1 cup",
+  //       foodItemId: 34,
+  //       servingAlternateAmount: 240,
+  //       servingAlternateUnit: "ml"
+  //     },
+  //     {
+  //       id: 114,
+  //       servingWeightGram: null,
+  //       servingName: "1 glass",
+  //       foodItemId: 34,
+  //       servingAlternateAmount: 355, // roughly 12 fl oz
+  //       servingAlternateUnit: "ml"
+  //     }
+  //   ],
+  //   Nutrient: []
+  // }
 
   const orangeJuiceLog: FoodItemToLog = {
     timeEaten: "2023-10-16T12:10:00Z",
@@ -405,13 +405,12 @@ async function testServingMatchRequest() {
     food_database_search_name: "Metamucil Fiber Gummies",
     full_item_user_message_including_serving: "9 Metamucil Fiber Gummies"
   }
-  const gummiesFood = (await prisma.foodItem.findUnique({
-    where: { id: 80 },
-    include: {
-      Nutrients: true,
-      Servings: true
-    }
-  })) as FoodItemWithNutrientsAndServing
+
+  const supabase = createAdminSupabase()
+
+  const { data } = await supabase.from("FoodItem").select("*, Nutrient(*), Serving(*)").eq("id", 80).single()
+  if (!data) throw new Error("No data found")
+  const gummiesFood = data as FoodItemWithNutrientsAndServing
   // Testing Orange Juice
   // const oj_result = await findBestServingMatchInstruct(orangeJuiceLog, orangeJuice, user);
   // console.log(oj_result);
