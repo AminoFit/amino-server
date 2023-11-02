@@ -12,7 +12,9 @@ export default function Signup() {
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
 
-  console.log("Using redirect:", `${window.location.origin}/auth/callback`)
+  const origin = typeof window !== "undefined" ? window.location.origin : ""
+
+  console.log("Using redirect:", `${origin}/auth/callback`)
 
   const handleSignUpGoogle = async () => {
     await supabase.auth.signInWithOAuth({
@@ -22,7 +24,7 @@ export default function Signup() {
           access_type: "offline",
           prompt: "consent"
         },
-        redirectTo: `// ${window.location.origin}/auth/callback`
+        redirectTo: `${origin}/auth/callback`
       }
     })
     router.refresh()
