@@ -14,7 +14,7 @@ export default function AuthForm() {
       theme="dark"
       showLinks={false}
       providers={["google"]}
-      redirectTo="http://localhost:3000/auth/callback"
+      redirectTo={`${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`}
     />
   )
 }
