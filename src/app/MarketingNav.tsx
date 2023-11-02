@@ -38,7 +38,7 @@ export default function MarketingNav() {
   const renderLogin = () => {
     if (!loadedUser) {
       return (
-        <a href="/api/auth/signin" className="text-sm font-semibold leading-6 text-gray-900">
+        <a href="/signup" className="text-sm font-semibold leading-6 text-gray-900">
           Log in&nbsp;<span aria-hidden="true">&rarr;</span>
         </a>
       )
