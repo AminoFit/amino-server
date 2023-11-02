@@ -462,8 +462,8 @@ create policy "Users can update own profile." on "User"
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public."User" (id, "fullName", "avatarUrl")
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  insert into public."User" (id, "fullName", "avatarUrl", "email")
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'email');
   return new;
 end;
 $$ language plpgsql security definer;
