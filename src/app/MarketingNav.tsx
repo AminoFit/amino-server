@@ -3,7 +3,7 @@
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { UserResponse } from "@supabase/supabase-js"
+import { User, UserResponse } from "@supabase/supabase-js"
 import classNames from "classnames"
 import { useEffect, useState } from "react"
 import { Database } from "types/supabase-generated.types"
@@ -17,18 +17,19 @@ const navigation = [
 export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [bannerOpen, setBannerOpen] = useState(false)
-  const [loadedUser, setLoadedUser] = useState<UserResponse>()
+  const [loadedUser, setLoadedUser] = useState<User>()
 
   const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
     const loadUser = async () => {
-      const user = await supabase.auth.getUser().catch((e) => {
-        console.log("Error loading user in marketing nav", e)
-      })
-      if (user) {
-        setLoadedUser(user)
-        console.log(user)
+      const { data, error } = await supabase.auth.getUser()
+      if (error) {
+        console.error("Error loading user:", error)
+      }
+      if (data?.user) {
+        setLoadedUser(data.user)
+        console.log("User")
       }
     }
 
@@ -43,10 +44,10 @@ export default function MarketingNav() {
         </a>
       )
     }
-    if (loadedUser?.data?.user) {
+    if (loadedUser) {
       return (
         <a href="/dashboard" className="text-sm font-semibold leading-6 text-gray-900">
-          My Dashboard ({loadedUser.data.user.id})
+          My Dashboard ({loadedUser.email})
         </a>
       )
     }
