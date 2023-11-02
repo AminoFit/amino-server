@@ -3,7 +3,7 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Database } from "types/supabase"
+import { Database } from "types/supabase-generated.types"
 
 export default function Signup() {
   const [email, setEmail] = useState("")

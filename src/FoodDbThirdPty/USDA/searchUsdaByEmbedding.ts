@@ -139,4 +139,4 @@ async function test() {
   await searchUsdaByEmbedding(params)
 }
 
-test()
+// test()

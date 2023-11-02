@@ -176,211 +176,211 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` + generateServingString(
   }
 }
 
-async function testRun() {
-  const stringifyFoodItem = (foodItem: FoodItemWithNutrientsAndServing): string => {
-    let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`
+// async function testRun() {
+//   const stringifyFoodItem = (foodItem: FoodItemWithNutrientsAndServing): string => {
+//     let output = `ItemName: ${foodItem.name}\nBranded: ${Boolean(foodItem.brand)}\n`
 
-    if (foodItem.brand) {
-      output += `BrandName: ${foodItem.brand}\n`
-    }
+//     if (foodItem.brand) {
+//       output += `BrandName: ${foodItem.brand}\n`
+//     }
 
-    output += `DefaultServingGrams: ${
-      foodItem.defaultServingWeightGram ? Number(foodItem.defaultServingWeightGram.toPrecision(4)) : "N/A"
-    }\n`
-    output += `isLiquid: ${foodItem.isLiquid}\n`
+//     output += `DefaultServingGrams: ${
+//       foodItem.defaultServingWeightGram ? Number(foodItem.defaultServingWeightGram.toPrecision(4)) : "N/A"
+//     }\n`
+//     output += `isLiquid: ${foodItem.isLiquid}\n`
 
-    if (foodItem.isLiquid) {
-      output += `DefaultServingMl: ${
-        foodItem.defaultServingLiquidMl ? Number(foodItem.defaultServingLiquidMl.toPrecision(4)) : "N/A"
-      }\n`
-    }
+//     if (foodItem.isLiquid) {
+//       output += `DefaultServingMl: ${
+//         foodItem.defaultServingLiquidMl ? Number(foodItem.defaultServingLiquidMl.toPrecision(4)) : "N/A"
+//       }\n`
+//     }
 
-    output += `Calories: ${Number(foodItem.kcalPerServing.toPrecision(4))}\nCarbs: ${foodItem.carbPerServing}\n`
-    output += `TotalFat: ${Number(foodItem.totalFatPerServing.toPrecision(4))}\nProtein: ${
-      foodItem.proteinPerServing
-    }\n`
+//     output += `Calories: ${Number(foodItem.kcalPerServing.toPrecision(4))}\nCarbs: ${foodItem.carbPerServing}\n`
+//     output += `TotalFat: ${Number(foodItem.totalFatPerServing.toPrecision(4))}\nProtein: ${
+//       foodItem.proteinPerServing
+//     }\n`
 
-    // Conditional appending
-    if (foodItem.satFatPerServing != null) output += `SatFat: ${Number(foodItem.satFatPerServing.toPrecision(4))}\n`
-    if (foodItem.transFatPerServing != null)
-      output += `TransFat: ${Number(foodItem.transFatPerServing.toPrecision(4))}\n`
-    if (foodItem.fiberPerServing != null) output += `Fiber: ${Number(foodItem.fiberPerServing.toPrecision(4))}\n`
-    if (foodItem.addedSugarPerServing != null)
-      output += `AddedSugar: ${Number(foodItem.addedSugarPerServing.toPrecision(4))}\n`
+//     // Conditional appending
+//     if (foodItem.satFatPerServing != null) output += `SatFat: ${Number(foodItem.satFatPerServing.toPrecision(4))}\n`
+//     if (foodItem.transFatPerServing != null)
+//       output += `TransFat: ${Number(foodItem.transFatPerServing.toPrecision(4))}\n`
+//     if (foodItem.fiberPerServing != null) output += `Fiber: ${Number(foodItem.fiberPerServing.toPrecision(4))}\n`
+//     if (foodItem.addedSugarPerServing != null)
+//       output += `AddedSugar: ${Number(foodItem.addedSugarPerServing.toPrecision(4))}\n`
 
-    // Iterate through Servings and Nutrients
-    output += "Servings: [\n"
-    for (const serving of foodItem.Serving) {
-      output += `  { servingWeightGrams: ${
-        serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : "N/A"
-      }, servingName: "${serving.servingName}" },\n`
-    }
-    output += "]\n"
+//     // Iterate through Servings and Nutrients
+//     output += "Servings: [\n"
+//     for (const serving of foodItem.Serving) {
+//       output += `  { servingWeightGrams: ${
+//         serving.servingWeightGram ? Number(serving.servingWeightGram.toPrecision(4)) : "N/A"
+//       }, servingName: "${serving.servingName}" },\n`
+//     }
+//     output += "]\n"
 
-    output += "Nutrients: [\n"
-    for (const nutrient of foodItem.Nutrient) {
-      output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`
-    }
-    output += "]"
+//     output += "Nutrients: [\n"
+//     for (const nutrient of foodItem.Nutrient) {
+//       output += `  { nutrientAmount: ${nutrient.nutrientAmountPerDefaultServing}, nutrientUnit: "${nutrient.nutrientUnit}", nutrientName: "${nutrient.nutrientName}" },\n`
+//     }
+//     output += "]"
 
-    return output
-  }
+//     return output
+//   }
 
-  const user: Tables<"User"> = {
-    id: "clklnwf090000lzssqhgfm8kr",
-    fullName: "John",
-    email: "john.doe@example.com",
-    phone: "123-456-7890",
-    dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
-    weightKg: 70.5,
-    heightCm: 180,
-    calorieGoal: 2000,
-    proteinGoal: 100,
-    carbsGoal: 200,
-    fatGoal: 50,
-    fitnessGoal: "Maintain",
-    unitPreference: "IMPERIAL",
-    setupCompleted: false,
-    sentContact: false,
-    sendCheckins: false,
-    tzIdentifier: "America/New_York",
-    avatarUrl: null,
-    emailVerified: null
-  }
-  const serving = {
-    id: 329,
-    servingWeightGram: null,
-    servingName: "1 bottle",
-    foodItemId: 128,
-    servingAlternateAmount: 1,
-    servingAlternateUnit: "bottle"
-  }
-  const serving2 = {
-    id: 452,
-    servingWeightGram: null,
-    servingName: "1 cup",
-    foodItemId: 128,
-    servingAlternateAmount: 1,
-    servingAlternateUnit: "cup"
-  }
-  const foodItem: FoodItemWithNutrientsAndServing = {
-    id: 128,
-    name: "Milk, 2%",
-    brand: "Fairlife",
-    knownAs: [],
-    description: null,
-    defaultServingLiquidMl: 240,
-    defaultServingWeightGram: null,
-    kcalPerServing: 120,
-    totalFatPerServing: 4.5,
-    satFatPerServing: 3,
-    transFatPerServing: 0,
-    carbPerServing: 6,
-    sugarPerServing: 6,
-    addedSugarPerServing: null,
-    proteinPerServing: 13,
-    lastUpdated: new Date("2023-09-18 20:00:38.115").toISOString(),
-    verified: true,
-    userId: null,
-    messageId: 489,
-    foodInfoSource: "NUTRITIONIX",
-    UPC: null,
-    externalId: "5d0b35e53aba6bbd692c5f52",
-    fiberPerServing: 0,
-    isLiquid: true,
-    weightUnknown: false,
-    Servings: [serving, serving2],
-    Nutrients: []
-  }
+//   const user: Tables<"User"> = {
+//     id: "clklnwf090000lzssqhgfm8kr",
+//     fullName: "John",
+//     email: "john.doe@example.com",
+//     phone: "123-456-7890",
+//     dateOfBirth: new Date("1990-01-01T00:00:00").toISOString(),
+//     weightKg: 70.5,
+//     heightCm: 180,
+//     calorieGoal: 2000,
+//     proteinGoal: 100,
+//     carbsGoal: 200,
+//     fatGoal: 50,
+//     fitnessGoal: "Maintain",
+//     unitPreference: "IMPERIAL",
+//     setupCompleted: false,
+//     sentContact: false,
+//     sendCheckins: false,
+//     tzIdentifier: "America/New_York",
+//     avatarUrl: null,
+//     emailVerified: null
+//   }
+//   // const serving = {
+//   //   id: 329,
+//   //   servingWeightGram: null,
+//   //   servingName: "1 bottle",
+//   //   foodItemId: 128,
+//   //   servingAlternateAmount: 1,
+//   //   servingAlternateUnit: "bottle"
+//   // }
+//   // const serving2 = {
+//   //   id: 452,
+//   //   servingWeightGram: null,
+//   //   servingName: "1 cup",
+//   //   foodItemId: 128,
+//   //   servingAlternateAmount: 1,
+//   //   servingAlternateUnit: "cup"
+//   // }
+//   // const foodItem: FoodItemWithNutrientsAndServing = {
+//   //   id: 128,
+//   //   name: "Milk, 2%",
+//   //   brand: "Fairlife",
+//   //   knownAs: [],
+//   //   description: null,
+//   //   defaultServingLiquidMl: 240,
+//   //   defaultServingWeightGram: null,
+//   //   kcalPerServing: 120,
+//   //   totalFatPerServing: 4.5,
+//   //   satFatPerServing: 3,
+//   //   transFatPerServing: 0,
+//   //   carbPerServing: 6,
+//   //   sugarPerServing: 6,
+//   //   addedSugarPerServing: null,
+//   //   proteinPerServing: 13,
+//   //   lastUpdated: new Date("2023-09-18 20:00:38.115").toISOString(),
+//   //   verified: true,
+//   //   userId: null,
+//   //   messageId: 489,
+//   //   foodInfoSource: "NUTRITIONIX",
+//   //   UPC: null,
+//   //   externalId: "5d0b35e53aba6bbd692c5f52",
+//   //   fiberPerServing: 0,
+//   //   isLiquid: true,
+//   //   weightUnknown: false,
+//   //   Serving: [serving, serving2],
+//   //   Nutrient: []
+//   // }
 
-  const fairlifeMilk: FoodItemWithNutrientsAndServing = {
-    id: 2342,
-    UPC: null,
-    externalId: "5ffefe660027528b35b714bc",
-    name: "2% Reduced Ultra-Filtered Milk",
-    brand: "Fairlife",
-    knownAs: [],
-    description: null,
-    weightUnknown: false,
-    defaultServingWeightGram: null,
-    defaultServingLiquidMl: 240.01,
-    isLiquid: true,
-    kcalPerServing: 120.0005,
-    totalFatPerServing: 4.5,
-    satFatPerServing: 3,
-    transFatPerServing: 0,
-    carbPerServing: 6,
-    fiberPerServing: 0,
-    sugarPerServing: 6,
-    addedSugarPerServing: 0,
-    proteinPerServing: 13,
-    lastUpdated: new Date("2023-09-20T17:07:06.802Z"),
-    verified: true,
-    userId: null,
-    foodInfoSource: "NUTRITIONIX",
-    messageId: null,
-    Servings: [serving2],
-    Nutrients: []
-  }
+//   // const fairlifeMilk: FoodItemWithNutrientsAndServing = {
+//   //   id: 2342,
+//   //   UPC: null,
+//   //   externalId: "5ffefe660027528b35b714bc",
+//   //   name: "2% Reduced Ultra-Filtered Milk",
+//   //   brand: "Fairlife",
+//   //   knownAs: [],
+//   //   description: null,
+//   //   weightUnknown: false,
+//   //   defaultServingWeightGram: null,
+//   //   defaultServingLiquidMl: 240.01,
+//   //   isLiquid: true,
+//   //   kcalPerServing: 120.0005,
+//   //   totalFatPerServing: 4.5,
+//   //   satFatPerServing: 3,
+//   //   transFatPerServing: 0,
+//   //   carbPerServing: 6,
+//   //   fiberPerServing: 0,
+//   //   sugarPerServing: 6,
+//   //   addedSugarPerServing: 0,
+//   //   proteinPerServing: 13,
+//   //   lastUpdated: new Date("2023-09-20T17:07:06.802Z").toISOString(),
+//   //   verified: true,
+//   //   userId: null,
+//   //   foodInfoSource: "NUTRITIONIX",
+//   //   messageId: null,
+//   //   Serving: [serving2],
+//   //   Nutrient: []
+//   // }
 
-  const mcflurryFood: FoodItemWithNutrientsAndServing = {
-    id: 1234124,
-    externalId: "56568",
-    UPC: null,
-    knownAs: [],
-    description: null,
-    lastUpdated: new Date("2023-10-12T16:08:10.626Z"),
-    verified: true,
-    userId: null,
-    foodInfoSource: "FATSECRET",
-    messageId: null,
-    name: "McFlurry with Oreo Cookies",
-    brand: "McDonald's",
-    defaultServingWeightGram: NaN,
-    defaultServingLiquidMl: null,
-    isLiquid: false,
-    weightUnknown: true,
-    kcalPerServing: 510,
-    totalFatPerServing: 16,
-    carbPerServing: 80,
-    proteinPerServing: 12,
-    satFatPerServing: 8,
-    fiberPerServing: 1,
-    sugarPerServing: 60,
-    transFatPerServing: 0.5,
-    addedSugarPerServing: 48,
-    Servings: [
-      {
-        id: 12412,
-        foodItemId: 1234124,
-        servingWeightGram: null,
-        servingAlternateAmount: null,
-        servingAlternateUnit: null,
-        servingName: "1 serving"
-      }
-    ],
-    Nutrients: [
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "Cholesterol",
-        nutrientAmountPerDefaultServing: 40,
-        nutrientUnit: "mg"
-      },
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "Potassium",
-        nutrientAmountPerDefaultServing: 540,
-        nutrientUnit: "mg"
-      }
-    ]
-  }
-  console.dir(await foodItemMissingFieldComplete(mcflurryFood, user), {
-    depth: null
-  })
+//   const mcflurryFood: FoodItemWithNutrientsAndServing = {
+//     id: 1234124,
+//     externalId: "56568",
+//     UPC: null,
+//     knownAs: [],
+//     description: null,
+//     lastUpdated: new Date("2023-10-12T16:08:10.626Z").toISOString(),
+//     verified: true,
+//     userId: null,
+//     foodInfoSource: "FATSECRET",
+//     messageId: null,
+//     name: "McFlurry with Oreo Cookies",
+//     brand: "McDonald's",
+//     defaultServingWeightGram: NaN,
+//     defaultServingLiquidMl: null,
+//     isLiquid: false,
+//     weightUnknown: true,
+//     kcalPerServing: 510,
+//     totalFatPerServing: 16,
+//     carbPerServing: 80,
+//     proteinPerServing: 12,
+//     satFatPerServing: 8,
+//     fiberPerServing: 1,
+//     sugarPerServing: 60,
+//     transFatPerServing: 0.5,
+//     addedSugarPerServing: 48,
+//     Serving: [
+//       {
+//         id: 12412,
+//         foodItemId: 1234124,
+//         servingWeightGram: null,
+//         servingAlternateAmount: null,
+//         servingAlternateUnit: null,
+//         servingName: "1 serving"
+//       }
+//     ],
+//     Nutrient: [
+//       {
+//         id: 0,
+//         foodItemId: 0,
+//         nutrientName: "Cholesterol",
+//         nutrientAmountPerDefaultServing: 40,
+//         nutrientUnit: "mg"
+//       },
+//       {
+//         id: 0,
+//         foodItemId: 0,
+//         nutrientName: "Potassium",
+//         nutrientAmountPerDefaultServing: 540,
+//         nutrientUnit: "mg"
+//       }
+//     ]
+//   }
+//   console.dir(await foodItemMissingFieldComplete(mcflurryFood, user), {
+//     depth: null
+//   })
 
-  //console.log(stringifyFoodItem(mcflurryFood))
-}
+//   //console.log(stringifyFoodItem(mcflurryFood))
+// }
 
 //testRun()

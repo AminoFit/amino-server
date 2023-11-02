@@ -4,7 +4,7 @@ import DashNav from "@/components/DashNav"
 
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { Database } from "types/supabase"
+import { Database } from "types/supabase-generated.types"
 
 export default async function Example({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies()

@@ -28,13 +28,13 @@ import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodH
 
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
-import { processFoodItemQueue } from "@/app/api/queues/process-food-item/route"
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
+import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -645,4 +645,4 @@ async function testFoodSearch() {
   console.dir(result, { depth: null })
 }
 
-testFoodSearch()
+// testFoodSearch()
