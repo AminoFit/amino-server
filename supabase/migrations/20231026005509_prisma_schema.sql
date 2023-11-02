@@ -1,4 +1,4 @@
-create extension if not exists "vector" with schema "public" version '0.5.0';
+create extension if not exists "vector" with schema "public" version '0.5.1';
 
 create type "public"."FoodInfoSource" as enum ('User', 'Online', 'GPT3', 'GPT4', 'LLAMA', 'LLAMA2', 'USDA', 'FATSECRET', 'NUTRITIONIX');
 
