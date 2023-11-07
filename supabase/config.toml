@@ -69,7 +69,7 @@ enabled = true
 # in emails.
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://localhost:3000"]
+additional_redirect_urls = ["fit.amino://**", "https://localhost:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -105,30 +105,30 @@ enable_confirmations = false
 # 4152127777 = "123456"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
-[auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
-# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
-auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+# [auth.sms.twilio]
+# enabled = false
+# account_sid = ""
+# message_service_sid = ""
+# # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
+# auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `twitch`,
 # `twitter`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
-enabled = false
-client_id = ""
+enabled = true
+client_id = "fit.amino"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
-secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+secret = "eyJ0eXAiOiJKV1QiLCJraWQiOiI5TjU3Mk5BWDZQIiwiYWxnIjoiRVMyNTYifQ.eyJpc3MiOiI5TjU3Mk5BWDZQIiwic3ViIjoiZml0LmFtaW5vIiwiaWF0IjoxNjk5Mzc5NDQ4LCJleHAiOjE3MTQ5MzE0NDgsImF1ZCI6Imh0dHBzOi8vYXBwbGVpZC5hcHBsZS5jb20ifQ.YIrHo8R7EWq4sj0DfjFcVJ6-hUNVWofOMCyzUrgbR2RTR-SZ13hecQovPEOCOoo_eg8uOg-7ZqcWnMcbw7vcuQ"
 # Overrides the default auth redirectUrl.
-redirect_uri = ""
+# redirect_uri = ""
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
-url = ""
+# url = ""
 
 [auth.external.google]
 enabled = true
-client_id = "343664275871-rq7rv024icveabdc01k83dm2hnqjcobh.apps.googleusercontent.com"
+client_id = "343664275871-rq7rv024icveabdc01k83dm2hnqjcobh.apps.googleusercontent.com,343664275871-5ntjpgq9l3fbasrc35irr8f07jpuecq8.apps.googleusercontent.com"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 # This is just for localhost. Nobody cares.
 secret = "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"
@@ -137,6 +137,18 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 # url = ""
+
+# [auth.external.github]
+# enabled = true
+# client_id = "25644da536543268c384"
+# # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+# # This is just for localhost. Nobody cares.
+# secret = "9570273cb6105e5695dcbe39fbaf0a77131697a1"
+# # Overrides the default auth redirectUrl.
+# redirect_uri = "http://localhost:54321/auth/v1/callback"
+# # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# # or any other third-party OIDC providers.
+# # url = ""
 
 [analytics]
 enabled = false

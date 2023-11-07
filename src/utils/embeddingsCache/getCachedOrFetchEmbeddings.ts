@@ -162,7 +162,7 @@ export async function getCachedOrFetchEmbeddings(
           .single()
 
         if (insertedEmbedding) {
-          console.log("Inserted to embedding at id", insertedEmbedding)
+          // console.log("Inserted to embedding at id", insertedEmbedding)
           newCachedEmbeddings.push({ ...insertedEmbedding, embedding: embedding })
         } else {
           console.log("Failed ot insert embedding", error)

@@ -360,8 +360,8 @@ async function addFoodItemPrisma(
     .select(`*, Nutrient(*), Serving(*)`)
     .single()
 
-  console.log("Insert FoodItem result data:", newFood)
-  console.log("Insert FoodItem result error:", insertError)
+  // console.log("Insert FoodItem result data:", newFood)
+  // console.log("Insert FoodItem result error:", insertError)
 
   if (newFood) {
     const { error: addNutrientsError } = await supabase.from("Nutrient").insert(

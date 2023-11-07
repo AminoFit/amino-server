@@ -1,22 +1,31 @@
 export const dynamic = "force-dynamic"
 
-import { NextRequest } from "next/server"
+import { QuickLogMessage } from "@/app/api/processMessage"
+import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
+import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(
   request: NextRequest // needed so we don't cache this request
 ) {
   console.log("QUICK LOG POST request")
-  // const user = await getUserFromRequest(request)
 
-  // const { message } = await request.json()
+  const { aminoUser, error } = await GetAminoUserOnRequest()
 
-  // if (!message) {
-  //   return new Response("No message provided", { status: 400 })
-  // }
-  // console.log("message", message)
-  // const messageResult = await QuickLogMessage(user, message)
+  if (error) {
+    return new Response(error, { status: 400 })
+  }
 
-  // console.log("messageResult", messageResult)
+  const { message } = await request.json()
 
-  // return NextResponse.json(messageResult)
+  if (!message) {
+    return new Response("No message provided", { status: 400 })
+  }
+
+  if (!aminoUser) {
+    return new Response("No amino user found?", { status: 400 })
+  }
+
+  const messageResult = await QuickLogMessage(aminoUser, message)
+
+  return NextResponse.json(messageResult)
 }
