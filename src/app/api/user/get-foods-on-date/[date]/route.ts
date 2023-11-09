@@ -18,6 +18,7 @@ export async function GET(
   console.log("Entry: Get Foods on date")
 
   const { aminoUser, error } = await GetAminoUserOnRequest()
+  console.log("found user", aminoUser)
 
   if (error) {
     return new Response(error, { status: 400 })
@@ -59,5 +60,6 @@ export async function GET(
   }
 
   const safeFoodsString = stringifyWithBigInt(foods)
+  console.log(`Success. Returning ${foods.length} foods`)
   return NextResponse.json(JSON.parse(safeFoodsString))
 }
