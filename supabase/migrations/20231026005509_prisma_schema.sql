@@ -1,4 +1,4 @@
-create extension if not exists "vector" with schema "public" version '0.5.1';
+create extension if not exists "vector" with schema "public" version '0.5.0';
 
 create type "public"."FoodInfoSource" as enum ('User', 'Online', 'GPT3', 'GPT4', 'LLAMA', 'LLAMA2', 'USDA', 'FATSECRET', 'NUTRITIONIX');
 
@@ -462,8 +462,8 @@ create policy "Users can update own profile." on "User"
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public."User" (id, "fullName", "avatarUrl", "email")
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'email');
+  insert into public."User" (id, "fullName", "email")
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'email');
   return new;
 end;
 $$ language plpgsql security definer;
