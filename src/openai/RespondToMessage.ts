@@ -192,7 +192,7 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
 
 // Helper function to handle error scenarios and update the message accordingly
 function handleQuickLogError(inputMessageId: number, logMessage: string) {
-  console.log(logMessage)
+  console.log("erro",logMessage)
   UpdateMessage({
     id: inputMessageId,
     status: "FAILED",

@@ -1,6 +1,5 @@
 import { Merge } from "type-fest"
 import { Database as DatabaseGenerated } from "./supabase-generated.types"
-
 // export type Database = MergeDeep<
 //   DatabaseGenerated,
 //   {
@@ -16,6 +15,5 @@ import { Database as DatabaseGenerated } from "./supabase-generated.types"
 //     }
 //   }
 // >
-
 export type Tables<T extends keyof DatabaseGenerated["public"]["Tables"]> = DatabaseGenerated["public"]["Tables"][T]["Row"]
 export type Enums<T extends keyof DatabaseGenerated["public"]["Enums"]> = DatabaseGenerated["public"]["Enums"][T]

@@ -223,6 +223,7 @@ export interface Database {
           bgeBaseEmbedding: string | null
           brand: string | null
           carbPerServing: number
+          createdAtDateTime: string
           defaultServingLiquidMl: number | null
           defaultServingWeightGram: number | null
           description: string | null
@@ -252,6 +253,7 @@ export interface Database {
           bgeBaseEmbedding?: string | null
           brand?: string | null
           carbPerServing?: number
+          createdAtDateTime?: string
           defaultServingLiquidMl?: number | null
           defaultServingWeightGram?: number | null
           description?: string | null
@@ -281,6 +283,7 @@ export interface Database {
           bgeBaseEmbedding?: string | null
           brand?: string | null
           carbPerServing?: number
+          createdAtDateTime?: string
           defaultServingLiquidMl?: number | null
           defaultServingWeightGram?: number | null
           description?: string | null
@@ -323,6 +326,7 @@ export interface Database {
         Row: {
           consumedOn: string
           createdAt: string
+          deletedAt: string | null
           embeddingId: number | null
           extendedOpenAiData: Json | null
           foodItemId: number | null
@@ -339,6 +343,7 @@ export interface Database {
         Insert: {
           consumedOn?: string
           createdAt?: string
+          deletedAt?: string | null
           embeddingId?: number | null
           extendedOpenAiData?: Json | null
           foodItemId?: number | null
@@ -355,6 +360,7 @@ export interface Database {
         Update: {
           consumedOn?: string
           createdAt?: string
+          deletedAt?: string | null
           embeddingId?: number | null
           extendedOpenAiData?: Json | null
           foodItemId?: number | null
@@ -768,6 +774,12 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      epoch_to_timestamp: {
+        Args: {
+          epoch: number
+        }
+        Returns: string
+      }
       get_branded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -792,6 +804,10 @@ export interface Database {
           cosine_similarity: number
         }[]
       }
+      get_current_timestamp: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_unbranded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -815,6 +831,30 @@ export interface Database {
           "": unknown
         }
         Returns: unknown
+      }
+      pull_food_item: {
+        Args: {
+          food_item_ids: number[]
+        }
+        Returns: Json
+      }
+      pull_logged_food_items: {
+        Args: {
+          last_pulled_at?: number
+        }
+        Returns: Json
+      }
+      push_logged_food_items: {
+        Args: {
+          food_item_data: Json
+        }
+        Returns: undefined
+      }
+      timestamp_to_epoch: {
+        Args: {
+          ts: string
+        }
+        Returns: number
       }
       vector_avg: {
         Args: {

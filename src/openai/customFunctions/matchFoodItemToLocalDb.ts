@@ -274,7 +274,7 @@ async function testMatchingFunctionality() {
       messageId,
       user
     )
-    console.log(result)
+    //console.log(result)
     if ((result && testCases[i].expectedResult) || (!result && !testCases[i].expectedResult)) {
       passedCount++
       console.log(`Test case ${i + 1} passed.`)

@@ -20,7 +20,6 @@ import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { foodToLogEmbedding, FoodEmbeddingCache, getFoodEmbedding } from "../../utils/foodEmbedding"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
-import { sanitizeServingName } from "../utils/textSanitize"
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
 
 // App
@@ -87,6 +86,10 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
   }
 } */
 
+function isServerTimeData(data: any): data is { current_timestamp: number } {
+  return data && typeof data === "object" && "current_timestamp" in data;
+}
+
 export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, lastUserMessageId: number) {
   console.log("parameters", parameters)
 
@@ -97,6 +100,15 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
   // Increment itemsToProcess by foodItemsToLog.length
   await supabase.from("Message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
 
+  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
+
+  if (serverTimeError) {
+    throw serverTimeError
+  }
+
+  // Extract the timestamp from the server's response
+  const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString()
+  console.log("serverTimeData",serverTimeData)
   // Create all the pending food items
   let { data: foodsNeedProcessing, error } = await supabase
     .from("LoggedFoodItem")
@@ -104,6 +116,7 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
       foodItemsToLog.map((food) => {
         return {
           userId: user.id,
+          createdAt: timestamp,
           consumedOn: food.timeEaten ? new Date(food.timeEaten).toISOString() : new Date().toISOString(),
           messageId: lastUserMessageId,
           status: "Needs Processing",
@@ -227,11 +240,27 @@ async function findBestMatch(
 }
 
 async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
-  const supabase = createAdminSupabase()
+  const supabase = createAdminSupabase();
 
-  const { data: result, error } = await supabase.from("LoggedFoodItem").update(data).eq("id", loggedFoodItemId).single()
+  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp");
 
-  return result
+  if (serverTimeError) {
+    throw serverTimeError;
+  }
+
+  // Extract the timestamp from the server's response
+  const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString();
+
+  // Add the timestamp to the data object for updating the updatedAt field
+  data.updatedAt = timestamp;
+
+  const { data: result, error } = await supabase.from("LoggedFoodItem").update(data).eq("id", loggedFoodItemId).single();
+
+  if (error) {
+    throw error;
+  }
+
+  return result;
 }
 
 export async function HandleLogFoodItem(
@@ -252,9 +281,9 @@ export async function HandleLogFoodItem(
 
   if (error) {
     console.error(error)
-  } else console.log(cosineSearchResults)
+  }
 
-  console.log("result", cosineSearchResults)
+  //console.log("result", cosineSearchResults)
 
   // const cosineSearchResults = (await pris.$queryRaw`
   //   SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
