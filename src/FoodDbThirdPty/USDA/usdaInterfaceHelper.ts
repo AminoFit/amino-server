@@ -69,6 +69,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
 
   const foodItem: FoodItemWithServings = {
     id: 0,
+    createdAtDateTime: new Date().toISOString(),
     knownAs: [],
     description: null,
     lastUpdated: new Date().toISOString(),

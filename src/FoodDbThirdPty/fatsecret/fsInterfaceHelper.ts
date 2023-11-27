@@ -131,6 +131,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
   // Map fsFoodItem to FoodItem
   const foodItem: FoodItemWithServings = {
     id: 0,
+    createdAtDateTime: new Date().toISOString(),
     externalId: fsFoodItem.food_id,
     UPC: null,
     knownAs: [],

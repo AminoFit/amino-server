@@ -108,6 +108,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
 
     return {
       id: 0,
+      createdAtDateTime: new Date().toISOString(),
       UPC: food.upc ? Number(food.upc) : null,
       externalId: food.nix_item_id,
       name: food.food_name,

@@ -67,6 +67,7 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
   }
   let dbFoodItem: FoodItemWithServings = {
     id: 0,
+    createdAtDateTime: new Date().toISOString(),
     lastUpdated: new Date().toISOString(),
     verified: false,
     userId: null,
