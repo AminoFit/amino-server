@@ -117,6 +117,7 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
         return {
           userId: user.id,
           createdAt: timestamp,
+          updatedAt: timestamp,
           consumedOn: food.timeEaten ? new Date(food.timeEaten).toISOString() : new Date().toISOString(),
           messageId: lastUserMessageId,
           status: "Needs Processing",
