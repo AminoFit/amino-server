@@ -34,6 +34,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
+import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
 const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
@@ -87,7 +88,7 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
 } */
 
 function isServerTimeData(data: any): data is { current_timestamp: number } {
-  return data && typeof data === "object" && "current_timestamp" in data;
+  return data && typeof data === "object" && "current_timestamp" in data
 }
 
 export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, lastUserMessageId: number) {
@@ -107,8 +108,10 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
   }
 
   // Extract the timestamp from the server's response
-  const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString()
-  console.log("serverTimeData",serverTimeData)
+  const timestamp = isServerTimeData(serverTimeData)
+    ? new Date(serverTimeData.current_timestamp).toISOString()
+    : new Date().toISOString()
+  console.log("serverTimeData", serverTimeData)
   // Create all the pending food items
   let { data: foodsNeedProcessing, error } = await supabase
     .from("LoggedFoodItem")
@@ -241,27 +244,34 @@ async function findBestMatch(
 }
 
 async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
-  const supabase = createAdminSupabase();
+  const supabase = createAdminSupabase()
 
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp");
+  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
 
   if (serverTimeError) {
-    throw serverTimeError;
+    console.log("serverTimeError error:", serverTimeError)
+    throw serverTimeError
   }
 
   // Extract the timestamp from the server's response
-  const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString();
-
+  const timestamp = isServerTimeData(serverTimeData)
+    ? new Date(serverTimeData.current_timestamp).toISOString()
+    : new Date().toISOString()
   // Add the timestamp to the data object for updating the updatedAt field
-  data.updatedAt = timestamp;
+  data.updatedAt = timestamp
 
-  const { data: result, error } = await supabase.from("LoggedFoodItem").update(data).eq("id", loggedFoodItemId).single();
-
+  const { data: result, error } = await supabase
+    .from("LoggedFoodItem")
+    .update(data)
+    .eq("id", loggedFoodItemId)
+    .select()
+    .single()
   if (error) {
-    throw error;
+    console.log("logFoodItem error:", error)
+    throw error
   }
 
-  return result;
+  return result
 }
 
 export async function HandleLogFoodItem(
@@ -320,9 +330,20 @@ export async function HandleLogFoodItem(
   }
 
   const foodItem = await logFoodItem(loggedFoodItem.id, data)
-  if (!foodItem) return "Sorry, I could not log your food items. Please try again later."
+  if (!foodItem) {
+    console.log("Could not log food item")
+    return "Sorry, I could not log your food items. Please try again later."
+  }
 
   UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
+
+  console.log("About to queue icon generation")
+  // Queue the icon generation
+  await generateFoodIconQueue.enqueue(
+    `${foodItem.id}` // job to be enqueued
+  )
+
+  console.log("Queued icon generation", foodItem.id)
 
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }

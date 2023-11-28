@@ -774,12 +774,6 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      epoch_to_timestamp: {
-        Args: {
-          epoch: number
-        }
-        Returns: string
-      }
       get_branded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -831,30 +825,6 @@ export interface Database {
           "": unknown
         }
         Returns: unknown
-      }
-      pull_food_item: {
-        Args: {
-          food_item_ids: number[]
-        }
-        Returns: Json
-      }
-      pull_logged_food_items: {
-        Args: {
-          last_pulled_at?: number
-        }
-        Returns: Json
-      }
-      push_logged_food_items: {
-        Args: {
-          food_item_data: Json
-        }
-        Returns: undefined
-      }
-      timestamp_to_epoch: {
-        Args: {
-          ts: string
-        }
-        Returns: number
       }
       vector_avg: {
         Args: {
@@ -931,6 +901,7 @@ export interface Database {
           id: string
           name: string
           owner: string | null
+          owner_id: string | null
           public: boolean | null
           updated_at: string | null
         }
@@ -942,6 +913,7 @@ export interface Database {
           id: string
           name: string
           owner?: string | null
+          owner_id?: string | null
           public?: boolean | null
           updated_at?: string | null
         }
@@ -953,17 +925,11 @@ export interface Database {
           id?: string
           name?: string
           owner?: string | null
+          owner_id?: string | null
           public?: boolean | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "buckets_owner_fkey"
-            columns: ["owner"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       migrations: {
         Row: {
@@ -995,6 +961,7 @@ export interface Database {
           metadata: Json | null
           name: string | null
           owner: string | null
+          owner_id: string | null
           path_tokens: string[] | null
           updated_at: string | null
           version: string | null
@@ -1007,6 +974,7 @@ export interface Database {
           metadata?: Json | null
           name?: string | null
           owner?: string | null
+          owner_id?: string | null
           path_tokens?: string[] | null
           updated_at?: string | null
           version?: string | null
@@ -1019,6 +987,7 @@ export interface Database {
           metadata?: Json | null
           name?: string | null
           owner?: string | null
+          owner_id?: string | null
           path_tokens?: string[] | null
           updated_at?: string | null
           version?: string | null
