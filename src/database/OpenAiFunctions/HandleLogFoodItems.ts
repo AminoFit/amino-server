@@ -250,6 +250,7 @@ async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<
   }
 
   // Extract the timestamp from the server's response
+  console.log("serverTimeData",serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
   const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString();
 
   // Add the timestamp to the data object for updating the updatedAt field
