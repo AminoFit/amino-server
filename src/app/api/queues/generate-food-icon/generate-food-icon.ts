@@ -76,9 +76,15 @@ export const generateFoodIconQueue = Queue(
 async function GenerateIcon(foodString: string) {
   const response = await openai.images.generate({
     model: "dall-e-3",
-    prompt: `A vector icon of a ${foodString}. On a white background. simple icon style.`,
+    prompt: `A beautiful isometric vector 3D render of ${foodString}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
     n: 1,
     size: "1024x1024"
   })
   console.log("open ai response", response)
 }
+
+async function testIconGeneration() {
+  await GenerateIcon("banana")
+}
+
+testIconGeneration()
