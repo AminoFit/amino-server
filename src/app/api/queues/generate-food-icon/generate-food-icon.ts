@@ -1,146 +1,173 @@
-// See docs here: https://vercel.com/docs/functions/serverless-functions/runtimes#maxduration
-export const maxDuration = 300
-
-import { Queue } from "quirrel/next-app"
-
-import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
-import { createClient } from "@supabase/supabase-js"
-import { Database } from "types/supabase-generated.types"
-import { openai } from "@/utils/openaiFunctionSchemas"
-import fetch from 'node-fetch';
-import { createWriteStream } from 'fs';
-import FormData from 'form-data';
-
+// Constants
+export const MAX_DURATION = 300
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY
 
+// Importing dependencies and initializing the Supabase client
+import { createClient } from "@supabase/supabase-js"
+import { Database } from "types/supabase-generated.types"
+import { Queue } from "quirrel/next-app"
+import { createHash } from "crypto"
+import fetch from "node-fetch"
+import FormData from "form-data"
 
-export const generateFoodIconQueue = Queue(
-  "api/queues/generate-food-icon", // 👈 the route it's reachable on
-  async (foodItemIdString: string) => {
-    console.log("Enter api/queues/generate-food-icon with payload:", foodItemIdString)
+// Importing local utility functions
+import { SupabaseURL, SupabaseServiceKey } from "@/utils/auth-keys"
+import { openai } from "@/utils/openaiFunctionSchemas"
+import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
+import { vectorToSql } from "@/utils/pgvectorHelper"
 
-    const foodItemId = parseInt(foodItemIdString)
+const BUCKET_NAME = "foodimages"
 
-    if (isNaN(foodItemId)) {
-      throw new Error("Invalid foodItemId")
-    }
-
-    const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-
-    const { error, data: foodItem } = await supabase.from("FoodItem").select("*").eq("id", foodItemId).single()
-
-    if (error) {
-      throw error
-    }
-
-    console.log("Food Item: ", foodItem)
-
-    if (!foodItem) {
-      throw new Error("No Food Item with that ID")
-    }
-
-    await GenerateIcon(foodItem.name, foodItem.id, supabase)
-
-    // if (loggedFoodItem.status !== "Needs Processing") {
-    //   throw new Error("Food does not need processing.")
-    // }
-    // if (!loggedFoodItem.User) {
-    //   throw new Error("No user for food item")
-    // }
-
-    // const openAiData = loggedFoodItem?.extendedOpenAiData?.valueOf() as any
-
-    // if (!openAiData) {
-    //   throw new Error("No openAiData")
-    // }
-    // if (!openAiData.food_database_search_name) {
-    //   throw new Error("No food_database_search_name")
-    // }
-
-    // if (loggedFoodItem.messageId) {
-    //   await HandleLogFoodItem(
-    //     loggedFoodItem,
-    //     openAiData as FoodItemToLog,
-    //     loggedFoodItem.messageId,
-    //     loggedFoodItem.User
-    //   )
-    // } else {
-    //   console.log("No messageId")
-    // }
-
-    console.log("Done generating food icon", foodItem.id, foodItem.name)
-
-    return
+// Initialize Supabase client outside of the queue to avoid reinitializing it every time
+const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
   }
-)
+})
 
-async function GenerateIcon(foodString: string, foodId: number, supabase: any) {
-  const openAiResponse = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: `A beautiful isometric vector 3D render of ${foodString}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
-    n: 1,
-    size: "1024x1024"
-  });
+// Queue for generating food icons
+export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", async (foodItemIdString: string) => {
+  // Parse the food item ID and validate it
+  const foodItemId = parseInt(foodItemIdString)
+  if (isNaN(foodItemId)) throw new Error("Invalid foodItemId")
 
-  console.log("OpenAI response", openAiResponse);
+  // Retrieve the food item from the database
+  const foodItem = await getFoodItem(foodItemId)
+  if (!foodItem) throw new Error("No Food Item with that ID")
 
-  const imageUrl = openAiResponse.data[0].url;
+  // Generate the icon and upload it to storage
+  const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
 
-  const imageResponse = await fetch(imageUrl!);
-  const imageBuffer = await imageResponse.buffer();
+  // Update the food item record with the new icon ID
+  await updateFoodItemWithImageId(foodItem.id, foodImageId)
 
-  const form = new FormData();
-  form.append('image_file', imageBuffer, {
-    filename: 'image.png',
-    contentType: 'image/png',
-  });
+  console.log("Done generating food icon for:", foodItem.name)
+})
 
-  const clipDropResponse = await fetch('https://clipdrop-api.co/remove-background/v1', {
-    method: 'POST',
-    headers: {
-      'x-api-key': CLIPDROP_API_KEY!,
-    },
-    body: form,
-  });
+// Retrieves a single food item from the database by ID
+async function getFoodItem(foodId: number) {
+  const { data, error } = await supabase.from("FoodItem").select("*").eq("id", foodId).single()
 
-  if (!clipDropResponse.ok) {
-    throw new Error('Error in removing background');
-  }
-
-  const processedImageBuffer = await clipDropResponse.buffer();
-
-  // Construct file path with ID and food string
-  const filePath = `public/${foodId}_${foodString}.png`; 
-  await uploadFile(processedImageBuffer, filePath, supabase);
-
-  console.log('Image uploaded to Supabase at', filePath);
+  if (error) throw error
+  return data
 }
 
-async function uploadFile(fileBuffer: Buffer, filePath: string, supabase: any) {
-  const { data, error } = await supabase.storage.from('foodimages').upload(filePath, fileBuffer, {
-    contentType: 'image/png',
-  });
+// Generates an icon for the food item and uploads it to storage
+async function generateAndUploadIcon(foodName: string, foodId: number) {
+  // Generate the image using OpenAI's model
+  const imageUrl = await generateImageWithOpenAI(foodName)
 
-  if (error) {
-    throw new Error('Error uploading file to Supabase: ' + error.message);
-  }
+  // Download the image and process it with ClipDrop API
+  const processedImageBuffer = await processImageWithClipDrop(imageUrl!)
 
-  console.log('File uploaded successfully', data);
+  // Upload the processed image to Supabase storage and insert a record in the FoodImage table
+  const foodImageId = await uploadImageAndGetId(foodName, processedImageBuffer)
+
+  return foodImageId
+}
+
+// Generates an image using OpenAI's DALL-E model
+async function generateImageWithOpenAI(foodName: string) {
+  const openAiResponse = await openai.images.generate({
+    model: "dall-e-3",
+    prompt: `A beautiful isometric vector 3D render of ${foodName}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
+    n: 1,
+    size: "1024x1024"
+  })
+
+  if (!openAiResponse) throw new Error("Error generating image with OpenAI")
+  return openAiResponse.data[0].url
+}
+
+// Processes the image using the ClipDrop API to remove the background
+async function processImageWithClipDrop(imageUrl: string) {
+  const imageResponse = await fetch(imageUrl)
+  const imageBuffer = await imageResponse.buffer()
+
+  const form = new FormData()
+  form.append("image_file", imageBuffer, {
+    filename: "image.png",
+    contentType: "image/png"
+  })
+
+  const clipDropResponse = await fetch("https://clipdrop-api.co/remove-background/v1", {
+    method: "POST",
+    headers: { "x-api-key": CLIPDROP_API_KEY! },
+    body: form
+  })
+
+  if (!clipDropResponse.ok) throw new Error("Error in removing background")
+  return await clipDropResponse.buffer()
+}
+
+// Uploads the image to Supabase storage and inserts a record into the FoodImage table
+async function uploadImageAndGetId(foodName: string, imageBuffer: Buffer) {
+  const imageName = generateImageName(foodName)
+  const filePath = `public/${imageName}.png`
+
+  // Upload the image to Supabase storage
+  await uploadFile(filePath, imageBuffer)
+
+  // Insert a record into the FoodImage table and return the ID
+  return await insertFoodImageRecord(foodName, filePath)
+}
+
+// Generates a unique name for the image using a hash
+function generateImageName(foodName: string) {
+  const datetime = new Date().toISOString()
+  const rawString = `${datetime}${foodName}`
+  const hash = createHash("sha256").update(rawString).digest("hex")
+  return hash.slice(0, 12) + "_" + foodName
+}
+
+// Uploads a file to Supabase storage
+async function uploadFile(filePath: string, fileBuffer: Buffer) {
+  const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, fileBuffer, {
+    contentType: "image/png"
+  })
+
+  if (error) throw error
+}
+
+// Inserts a record into the FoodImage table
+async function insertFoodImageRecord(foodName: string, filePath: string) {
+  // Get the embedding for the foodName
+  const embedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [foodName]))[0].embedding
+
+  // Construct the URL for the uploaded image
+  const imageUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`;
+
+
+  // Insert the record into the FoodImage table
+  const { data, error } = await supabase
+    .from("FoodImage")
+    .insert([{ pathToImage: imageUrl, bgeBaseEmbedding: vectorToSql(embedding), imageDescription: foodName }])
+    .select()
+
+  console.log("Inserted FoodImage record:", data)
+
+  if (error) throw error
+  return (data! as any[])[0].id 
+}
+
+// Updates the FoodItem record with the new FoodImage ID
+async function updateFoodItemWithImageId(foodId: number, foodImageId: number) {
+  const { error } = await supabase.from("FoodItem").update({ foodImageId }).eq("id", foodId)
+
+  if (error) throw error
 }
 
 async function testIconGeneration() {
-  const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
-  await GenerateIcon("banana",123124,supabase)
+  const foodName = "banana"
+  const foodId = 123124 // Example ID
+  try {
+    console.log(`Testing icon generation for: ${foodName}`)
+    const foodImageId = await generateAndUploadIcon(foodName, foodId)
+    console.log(`Generated icon with ID: ${foodImageId}`)
+  } catch (error) {
+    console.error("Error during test icon generation:", error)
+  }
 }
 
-//testIconGeneration()
+testIconGeneration()
