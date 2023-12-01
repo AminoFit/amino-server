@@ -170,4 +170,9 @@ async function testIconGeneration() {
   }
 }
 
-testIconGeneration()
+// test food icon queue generation
+async function testFoodIconQueueGeneration() {
+  await generateFoodIconQueue.enqueue(`1`)
+}
+
+//testFoodIconQueueGeneration()
