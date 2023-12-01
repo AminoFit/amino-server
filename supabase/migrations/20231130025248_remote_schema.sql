@@ -1,4 +1,3 @@
-
 set check_function_bodies = off;
 
 CREATE OR REPLACE FUNCTION public.set_created_at()

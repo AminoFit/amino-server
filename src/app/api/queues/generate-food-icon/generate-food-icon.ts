@@ -7,6 +7,12 @@ import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
 import { createClient } from "@supabase/supabase-js"
 import { Database } from "types/supabase-generated.types"
 import { openai } from "@/utils/openaiFunctionSchemas"
+import fetch from 'node-fetch';
+import { createWriteStream } from 'fs';
+import FormData from 'form-data';
+
+const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY
+
 
 export const generateFoodIconQueue = Queue(
   "api/queues/generate-food-icon", // 👈 the route it's reachable on
@@ -38,7 +44,7 @@ export const generateFoodIconQueue = Queue(
       throw new Error("No Food Item with that ID")
     }
 
-    await GenerateIcon(foodItem.name)
+    await GenerateIcon(foodItem.name, foodItem.id, supabase)
 
     // if (loggedFoodItem.status !== "Needs Processing") {
     //   throw new Error("Food does not need processing.")
@@ -73,18 +79,68 @@ export const generateFoodIconQueue = Queue(
   }
 )
 
-async function GenerateIcon(foodString: string) {
-  const response = await openai.images.generate({
+async function GenerateIcon(foodString: string, foodId: number, supabase: any) {
+  const openAiResponse = await openai.images.generate({
     model: "dall-e-3",
     prompt: `A beautiful isometric vector 3D render of ${foodString}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
     n: 1,
     size: "1024x1024"
-  })
-  console.log("open ai response", response)
+  });
+
+  console.log("OpenAI response", openAiResponse);
+
+  const imageUrl = openAiResponse.data[0].url;
+
+  const imageResponse = await fetch(imageUrl!);
+  const imageBuffer = await imageResponse.buffer();
+
+  const form = new FormData();
+  form.append('image_file', imageBuffer, {
+    filename: 'image.png',
+    contentType: 'image/png',
+  });
+
+  const clipDropResponse = await fetch('https://clipdrop-api.co/remove-background/v1', {
+    method: 'POST',
+    headers: {
+      'x-api-key': CLIPDROP_API_KEY!,
+    },
+    body: form,
+  });
+
+  if (!clipDropResponse.ok) {
+    throw new Error('Error in removing background');
+  }
+
+  const processedImageBuffer = await clipDropResponse.buffer();
+
+  // Construct file path with ID and food string
+  const filePath = `public/${foodId}_${foodString}.png`; 
+  await uploadFile(processedImageBuffer, filePath, supabase);
+
+  console.log('Image uploaded to Supabase at', filePath);
+}
+
+async function uploadFile(fileBuffer: Buffer, filePath: string, supabase: any) {
+  const { data, error } = await supabase.storage.from('foodimages').upload(filePath, fileBuffer, {
+    contentType: 'image/png',
+  });
+
+  if (error) {
+    throw new Error('Error uploading file to Supabase: ' + error.message);
+  }
+
+  console.log('File uploaded successfully', data);
 }
 
 async function testIconGeneration() {
-  await GenerateIcon("banana")
+  const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+  await GenerateIcon("banana",123124,supabase)
 }
 
-testIconGeneration()
+//testIconGeneration()
