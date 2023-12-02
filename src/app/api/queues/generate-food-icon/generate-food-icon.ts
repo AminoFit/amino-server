@@ -36,6 +36,12 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   const foodItem = await getFoodItem(foodItemId)
   if (!foodItem) throw new Error("No Food Item with that ID")
 
+  // Check if food item already has an image
+  if (foodItem.foodImageId != null) {
+    console.log("Food item already has an image, skipping icon generation for:", foodItem.name)
+    return;
+  }
+
   // Generate the icon and upload it to storage
   const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
 
@@ -71,7 +77,7 @@ async function generateAndUploadIcon(foodName: string, foodId: number) {
 async function generateImageWithOpenAI(foodName: string) {
   const openAiResponse = await openai.images.generate({
     model: "dall-e-3",
-    prompt: `A beautiful isometric vector 3D render of ${foodName}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
+    prompt: `A beautiful isometric vector 3D render of a delicious ${foodName}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
     n: 1,
     size: "1024x1024"
   })
@@ -172,7 +178,8 @@ async function testIconGeneration() {
 
 // test food icon queue generation
 async function testFoodIconQueueGeneration() {
-  await generateFoodIconQueue.enqueue(`1`)
+  await generateFoodIconQueue.enqueue(`2`)
+  await generateFoodIconQueue.enqueue(`3`)
 }
 
 //testFoodIconQueueGeneration()
