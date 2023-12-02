@@ -340,7 +340,7 @@ export async function HandleLogFoodItem(
   console.log("About to queue icon generation")
   // Queue the icon generation
   await generateFoodIconQueue.enqueue(
-    `${foodItem.id}` // job to be enqueued
+    `${foodItem.foodItemId}` // job to be enqueued
   )
 
   console.log("Queued icon generation", foodItem.id)
