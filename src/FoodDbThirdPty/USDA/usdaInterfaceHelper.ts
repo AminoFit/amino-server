@@ -75,6 +75,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     lastUpdated: new Date().toISOString(),
     verified: true,
     userId: null,
+    foodImageId: null,
     foodInfoSource: "USDA",
     messageId: null,
     name: toTitleCase(usdaFoodItem.itemName),

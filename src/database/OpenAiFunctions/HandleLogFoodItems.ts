@@ -436,9 +436,6 @@ async function addFoodItemPrisma(
     )
     if (addServingsError) console.error("Error adding servings", addServingsError)
   }
-  if (newFood) {
-    await generateFoodIconQueue.enqueue(`${newFood.id}`)
-  }
 
   return newFood as FoodItemWithNutrientsAndServing
 }

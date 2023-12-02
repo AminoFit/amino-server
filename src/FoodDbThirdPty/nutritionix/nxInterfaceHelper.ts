@@ -133,6 +133,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
       userId: null,
       adaEmbedding: null,
       bgeBaseEmbedding: null,
+      foodImageId: null,
       foodInfoSource: "NUTRITIONIX",
       messageId: null,
       Serving: deduplicateServings([

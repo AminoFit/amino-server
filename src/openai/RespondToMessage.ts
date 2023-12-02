@@ -47,7 +47,7 @@ Loads the messages for the user and gets a new response from OpenAI
 */
 export async function GenerateResponseForUser(user: Tables<"User">): Promise<ResponseForUser> {
   // Get messages
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+  const messages:any = [
     {
       role: ROLE_MAPPING.System,
       content: GetSystemStartPrompt(user)
@@ -65,18 +65,20 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
 
   UpdateMessage({ id: lastUserMessage.id, status: "PROCESSING" })
 
-  let prevMessage: OpenAI.Chat.CreateChatCompletionRequestMessage | undefined = undefined
-  const tempProcessedMessage: OpenAI.Chat.CreateChatCompletionRequestMessage = {
-    role: ROLE_MAPPING.Assistant,
+  let prevMessage: OpenAI.ChatCompletionMessageParam | undefined = undefined
+  const tempProcessedMessage: OpenAI.ChatCompletionAssistantMessageParam = {
+    role: 'assistant',
     content: "ok! got it."
-  }
+  }  
   for (const message of messagesForUser) {
-    let msg: OpenAI.Chat.CreateChatCompletionRequestMessage = {
+    let msg: OpenAI.ChatCompletionMessageParam = {
       role: ROLE_MAPPING[message.role],
-      content: message.content
+      content: message.content,
+      ...(message.role === 'Function' && { name: message.function_name })
+    } as OpenAI.ChatCompletionMessageParam;
+    if (message.function_name && msg.role === "function") {
+      (msg as OpenAI.ChatCompletionFunctionMessageParam).name = message.function_name;
     }
-    if (message.function_name) msg.name = message.function_name
-
     // Check if the message ID matches and the user's first name is not known or is an empty string
     // if (message.id === lastUserMessage.id && (!user.firstName || user.firstName.trim() === "")) {
     //   msg.content +=
