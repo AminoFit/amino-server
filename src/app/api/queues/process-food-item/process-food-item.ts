@@ -9,6 +9,7 @@ import { Queue } from "quirrel/next-app"
 import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
 import { createClient } from "@supabase/supabase-js"
 import { Database } from "types/supabase-generated.types"
+import { generateFoodIconQueue } from "../generate-food-icon/generate-food-icon"
 
 export const processFoodItemQueue = Queue(
   "api/queues/process-food-item", // 👈 the route it's reachable on

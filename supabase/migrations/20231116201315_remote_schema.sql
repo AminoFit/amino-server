@@ -1,8 +1,3 @@
-create extension if not exists "vector" with schema "extensions";
-
-
---drop extension if exists "vector";
-
 set check_function_bodies = off;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
