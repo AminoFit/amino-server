@@ -147,7 +147,6 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
     defaultServingLiquidMl: serving.metric_serving_unit === "ml" ? serving.metric_serving_amount : null,
     isLiquid: serving.metric_serving_unit === "ml",
     weightUnknown: weightUnknown,
-    foodImageId: null,
     // For fields that are Float (non-nullable) in your schema:
     kcalPerServing: Number(serving.calories) || 0,
     totalFatPerServing: Number(serving.fat) || 0,

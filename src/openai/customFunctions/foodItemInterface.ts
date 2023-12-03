@@ -72,7 +72,6 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     verified: false,
     userId: null,
     externalId: null,
-    foodImageId: null,
     UPC: null,
     name: food.name,
     brand: food.brand || "",
