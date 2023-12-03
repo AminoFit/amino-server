@@ -37,23 +37,20 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   if (!foodItem) throw new Error("No Food Item with that ID")
 
   // Check if food item already has an image
-  if (foodItem.foodImageId != null) {
-    console.log("Food item already has an image, skipping icon generation for:", foodItem.name)
-    return;
+  if (foodItem.FoodImage && foodItem.FoodImage.length > 0) {
+    console.log(`Food item already has ${foodItem.FoodImage.length} image(s), skipping icon generation for:`, foodItem.name)
+    return
   }
 
   // Generate the icon and upload it to storage
   const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
-
-  // Update the food item record with the new icon ID
-  await updateFoodItemWithImageId(foodItem.id, foodImageId)
 
   console.log("Done generating food icon for:", foodItem.name)
 })
 
 // Retrieves a single food item from the database by ID
 async function getFoodItem(foodId: number) {
-  const { data, error } = await supabase.from("FoodItem").select("*").eq("id", foodId).single()
+  const { data, error } = await supabase.from("FoodItem").select("*, FoodImage(*)").eq("id", foodId).single()
 
   if (error) throw error
   return data
@@ -68,7 +65,7 @@ async function generateAndUploadIcon(foodName: string, foodId: number) {
   const processedImageBuffer = await processImageWithClipDrop(imageUrl!)
 
   // Upload the processed image to Supabase storage and insert a record in the FoodImage table
-  const foodImageId = await uploadImageAndGetId(foodName, processedImageBuffer)
+  const foodImageId = await uploadImageAndGetId(foodName, foodId, processedImageBuffer)
 
   return foodImageId
 }
@@ -108,7 +105,7 @@ async function processImageWithClipDrop(imageUrl: string) {
 }
 
 // Uploads the image to Supabase storage and inserts a record into the FoodImage table
-async function uploadImageAndGetId(foodName: string, imageBuffer: Buffer) {
+async function uploadImageAndGetId(foodName: string, foodId: number, imageBuffer: Buffer) {
   const imageName = generateImageName(foodName)
   const filePath = `public/${imageName}.png`
 
@@ -116,7 +113,7 @@ async function uploadImageAndGetId(foodName: string, imageBuffer: Buffer) {
   await uploadFile(filePath, imageBuffer)
 
   // Insert a record into the FoodImage table and return the ID
-  return await insertFoodImageRecord(foodName, filePath)
+  return await insertFoodImageRecord(foodName, foodId, filePath)
 }
 
 // Generates a unique name for the image using a hash
@@ -137,31 +134,30 @@ async function uploadFile(filePath: string, fileBuffer: Buffer) {
 }
 
 // Inserts a record into the FoodImage table
-async function insertFoodImageRecord(foodName: string, filePath: string) {
+async function insertFoodImageRecord(foodName: string, foodId: number, filePath: string) {
   // Get the embedding for the foodName
   const embedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [foodName]))[0].embedding
 
   // Construct the URL for the uploaded image
-  const imageUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`;
-
+  const imageUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`
 
   // Insert the record into the FoodImage table
   const { data, error } = await supabase
     .from("FoodImage")
-    .insert([{ pathToImage: imageUrl, bgeBaseEmbedding: vectorToSql(embedding), imageDescription: foodName }])
+    .insert([
+      {
+        pathToImage: imageUrl,
+        bgeBaseEmbedding: vectorToSql(embedding),
+        imageDescription: foodName,
+        foodItemId: foodId
+      }
+    ])
     .select()
 
   console.log("Inserted FoodImage record:", data)
 
   if (error) throw error
-  return (data! as any[])[0].id 
-}
-
-// Updates the FoodItem record with the new FoodImage ID
-async function updateFoodItemWithImageId(foodId: number, foodImageId: number) {
-  const { error } = await supabase.from("FoodItem").update({ foodImageId }).eq("id", foodId)
-
-  if (error) throw error
+  return (data! as any[])[0].id
 }
 
 async function testIconGeneration() {

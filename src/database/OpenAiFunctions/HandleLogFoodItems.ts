@@ -254,8 +254,10 @@ async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<
   }
 
   // Extract the timestamp from the server's response
-  console.log("serverTimeData",serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
-  const timestamp = isServerTimeData(serverTimeData) ? new Date(serverTimeData.current_timestamp).toISOString() : new Date().toISOString();
+  console.log("serverTimeData", serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
+  const timestamp = isServerTimeData(serverTimeData)
+    ? new Date(serverTimeData.current_timestamp).toISOString()
+    : new Date().toISOString()
 
   // Add the timestamp to the data object for updating the updatedAt field
   data.updatedAt = timestamp
@@ -393,6 +395,9 @@ async function addFoodItemPrisma(
   const { id, ...foodWithoutId } = food
   delete (foodWithoutId as any).Nutrient
   delete (foodWithoutId as any).Serving
+  
+  // Don't add the image from the external database. We create our own images
+  delete (foodWithoutId as any).foodImageId
 
   // Save the vector to the database
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
@@ -412,6 +417,11 @@ async function addFoodItemPrisma(
     .single()
 
   // console.log("Insert FoodItem result data:", newFood)
+
+  if (insertError) {
+    console.error("Error inserting food item", insertError)
+    throw insertError
+  }
   // console.log("Insert FoodItem result error:", insertError)
 
   if (newFood) {
