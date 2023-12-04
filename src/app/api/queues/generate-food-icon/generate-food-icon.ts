@@ -37,10 +37,32 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   if (!foodItem) throw new Error("No Food Item with that ID")
 
   // Check if food item already has an image
-  if (foodItem.FoodImage && foodItem.FoodImage.length > 0) {
-    console.log(`Food item already has ${foodItem.FoodImage.length} image(s), skipping icon generation for:`, foodItem.name)
+  if (foodItem?.FoodItemImages?.length > 0) {
+    console.log(
+      `Food item already has ${foodItem?.FoodItemImages?.length} image(s), skipping icon generation for:`,
+      foodItem.name
+    )
     return
   }
+
+  // Check for an embedding that is close enough. If we find one, just add the link in the many-to-many table.
+  // SEB. Please do this since Chris is bad at this shit.
+
+  // if (false) {
+  //   const { data: foodItemImages, error: errorFoodItemImages } = await supabase
+  //   .from("FoodItemImages")
+  //   .insert([
+  //     {
+  //       foodItemId: foodId,
+  //       foodImageId: 0 // SEB, replace this with the foodImage.id of the one you found that's close enough
+  //     }
+  //   ])
+  //   .select()
+  //   .single()
+
+  // if (errorFoodItemImages) throw errorFoodItemImages
+  //   return
+  // }
 
   // Generate the icon and upload it to storage
   const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
@@ -48,11 +70,33 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   console.log("Done generating food icon for:", foodItem.name)
 })
 
+// Queue for forcing the generation of a new food icons
+export const forceGenerateNewFoodIconQueue = Queue(
+  "api/queues/generate-food-icon-forced",
+  async (foodItemIdString: string) => {
+    // Parse the food item ID and validate it
+    const foodItemId = parseInt(foodItemIdString)
+    if (isNaN(foodItemId)) throw new Error("Invalid foodItemId")
+
+    // Retrieve the food item from the database
+    const foodItem = await getFoodItem(foodItemId)
+    if (!foodItem) throw new Error("No Food Item with that ID")
+
+    // Generate the icon and upload it to storage
+    const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
+
+    console.log("Done generating food icon for:", foodItem.name)
+  }
+)
+
 // Retrieves a single food item from the database by ID
 async function getFoodItem(foodId: number) {
-  const { data, error } = await supabase.from("FoodItem").select("*, FoodImage(*)").eq("id", foodId).single()
+  const { data, error } = await supabase.from("FoodItem").select("*, FoodItemImages(*)").eq("id", foodId).single()
 
-  if (error) throw error
+  if (error) {
+    console.error(error)
+    throw error
+  }
   return data
 }
 
@@ -142,22 +186,37 @@ async function insertFoodImageRecord(foodName: string, foodId: number, filePath:
   const imageUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`
 
   // Insert the record into the FoodImage table
-  const { data, error } = await supabase
+  const { data: createdFoodImage, error: createImageError } = await supabase
     .from("FoodImage")
     .insert([
       {
         pathToImage: imageUrl,
         bgeBaseEmbedding: vectorToSql(embedding),
-        imageDescription: foodName,
-        foodItemId: foodId
+        imageDescription: foodName
       }
     ])
     .select()
+    .single()
 
-  console.log("Inserted FoodImage record:", data)
+  console.log("Inserted FoodImage record:", createdFoodImage)
 
-  if (error) throw error
-  return (data! as any[])[0].id
+  if (createImageError) throw createImageError
+
+  const { data: foodItemImages, error: errorFoodItemImages } = await supabase
+    .from("FoodItemImages")
+    .insert([
+      {
+        foodItemId: foodId,
+        foodImageId: createdFoodImage.id
+      }
+    ])
+    .select()
+    .single()
+
+  console.log(`Linked FoodItem ${foodId} to FoodImage ${createdFoodImage.id}`)
+
+  if (errorFoodItemImages) throw errorFoodItemImages
+  return createdFoodImage.id
 }
 
 async function testIconGeneration() {
@@ -166,7 +225,6 @@ async function testIconGeneration() {
   try {
     console.log(`Testing icon generation for: ${foodName}`)
     const foodImageId = await generateAndUploadIcon(foodName, foodId)
-    console.log(`Generated icon with ID: ${foodImageId}`)
   } catch (error) {
     console.error("Error during test icon generation:", error)
   }
