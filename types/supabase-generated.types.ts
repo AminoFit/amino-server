@@ -191,36 +191,26 @@ export interface Database {
       FoodImage: {
         Row: {
           bgeBaseEmbedding: string | null
-          foodItemId: number
+          downvotes: number
           id: number
           imageDescription: string | null
           pathToImage: string
-          priority: number
         }
         Insert: {
           bgeBaseEmbedding?: string | null
-          foodItemId: number
+          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage: string
-          priority?: number
         }
         Update: {
           bgeBaseEmbedding?: string | null
-          foodItemId?: number
+          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage?: string
-          priority?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "FoodImage_foodItemId_fkey"
-            columns: ["foodItemId"]
-            referencedRelation: "FoodItem"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       FoodItem: {
         Row: {
@@ -324,6 +314,40 @@ export interface Database {
             foreignKeyName: "FoodItem_userId_fkey"
             columns: ["userId"]
             referencedRelation: "User"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      FoodItemImages: {
+        Row: {
+          createdAt: string
+          foodImageId: number | null
+          foodItemId: number | null
+          id: number
+        }
+        Insert: {
+          createdAt?: string
+          foodImageId?: number | null
+          foodItemId?: number | null
+          id?: number
+        }
+        Update: {
+          createdAt?: string
+          foodImageId?: number | null
+          foodItemId?: number | null
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FoodItemImages_foodImageId_fkey"
+            columns: ["foodImageId"]
+            referencedRelation: "FoodImage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "FoodItemImages_foodItemId_fkey"
+            columns: ["foodItemId"]
+            referencedRelation: "FoodItem"
             referencedColumns: ["id"]
           }
         ]
