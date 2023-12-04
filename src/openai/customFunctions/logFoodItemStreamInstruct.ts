@@ -9,9 +9,20 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 const tokenLimit = 2048
 
 function sanitizeInput(input: string): string {
-  const sanitizedInput = input.replace(/[^a-zA-Z0-9\s,]/g, "")
-  return sanitizedInput
+  // Trim leading and trailing whitespace
+  input = input.trim();
+
+  // Replace multiple spaces with a single space
+  input = input.replace(/\s+/g, ' ');
+
+  // Remove control characters, non-standard symbols, and HTML tags
+  input = input.replace(/[\x00-\x1F\x7F]/g, ''); // Control characters
+  input = input.replace(/<[^>]*>/g, ''); // HTML tags
+  input = input.replace(/[^\x20-\x7E]/g, ''); // Non-standard ASCII
+
+  return input;
 }
+
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
   // Since serving is no longer available in the output, we need to handle its absence
@@ -40,6 +51,7 @@ export async function logFoodItemStreamInstruct(
   lastUserMessageId: number
 ): Promise<FoodItemToLog[]> {
   const sanitizedUserRequest = sanitizeInput(user_request)
+  console.log("Sanitized user request:", sanitizedUserRequest)
   if (!isWithinTokenLimit(sanitizedUserRequest, tokenLimit)) {
     console.log("Input too long.")
     return []

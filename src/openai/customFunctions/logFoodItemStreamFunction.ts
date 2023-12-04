@@ -9,8 +9,27 @@ import { Tables } from "types/supabase"
 const tokenLimit = 2048
 
 function sanitizeInput(input: string): string {
-  const sanitizedInput = input.replace(/[^a-zA-Z0-9\s,]/g, "")
-  return sanitizedInput
+  // Trim leading and trailing whitespace
+  input = input.trim();
+
+  // Replace multiple spaces with a single space
+  input = input.replace(/\s+/g, ' ');
+
+  // Remove control characters, non-standard symbols, and HTML tags
+  input = input.replace(/[\x00-\x1F\x7F]/g, ''); // Control characters
+  input = input.replace(/<[^>]*>/g, ''); // HTML tags
+  input = input.replace(/[^\x20-\x7E]/g, ''); // Non-standard ASCII
+
+  // Optional: Remove offensive or inappropriate language
+  // This might require a more sophisticated approach or external library
+
+  // Limit excessively long text
+  const maxLength = 1000; // Adjust based on your requirements
+  if (input.length > maxLength) {
+    input = input.substring(0, maxLength);
+  }
+
+  return input;
 }
 
 enum ParseState {
