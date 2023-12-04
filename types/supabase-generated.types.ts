@@ -191,18 +191,21 @@ export interface Database {
       FoodImage: {
         Row: {
           bgeBaseEmbedding: string | null
+          downvotes: number
           id: number
           imageDescription: string | null
           pathToImage: string
         }
         Insert: {
           bgeBaseEmbedding?: string | null
+          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage: string
         }
         Update: {
           bgeBaseEmbedding?: string | null
+          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage?: string
@@ -318,21 +321,18 @@ export interface Database {
       FoodItemImages: {
         Row: {
           createdAt: string
-          downvotes: number
           foodImageId: number | null
           foodItemId: number | null
           id: number
         }
         Insert: {
           createdAt?: string
-          downvotes?: number
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number
         }
         Update: {
           createdAt?: string
-          downvotes?: number
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number

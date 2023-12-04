@@ -45,11 +45,49 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
     return
   }
 
+  // Check for an embedding that is close enough. If we find one, just add the link in the many-to-many table.
+  // SEB. Please do this since Chris is bad at this shit.
+
+  // if (false) {
+  //   const { data: foodItemImages, error: errorFoodItemImages } = await supabase
+  //   .from("FoodItemImages")
+  //   .insert([
+  //     {
+  //       foodItemId: foodId,
+  //       foodImageId: 0 // SEB, replace this with the foodImage.id of the one you found that's close enough
+  //     }
+  //   ])
+  //   .select()
+  //   .single()
+
+  // if (errorFoodItemImages) throw errorFoodItemImages
+  //   return
+  // }
+
   // Generate the icon and upload it to storage
   const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
 
   console.log("Done generating food icon for:", foodItem.name)
 })
+
+// Queue for forcing the generation of a new food icons
+export const forceGenerateNewFoodIconQueue = Queue(
+  "api/queues/generate-food-icon-forced",
+  async (foodItemIdString: string) => {
+    // Parse the food item ID and validate it
+    const foodItemId = parseInt(foodItemIdString)
+    if (isNaN(foodItemId)) throw new Error("Invalid foodItemId")
+
+    // Retrieve the food item from the database
+    const foodItem = await getFoodItem(foodItemId)
+    if (!foodItem) throw new Error("No Food Item with that ID")
+
+    // Generate the icon and upload it to storage
+    const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
+
+    console.log("Done generating food icon for:", foodItem.name)
+  }
+)
 
 // Retrieves a single food item from the database by ID
 async function getFoodItem(foodId: number) {
@@ -174,6 +212,8 @@ async function insertFoodImageRecord(foodName: string, foodId: number, filePath:
     ])
     .select()
     .single()
+
+  console.log(`Linked FoodItem ${foodId} to FoodImage ${createdFoodImage.id}`)
 
   if (errorFoodItemImages) throw errorFoodItemImages
   return createdFoodImage.id
