@@ -17,7 +17,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { vectorToSql } from "@/utils/pgvectorHelper"
 
 const BUCKET_NAME = "foodimages"
-const COSINE_THRESHOLD = 0.75
+const COSINE_THRESHOLD = 0.85
 
 // Initialize Supabase client outside of the queue to avoid reinitializing it every time
 const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
