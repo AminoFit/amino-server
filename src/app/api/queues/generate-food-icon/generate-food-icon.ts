@@ -79,8 +79,10 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
     return;
   }
 
+  // if there's a brand name we should append it to the food name
+  const foodName = foodItem.brand ? `${foodItem.brand} ${foodItem.name}` : foodItem.name
   // Generate the icon and upload it to storage
-  const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
+  const foodImageId = await generateAndUploadIcon(foodName, foodItem.id)
 
   console.log("Done generating food icon for:", foodItem.name)
 })
