@@ -43,12 +43,29 @@ export async function POST(
     })
   }
 
+  // Fetch the current downvotes value for the foodImageId from the FoodItemImages table
+  const { data: foodItemImage, error: foodItemImageError } = await supabaseAdmin
+    .from("FoodItemImages")
+    .select("downvotes")
+    .eq("foodImageId", foodImageId)
+    .single();
+
+  if (foodItemImageError) {
+    return new NextResponse(JSON.stringify({ error: "Food Item Image not found", details: foodItemImageError.message }), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
+
+  // Update the downvotes in the FoodItemImages table
   const { error: updateError } = await supabaseAdmin
-    .from("FoodImage")
-    .update({ downvotes: foodImage.downvotes + 1 })
-    .eq("id", foodImageId)
+    .from("FoodItemImages")
+    .update({ downvotes: foodItemImage.downvotes + 1 })
+    .eq("foodImageId", foodImageId)
     .select()
-    .single()
+    .single();
 
   if (updateError) {
     return new NextResponse(JSON.stringify({ error: "Error down-voting image", details: updateError.message }), {
@@ -56,7 +73,7 @@ export async function POST(
       headers: {
         "Content-Type": "application/json"
       }
-    })
+    });
   }
 
   await forceGenerateNewFoodIconQueue.enqueue(foodItemId.toString())

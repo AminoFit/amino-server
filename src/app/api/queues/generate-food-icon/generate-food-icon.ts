@@ -17,6 +17,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { vectorToSql } from "@/utils/pgvectorHelper"
 
 const BUCKET_NAME = "foodimages"
+const COSINE_THRESHOLD = 0.75
 
 // Initialize Supabase client outside of the queue to avoid reinitializing it every time
 const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
@@ -48,21 +49,35 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   // Check for an embedding that is close enough. If we find one, just add the link in the many-to-many table.
   // SEB. Please do this since Chris is bad at this shit.
 
-  // if (false) {
-  //   const { data: foodItemImages, error: errorFoodItemImages } = await supabase
-  //   .from("FoodItemImages")
-  //   .insert([
-  //     {
-  //       foodItemId: foodId,
-  //       foodImageId: 0 // SEB, replace this with the foodImage.id of the one you found that's close enough
-  //     }
-  //   ])
-  //   .select()
-  //   .single()
+  // Retrieve embedding ID for the food name
+  const embeddingData = await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name]);
+  const embeddingId = embeddingData[0].id;
 
-  // if (errorFoodItemImages) throw errorFoodItemImages
-  //   return
-  // }
+  // Call the Supabase function to get top similar images
+  const { data: similarImages, error: similarityError } = await supabase.rpc('get_top_foodimage_embedding_similarity', { p_embedding_cache_id: embeddingId });
+
+  if (similarityError) throw similarityError;
+
+  // Check if any similar image is close enough
+  const closeEnoughImage = similarImages.find(image => image.cosine_similarity >= COSINE_THRESHOLD);
+  if (closeEnoughImage) {
+    // Link the found image to the food item
+    const { data: foodItemImages, error: errorFoodItemImages } = await supabase
+      .from("FoodItemImages")
+      .insert([
+        {
+          foodItemId: foodItemId,
+          foodImageId: closeEnoughImage.food_image_id
+        }
+      ])
+      .select()
+      .single();
+
+    if (errorFoodItemImages) throw errorFoodItemImages;
+
+    console.log(`Linked existing FoodImage ${closeEnoughImage.food_image_id} to FoodItem ${foodItemId}`);
+    return;
+  }
 
   // Generate the icon and upload it to storage
   const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
