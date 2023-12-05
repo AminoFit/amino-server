@@ -133,7 +133,7 @@ async function generateAndUploadIcon(foodName: string, foodId: number) {
 async function generateImageWithOpenAI(foodName: string) {
   const openAiResponse = await openai.images.generate({
     model: "dall-e-3",
-    prompt: `A beautiful isometric vector 3D render of a delicious ${foodName}, presented as a single object in its most basic form, centered, with no surrounding elements, for use as an icon. White background.`,
+    prompt: `Create a clean vector isometric 3D render of ${foodName}, suitable for an icon. The image should showcase the food item in its most recognizable form, emphasizing its unique textures and colors. The render should be centered on a white background with no shadows or additional elements, emphasizing a minimalist and elegant design.`,
     n: 1,
     size: "1024x1024"
   })
