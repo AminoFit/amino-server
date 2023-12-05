@@ -191,21 +191,18 @@ export interface Database {
       FoodImage: {
         Row: {
           bgeBaseEmbedding: string | null
-          downvotes: number
           id: number
           imageDescription: string | null
           pathToImage: string
         }
         Insert: {
           bgeBaseEmbedding?: string | null
-          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage: string
         }
         Update: {
           bgeBaseEmbedding?: string | null
-          downvotes?: number
           id?: number
           imageDescription?: string | null
           pathToImage?: string
@@ -321,18 +318,21 @@ export interface Database {
       FoodItemImages: {
         Row: {
           createdAt: string
+          downvotes: number
           foodImageId: number | null
           foodItemId: number | null
           id: number
         }
         Insert: {
           createdAt?: string
+          downvotes?: number
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number
         }
         Update: {
           createdAt?: string
+          downvotes?: number
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number
@@ -831,6 +831,16 @@ export interface Database {
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_top_foodimage_embedding_similarity: {
+        Args: {
+          p_embedding_cache_id: number
+        }
+        Returns: {
+          food_image_id: number
+          image_description: string
+          cosine_similarity: number
+        }[]
       }
       get_unbranded_usda_embedding: {
         Args: {
