@@ -165,7 +165,7 @@ function generateImageName(foodName: string) {
   const datetime = new Date().toISOString()
   const rawString = `${datetime}${foodName}`
   const hash = createHash("sha256").update(rawString).digest("hex")
-  return hash.slice(0, 12) + "_" + foodName
+  return hash.slice(0, 12) + "_" + foodName.replace(/\s/g, "_")
 }
 
 // Uploads a file to Supabase storage
