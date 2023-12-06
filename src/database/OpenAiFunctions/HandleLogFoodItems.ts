@@ -220,12 +220,6 @@ async function findBestMatch(
 
   if (lowQualityMatches.length) {
     const top9Matches = lowQualityMatches.slice(0, 9)
-    // Call findBestFoodMatchtoLocalDb with top 9 matches
-    // console.log("top9Matches", JSON.stringify(top9Matches))
-    // console.log("food", JSON.stringify(food))
-    // console.log("userQueryVectorCache", JSON.stringify(userQueryVectorCache))
-    // console.log("messageId", JSON.stringify(messageId))
-    // console.log("user", JSON.stringify(user))
     const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
     if (localDbMatch) {
       // Return the highest match instantly
