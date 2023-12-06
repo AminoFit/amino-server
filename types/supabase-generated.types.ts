@@ -171,18 +171,21 @@ export interface Database {
         Row: {
           adaEmbedding: string | null
           bgeBaseEmbedding: string | null
+          createdAt: string
           id: number
           textToEmbed: string
         }
         Insert: {
           adaEmbedding?: string | null
           bgeBaseEmbedding?: string | null
+          createdAt?: string
           id?: number
           textToEmbed: string
         }
         Update: {
           adaEmbedding?: string | null
           bgeBaseEmbedding?: string | null
+          createdAt?: string
           id?: number
           textToEmbed?: string
         }
