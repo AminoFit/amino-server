@@ -842,6 +842,16 @@ export interface Database {
           total_calories: number
         }[]
       }
+      get_top_foodimage_embedding_similarity: {
+        Args: {
+          p_embedding_cache_id: number
+        }
+        Returns: {
+          food_image_id: number
+          image_description: string
+          cosine_similarity: number
+        }[]
+      }
       get_unbranded_usda_embedding: {
         Args: {
           embeddingId: number

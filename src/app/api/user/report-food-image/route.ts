@@ -59,11 +59,11 @@ export async function POST(
     });
   }
 
-  // Update the downvotes in the FoodItemImages table
+  // Update the downvotes in the FoodImages table
   const { error: updateError } = await supabaseAdmin
-    .from("FoodItemImages")
-    .update({ downvotes: foodItemImage.downvotes + 1 })
-    .eq("foodImageId", foodImageId)
+    .from("FoodImage")
+    .update({ downvotes: foodImage.downvotes + 1 })
+    .eq("foodImage", foodImage.id)
     .select()
     .single();
 
