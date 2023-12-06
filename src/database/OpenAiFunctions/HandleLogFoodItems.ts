@@ -350,7 +350,7 @@ export async function HandleLogFoodItem(
   return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
 }
 
-async function addFoodItemPrisma(
+async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],
   messageId: number,
@@ -363,8 +363,8 @@ async function addFoodItemPrisma(
   const { data: existingFoodItem, error } = await supabase
     .from("FoodItem")
     .select("*, Nutrient(*), Serving(*)")
-    .eq("name", food.name)
-    .eq("brand", food.brand || "")
+    .ilike("name", `%${food.name}%`)
+    .ilike("brand", `%${food.brand || ""}%`)
     .limit(1)
     .single()
 
@@ -622,7 +622,8 @@ async function findAndAddItemInDatabase(
       let foodItemToSave: FoodItemWithNutrientsAndServing =
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
-      const newFood = await addFoodItemPrisma(
+      const newFood = await addFoodItemToDatabase
+    (
         foodItemToSave,
         highestSimilarityItem.foodBgeBaseEmbedding,
         messageId,
@@ -651,7 +652,8 @@ async function findAndAddItemInDatabase(
     let food: FoodInfo = foodItemInfo
     console.log("food req string:\n", foodItemRequestString)
     const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
-    const newFood = await addFoodItemPrisma(
+    const newFood = await addFoodItemToDatabase
+  (
       llmFoodItemToSave,
       await getFoodEmbedding(llmFoodItemToSave),
       messageId,
