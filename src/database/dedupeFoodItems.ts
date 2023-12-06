@@ -6,19 +6,19 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 )
 
-// Function to normalize nutritional data
-function normalizeVector(vector: number[]): number[] {
-  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0))
-  return vector.map((val) => val / magnitude)
-}
+// // Function to normalize nutritional data
+// function normalizeVector(vector: number[]): number[] {
+//   const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0))
+//   return vector.map((val) => val / magnitude)
+// }
 
-// Function to calculate cosine similarity between two vectors
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  const dotProduct = vecA.reduce((sum, val, idx) => sum + val * vecB[idx], 0)
-  const magnitudeA = Math.sqrt(vecA.reduce((sum, val) => sum + val * val, 0))
-  const magnitudeB = Math.sqrt(vecB.reduce((sum, val) => sum + val * val, 0))
-  return dotProduct / (magnitudeA * magnitudeB)
-}
+// // Function to calculate cosine similarity between two vectors
+// function cosineSimilarity(vecA: number[], vecB: number[]): number {
+//   const dotProduct = vecA.reduce((sum, val, idx) => sum + val * vecB[idx], 0)
+//   const magnitudeA = Math.sqrt(vecA.reduce((sum, val) => sum + val * val, 0))
+//   const magnitudeB = Math.sqrt(vecB.reduce((sum, val) => sum + val * val, 0))
+//   return dotProduct / (magnitudeA * magnitudeB)
+// }
 
 // Function to calculate Levenshtein distance
 function levenshteinDistance(a: string, b: string): number {
@@ -57,131 +57,131 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length]
 }
 
-function isSignificantlyDifferent(a: string, b: string): boolean {
-  // Implement logic to determine if two names are significantly different
-  // For instance, check if the Levenshtein distance is greater than a certain threshold
-  // relative to the length of the strings
-  const len = Math.max(a.length, b.length)
-  const distance = levenshteinDistance(a.toLowerCase(), b.toLowerCase())
-  return distance > Math.floor(len / 3) // Adjust this threshold as necessary
-}
+// function isSignificantlyDifferent(a: string, b: string): boolean {
+//   // Implement logic to determine if two names are significantly different
+//   // For instance, check if the Levenshtein distance is greater than a certain threshold
+//   // relative to the length of the strings
+//   const len = Math.max(a.length, b.length)
+//   const distance = levenshteinDistance(a.toLowerCase(), b.toLowerCase())
+//   return distance > Math.floor(len / 3) // Adjust this threshold as necessary
+// }
 
-async function findPotentialDuplicates() {
-  const { data: foodItems, error } = await supabaseAdmin
-    .from("FoodItem")
-    .select("id, name, brand, kcalPerServing, proteinPerServing, carbPerServing, totalFatPerServing, fiberPerServing")
+// async function findPotentialDuplicates() {
+//   const { data: foodItems, error } = await supabaseAdmin
+//     .from("FoodItem")
+//     .select("id, name, brand, kcalPerServing, proteinPerServing, carbPerServing, totalFatPerServing, fiberPerServing")
 
-  if (error) {
-    console.error("Error fetching FoodItems:", error)
-    return []
-  }
+//   if (error) {
+//     console.error("Error fetching FoodItems:", error)
+//     return []
+//   }
 
-  let potentialDuplicates = []
+//   let potentialDuplicates = []
 
-  for (let i = 0; i < foodItems.length; i++) {
-    for (let j = i + 1; j < foodItems.length; j++) {
-      const itemA = foodItems[i]
-      const itemB = foodItems[j]
+//   for (let i = 0; i < foodItems.length; i++) {
+//     for (let j = i + 1; j < foodItems.length; j++) {
+//       const itemA = foodItems[i]
+//       const itemB = foodItems[j]
 
-      if (itemA.id < itemB.id) {
-        const vectorA = normalizeVector([
-          itemA.kcalPerServing,
-          itemA.proteinPerServing,
-          itemA.carbPerServing,
-          itemA.totalFatPerServing,
-          itemA.fiberPerServing
-        ])
-        const vectorB = normalizeVector([
-          itemB.kcalPerServing,
-          itemB.proteinPerServing,
-          itemB.carbPerServing,
-          itemB.totalFatPerServing,
-          itemB.fiberPerServing
-        ])
-        const similarity = cosineSimilarity(vectorA, vectorB)
+//       if (itemA.id < itemB.id) {
+//         const vectorA = normalizeVector([
+//           itemA.kcalPerServing,
+//           itemA.proteinPerServing,
+//           itemA.carbPerServing,
+//           itemA.totalFatPerServing,
+//           itemA.fiberPerServing
+//         ])
+//         const vectorB = normalizeVector([
+//           itemB.kcalPerServing,
+//           itemB.proteinPerServing,
+//           itemB.carbPerServing,
+//           itemB.totalFatPerServing,
+//           itemB.fiberPerServing
+//         ])
+//         const similarity = cosineSimilarity(vectorA, vectorB)
 
-        if (similarity > 0.99999) {
-          if (!isSignificantlyDifferent(itemA.name, itemB.name)) {
-            const levDist = levenshteinDistance(itemA.name.toLowerCase(), itemB.name.toLowerCase())
+//         if (similarity > 0.99999) {
+//           if (!isSignificantlyDifferent(itemA.name, itemB.name)) {
+//             const levDist = levenshteinDistance(itemA.name.toLowerCase(), itemB.name.toLowerCase())
 
-            if (levDist <= 1 || (itemA.name.length > itemB.name.length && levDist <= itemA.name.length)) {
-              potentialDuplicates.push({
-                keep: itemA.id,
-                remove: itemB.id,
-                nameA: itemA.name,
-                nameB: itemB.name,
-                reason: "Similar nutritional profile and name"
-              })
-            } else if (itemA.name.length !== itemB.name.length && levDist > 1) {
-              potentialDuplicates.push({
-                keep: itemA.name.length > itemB.name.length ? itemA.id : itemB.id,
-                remove: itemA.name.length > itemB.name.length ? itemB.id : itemA.id,
-                nameA: itemA.name,
-                nameB: itemB.name,
-                reason: "More descriptive name"
-              })
-            }
-          }
-        }
-      }
-    }
-  }
+//             if (levDist <= 1 || (itemA.name.length > itemB.name.length && levDist <= itemA.name.length)) {
+//               potentialDuplicates.push({
+//                 keep: itemA.id,
+//                 remove: itemB.id,
+//                 nameA: itemA.name,
+//                 nameB: itemB.name,
+//                 reason: "Similar nutritional profile and name"
+//               })
+//             } else if (itemA.name.length !== itemB.name.length && levDist > 1) {
+//               potentialDuplicates.push({
+//                 keep: itemA.name.length > itemB.name.length ? itemA.id : itemB.id,
+//                 remove: itemA.name.length > itemB.name.length ? itemB.id : itemA.id,
+//                 nameA: itemA.name,
+//                 nameB: itemB.name,
+//                 reason: "More descriptive name"
+//               })
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
 
-  return potentialDuplicates
-}
+//   return potentialDuplicates
+// }
 
 // Type for duplicate information
 type DuplicateInfo = {
-  keep: number
-  remove: number
+  keepFoodItemId: number
+  removeFoodItemId: number
 }
 
 async function cleanDeleteItems(duplicates: DuplicateInfo[]) {
     const removedIds = [];
   
     for (const duplicate of duplicates) {
-      const { keep, remove } = duplicate;
-      console.log(`Processing duplicate with ID ${remove}`);
+      const { keepFoodItemId, removeFoodItemId } = duplicate;
+      console.log(`Processing duplicate with ID ${removeFoodItemId}`);
   
       try {
         // Delete FoodItemImages for the removed item
         let { error: errorFoodItemImages } = await supabaseAdmin
           .from("FoodItemImages")
           .delete()
-          .eq("foodItemId", remove);
+          .eq("foodItemId", removeFoodItemId);
         if (errorFoodItemImages) throw errorFoodItemImages;
   
         // Update LoggedFoodItem to point to the kept item
         let { error: errorLoggedFoodItem } = await supabaseAdmin
           .from("LoggedFoodItem")
-          .update({ foodItemId: keep })
-          .eq("foodItemId", remove);
+          .update({ foodItemId: keepFoodItemId })
+          .eq("foodItemId", removeFoodItemId);
         if (errorLoggedFoodItem) throw errorLoggedFoodItem;
   
         // Delete Servings for the removed item
         let { error: errorServing } = await supabaseAdmin
           .from("Serving")
           .delete()
-          .eq("foodItemId", remove);
+          .eq("foodItemId", removeFoodItemId);
         if (errorServing) throw errorServing;
   
         // Delete Nutrients for the removed item
         let { error: errorNutrient } = await supabaseAdmin
           .from("Nutrient")
           .delete()
-          .eq("foodItemId", remove);
+          .eq("foodItemId", removeFoodItemId);
         if (errorNutrient) throw errorNutrient;
   
         // Finally, delete the FoodItem itself
         let { error: errorFoodItem } = await supabaseAdmin
           .from("FoodItem")
           .delete()
-          .eq("id", remove);
+          .eq("id", removeFoodItemId);
         if (errorFoodItem) throw errorFoodItem;
   
-        removedIds.push(remove);
+        removedIds.push(removeFoodItemId);
       } catch (error) {
-        console.error(`Error processing duplicate with ID ${remove}:`, error);
+        console.error(`Error processing duplicate with ID ${removeFoodItemId}:`, error);
       }
     }
   
@@ -209,8 +209,8 @@ async function findPotentialDuplicatesByName() {
         itemA.brand?.toLowerCase() === itemB.brand?.toLowerCase()
       ) {
         potentialDuplicates.push({
-          keep: Math.min(itemA.id, itemB.id),
-          remove: Math.max(itemA.id, itemB.id),
+          keepFoodItemId: Math.min(itemA.id, itemB.id),
+          removeFoodItemId: Math.max(itemA.id, itemB.id),
           nameA: itemA.name,
           nameB: itemB.name,
           reason: "Exact match"
@@ -220,8 +220,8 @@ async function findPotentialDuplicatesByName() {
         itemA.brand?.toLowerCase() === itemB.brand?.toLowerCase()
       ) {
         potentialDuplicates.push({
-          keep: Math.min(itemA.id, itemB.id),
-          remove: Math.max(itemA.id, itemB.id),
+          keepFoodItemId: Math.min(itemA.id, itemB.id),
+          removeFoodItemId: Math.max(itemA.id, itemB.id),
           nameA: itemA.name,
           nameB: itemB.name,
           reason: "Very similar name"
@@ -239,8 +239,8 @@ findPotentialDuplicatesByName()
     console.log("duplicates", duplicates)
     const identifiedDuplicates: DuplicateInfo[] = duplicates.map((duplicate) => {
       return {
-        keep: duplicate.keep,
-        remove: duplicate.remove
+        keepFoodItemId: duplicate.keepFoodItemId,
+        removeFoodItemId: duplicate.removeFoodItemId
       }
     })
 
@@ -252,20 +252,20 @@ findPotentialDuplicatesByName()
   .catch((error) => console.error("Error finding duplicates:", error))
 
 // Example usage
-function runRemoveJob() {
-  findPotentialDuplicates()
-    .then((duplicates) => {
-      const identifiedDuplicates: DuplicateInfo[] = duplicates.map((duplicate) => {
-        return {
-          keep: duplicate.keep,
-          remove: duplicate.remove
-        }
-      })
+// function runRemoveJob() {
+//   findPotentialDuplicates()
+//     .then((duplicates) => {
+//       const identifiedDuplicates: DuplicateInfo[] = duplicates.map((duplicate) => {
+//         return {
+//           keepFoodItemId: duplicate.keepFoodItemId,
+//           removeFoodItemId: duplicate.removeFoodItemId
+//         }
+//       })
 
-      // Call prepareForDeletion() with the duplicates array
-      cleanDeleteItems(identifiedDuplicates)
-        .then((removedIds) => console.log("Items removed:", removedIds))
-        .catch((error) => console.error("Error preparing for deletion:", error))
-    })
-    .catch((error) => console.error("Error finding duplicates:", error))
-}
+//       // Call prepareForDeletion() with the duplicates array
+//       cleanDeleteItems(identifiedDuplicates)
+//         .then((removedIds) => console.log("Items removed:", removedIds))
+//         .catch((error) => console.error("Error preparing for deletion:", error))
+//     })
+//     .catch((error) => console.error("Error finding duplicates:", error))
+// }
