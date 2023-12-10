@@ -784,6 +784,55 @@ export interface Database {
           }
         ]
       }
+      UserFavoriteFoodItem: {
+        Row: {
+          createdAt: string
+          foodItemId: number
+          id: number
+          preferredAmount: number
+          preferredUnit: string | null
+          servingId: number | null
+          userId: string
+        }
+        Insert: {
+          createdAt?: string
+          foodItemId: number
+          id?: number
+          preferredAmount: number
+          preferredUnit?: string | null
+          servingId?: number | null
+          userId: string
+        }
+        Update: {
+          createdAt?: string
+          foodItemId?: number
+          id?: number
+          preferredAmount?: number
+          preferredUnit?: string | null
+          servingId?: number | null
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "UserFavoriteFoodItem_foodItemId_fkey"
+            columns: ["foodItemId"]
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "UserFavoriteFoodItem_servingId_fkey"
+            columns: ["servingId"]
+            referencedRelation: "Serving"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "UserFavoriteFoodItem_userId_fkey"
+            columns: ["userId"]
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       VerificationToken: {
         Row: {
           expires: string
@@ -834,16 +883,6 @@ export interface Database {
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
-      }
-      get_daily_calories: {
-        Args: {
-          log_date: string
-        }
-        Returns: {
-          user_id: string
-          consumed_date: string
-          total_calories: number
-        }[]
       }
       get_top_foodimage_embedding_similarity: {
         Args: {
