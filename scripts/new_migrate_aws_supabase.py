@@ -6,10 +6,10 @@ import os
 from urllib.parse import urlparse, urlunparse
 from tqdm import tqdm
 
-BATCH_SIZE = 100
+BATCH_SIZE = 250
 
 def clean_database_url(db_url):
-    """
+    """ 
     Removes query parameters from the database URL to make it compatible with psycopg2.
     """
     parsed_url = urlparse(db_url)
