@@ -4,6 +4,9 @@ import { getAdaEmbedding } from "../../openai/utils/embeddingsHelper"
 import { createAdminSupabase } from "../supabase/serverAdmin"
 
 const hf = new HfInference(process.env.HF_API_KEY)
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+const CLOUDFLARE_AI_API_KEY = process.env.CLOUDFLARE_AI_API_KEY
+const DEEP_INFRA_API_KEY = process.env.DEEP_INFRA_API_KEY
 
 function stringToNumberArray(embeddingStr?: string | null): number[] {
   if (!embeddingStr || embeddingStr === "[]" || embeddingStr === "") {
@@ -17,7 +20,7 @@ function stringToNumberArray(embeddingStr?: string | null): number[] {
   return numberStrings.map(Number)
 }
 
-async function getHfEmbedding(sentence: string, model: string = "baai/bge-base-en-v1.5"): Promise<number[]> {
+async function getHfEmbedding(sentence: string | string[], model = "baai/bge-base-en-v1.5"): Promise<number[]> {
   const response = await hf.featureExtraction({
     model: model,
     inputs: sentence
@@ -29,8 +32,8 @@ export async function getCfEmbedding(
   inputText: string | string[],
   model: string = "@cf/baai/bge-base-en-v1.5"
 ): Promise<number[][]> {
-  const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
-  const CLOUDFLARE_AI_API_KEY = process.env.CLOUDFLARE_AI_API_KEY
+
+  throw new Error("getCfEmbedding is deprecated. Use getDiEmbedding instead.");
 
   // If inputText is a single string, convert it to an array
   const textArray = Array.isArray(inputText) ? inputText : [inputText]
@@ -62,6 +65,47 @@ export async function getCfEmbedding(
     throw new Error("Unexpected Cloudflare AI API response format.")
   }
 }
+
+async function getDiEmbedding(input: string | string[], model = "BAAI/bge-base-en-v1.5"): Promise<number[][]> {
+
+  // Check if input is an array, if not, convert it to an array
+  const inputsArray = Array.isArray(input) ? input : [input];
+
+  // Define the request body
+  const requestBody = {
+      inputs: inputsArray
+  };
+
+  try {
+      const response = await fetch(`https://api.deepinfra.com/v1/inference/${model}`, {
+          method: 'POST',
+          headers: {
+              'Authorization': `bearer ${DEEP_INFRA_API_KEY}`,
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+          console.error('API Response:', await response.text());
+          throw new Error(`Deep Infra API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Handle the response based on the expected format
+      if (result.embeddings) {
+          return result.embeddings; // Adjust this line to match the actual structure of the response
+      } else {
+          throw new Error("Unexpected Deep Infra API response format.");
+      }
+
+  } catch (error) {
+      console.error('Error:', error);
+      throw error;
+  }
+}
+
 
 const MODEL_COLUMN_MAP: Record<string, string> = {
   ADA: "adaEmbedding",
@@ -130,16 +174,37 @@ export async function getCachedOrFetchEmbeddings(
           }))
           break
 
-        case "BGE_BASE":
-          debugLog.push("Fetching embeddings for BGE_BASE...")
-          const cfEmbeddings = await getCfEmbedding(missingTexts)
-          debugLog.push(`Received embeddings from getCfEmbedding`)
-
-          newEmbeddings = cfEmbeddings.map((embedding, index) => ({
-            text: missingTexts[index],
-            embedding: embedding
-          }))
-          break
+          case "BGE_BASE":
+            debugLog.push("Fetching embeddings for BGE_BASE...");
+            let cfEmbeddings;
+            try {
+                cfEmbeddings = await getCfEmbedding(missingTexts);
+                debugLog.push(`Received embeddings from getCfEmbedding`);
+        
+                newEmbeddings = cfEmbeddings.map((embedding, index) => ({
+                    text: missingTexts[index],
+                    embedding: embedding
+                }));
+            } catch (error) {
+                debugLog.push(`Failed to fetch embeddings from getCfEmbedding, trying getDiEmbedding`);
+                console.error("Error in getCfEmbedding:", error);
+        
+                // Attempt to fetch embeddings using getDiEmbedding
+                try {
+                    const diEmbeddings = await getDiEmbedding(missingTexts, "BAAI/bge-base-en-v1.5");
+                    debugLog.push(`Received embeddings from getDiEmbedding`);
+        
+                    newEmbeddings = diEmbeddings.map((embedding, index) => ({
+                        text: missingTexts[index],
+                        embedding: embedding
+                    }));
+                } catch (diError) {
+                    debugLog.push(`Failed to fetch embeddings from getDiEmbedding`);
+                    console.error("Error in getDiEmbedding:", diError);
+                    throw diError; // Rethrow the error or handle it as per your logic
+                }
+            }
+            break;
 
         default:
           throw new Error("Invalid model type provided.")
@@ -165,7 +230,7 @@ export async function getCachedOrFetchEmbeddings(
           // console.log("Inserted to embedding at id", insertedEmbedding)
           newCachedEmbeddings.push({ ...insertedEmbedding, embedding: embedding })
         } else {
-          console.log("Failed ot insert embedding", error)
+          console.log("Failed to insert embedding", error)
         }
       }
     }
@@ -448,3 +513,13 @@ async function testGetCachedOrFetchEmbeddingsDuplicates() {
 
 // Run the tests
 // testGetCachedOrFetchEmbeddings()
+
+// basic function to get a bge_base embedding of strawberry chocolate cake mango
+async function getTestEmbedding() {
+
+  // using get or get cached get multiple bge embeddings to test
+  const results = await getCachedOrFetchEmbeddings("BGE_BASE", ["Jackhammer", "strawberry", "chocolate", "cake", "mango"])
+  console.log(results)
+}
+
+// getTestEmbedding()
