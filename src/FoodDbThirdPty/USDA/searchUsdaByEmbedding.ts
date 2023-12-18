@@ -123,20 +123,27 @@ export async function searchUsdaByEmbedding(
 }
 
 async function test() {
+  const foodName = "365 whole foods tuna"
+  const result = await getCachedOrFetchEmbeddingId("BGE_BASE", foodName)
   const params = {
-    food_name: "peanut butter",
-    branded: false,
-    brand_name: undefined,
-    embedding_cache_id: 83
-  }
-  const params2 = {
-    food_name: "hydro whey",
+    food_name: foodName,
     branded: true,
-    brand_name: "optimum nutrition",
-    bge_base_embedding: [],
-    embedding_cache_id: 0
+    brand_name: undefined,
+    embedding_cache_id: result
   }
-  await searchUsdaByEmbedding(params)
+  const usda_find_food_params = {
+    food_name: 'Albacore Tuna canned from 365 Whole Foods',
+    branded: true,
+    brand_name: '365 Whole Foods',
+    embedding_cache_id: 14950
+  }
+  const foodSearchResults = await searchUsdaByEmbedding(usda_find_food_params)
+  // print out only the foodName and similarityToQuery
+  // foodSearchResults is of type {similarityToQuery: number, foodName: string, foodBrand: string, embedding: array[123]}[]
+  // we only want to print out foodName and similarityToQuery
+  foodSearchResults?.forEach((item) => {
+    console.log(`Item: ${item.foodName} ${item.foodBrand} has similarity ${item.similarityToQuery}`)
+  })
 }
 
 // test()

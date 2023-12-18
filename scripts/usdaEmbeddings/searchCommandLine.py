@@ -7,11 +7,21 @@ import asyncpg
 import os
 from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
-load_dotenv(dotenv_path="prisma/.env")
-DATABASE_URL = os.getenv("DATABASE_URL")
+load_dotenv(dotenv_path=".env.prod")
+DATABASE_URL = os.getenv("SUPABASE_PG_URI")
 parsed_url = urlparse(DATABASE_URL)
+# Convert ParseResult to a string
+url_string = parsed_url.geturl()
+
+# Use regex to find the domain part of the URL
+pattern = r"(?<=@)(.*?)(?=:|$)"
+match = re.search(pattern, url_string)
+if match:
+    print(match.group(0))  # This will print the domain part of the URL
+
 sanitized_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, "", "", ""))
 
 model = FlagModel('BAAI/bge-base-en-v1.5', use_fp16=False)

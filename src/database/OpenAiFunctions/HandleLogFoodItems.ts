@@ -358,7 +358,7 @@ async function addFoodItemToDatabase(
     .from("FoodItem")
     .select("*, Nutrient(*), Serving(*)")
     .ilike("name", `%${food.name}%`)
-    .ilike("brand", `%${food.brand || ""}%`)
+    .or(`brand.ilike.%${food.brand || ""}%,brand.is.null`)
     .limit(1)
     .single()
 
@@ -389,7 +389,7 @@ async function addFoodItemToDatabase(
   const { id, ...foodWithoutId } = food
   delete (foodWithoutId as any).Nutrient
   delete (foodWithoutId as any).Serving
-  
+
   // Don't add the image from the external database. We create our own images
   delete (foodWithoutId as any).foodImageId
 
@@ -488,24 +488,22 @@ async function findAndAddItemInDatabase(
 
     const getUsdaFoodInfo = async () => {
       const startTime = Date.now()
-      if (await checkRateLimit("usda", 1000, ONE_HOUR_IN_MS)) {
-        try {
-          const usda_find_food_params = {
-            food_name: fullFoodName,
-            branded: foodToLog.branded || false,
-            brand_name: foodToLog.brand || undefined,
-            embedding_cache_id: queryEmbeddingCache.embedding_cache_id
-          }
-          //console.log("usda_find_food_params", usda_find_food_params)
-          const result = await searchUsdaByEmbedding(usda_find_food_params)
-          console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
-          return result
-        } catch (err) {
-          console.log("Error finding USDA food info", err) // Silently fail
-          return null
+      try {
+        const usda_find_food_params = {
+          food_name: fullFoodName,
+          branded: foodToLog.branded || false,
+          brand_name: foodToLog.brand || undefined,
+          embedding_cache_id: queryEmbeddingCache.embedding_cache_id
         }
+        // console.log("usda_find_food_params", usda_find_food_params)
+        const result = await searchUsdaByEmbedding(usda_find_food_params)
+        console.log("result", result)
+        console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
+        return result
+      } catch (err) {
+        console.log("Error finding USDA food info", err) // Silently fail
+        return null
       }
-      return null
     }
 
     const getFsFoodInfo = async () => {
@@ -536,9 +534,9 @@ async function findAndAddItemInDatabase(
           {
             foodBgeBaseEmbedding: [],
             similarityToQuery: 0,
-            // foodSource: FoodInfoSource.User,
+            foodSource: "User",
             foodName: ""
-          }
+          } as foodSearchResultsWithSimilarityAndEmbedding
         ]
       }
     }
@@ -554,9 +552,9 @@ async function findAndAddItemInDatabase(
       foodInfoResponses.push(...nxFoodInfoResponse)
     }
 
-    // if (usdaFoodInfoResponse != null) {
-    //   foodInfoResponses.push(...usdaFoodInfoResponse)
-    // }
+    if (usdaFoodInfoResponse != null) {
+      foodInfoResponses.push(...usdaFoodInfoResponse)
+    }
 
     if (fatSecretInfoResponse != null) {
       foodInfoResponses.push(...fatSecretInfoResponse)
@@ -616,8 +614,7 @@ async function findAndAddItemInDatabase(
       let foodItemToSave: FoodItemWithNutrientsAndServing =
         highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
-      const newFood = await addFoodItemToDatabase
-    (
+      const newFood = await addFoodItemToDatabase(
         foodItemToSave,
         highestSimilarityItem.foodBgeBaseEmbedding,
         messageId,
@@ -646,8 +643,7 @@ async function findAndAddItemInDatabase(
     let food: FoodInfo = foodItemInfo
     console.log("food req string:\n", foodItemRequestString)
     const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
-    const newFood = await addFoodItemToDatabase
-  (
+    const newFood = await addFoodItemToDatabase(
       llmFoodItemToSave,
       await getFoodEmbedding(llmFoodItemToSave),
       messageId,
@@ -663,9 +659,9 @@ async function findAndAddItemInDatabase(
 
 async function testFoodSearch() {
   const foodItem: FoodItemToLog = {
-    food_database_search_name: "Chocolate Peanut Butter Cereal",
-    full_item_user_message_including_serving: "1 bowl Catalina Crunch Chocolate Peanut Butter Cereal",
-    brand: "Catalina Crunch",
+    food_database_search_name: "Albacore Tuna canned from 365 Whole Foods",
+    full_item_user_message_including_serving: "1 can of Albacore Tuna canned from 365 Whole Foods",
+    brand: "365 Whole Foods",
     branded: true,
     serving: {
       serving_id: 1,
@@ -701,5 +697,25 @@ async function testFoodSearch() {
   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
   console.dir(result, { depth: null })
 }
+
+// async function TestAdd() {
+//   const food = {
+//     name: "albacore tuna",
+//     brand: ""
+//   }
+//   const supabase = createAdminSupabase()
+
+//   const { data: existingFoodItem, error } = await supabase
+//   .from("FoodItem")
+//   .select("*, Nutrient(*), Serving(*)")
+//   .ilike("name", `%${food.name}%`)
+//   .or(`brand.ilike.%${food.brand || ""}%,brand.is.null`)
+//   .limit(1)
+//   .single()
+
+//   console.log("existingFoodItem", existingFoodItem)
+// }
+
+// TestAdd()
 
 // testFoodSearch()

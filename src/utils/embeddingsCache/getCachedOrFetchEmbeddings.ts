@@ -33,8 +33,6 @@ export async function getCfEmbedding(
   model: string = "@cf/baai/bge-base-en-v1.5"
 ): Promise<number[][]> {
 
-  throw new Error("getCfEmbedding is deprecated. Use getDiEmbedding instead.");
-
   // If inputText is a single string, convert it to an array
   const textArray = Array.isArray(inputText) ? inputText : [inputText]
 
