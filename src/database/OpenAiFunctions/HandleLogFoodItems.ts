@@ -693,7 +693,7 @@ async function testFoodSearch() {
     dateOfBirth: null,
     emailVerified: null,
     activityLevel: null,
-  }
+  } as Tables<"User">;
   //console.dir(queryEmbedding, { depth: null })
   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
   console.dir(result, { depth: null })

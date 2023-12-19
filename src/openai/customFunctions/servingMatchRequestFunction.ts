@@ -335,7 +335,7 @@ async function testServingMatchRequest() {
     dateOfBirth: null,
     emailVerified: null,
     activityLevel: null
-  }
+  } as Tables<"User">;
   const food_item_to_log: FoodItemToLog = {
     timeEaten: "2023-10-16T12:00:00Z",
     full_item_user_message_including_serving: "1 thomas English Muffin",

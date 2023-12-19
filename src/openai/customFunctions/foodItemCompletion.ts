@@ -306,7 +306,7 @@ async function testRun() {
     avatarUrl: null,
     emailVerified: null,
     activityLevel: null,
-  }
+  } as Tables<"User">;
   const result = await foodItemCompletion("cooked apple pie", user)
   console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model))
 }

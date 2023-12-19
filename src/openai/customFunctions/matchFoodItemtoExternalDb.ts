@@ -223,7 +223,7 @@ async function testFindBestFoodMatch() {
     dateOfBirth: null,
     emailVerified: null,
     activityLevel: null
-  }
+  } as Tables<"User">;
   const food_item_to_log_1: FoodItemToLog = {
     full_item_user_message_including_serving: "1 can of Pop",
     food_database_search_name: "Pop",

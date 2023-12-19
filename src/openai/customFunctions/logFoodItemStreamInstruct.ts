@@ -162,7 +162,7 @@ async function testFoodLog() {
       dateOfBirth: null,
       emailVerified: null,
       activityLevel: null,
-  }
+  } as Tables<"User">;
   let userRequestString = "20g of peanut butter"
   let result = await logFoodItemStreamInstruct(user, userRequestString, 1)
   //console.dir(result, { depth: null })
