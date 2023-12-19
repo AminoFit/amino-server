@@ -691,7 +691,8 @@ async function testFoodSearch() {
     tzIdentifier: "America/New_York",
     avatarUrl: null,
     dateOfBirth: null,
-    emailVerified: null
+    emailVerified: null,
+    activityLevel: null,
   }
   //console.dir(queryEmbedding, { depth: null })
   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)

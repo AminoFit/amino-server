@@ -160,7 +160,8 @@ async function testFoodLog() {
       tzIdentifier: "America/New_York",
       avatarUrl: null,
       dateOfBirth: null,
-      emailVerified: null
+      emailVerified: null,
+      activityLevel: null,
   }
   let userRequestString = "20g of peanut butter"
   let result = await logFoodItemStreamInstruct(user, userRequestString, 1)

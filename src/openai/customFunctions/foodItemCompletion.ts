@@ -304,7 +304,8 @@ async function testRun() {
     sendCheckins: false,
     tzIdentifier: "America/New_York",
     avatarUrl: null,
-    emailVerified: null
+    emailVerified: null,
+    activityLevel: null,
   }
   const result = await foodItemCompletion("cooked apple pie", user)
   console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model))

@@ -221,7 +221,8 @@ async function testFindBestFoodMatch() {
     tzIdentifier: "America/New_York",
     avatarUrl: null,
     dateOfBirth: null,
-    emailVerified: null
+    emailVerified: null,
+    activityLevel: null
   }
   const food_item_to_log_1: FoodItemToLog = {
     full_item_user_message_including_serving: "1 can of Pop",

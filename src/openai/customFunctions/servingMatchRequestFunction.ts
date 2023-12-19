@@ -333,7 +333,8 @@ async function testServingMatchRequest() {
     tzIdentifier: "America/New_York",
     avatarUrl: null,
     dateOfBirth: null,
-    emailVerified: null
+    emailVerified: null,
+    activityLevel: null
   }
   const food_item_to_log: FoodItemToLog = {
     timeEaten: "2023-10-16T12:00:00Z",

@@ -187,7 +187,8 @@ async function testFoodLog() {
     sendCheckins: false,
     tzIdentifier: "America/New_York",
     avatarUrl: null,
-    emailVerified: null
+    emailVerified: null,
+    activityLevel: null,
   }
   let userRequestString = "1 oz of almonds, 1 fl oz of milk, 1 cup of cooked rice"
   let result = await logFoodItemFunctionStream(user, userRequestString, 1)
