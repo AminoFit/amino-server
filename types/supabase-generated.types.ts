@@ -717,8 +717,10 @@ export interface Database {
           fatGoal: number | null
           fitnessGoal: string | null
           fullName: string | null
+          gender: Database["public"]["Enums"]["gender_enum"] | null
           heightCm: number | null
           id: string
+          manualMacroGoals: boolean
           phone: string | null
           proteinGoal: number | null
           sendCheckins: boolean
@@ -739,8 +741,10 @@ export interface Database {
           fatGoal?: number | null
           fitnessGoal?: string | null
           fullName?: string | null
+          gender?: Database["public"]["Enums"]["gender_enum"] | null
           heightCm?: number | null
           id: string
+          manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
           sendCheckins?: boolean
@@ -761,8 +765,10 @@ export interface Database {
           fatGoal?: number | null
           fitnessGoal?: string | null
           fullName?: string | null
+          gender?: Database["public"]["Enums"]["gender_enum"] | null
           heightCm?: number | null
           id?: string
+          manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
           sendCheckins?: boolean
@@ -955,6 +961,7 @@ export interface Database {
     Enums: {
       ActivityLevel: "None" | "Light Exercise" | "Moderate Exercise" | "Very Active" | "Extremely Active"
       FoodInfoSource: "User" | "Online" | "GPT3" | "GPT4" | "LLAMA" | "LLAMA2" | "USDA" | "FATSECRET" | "NUTRITIONIX"
+      gender_enum: "male" | "female" | "other"
       MessageDirection: "Inbound" | "Outbound"
       MessageStatus: "RECEIVED" | "PROCESSING" | "RESOLVED" | "FAILED"
       MessageType:
