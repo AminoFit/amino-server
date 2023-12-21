@@ -43,10 +43,14 @@ export async function getFatSecretFoodById(food_id: number): Promise<any> {
   }
 }
 
-
 async function testGetFatSecretFoodById() {
   //const food = await getFatSecretFoodById(56568)
-  const food: FsFoodInfo = JSON.parse(`{"brand_name":"McDonald's","food_id":"56568","food_name":"McFlurry with Oreo Cookies","food_type":"Brand","food_url":"https://www.fatsecret.com/calories-nutrition/mcdonalds/mcflurry-with-oreo-cookies","servings":{"serving":[{"added_sugars":"48.00","calcium":"380","calories":"510","carbohydrate":"80.00","cholesterol":"40","fat":"16.00","fiber":"1.0","iron":"1.50","measurement_description":"serving","number_of_units":"1.000","potassium":"540","protein":"12.00","saturated_fat":"8.000","serving_description":"1 serving","serving_id":"99102","serving_url":"https://www.fatsecret.com/calories-nutrition/mcdonalds/mcflurry-with-oreo-cookies","sodium":"260","sugar":"60.00","trans_fat":"0.500"}]}}`)
+  // const food = await getFatSecretFoodById(5574483)
+  // console.log(food)
+  // console.log(JSON.stringify(food))
+  const food: FsFoodInfo = JSON.parse(
+    `{"brand_name":"Snickers","food_id":"5574483","food_name":"Snickers Bites","food_type":"Brand","food_url":"https://www.fatsecret.com/calories-nutrition/snickers/snickers-bites","servings":{"serving":[{"calories":"190","carbohydrate":"25.00","cholesterol":"5","fat":"9.00","measurement_description":"serving","number_of_units":"1.000","protein":"3.00","saturated_fat":"3.500","serving_description":"8 pieces","serving_id":"5415972","serving_url":"https://www.fatsecret.com/calories-nutrition/snickers/snickers-bites","sodium":"95","sugar":"21.00"}]}}`
+  )
   console.log(food)
   console.log(convertFsToFoodItem(food))
 }

@@ -16,6 +16,12 @@ const servingInfoCompleteProperties = {
           serving_id: {
             type: "number"
           },
+          servingWeightGram: {
+            type: "number"
+          },
+          servingName: {
+            type: "string"
+          },
           servingAlternateAmount: {
             type: "number"
           },
@@ -23,7 +29,7 @@ const servingInfoCompleteProperties = {
             type: "string"
           }
         },
-        required: ["serving_id", "servingAlternateAmount", "servingAlternateUnit"]
+        required: ["serving_id", "servingWeightGram", "servingName", "servingAlternateAmount", "servingAlternateUnit"]
       }
     }
   },
@@ -34,6 +40,8 @@ const updateServingInfo = (servings: Tables<"Serving">[], autocompleteResults: a
   return servings.map((serving) => {
     const newServing = autocompleteResults.find((result) => result.serving_id === serving.id)
     if (newServing) {
+      serving.servingWeightGram = newServing.servingWeightGram
+      serving.servingName = newServing.servingName
       serving.servingAlternateAmount = newServing.servingAlternateAmount
       serving.servingAlternateUnit = newServing.servingAlternateUnit
     }
@@ -79,7 +87,7 @@ ${generateServingString(foodItem)}
       {
         messages,
         functions,
-        model: "gpt-3.5-turbo-0613",
+        model: "gpt-4-1106-preview",
         temperature: 0.05,
         max_tokens: 2048
       },
