@@ -40,6 +40,7 @@ const updateServingInfo = (servings: Tables<"Serving">[], autocompleteResults: a
   return servings.map((serving) => {
     const newServing = autocompleteResults.find((result) => result.serving_id === serving.id)
     if (newServing) {
+      serving.defaultServingAmount = serving.defaultServingAmount
       serving.servingWeightGram = newServing.servingWeightGram
       serving.servingName = newServing.servingName
       serving.servingAlternateAmount = newServing.servingAlternateAmount
@@ -49,12 +50,30 @@ const updateServingInfo = (servings: Tables<"Serving">[], autocompleteResults: a
   })
 }
 
+function assignUniqueIdsToServings(servings: Tables<"Serving">[]): Tables<"Serving">[] {
+  const usedIds = new Set<number>();
+  let nextId = 1;
+
+  for (const serving of servings) {
+    if (serving.id === 0 || usedIds.has(serving.id)) {
+      serving.id = nextId;
+      nextId++;
+    }
+
+    usedIds.add(serving.id);
+  }
+
+  return servings;
+}
+
+
 export async function foodItemCompleteMissingServingInfo(
   foodItem: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
 ): Promise<FoodItemWithNutrientsAndServing> {
+  const servings = assignUniqueIdsToServings(foodItem.Serving);
   const system =
-    "You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so."
+    "You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so. You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so. servingWeightGram and servingName cannot be null or 0."
 
   const functions: any[] = [
     {
@@ -62,7 +81,7 @@ export async function foodItemCompleteMissingServingInfo(
       description: `
       Completes the missing serving information based on the servingName:
       - For format "x units", sets servingAlternateAmount to x and servingAlternateUnit to the singular form of the unit.
-      - For a single word, assumes servingAlternateAmount as 1 and servingAlternateUnit as the word itself.
+      - For a single word, assume servingAlternateAmount as 1 and servingAlternateUnit as the word itself.
       - For format "name (x units)", sets servingAlternateAmount to x and servingAlternateUnit as "unit of name".
       `,
       parameters: servingInfoCompleteProperties
@@ -71,7 +90,8 @@ export async function foodItemCompleteMissingServingInfo(
 
   const inquiry = `
 Food item: ${foodItem.name}${foodItem.brand ? "\nBrand: " + foodItem.brand : ""}
-${generateServingString(foodItem)}
+Basic info: ${foodItem.defaultServingWeightGram}g serving, ${foodItem.kcalPerServing} calories, ${foodItem.carbPerServing}g carbs, ${foodItem.proteinPerServing}g protein, ${foodItem.totalFatPerServing}g fat
+${generateServingString(servings)}
   `
 
   let result: any = null
@@ -82,7 +102,7 @@ ${generateServingString(foodItem)}
 
   try {
     console.log("Calling chatCompletion with messages:", messages)
-    console.log("Calling chatCompletion with functions:", JSON.stringify(functions))
+    // console.log("Calling chatCompletion with functions:", JSON.stringify(functions))
     result = await chatCompletion(
       {
         messages,
@@ -102,25 +122,28 @@ ${generateServingString(foodItem)}
     if (!has_valid_schema) {
       throw new Error("Invalid serving info completion")
     }
-
-    foodItem.Serving = updateServingInfo(foodItem.Serving, servingInfoCompletionResult.servings)
+    console.log("old servings:", servings)
+    console.log("new servings:", servingInfoCompletionResult.servings)
+    foodItem.Serving = updateServingInfo(servings, servingInfoCompletionResult.servings)
     return foodItem
   } catch (error) {
     throw error
   }
 }
 
-const generateServingString = (foodItem: FoodItemWithNutrientsAndServing): string => {
+const generateServingString = (servings: Tables<"Serving">[]): string => {
   // Filter servings that have empty servingAlternateAmount and servingAlternateUnit
-  const incompleteServings = foodItem.Serving.filter(
-    (serving: any) => !serving.servingAlternateAmount || !serving.servingAlternateUnit
-  ).slice(0, 5) // Take up to 5 servings only
+  const incompleteServings = servings
 
   const servingsData = incompleteServings
     .map(
-      (serving: any) => `---
+      (serving: Tables<"Serving">) => `---
   servingId: ${serving.id}
-  servingName: ${serving.servingName}`
+  servingName: ${serving.servingName}
+  servingAlternateAmount: ${serving.servingAlternateAmount}
+  servingAlternateUnit: ${serving.servingAlternateUnit}
+  servingWeightGram: ${serving.servingWeightGram}
+  defaultServingAmount: ${serving.defaultServingAmount}`
     )
     .join("\n")
 

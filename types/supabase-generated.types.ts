@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export interface Database {
   graphql_public: {
@@ -553,6 +559,7 @@ export interface Database {
       }
       Serving: {
         Row: {
+          defaultServingAmount: number | null
           foodItemId: number
           id: number
           servingAlternateAmount: number | null
@@ -561,6 +568,7 @@ export interface Database {
           servingWeightGram: number | null
         }
         Insert: {
+          defaultServingAmount?: number | null
           foodItemId: number
           id?: number
           servingAlternateAmount?: number | null
@@ -569,6 +577,7 @@ export interface Database {
           servingWeightGram?: number | null
         }
         Update: {
+          defaultServingAmount?: number | null
           foodItemId?: number
           id?: number
           servingAlternateAmount?: number | null
@@ -959,8 +968,22 @@ export interface Database {
       }
     }
     Enums: {
-      ActivityLevel: "None" | "Light Exercise" | "Moderate Exercise" | "Very Active" | "Extremely Active"
-      FoodInfoSource: "User" | "Online" | "GPT3" | "GPT4" | "LLAMA" | "LLAMA2" | "USDA" | "FATSECRET" | "NUTRITIONIX"
+      ActivityLevel:
+        | "None"
+        | "Light Exercise"
+        | "Moderate Exercise"
+        | "Very Active"
+        | "Extremely Active"
+      FoodInfoSource:
+        | "User"
+        | "Online"
+        | "GPT3"
+        | "GPT4"
+        | "LLAMA"
+        | "LLAMA2"
+        | "USDA"
+        | "FATSECRET"
+        | "NUTRITIONIX"
       gender_enum: "male" | "female" | "other"
       MessageDirection: "Inbound" | "Outbound"
       MessageStatus: "RECEIVED" | "PROCESSING" | "RESOLVED" | "FAILED"
@@ -1157,3 +1180,4 @@ export interface Database {
     }
   }
 }
+

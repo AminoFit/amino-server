@@ -170,7 +170,8 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
         servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
           ? serving.measurement_description
           : null,
-        servingName: serving.serving_description
+        servingName: serving.serving_description,
+        defaultServingAmount: null
       })),
     Nutrient: nutrients,
     adaEmbedding: null,

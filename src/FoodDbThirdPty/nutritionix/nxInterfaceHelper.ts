@@ -138,6 +138,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
       messageId: null,
       Serving: deduplicateServings([
         {
+          defaultServingAmount: null,
           servingWeightGram: food.serving_weight_grams,
           servingAlternateUnit: food.serving_unit,
           servingAlternateAmount: food.serving_qty,
@@ -145,6 +146,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
         },
         ...(food.alt_measures
           ? food.alt_measures.map((alt) => ({
+              defaultServingAmount: null,
               servingWeightGram: alt.serving_weight,
               servingAlternateUnit: alt.measure,
               servingAlternateAmount: alt.qty,

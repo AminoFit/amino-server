@@ -17,6 +17,7 @@ import { foodItemCompleteMissingServingInfo } from "@/openai/customFunctions/foo
 import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { constructFoodItemRequestString } from "../OpenAiFunctions/utils/foodLogHelper"
 import { Tables } from "types/supabase"
+import { assignDefaultServingAmount } from "./handleServingAmount"
 
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
@@ -92,6 +93,9 @@ async function addFoodItemToDatabase(
     }
   }
 
+  // Format the servings using assignDefaultServingAmount
+  food.Serving = assignDefaultServingAmount(food.Serving)
+
   // Omit the id field from the food object
   const { id, ...foodWithoutId } = food
   delete (foodWithoutId as any).Nutrient
@@ -103,8 +107,6 @@ async function addFoodItemToDatabase(
   // Save the vector to the database
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
-
-  console.log("foodWithoutId", foodWithoutId)
 
   // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
   const { data: newFood, error: insertError } = await supabase
@@ -139,6 +141,7 @@ async function addFoodItemToDatabase(
     const { error: addServingsError } = await supabase.from("Serving").insert(
       food.Serving.map((serving: any) => ({
         foodItemId: newFood.id,
+        defaultServingAmount: serving.defaultServingAmount,
         servingWeightGram: serving.servingWeightGram,
         servingAlternateAmount: serving.servingAlternateAmount,
         servingAlternateUnit: serving.servingAlternateUnit,
@@ -409,52 +412,68 @@ async function testAddFoodToDatabase() {
   const user = {} as Tables<"User">
   let food = {
     id: 0,
-    createdAtDateTime: "2023-12-21T16:05:10.907Z",
-    externalId: "5574483",
+    createdAtDateTime: "2023-12-21T19:53:17.075Z",
     UPC: null,
+    externalId: "64c6442161f9690007f802d6",
+    name: "Fat Free Ultra-Filtered Milk",
+    brand: "Fairlife",
     knownAs: [],
     description: null,
-    lastUpdated: "2023-12-21T16:05:10.907Z",
+    weightUnknown: false,
+    defaultServingWeightGram: null,
+    defaultServingLiquidMl: 240,
+    isLiquid: true,
+    kcalPerServing: 80,
+    totalFatPerServing: 0,
+    satFatPerServing: 0,
+    transFatPerServing: 0,
+    carbPerServing: 6,
+    fiberPerServing: 0,
+    sugarPerServing: 6,
+    addedSugarPerServing: 0,
+    proteinPerServing: 13,
+    lastUpdated: "2023-12-21T19:53:17.075Z",
     verified: true,
     userId: null,
-    foodInfoSource: "FATSECRET",
+    adaEmbedding: null,
+    bgeBaseEmbedding: null,
+    foodImageId: null,
+    foodInfoSource: "NUTRITIONIX",
     messageId: null,
-    name: "Snickers Bites",
-    brand: "Snickers",
-    defaultServingWeightGram: 40,
-    defaultServingLiquidMl: null,
-    isLiquid: false,
-    weightUnknown: false,
-    kcalPerServing: 190,
-    totalFatPerServing: 9,
-    carbPerServing: 25,
-    proteinPerServing: 3,
-    satFatPerServing: 3.5,
-    fiberPerServing: null,
-    sugarPerServing: 21,
-    transFatPerServing: null,
-    addedSugarPerServing: null,
     Serving: [
       {
-        foodItemId: 0,
         id: 0,
-        servingWeightGram: NaN,
-        servingAlternateAmount: null,
-        servingAlternateUnit: null,
-        servingName: "8 pieces"
+        foodItemId: 0,
+        defaultServingAmount: null,
+        servingWeightGram: null,
+        servingAlternateUnit: "cup",
+        servingAlternateAmount: 1,
+        servingName: "1 cup"
       }
     ],
     Nutrient: [
       {
-        foodItemId: 0,
         id: 0,
+        foodItemId: 0,
         nutrientName: "Cholesterol",
-        nutrientAmountPerDefaultServing: 5,
-        nutrientUnit: "mg"
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 5
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        nutrientName: "Sodium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 120
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        nutrientName: "Potassium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 400
       }
-    ],
-    adaEmbedding: null,
-    bgeBaseEmbedding: null
+    ]
   } as FoodItemWithNutrientsAndServing
 
   // If the food item is missing a field, complete it
@@ -472,4 +491,57 @@ async function testAddFoodToDatabase() {
   console.log("food", food)
 }
 
-testAddFoodToDatabase()
+async function cleanupServingsInDatabase(foodItemIds: number[], user: Tables<"User">) {
+  const supabase = createAdminSupabase()
+
+  for (const foodItemId of foodItemIds) {
+    // Fetch the food item along with its servings
+    const { data: foodItem, error } = await supabase
+      .from("FoodItem")
+      .select("*, Serving(*), Nutrient(*)")
+      .eq("id", foodItemId)
+      .single()
+
+    if (error) {
+      console.error(`Error fetching food item ${foodItemId}:`, error)
+      continue
+    }
+
+    // Check if the servings are complete
+    if (checkIfEmptyServings(foodItem.Serving)) {
+      console.log(`Incomplete servings for food item ${foodItemId}. Completing...`)
+
+      // Complete the missing serving information
+      let updatedFoodItem = await foodItemCompleteMissingServingInfo(foodItem, user)
+
+      updatedFoodItem.Serving = assignDefaultServingAmount(updatedFoodItem.Serving)
+
+      // Update the servings in the database
+      for (const serving of updatedFoodItem.Serving) {
+        const { error: updateError } = await supabase
+          .from("Serving")
+          .update({
+            defaultServingAmount: serving.defaultServingAmount,
+            servingWeightGram: serving.servingWeightGram,
+            servingAlternateAmount: serving.servingAlternateAmount,
+            servingAlternateUnit: serving.servingAlternateUnit,
+            servingName: serving.servingName
+          })
+          .eq("id", serving.id)
+
+        if (updateError) {
+          console.error(`Error updating serving ${serving.id} for food item ${foodItemId}:`, updateError)
+        }
+      }
+
+      console.log(`Servings updated for food item ${foodItemId}`)
+    } else {
+      console.log(`Servings are complete for food item ${foodItemId}`)
+    }
+  }
+}
+
+//   const user = {} as Tables<"User">
+//food id 380
+//11, 65, 93, 222, 268, 287, 316
+//   cleanupServingsInDatabase([65, 93, 222, 268, 287, 316], user)
