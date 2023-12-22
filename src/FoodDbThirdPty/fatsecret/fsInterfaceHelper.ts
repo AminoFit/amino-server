@@ -94,8 +94,12 @@ function mapNutrients(serving: FsServing, unitConversionFactor: number): FoodNut
     })
 }
 
+
+
 export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
   const deduplicatedServings = deduplicateServings(fsFoodItem.servings.serving)
+
+
 
   let serving = deduplicatedServings.find(
     (serving) => Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g"
@@ -165,8 +169,8 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
           !(Number(serving.metric_serving_amount) === 28.35 && serving.measurement_description === "oz")
       )
       .map((serving) => ({
-        servingWeightGram: serving.metric_serving_unit === "g" ? Number(serving.metric_serving_amount) : null,
-        servingAlternateAmount: serving.metric_serving_unit !== "g" && serving.number_of_units ? Number(serving.number_of_units) : null,
+        servingWeightGram: serving.metric_serving_unit === "g" || serving.metric_serving_unit === "ml" ? Number(serving.metric_serving_amount) : null,
+        servingAlternateAmount: serving.metric_serving_unit !== "g" && serving.metric_serving_unit !== "ml" && serving.number_of_units ? Number(serving.number_of_units) : null,
         servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
           ? serving.measurement_description
           : null,

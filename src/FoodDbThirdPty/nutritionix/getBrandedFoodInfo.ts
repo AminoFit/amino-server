@@ -92,4 +92,4 @@ export async function getBrandedFoodInfo(
 
 // debug
 // getBrandedFoodInfo({ nix_item_id: "61cc6887a8c268000a380d73" }).then((res) => console.log(JSON.stringify(res)))
-//getBrandedFoodInfo({ nix_item_id: "64c6442161f9690007f802d6" }).then((res) => console.log(JSON.stringify(res)))
+// getBrandedFoodInfo({ nix_item_id: "62f3908b0082cc0006d94eea" }).then((res) => console.log(JSON.stringify(res)))

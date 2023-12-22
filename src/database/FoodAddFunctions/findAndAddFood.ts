@@ -541,6 +541,61 @@ async function cleanupServingsInDatabase(foodItemIds: number[], user: Tables<"Us
   }
 }
 
+async function testFoodMissing() {
+  const foodItem = {
+    id: 0,
+    createdAtDateTime: "2023-12-22T03:16:20.207Z",
+    UPC: null,
+    externalId: "62f3908b0082cc0006d94eea",
+    name: "Beer, Hazy Juicy Pale Ale, Moon Haze",
+    brand: "Blue Moon",
+    knownAs: [],
+    description: null,
+    weightUnknown: false,
+    defaultServingWeightGram: null,
+    defaultServingLiquidMl: 354.882,
+    isLiquid: true,
+    kcalPerServing: 180,
+    totalFatPerServing: 0,
+    satFatPerServing: null,
+    transFatPerServing: null,
+    carbPerServing: 15.100000381469727,
+    fiberPerServing: null,
+    sugarPerServing: null,
+    addedSugarPerServing: null,
+    proteinPerServing: 2.299999952316284,
+    lastUpdated: "2023-12-22T03:16:20.207Z",
+    verified: true,
+    userId: null,
+    adaEmbedding: null,
+    bgeBaseEmbedding: null,
+    foodImageId: null,
+    foodInfoSource: "NUTRITIONIX",
+    messageId: null,
+    Serving: [
+      {
+        id: 0,
+        foodItemId: 0,
+        defaultServingAmount: null,
+        servingWeightGram: null,
+        servingAlternateUnit: "ml",
+        servingAlternateAmount: 354.882,
+        servingName: "12 fl oz"
+      }
+    ],
+    Nutrient: []
+  } as FoodItemWithNutrientsAndServing
+
+  let foodItemToSave: FoodItemWithNutrientsAndServing;
+  if (checkIfEmptyServings(foodItem.Serving)) {
+    console.log("Missing serving info!")
+    foodItemToSave = await foodItemCompleteMissingServingInfo(foodItem, {} as Tables<"User">)
+    console.log("foodItemToSave", foodItemToSave)
+  }
+
+}
+
+// testFoodMissing()
 //   const user = {} as Tables<"User">
 //food id 380
 //11, 65, 93, 222, 268, 287, 316

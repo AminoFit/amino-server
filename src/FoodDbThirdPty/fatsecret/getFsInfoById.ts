@@ -44,15 +44,15 @@ export async function getFatSecretFoodById(food_id: number): Promise<any> {
 }
 
 async function testGetFatSecretFoodById() {
-  //const food = await getFatSecretFoodById(56568)
+  // const food = await getFatSecretFoodById(73105349)
   // const food = await getFatSecretFoodById(5574483)
   // console.log(food)
   // console.log(JSON.stringify(food))
   const food: FsFoodInfo = JSON.parse(
-    `{"brand_name":"Snickers","food_id":"5574483","food_name":"Snickers Bites","food_type":"Brand","food_url":"https://www.fatsecret.com/calories-nutrition/snickers/snickers-bites","servings":{"serving":[{"calories":"190","carbohydrate":"25.00","cholesterol":"5","fat":"9.00","measurement_description":"serving","number_of_units":"1.000","protein":"3.00","saturated_fat":"3.500","serving_description":"8 pieces","serving_id":"5415972","serving_url":"https://www.fatsecret.com/calories-nutrition/snickers/snickers-bites","sodium":"95","sugar":"21.00"}]}}`
+    `{"brand_name":"Clover","food_id":"73105349","food_name":"Blue Moon","food_type":"Brand","food_url":"https://www.fatsecret.com/calories-nutrition/clover/blue-moon","servings":{"serving":[{"added_sugars":"3.00","calories":"150","carbohydrate":"17.00","cholesterol":"20","fat":"4.50","fiber":"0","measurement_description":"serving","metric_serving_amount":"240.000","metric_serving_unit":"ml","number_of_units":"1.000","protein":"9.00","saturated_fat":"3.000","serving_description":"1 cup","serving_id":"59527192","serving_url":"https://www.fatsecret.com/calories-nutrition/clover/blue-moon","sodium":"260","sugar":"16.00"}]}}`
   )
   console.log(food)
   console.log(convertFsToFoodItem(food))
 }
 
-//testGetFatSecretFoodById()
+// testGetFatSecretFoodById()

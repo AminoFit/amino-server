@@ -40,38 +40,47 @@ const updateServingInfo = (servings: Tables<"Serving">[], autocompleteResults: a
   return servings.map((serving) => {
     const newServing = autocompleteResults.find((result) => result.serving_id === serving.id)
     if (newServing) {
-      serving.defaultServingAmount = serving.defaultServingAmount
-      serving.servingWeightGram = newServing.servingWeightGram
-      serving.servingName = newServing.servingName
-      serving.servingAlternateAmount = newServing.servingAlternateAmount
-      serving.servingAlternateUnit = newServing.servingAlternateUnit
+      if (serving.defaultServingAmount == null || serving.defaultServingAmount === 0) {
+        serving.defaultServingAmount = newServing.defaultServingAmount
+      }
+      if (serving.servingWeightGram == null || serving.servingWeightGram === 0) {
+        serving.servingWeightGram = newServing.servingWeightGram
+      }
+      if (serving.servingName == null || serving.servingName === "") {
+        serving.servingName = newServing.servingName
+      }
+      if (serving.servingAlternateAmount == null || serving.servingAlternateAmount === 0) {
+        serving.servingAlternateAmount = newServing.servingAlternateAmount
+      }
+      if (serving.servingAlternateUnit == null || serving.servingAlternateUnit === "") {
+        serving.servingAlternateUnit = newServing.servingAlternateUnit
+      }
     }
     return serving
   })
 }
 
 function assignUniqueIdsToServings(servings: Tables<"Serving">[]): Tables<"Serving">[] {
-  const usedIds = new Set<number>();
-  let nextId = 1;
+  const usedIds = new Set<number>()
+  let nextId = 1
 
   for (const serving of servings) {
     if (serving.id === 0 || usedIds.has(serving.id)) {
-      serving.id = nextId;
-      nextId++;
+      serving.id = nextId
+      nextId++
     }
 
-    usedIds.add(serving.id);
+    usedIds.add(serving.id)
   }
 
-  return servings;
+  return servings
 }
-
 
 export async function foodItemCompleteMissingServingInfo(
   foodItem: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
 ): Promise<FoodItemWithNutrientsAndServing> {
-  const servings = assignUniqueIdsToServings(foodItem.Serving);
+  const servings = assignUniqueIdsToServings(foodItem.Serving)
   const system =
     "You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so. You are a bot that autocompletes food item missing serving info. Call the autocomplete_missing_serving_info function to do so. servingWeightGram and servingName cannot be null or 0."
 
@@ -88,11 +97,21 @@ export async function foodItemCompleteMissingServingInfo(
     }
   ]
 
-  const inquiry = `
-Food item: ${foodItem.name}${foodItem.brand ? "\nBrand: " + foodItem.brand : ""}
-Basic info: ${foodItem.defaultServingWeightGram}g serving, ${foodItem.kcalPerServing} calories, ${foodItem.carbPerServing}g carbs, ${foodItem.proteinPerServing}g protein, ${foodItem.totalFatPerServing}g fat
-${generateServingString(servings)}
+  let inquiry: string = ""
+  if (foodItem.defaultServingWeightGram) {
+    inquiry = `
+      Food item: ${foodItem.name}${foodItem.brand ? "\nBrand: " + foodItem.brand : ""}
+      Basic info: ${foodItem.defaultServingWeightGram.toFixed(2)}g serving, ${foodItem.kcalPerServing.toFixed(2)} calories, ${
+      foodItem.carbPerServing.toFixed(2)}g carbs, ${foodItem.proteinPerServing.toFixed(2)}g protein, ${foodItem.totalFatPerServing.toFixed(2)}g fat
+      ${generateServingString(servings)}
   `
+  } else if (foodItem.defaultServingLiquidMl) {
+    inquiry = `
+    Food item: ${foodItem.name}${foodItem.brand ? "\nBrand: " + foodItem.brand : ""}
+    Basic info: ${foodItem.defaultServingLiquidMl.toFixed(2)}ml serving, ${foodItem.kcalPerServing.toFixed(2)} calories, ${foodItem.carbPerServing.toFixed(2)}g carbs, ${foodItem.proteinPerServing.toFixed(2)}g protein, ${foodItem.totalFatPerServing.toFixed(2)}g fat
+    ${generateServingString(servings)}
+`
+  }
 
   let result: any = null
   let messages: any[] = [
@@ -101,7 +120,7 @@ ${generateServingString(servings)}
   ]
 
   try {
-    console.log("Calling chatCompletion with messages:", messages)
+    // console.log("Calling chatCompletion with messages:", messages)
     // console.log("Calling chatCompletion with functions:", JSON.stringify(functions))
     result = await chatCompletion(
       {
