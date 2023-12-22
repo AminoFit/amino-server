@@ -594,7 +594,61 @@ async function testFoodMissing() {
   }
 
 }
+async function cleanupServingsDefaultInDatabase(): Promise<void> {
+  const ids = [39,45,91,92,90,109,138,230,319,345,346,1223,410,411,412,413,414,425,450,451,452,453,454,455,517,518,532,584,585,586,587,613,623,655,661,662,686,687,688,689,690,691,694,704,705,706,707,708,709,732,738,768,769,778,779,782,796,809,810,814,815,820,822,823,824,825,826,827,828,861,887,888,889,895,896,897,898,899,903,904,913,917,821,973,983,998,999,1000,1026,1040,1041,1108,1072,1073,1091,1092,1093,1094,1095,1096,1107,1110,1130,1131,1139,1140,1160,1182,1175]
+  const supabase = createAdminSupabase()
+  // Fetch servings that start with a number followed by a space
+  const { data: servings, error } = await supabase
+  .from('Serving')
+  .select('*')
+  .in('id', ids)
 
+  if (error) {
+    console.error('Error fetching servings:', error);
+    return;
+  }
+
+  if (!servings) {
+    console.log('No servings found.');
+    return;
+  }
+  console.log('Servings found:', servings.length);
+  // console.log('Servings:', servings);
+  // Apply assignDefaultServingAmount to each serving
+  const updatedServings = assignDefaultServingAmount(servings);
+
+  console.log('Servings to update:', updatedServings);
+
+  // throw new Error("Not implemented")
+
+  // Update the servings in the database in batches
+  const batchSize = 500; // Define a suitable batch size
+  for (let i = 0; i < updatedServings.length; i += batchSize) {
+    const batch = updatedServings.slice(i, i + batchSize);
+
+    // Use a transaction to update in batches
+    const updates = batch.map(serving =>
+      supabase
+        .from('Serving')
+        .update({
+          defaultServingAmount: serving.defaultServingAmount,
+          servingName: serving.servingName,
+        })
+        .eq('id', serving.id)
+    );
+
+    const responses = await Promise.all(updates);
+
+    // Handle response errors
+    responses.forEach(response => {
+      if (response.error) {
+        console.error('Error updating servings:', response.error);
+      }
+    });
+  }
+
+  console.log('Servings updated successfully.');
+}
 // testFoodMissing()
 //   const user = {} as Tables<"User">
 //food id 380
