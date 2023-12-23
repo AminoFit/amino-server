@@ -333,11 +333,26 @@ export async function HandleLogFoodItem(
 
   UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
 
+  const supabaseAdmin = createAdminSupabase()
+
   console.log("About to queue icon generation")
+  console.log("food", JSON.stringify(foodItem, null, 2))
+  console.log("bestMatch.name", bestMatch.name)
+
+  const iconString = bestMatch.name
   // Queue the icon generation
-  await generateFoodIconQueue.enqueue(
-    `${foodItem.foodItemId}` // job to be enqueued
-  )
+  // await generateFoodIconQueue.enqueue(
+  //   `${foodItem.foodItemId}` // job to be enqueued
+  // )
+  const { data: iconQueue, error: iconError } = await supabaseAdmin
+    .from("IconQueue")
+    .insert({ requested_food_string: iconString })
+    .select()
+
+  if (iconError) {
+    console.error("Error adding to icon queue", iconError)
+  }
+  console.log("iconQueue", iconQueue)
 
   console.log("Queued icon generation", foodItem.id)
 
@@ -692,8 +707,8 @@ async function testFoodSearch() {
     avatarUrl: null,
     dateOfBirth: null,
     emailVerified: null,
-    activityLevel: null,
-  } as Tables<"User">;
+    activityLevel: null
+  } as Tables<"User">
   //console.dir(queryEmbedding, { depth: null })
   let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
   console.dir(result, { depth: null })
