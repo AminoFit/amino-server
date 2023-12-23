@@ -10,7 +10,7 @@ import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 // App
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS, findAndAddItemInDatabase } from "../FoodAddFunctions/findAndAddFood"
+import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "../FoodAddFunctions/findAndAddFood"
 
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
