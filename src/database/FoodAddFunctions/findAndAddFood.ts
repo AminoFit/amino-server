@@ -24,8 +24,8 @@ const COSINE_THRESHOLD = 0.975
 // used to determine if an item should be included in a compare list
 const COSINE_THRESHOLD_LOW_QUALITY = 0.85
 
-const ONE_HOUR_IN_MS = 60 * 60 * 1000
-const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
+export const ONE_HOUR_IN_MS = 60 * 60 * 1000
+export const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
 
 // Helper function to check if a number is a positive integer
 function isPositiveInteger(value: any) {
