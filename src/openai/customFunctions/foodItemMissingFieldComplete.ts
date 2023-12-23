@@ -119,7 +119,7 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` + generateServingString(
     { role: "system", content: system },
     { role: "user", content: inquiry }
   ]
-  let model = "gpt-4-0613" //"gpt-3.5-turbo-0613"
+  let model = "gpt-4-1106-preview" //"gpt-3.5-turbo-0613" or "gpt-4-0613"
   let max_tokens = 2048
   let temperature = 0.05
 
@@ -143,7 +143,7 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` + generateServingString(
       console.log("Invalid food completion, retrying with different parameters")
       console.log("First try was", foodItemCompletionResult)
       temperature = 0.1 // Update temperature
-      model = "gpt-4-0613" // Update model
+      model = "gpt-4-1106-preview" // Update model
       max_tokens = 4096 // Update max tokens
 
       messages = [

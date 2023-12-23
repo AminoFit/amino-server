@@ -94,6 +94,7 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     foodInfoSource: mapModelToEnum(model),
     Serving:
       food.servings?.map((serving) => ({
+        defaultServingAmount: null,
         servingWeightGram: serving.serving_weight_g,
         servingName: sanitizeServingName(serving.serving_name),
         servingAlternateAmount: serving.serving_alternate_amount,

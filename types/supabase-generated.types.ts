@@ -586,6 +586,7 @@ export interface Database {
       }
       Serving: {
         Row: {
+          defaultServingAmount: number | null
           foodItemId: number
           id: number
           servingAlternateAmount: number | null
@@ -594,6 +595,7 @@ export interface Database {
           servingWeightGram: number | null
         }
         Insert: {
+          defaultServingAmount?: number | null
           foodItemId: number
           id?: number
           servingAlternateAmount?: number | null
@@ -602,6 +604,7 @@ export interface Database {
           servingWeightGram?: number | null
         }
         Update: {
+          defaultServingAmount?: number | null
           foodItemId?: number
           id?: number
           servingAlternateAmount?: number | null

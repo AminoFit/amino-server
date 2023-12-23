@@ -45,6 +45,7 @@ function deduplicateServings(servings: NxFoodServing[]): NxFoodServing[] {
 }
 
 export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemResponse[] {
+  console.log("response", response)
   return response.foods.map((food) => {
     let default_serving_name = `${food.serving_qty} ${food.serving_unit}`
     // Preprocessing step to convert serving units from oz to g or ml
@@ -67,6 +68,8 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
 
     let liquidAmountInMl = null
     if (food.serving_unit == "ml") {
+      console.log("food.serving_unit", food.serving_unit)
+      console.log("food.serving_qty", food.serving_qty)
       liquidAmountInMl = food.serving_qty
     } else if (food.nf_metric_uom == "ml") {
       liquidAmountInMl = food.nf_metric_qty
@@ -138,13 +141,15 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
       messageId: null,
       Serving: deduplicateServings([
         {
-          servingWeightGram: food.serving_weight_grams,
-          servingAlternateUnit: food.serving_unit,
+          defaultServingAmount: null,
+            servingWeightGram: food.serving_weight_grams || (food.nf_metric_uom === 'ml' ? food.nf_metric_qty : null),
+            servingAlternateUnit: food.serving_unit,
           servingAlternateAmount: food.serving_qty,
           servingName: default_serving_name
         },
         ...(food.alt_measures
           ? food.alt_measures.map((alt) => ({
+              defaultServingAmount: null,
               servingWeightGram: alt.serving_weight,
               servingAlternateUnit: alt.measure,
               servingAlternateAmount: alt.qty,
@@ -182,3 +187,8 @@ function testMapping() {
 }
 
 //testMapping()
+
+
+// const foodItem = JSON.parse(`{"foods":[{"food_name":"Beer, Hazy Juicy Pale Ale, Moon Haze","brand_name":"Blue Moon","serving_qty":12,"serving_unit":"fl oz","serving_weight_grams":null,"nf_metric_qty":355,"nf_metric_uom":"ml","nf_calories":180,"nf_total_fat":0,"nf_saturated_fat":null,"nf_cholesterol":null,"nf_sodium":null,"nf_total_carbohydrate":15.100000381469727,"nf_dietary_fiber":null,"nf_sugars":null,"nf_protein":2.299999952316284,"nf_potassium":null,"nf_p":null,"full_nutrients":[{"attr_id":203,"value":2.3},{"attr_id":204,"value":0},{"attr_id":205,"value":15.1},{"attr_id":208,"value":180}],"nix_brand_name":"Blue Moon","nix_brand_id":"53f21a9a6d6d4bf86c32acf1","nix_item_name":"Beer, Hazy Juicy Pale Ale, Moon Haze","nix_item_id":"62f3908b0082cc0006d94eea","metadata":{},"source":8,"ndb_no":null,"tags":null,"alt_measures":null,"lat":null,"lng":null,"photo":{"thumb":"https://assets.syndigo.com/e13e5852-9de2-4085-9b6e-65e3b1bd452e","highres":null,"is_user_uploaded":false},"note":null,"class_code":null,"brick_code":null,"tag_id":null,"updated_at":"2023-03-01T04:00:29+00:00","nf_ingredient_statement":"Water, Barley Malt, Wheat, Oats, Yeast, Hops, Dried Whole Oranges."}]}`)
+
+// console.dir(mapFoodResponseToFoodItem(foodItem), { depth: null })

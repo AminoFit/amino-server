@@ -10,7 +10,7 @@ export interface FoodItemWithServings extends Omit<Tables<"FoodItem">, "Serving"
   Nutrient: FoodNutrient[]
 }
 
-interface Portion {
+export interface UsdaPortion {
   servingSize: number
   servingSizeUnit: string
   householdServingFullText: string
@@ -28,7 +28,7 @@ export interface UsdaFoodItem {
     default_serving_amount: number
     default_serving_unit: string
   }
-  portions: Portion[]
+  portions: UsdaPortion[]
   householdServingFullText?: string
   servingSize?: number
   servingSizeUnit?: string
@@ -90,6 +90,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
         : null,
     isLiquid: usdaFoodItem.default_serving.default_serving_unit === "ml",
     Serving: usdaFoodItem.portions.map((portion) => {
+      let defaultServingAmount = null
       let servingWeightGram = null
       let servingAlternateAmount = null
       let servingAlternateUnit = null
@@ -108,6 +109,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
         (portion.name ? portion.name : `${servingAlternateAmount || ""} ${servingAlternateUnit || ""}`.trim())
 
       return {
+        defaultServingAmount,
         servingWeightGram,
         servingAlternateAmount,
         servingAlternateUnit,

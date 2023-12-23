@@ -1,29 +1,16 @@
-// FoodDbThirdPty
-import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
-import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
-import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
-
 // OpenAI
-import { foodItemCompletion } from "../../openai/customFunctions/foodItemCompletion"
 import { findBestServingMatchInstruct } from "../../openai/customFunctions/servingMatchRequestInstruct"
 import { findBestServingMatchFunction } from "../../openai/customFunctions/servingMatchRequestFunction"
-import { findBestFoodMatchExternalDb } from "../../openai/customFunctions/matchFoodItemtoExternalDb"
 import { findBestFoodMatchtoLocalDb } from "../../openai/customFunctions/matchFoodItemToLocalDb"
-import { foodItemMissingFieldComplete } from "../../openai/customFunctions/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "../../openai/customFunctions/foodItemCompleteMissingServingInfo"
-import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "../../openai/customFunctions/foodItemInterface"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
-import { checkRateLimit } from "../../utils/apiUsageLogging"
 import { foodToLogEmbedding, FoodEmbeddingCache, getFoodEmbedding } from "../../utils/foodEmbedding"
-import { vectorToSql } from "@/utils/pgvectorHelper"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
-import { constructFoodItemRequestString } from "./utils/foodLogHelper"
 
 // App
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
+import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS, findAndAddItemInDatabase } from "../FoodAddFunctions/findAndAddFood"
 
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
@@ -32,12 +19,23 @@ import { cookies } from "next/headers"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
-import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
+import { foodItemMissingFieldComplete } from "@/openai/customFunctions/foodItemMissingFieldComplete"
+import { foodItemCompleteMissingServingInfo } from "@/openai/customFunctions/foodItemCompleteMissingServingInfo"
+import { vectorToSql } from "@/utils/pgvectorHelper"
+import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
+import { checkRateLimit } from "@/utils/apiUsageLogging"
+import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
+import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
+import { findBestFoodMatchExternalDb } from "@/openai/customFunctions/matchFoodItemtoExternalDb"
+import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
+import { constructFoodItemRequestString } from "./utils/foodLogHelper"
+import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
+import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
 
-const ONE_HOUR_IN_MS = 60 * 60 * 1000
-const ONE_DAY_IN_MS = 24 * ONE_HOUR_IN_MS
+
 
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
