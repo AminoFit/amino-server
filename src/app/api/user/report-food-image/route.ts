@@ -2,11 +2,8 @@ export const dynamic = "force-dynamic"
 
 import { NextResponse } from "next/server"
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { forceGenerateNewFoodIconQueue } from "../../queues/generate-food-icon/generate-food-icon"
 import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 export async function POST(
   request: Request // needed so we don't cache this request
@@ -48,15 +45,18 @@ export async function POST(
     .from("FoodItemImages")
     .select("downvotes")
     .eq("foodImageId", foodImageId)
-    .single();
+    .single()
 
   if (foodItemImageError) {
-    return new NextResponse(JSON.stringify({ error: "Food Item Image not found", details: foodItemImageError.message }), {
-      status: 404,
-      headers: {
-        "Content-Type": "application/json"
+    return new NextResponse(
+      JSON.stringify({ error: "Food Item Image not found", details: foodItemImageError.message }),
+      {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json"
+        }
       }
-    });
+    )
   }
 
   // Update the downvotes in the FoodImages table
@@ -65,7 +65,7 @@ export async function POST(
     .update({ downvotes: foodImage.downvotes + 1 })
     .eq("foodImage", foodImage.id)
     .select()
-    .single();
+    .single()
 
   if (updateError) {
     return new NextResponse(JSON.stringify({ error: "Error down-voting image", details: updateError.message }), {
@@ -73,10 +73,11 @@ export async function POST(
       headers: {
         "Content-Type": "application/json"
       }
-    });
+    })
   }
 
-  await forceGenerateNewFoodIconQueue.enqueue(foodItemId.toString())
+  // await forceGenerateNewFoodIconQueue.enqueue(foodItemId.toString())
+  await supabaseAdmin.from("IconQueue").insert({ requested_food_string: foodImage.imageDescription || "" }).select()
 
   return new NextResponse(JSON.stringify({ message: "Success" }), {
     status: 200,

@@ -355,6 +355,33 @@ export interface Database {
           }
         ]
       }
+      IconQueue: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: number
+          requested_food_string: string
+          result: Database["public"]["Enums"]["GenerateIconResult"] | null
+          started_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: number
+          requested_food_string?: string
+          result?: Database["public"]["Enums"]["GenerateIconResult"] | null
+          started_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: number
+          requested_food_string?: string
+          result?: Database["public"]["Enums"]["GenerateIconResult"] | null
+          started_at?: string | null
+        }
+        Relationships: []
+      }
       LoggedFoodItem: {
         Row: {
           consumedOn: string
@@ -985,6 +1012,7 @@ export interface Database {
         | "FATSECRET"
         | "NUTRITIONIX"
       gender_enum: "male" | "female" | "other"
+      GenerateIconResult: "NOT_STARTED" | "STARTED" | "FAILED" | "SUCCESS"
       MessageDirection: "Inbound" | "Outbound"
       MessageStatus: "RECEIVED" | "PROCESSING" | "RESOLVED" | "FAILED"
       MessageType:
