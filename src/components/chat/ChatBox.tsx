@@ -24,7 +24,7 @@ export default function ChatBox({messages, mutate}: {messages: Tables<"Message">
     setMessageInput("");
     setSubmitting(true);
   
-    let newMessage: Tables<"Message"> = {
+    let newMessage: Partial<Tables<"Message">> = {
       id: messages.length + 1,
       createdAt: new Date().toISOString(),
       content: messageInput,
