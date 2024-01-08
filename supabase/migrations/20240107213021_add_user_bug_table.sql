@@ -13,6 +13,14 @@ create table "public"."userSubmittedBug" (
     "food_item_id" bigint
 );
 
+alter table "public"."userSubmittedBug" enable row level security;
+
+create policy "Enable insert for authenticated users only"
+on "public"."userSubmittedBug"
+as permissive
+for insert
+to authenticated
+with check (true);
 
 alter table "public"."LoggedFoodItem" add column "local_id" uuid;
 
@@ -43,3 +51,4 @@ alter table "public"."userSubmittedBug" validate constraint "userSubmittedBug_lo
 alter table "public"."userSubmittedBug" add constraint "userSubmittedBug_message_id_fkey" FOREIGN KEY (message_id) REFERENCES "Message"(id) not valid;
 
 alter table "public"."userSubmittedBug" validate constraint "userSubmittedBug_message_id_fkey";
+
