@@ -157,7 +157,9 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
             }))
           : [])
       ]),
-      Nutrient: nutrients
+      Nutrient: nutrients,
+      foodIcon: null
+
     }
   })
 }
