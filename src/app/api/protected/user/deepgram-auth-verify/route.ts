@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const { aminoUser, error } = (await GetAminoUserOnRequest()) as { aminoUser: Tables<"User">; error: any }
 
   if (error) {
-    return new Response(error, { status: 400 })
+    return new Response('error:' + error, { status: 400 })
   }
 
   if (!aminoUser) {
