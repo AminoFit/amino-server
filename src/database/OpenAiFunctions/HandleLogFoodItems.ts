@@ -35,8 +35,6 @@ import { constructFoodItemRequestString } from "./utils/foodLogHelper"
 import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
 
-
-
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
 // used to determine if an item should be included in a compare list
@@ -268,6 +266,29 @@ async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<
   return result
 }
 
+export async function UpdateBestIconForFoodItem(foodItemId: number) {
+  const supabaseAdmin = createAdminSupabase()
+
+  const { data: bestIcons, error: similarityError } = await supabaseAdmin.rpc("get_top_foodicon_embedding_similarity", {
+    food_item_id: foodItemId
+  })
+
+  if (similarityError) {
+    console.log("Error fetching best icons for FoodItem with id:", foodItemId, similarityError)
+    return
+  }
+  console.log("Found", bestIcons.length, "best icons for FoodItem id:", foodItemId)
+  const { data: updateFoodItem, error: updateFoodItemError } = await supabaseAdmin
+    .from("FoodItem")
+    .update({ foodIcon: bestIcons[0].food_icon_id })
+    .eq("id", foodItemId)
+  if (updateFoodItemError) {
+    console.log("Error updating FoodItem ID: ", foodItemId, updateFoodItemError)
+    return
+  }
+  console.log("Updated food item id", foodItemId)
+}
+
 export async function HandleLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
   food: FoodItemToLog,
@@ -429,7 +450,8 @@ async function addFoodItemToDatabase(
     console.error("Error inserting food item", insertError)
     throw insertError
   }
-  // console.log("Insert FoodItem result error:", insertError)
+
+  await UpdateBestIconForFoodItem(newFood.id)
 
   if (newFood) {
     const { error: addNutrientsError } = await supabase.from("Nutrient").insert(

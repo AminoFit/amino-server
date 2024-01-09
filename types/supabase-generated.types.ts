@@ -191,6 +191,33 @@ export interface Database {
         }
         Relationships: []
       }
+      FoodIcon: {
+        Row: {
+          bgeBaseEmbedding: string
+          created_at: string
+          fileName: string
+          iconStyle: string
+          id: number
+          matchingString: string
+        }
+        Insert: {
+          bgeBaseEmbedding: string
+          created_at?: string
+          fileName: string
+          iconStyle: string
+          id?: number
+          matchingString: string
+        }
+        Update: {
+          bgeBaseEmbedding?: string
+          created_at?: string
+          fileName?: string
+          iconStyle?: string
+          id?: number
+          matchingString?: string
+        }
+        Relationships: []
+      }
       FoodImage: {
         Row: {
           bgeBaseEmbedding: string | null
@@ -228,6 +255,7 @@ export interface Database {
           description: string | null
           externalId: string | null
           fiberPerServing: number | null
+          foodIcon: number | null
           foodInfoSource: Database["public"]["Enums"]["FoodInfoSource"]
           id: number
           isLiquid: boolean
@@ -258,6 +286,7 @@ export interface Database {
           description?: string | null
           externalId?: string | null
           fiberPerServing?: number | null
+          foodIcon?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           id?: number
           isLiquid?: boolean
@@ -288,6 +317,7 @@ export interface Database {
           description?: string | null
           externalId?: string | null
           fiberPerServing?: number | null
+          foodIcon?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           id?: number
           isLiquid?: boolean
@@ -307,6 +337,12 @@ export interface Database {
           weightUnknown?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "FoodItem_foodIcon_fkey"
+            columns: ["foodIcon"]
+            referencedRelation: "FoodIcon"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "FoodItem_messageId_fkey"
             columns: ["messageId"]
@@ -895,6 +931,19 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      get_best_food_image: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          id: number
+          content: string
+          similarity: number
+          url: string
+        }[]
+      }
       get_branded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -922,6 +971,15 @@ export interface Database {
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_top_foodicon_embedding_similarity: {
+        Args: {
+          food_item_id: number
+        }
+        Returns: {
+          food_icon_id: number
+          cosine_similarity: number
+        }[]
       }
       get_top_foodimage_embedding_similarity: {
         Args: {
