@@ -428,6 +428,7 @@ export interface Database {
           foodItemId: number | null
           grams: number
           id: number
+          local_id: string | null
           loggedUnit: string | null
           messageId: number | null
           servingAmount: number | null
@@ -445,6 +446,7 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
+          local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
           servingAmount?: number | null
@@ -462,6 +464,7 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
+          local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
           servingAmount?: number | null
@@ -511,6 +514,7 @@ export interface Database {
           id: number
           itemsProcessed: number | null
           itemsToProcess: number | null
+          local_id: string | null
           messageType: Database["public"]["Enums"]["MessageType"]
           resolvedAt: string | null
           role: Database["public"]["Enums"]["Role"]
@@ -524,6 +528,7 @@ export interface Database {
           id?: number
           itemsProcessed?: number | null
           itemsToProcess?: number | null
+          local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
           resolvedAt?: string | null
           role: Database["public"]["Enums"]["Role"]
@@ -537,6 +542,7 @@ export interface Database {
           id?: number
           itemsProcessed?: number | null
           itemsToProcess?: number | null
+          local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
           resolvedAt?: string | null
           role?: Database["public"]["Enums"]["Role"]
@@ -908,6 +914,58 @@ export interface Database {
           }
         ]
       }
+      userSubmittedBug: {
+        Row: {
+          bug_type: Database["public"]["Enums"]["bug_type_enum"] | null
+          created_at: string
+          created_by_user: string
+          extra_details: string | null
+          food_item_id: number | null
+          id: number
+          logged_food_id: number | null
+          message_id: number | null
+        }
+        Insert: {
+          bug_type?: Database["public"]["Enums"]["bug_type_enum"] | null
+          created_at?: string
+          created_by_user?: string
+          extra_details?: string | null
+          food_item_id?: number | null
+          id?: number
+          logged_food_id?: number | null
+          message_id?: number | null
+        }
+        Update: {
+          bug_type?: Database["public"]["Enums"]["bug_type_enum"] | null
+          created_at?: string
+          created_by_user?: string
+          extra_details?: string | null
+          food_item_id?: number | null
+          id?: number
+          logged_food_id?: number | null
+          message_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "userSubmittedBug_food_item_id_fkey"
+            columns: ["food_item_id"]
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "userSubmittedBug_logged_food_id_fkey"
+            columns: ["logged_food_id"]
+            referencedRelation: "LoggedFoodItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "userSubmittedBug_message_id_fkey"
+            columns: ["message_id"]
+            referencedRelation: "Message"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       VerificationToken: {
         Row: {
           expires: string
@@ -1059,6 +1117,7 @@ export interface Database {
         | "Moderate Exercise"
         | "Very Active"
         | "Extremely Active"
+      bug_type_enum: "bad_match" | "bad_food_icon" | "bad_food_info"
       FoodInfoSource:
         | "User"
         | "Online"
