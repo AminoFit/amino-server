@@ -131,7 +131,6 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     addedSugarPerServing: null,
     adaEmbedding: null,
     bgeBaseEmbedding: null,
-    foodIcon: null
   }
 
   for (const [nutrientName, nutrientInfo] of Object.entries(usdaFoodItem.foodInfo)) {

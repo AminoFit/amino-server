@@ -266,29 +266,6 @@ async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promis
   return result
 }
 
-export async function UpdateBestIconForFoodItem(foodItemId: number) {
-  const supabaseAdmin = createAdminSupabase()
-
-  const { data: bestIcons, error: similarityError } = await supabaseAdmin.rpc("get_top_foodicon_embedding_similarity", {
-    food_item_id: foodItemId
-  })
-
-  if (similarityError) {
-    console.log("Error fetching best icons for FoodItem with id:", foodItemId, similarityError)
-    return
-  }
-  console.log("Found", bestIcons.length, "best icons for FoodItem id:", foodItemId)
-  const { data: updateFoodItem, error: updateFoodItemError } = await supabaseAdmin
-    .from("FoodItem")
-    .update({ foodIcon: bestIcons[0].food_icon_id })
-    .eq("id", foodItemId)
-  if (updateFoodItemError) {
-    console.log("Error updating FoodItem ID: ", foodItemId, updateFoodItemError)
-    return
-  }
-  console.log("Updated food item id", foodItemId)
-}
-
 export async function HandleLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
   food: FoodItemToLog,
@@ -450,10 +427,6 @@ async function addFoodItemToDatabase(
     console.error("Error inserting food item", insertError)
     throw insertError
   }
-
-  // This will assign a best guess food image to start. This will get updated if the icon was 
-  // added to the queue and generated.
-  await UpdateBestIconForFoodItem(newFood.id)
 
   if (newFood) {
     const { error: addNutrientsError } = await supabase.from("Nutrient").insert(

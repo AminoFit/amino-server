@@ -106,7 +106,6 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
         nutrientUnit: nutrient.nutrient_unit,
         nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
       })) || [],
-      foodIcon: null
   }
   return dbFoodItem
 }

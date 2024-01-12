@@ -180,7 +180,6 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
     Nutrient: nutrients,
     adaEmbedding: null,
     bgeBaseEmbedding: null,
-    foodIcon: null
   }
 
   return foodItem
