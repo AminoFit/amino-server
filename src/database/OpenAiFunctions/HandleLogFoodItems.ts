@@ -233,7 +233,7 @@ async function findBestMatch(
   return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
 }
 
-async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
+async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
   const supabase = createAdminSupabase()
 
   const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
@@ -344,8 +344,8 @@ export async function HandleLogFoodItem(
     status: "Processed"
   }
 
-  const foodItem = await logFoodItem(loggedFoodItem.id, data)
-  if (!foodItem) {
+  const updatedLoggedFoodItem = await updateLoggedFoodItem(loggedFoodItem.id, data)
+  if (!updatedLoggedFoodItem) {
     console.log("Could not log food item")
     return "Sorry, I could not log your food items. Please try again later."
   }
@@ -355,7 +355,7 @@ export async function HandleLogFoodItem(
   const supabaseAdmin = createAdminSupabase()
 
   console.log("About to queue icon generation")
-  console.log("food", JSON.stringify(foodItem, null, 2))
+  console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
   console.log("bestMatch.name", bestMatch.name)
 
   const iconString = bestMatch.name
@@ -365,7 +365,7 @@ export async function HandleLogFoodItem(
   // )
   const { data: iconQueue, error: iconError } = await supabaseAdmin
     .from("IconQueue")
-    .insert({ requested_food_string: iconString })
+    .insert({ requested_food_item_id: bestMatch.id })
     .select()
 
   if (iconError) {
@@ -373,9 +373,9 @@ export async function HandleLogFoodItem(
   }
   console.log("iconQueue", iconQueue)
 
-  console.log("Queued icon generation", foodItem.id)
+  console.log("Queued icon generation", updatedLoggedFoodItem.id)
 
-  return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
+  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
 
 async function addFoodItemToDatabase(
