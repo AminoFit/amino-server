@@ -215,6 +215,14 @@ export async function GenerateResponseForQuickLog(
     }
   }
 
+  //verify user is owner of message
+  if (loadedMessage.userId !== user.id) {
+    handleQuickLogError(inputMessageId, "Message is not available. User is not the owner of the message.")
+    return {
+      resultMessage: "Sorry, we're having problems right now. Please try again later."
+    }
+  }
+
   // if message is already resolved or processing, return
   if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
     return {
