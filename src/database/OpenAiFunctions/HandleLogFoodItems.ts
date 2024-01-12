@@ -451,6 +451,8 @@ async function addFoodItemToDatabase(
     throw insertError
   }
 
+  // This will assign a best guess food image to start. This will get updated if the icon was 
+  // added to the queue and generated.
   await UpdateBestIconForFoodItem(newFood.id)
 
   if (newFood) {
