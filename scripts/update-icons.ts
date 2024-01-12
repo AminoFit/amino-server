@@ -1,13 +1,12 @@
-import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
-import { createClient } from "@supabase/supabase-js"
-import { Database } from "types/supabase-generated.types"
-import * as fs from "fs"
-import * as path from "path"
-import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
-import { IconData } from "./IconData/icons"
-import { UpdateBestIconForFoodItem } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+// import { SupabaseServiceKey, SupabaseURL } from "@/utils/auth-keys"
+// import { createClient } from "@supabase/supabase-js"
+// import { Database } from "types/supabase-generated.types"
+// import * as fs from "fs"
+// import * as path from "path"
+// import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
+// import { UpdateBestIconForFoodItem } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 
-console.log("Syncing Food Icons from foodicons bucket")
+console.log("This script is not yet implemented.")
 
 // COUDRON: This was a script i used to generate a finite set of food icons. Might want to use a script like this to fix things later.
 
