@@ -215,6 +215,19 @@ export async function GenerateResponseForQuickLog(
     }
   }
 
+  // if message is already resolved or processing, return
+  if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
+    return {
+      resultMessage: "Message is already processed or processing."
+    }
+  }
+
+  UpdateMessage({
+    id: inputMessageId,
+    status: "PROCESSING",
+  })
+
+
   let foodItemsToLog: FoodItemToLog[] = []
 
   try {
