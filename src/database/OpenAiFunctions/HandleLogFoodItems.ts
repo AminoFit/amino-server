@@ -35,8 +35,6 @@ import { constructFoodItemRequestString } from "./utils/foodLogHelper"
 import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
 
-
-
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
 // used to determine if an item should be included in a compare list
@@ -235,7 +233,7 @@ async function findBestMatch(
   return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
 }
 
-async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
+async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
   const supabase = createAdminSupabase()
 
   const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
@@ -266,6 +264,29 @@ async function logFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<
   }
 
   return result
+}
+
+export async function UpdateBestIconForFoodItem(foodItemId: number) {
+  const supabaseAdmin = createAdminSupabase()
+
+  const { data: bestIcons, error: similarityError } = await supabaseAdmin.rpc("get_top_foodicon_embedding_similarity", {
+    food_item_id: foodItemId
+  })
+
+  if (similarityError) {
+    console.log("Error fetching best icons for FoodItem with id:", foodItemId, similarityError)
+    return
+  }
+  console.log("Found", bestIcons.length, "best icons for FoodItem id:", foodItemId)
+  const { data: updateFoodItem, error: updateFoodItemError } = await supabaseAdmin
+    .from("FoodItem")
+    .update({ foodIcon: bestIcons[0].food_icon_id })
+    .eq("id", foodItemId)
+  if (updateFoodItemError) {
+    console.log("Error updating FoodItem ID: ", foodItemId, updateFoodItemError)
+    return
+  }
+  console.log("Updated food item id", foodItemId)
 }
 
 export async function HandleLogFoodItem(
@@ -323,8 +344,8 @@ export async function HandleLogFoodItem(
     status: "Processed"
   }
 
-  const foodItem = await logFoodItem(loggedFoodItem.id, data)
-  if (!foodItem) {
+  const updatedLoggedFoodItem = await updateLoggedFoodItem(loggedFoodItem.id, data)
+  if (!updatedLoggedFoodItem) {
     console.log("Could not log food item")
     return "Sorry, I could not log your food items. Please try again later."
   }
@@ -334,7 +355,7 @@ export async function HandleLogFoodItem(
   const supabaseAdmin = createAdminSupabase()
 
   console.log("About to queue icon generation")
-  console.log("food", JSON.stringify(foodItem, null, 2))
+  console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
   console.log("bestMatch.name", bestMatch.name)
 
   const iconString = bestMatch.name
@@ -344,7 +365,7 @@ export async function HandleLogFoodItem(
   // )
   const { data: iconQueue, error: iconError } = await supabaseAdmin
     .from("IconQueue")
-    .insert({ requested_food_string: iconString })
+    .insert({ requested_food_item_id: bestMatch.id })
     .select()
 
   if (iconError) {
@@ -352,9 +373,9 @@ export async function HandleLogFoodItem(
   }
   console.log("iconQueue", iconQueue)
 
-  console.log("Queued icon generation", foodItem.id)
+  console.log("Queued icon generation", updatedLoggedFoodItem.id)
 
-  return `${bestMatch.name} - ${foodItem.grams}g - ${foodItem.loggedUnit}`
+  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
 
 async function addFoodItemToDatabase(
@@ -429,7 +450,10 @@ async function addFoodItemToDatabase(
     console.error("Error inserting food item", insertError)
     throw insertError
   }
-  // console.log("Insert FoodItem result error:", insertError)
+
+  // This will assign a best guess food image to start. This will get updated if the icon was 
+  // added to the queue and generated.
+  await UpdateBestIconForFoodItem(newFood.id)
 
   if (newFood) {
     const { error: addNutrientsError } = await supabase.from("Nutrient").insert(

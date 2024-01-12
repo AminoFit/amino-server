@@ -191,6 +191,33 @@ export interface Database {
         }
         Relationships: []
       }
+      FoodIcon: {
+        Row: {
+          bgeBaseEmbedding: string
+          created_at: string
+          fileName: string
+          iconStyle: string
+          id: number
+          matchingString: string
+        }
+        Insert: {
+          bgeBaseEmbedding: string
+          created_at?: string
+          fileName: string
+          iconStyle: string
+          id?: number
+          matchingString: string
+        }
+        Update: {
+          bgeBaseEmbedding?: string
+          created_at?: string
+          fileName?: string
+          iconStyle?: string
+          id?: number
+          matchingString?: string
+        }
+        Relationships: []
+      }
       FoodImage: {
         Row: {
           bgeBaseEmbedding: string | null
@@ -228,6 +255,7 @@ export interface Database {
           description: string | null
           externalId: string | null
           fiberPerServing: number | null
+          foodIcon: number | null
           foodInfoSource: Database["public"]["Enums"]["FoodInfoSource"]
           id: number
           isLiquid: boolean
@@ -258,6 +286,7 @@ export interface Database {
           description?: string | null
           externalId?: string | null
           fiberPerServing?: number | null
+          foodIcon?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           id?: number
           isLiquid?: boolean
@@ -288,6 +317,7 @@ export interface Database {
           description?: string | null
           externalId?: string | null
           fiberPerServing?: number | null
+          foodIcon?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           id?: number
           isLiquid?: boolean
@@ -307,6 +337,12 @@ export interface Database {
           weightUnknown?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "FoodItem_foodIcon_fkey"
+            columns: ["foodIcon"]
+            referencedRelation: "FoodIcon"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "FoodItem_messageId_fkey"
             columns: ["messageId"]
@@ -360,7 +396,7 @@ export interface Database {
           created_at: string
           finished_at: string | null
           id: number
-          requested_food_string: string
+          requested_food_item_id: number | null
           result: Database["public"]["Enums"]["GenerateIconResult"] | null
           started_at: string | null
         }
@@ -368,7 +404,7 @@ export interface Database {
           created_at?: string
           finished_at?: string | null
           id?: number
-          requested_food_string?: string
+          requested_food_item_id?: number | null
           result?: Database["public"]["Enums"]["GenerateIconResult"] | null
           started_at?: string | null
         }
@@ -376,11 +412,18 @@ export interface Database {
           created_at?: string
           finished_at?: string | null
           id?: number
-          requested_food_string?: string
+          requested_food_item_id?: number | null
           result?: Database["public"]["Enums"]["GenerateIconResult"] | null
           started_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "IconQueue_requested_food_item_id_fkey"
+            columns: ["requested_food_item_id"]
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       LoggedFoodItem: {
         Row: {
@@ -392,7 +435,6 @@ export interface Database {
           foodItemId: number | null
           grams: number
           id: number
-          local_id: string | null
           loggedUnit: string | null
           messageId: number | null
           servingAmount: number | null
@@ -410,7 +452,6 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
-          local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
           servingAmount?: number | null
@@ -428,7 +469,6 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
-          local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
           servingAmount?: number | null
@@ -478,7 +518,6 @@ export interface Database {
           id: number
           itemsProcessed: number | null
           itemsToProcess: number | null
-          local_id: string | null
           messageType: Database["public"]["Enums"]["MessageType"]
           resolvedAt: string | null
           role: Database["public"]["Enums"]["Role"]
@@ -492,7 +531,6 @@ export interface Database {
           id?: number
           itemsProcessed?: number | null
           itemsToProcess?: number | null
-          local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
           resolvedAt?: string | null
           role: Database["public"]["Enums"]["Role"]
@@ -506,7 +544,6 @@ export interface Database {
           id?: number
           itemsProcessed?: number | null
           itemsToProcess?: number | null
-          local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
           resolvedAt?: string | null
           role?: Database["public"]["Enums"]["Role"]
@@ -878,58 +915,6 @@ export interface Database {
           }
         ]
       }
-      userSubmittedBug: {
-        Row: {
-          bug_type: Database["public"]["Enums"]["bug_type_enum"] | null
-          created_at: string
-          created_by_user: string
-          extra_details: string | null
-          food_item_id: number | null
-          id: number
-          logged_food_id: number | null
-          message_id: number | null
-        }
-        Insert: {
-          bug_type?: Database["public"]["Enums"]["bug_type_enum"] | null
-          created_at?: string
-          created_by_user?: string
-          extra_details?: string | null
-          food_item_id?: number | null
-          id?: number
-          logged_food_id?: number | null
-          message_id?: number | null
-        }
-        Update: {
-          bug_type?: Database["public"]["Enums"]["bug_type_enum"] | null
-          created_at?: string
-          created_by_user?: string
-          extra_details?: string | null
-          food_item_id?: number | null
-          id?: number
-          logged_food_id?: number | null
-          message_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "userSubmittedBug_food_item_id_fkey"
-            columns: ["food_item_id"]
-            referencedRelation: "FoodItem"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "userSubmittedBug_logged_food_id_fkey"
-            columns: ["logged_food_id"]
-            referencedRelation: "LoggedFoodItem"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "userSubmittedBug_message_id_fkey"
-            columns: ["message_id"]
-            referencedRelation: "Message"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       VerificationToken: {
         Row: {
           expires: string
@@ -953,6 +938,19 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      get_best_food_image: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          id: number
+          content: string
+          similarity: number
+          url: string
+        }[]
+      }
       get_branded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -980,6 +978,15 @@ export interface Database {
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_top_foodicon_embedding_similarity: {
+        Args: {
+          food_item_id: number
+        }
+        Returns: {
+          food_icon_id: number
+          cosine_similarity: number
+        }[]
       }
       get_top_foodimage_embedding_similarity: {
         Args: {
@@ -1059,7 +1066,6 @@ export interface Database {
         | "Moderate Exercise"
         | "Very Active"
         | "Extremely Active"
-      bug_type_enum: "bad_match" | "bad_food_icon" | "bad_food_info"
       FoodInfoSource:
         | "User"
         | "Online"

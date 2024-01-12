@@ -10,7 +10,8 @@
     "lint": "next lint",
     "run:ts-node": "DOTENV_CONFIG_PATH=.env.local ts-node -r dotenv/config -r tsconfig-paths/register -P tsconfig.json",
     "run:ts-node-prod": "DOTENV_CONFIG_PATH=.env.prod ts-node -r dotenv/config -r tsconfig-paths/register -P tsconfig.json",
-    "update-types": "npx supabase gen types typescript --local > types/supabase-generated.types.ts"
+    "update-types": "npx supabase gen types typescript --local > types/supabase-generated.types.ts",
+    "update-icons": "npm run run:ts-node scripts/update-icons.ts"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.0.1",

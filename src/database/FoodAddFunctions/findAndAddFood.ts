@@ -474,7 +474,7 @@ async function testAddFoodToDatabase() {
         nutrientAmountPerDefaultServing: 400
       }
     ]
-  } as FoodItemWithNutrientsAndServing
+  } as unknown as FoodItemWithNutrientsAndServing
 
   // If the food item is missing a field, complete it
   if (!food.defaultServingWeightGram || food.weightUnknown) {
@@ -584,7 +584,7 @@ async function testFoodMissing() {
       }
     ],
     Nutrient: []
-  } as FoodItemWithNutrientsAndServing
+  } as unknown as FoodItemWithNutrientsAndServing
 
   let foodItemToSave: FoodItemWithNutrientsAndServing;
   if (checkIfEmptyServings(foodItem.Serving)) {

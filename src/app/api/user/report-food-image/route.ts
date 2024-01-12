@@ -76,8 +76,7 @@ export async function POST(
     })
   }
 
-  // await forceGenerateNewFoodIconQueue.enqueue(foodItemId.toString())
-  await supabaseAdmin.from("IconQueue").insert({ requested_food_string: foodImage.imageDescription || "" }).select()
+  await RequestNewIconIfAllHaveDownvotes(foodImageId)
 
   return new NextResponse(JSON.stringify({ message: "Success" }), {
     status: 200,
@@ -85,4 +84,22 @@ export async function POST(
       "Content-Type": "application/json"
     }
   })
+}
+
+async function RequestNewIconIfAllHaveDownvotes(foodItemId: number) {
+  const supabaseAdmin = createAdminSupabase()
+  const { data: foodItemImagesWithZeroDownvotes, error: foodItemImagesError } = await supabaseAdmin
+    .from("FoodItemImages")
+    .select("downvotes")
+    .eq("foodItemId", foodItemId)
+    .eq("downvotes", 0)
+
+  if (foodItemImagesError) {
+    console.error("Error fetching food item images:", foodItemImagesError)
+    return
+  }
+
+  if (foodItemImagesWithZeroDownvotes.length === 0) {
+    await supabaseAdmin.from("IconQueue").insert({ requested_food_item_id: foodItemId }).select()
+  }
 }
