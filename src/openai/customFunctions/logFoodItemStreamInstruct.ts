@@ -48,7 +48,7 @@ function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
 export async function logFoodItemStreamInstruct(
   user: Tables<"User">,
   user_request: string,
-  lastUserMessageId: number
+  messageId: number
 ): Promise<FoodItemToLog[]> {
   const sanitizedUserRequest = sanitizeInput(user_request)
   console.log("Sanitized user request:", sanitizedUserRequest)
@@ -87,7 +87,7 @@ Output:
   const { data: messageInfo } = await supabase
     .from("Message")
     .select("itemsProcessed")
-    .eq("id", lastUserMessageId)
+    .eq("id", messageId)
     .single()
   const itemsAlreadyProcessed = messageInfo?.itemsProcessed || 0
 
@@ -114,7 +114,7 @@ Output:
         continue
       }
       // Add logging task to the tasks array
-      const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, lastUserMessageId)
+      const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, messageId)
       loggingTasks.push(loggingTask)
     }
 

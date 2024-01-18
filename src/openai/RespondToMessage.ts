@@ -194,7 +194,7 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
 
 // Helper function to handle error scenarios and update the message accordingly
 function handleQuickLogError(inputMessageId: number, logMessage: string) {
-  console.log("erro",logMessage)
+  console.log("error",logMessage)
   UpdateMessage({
     id: inputMessageId,
     status: "FAILED",
@@ -230,7 +230,7 @@ export async function GenerateResponseForQuickLog(
     }
   }
 
-  UpdateMessage({
+  await UpdateMessage({
     id: inputMessageId,
     status: "PROCESSING",
   })
@@ -260,7 +260,7 @@ export async function GenerateResponseForQuickLog(
   const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`
 
   // Update the message status as RESOLVED
-  UpdateMessage({
+  await UpdateMessage({
     id: inputMessageId,
     status: "RESOLVED",
     resolvedAt: new Date()
