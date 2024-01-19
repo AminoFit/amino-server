@@ -145,28 +145,10 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
       // { delay: "24h" } // scheduling options
     )
 
-    // const targetUrl = `https://${process.env.VERCEL_URL}/api/process-food-item/${food.id}`
-    // console.log("Target URL: ", targetUrl)
-
-    // const fetchUrl = `https://api.serverlessq.com?id=${process.env.SERVERLESSQ_QUEUE_ID}&target=${targetUrl}`
-
-    // const result = await fetch(fetchUrl, {
-    //   headers: {
-    //     Accept: "application/json",
-    //     "x-api-key": process.env.SERVERLESSQ_API_TOKEN!
-    //   }
-    // })
 
     console.log(`Added food id to queue: ${food.id}`)
   }
 
-  // Move process food items to POST route on serverlessq
-
-  // const foodAddResultsPromises = []
-  // for (let food of foodItemsToLog) {
-  //   foodAddResultsPromises.push(HandleLogFoodItem(food, lastUserMessage, user))
-  // }
-  // const results = (await Promise.all(foodAddResultsPromises)) || []
 
   if (results.length === 0) {
     return "Sorry, I could not log your food items. Please try again later. E230"
@@ -335,24 +317,51 @@ export async function HandleLogFoodItem(
   console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
   console.log("bestMatch.name", bestMatch.name)
 
-  const iconString = bestMatch.name
-  // Queue the icon generation
-  // await generateFoodIconQueue.enqueue(
-  //   `${foodItem.foodItemId}` // job to be enqueued
-  // )
-  const { data: iconQueue, error: iconError } = await supabaseAdmin
+  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
+}
+
+async function LinkIconsOrCreateIfNeeded(foodItem: FoodItemWithNutrientsAndServing): Promise<void> {
+  const supabase = createAdminSupabase()
+
+  let { data: closestIcons, error } = await supabase.rpc("get_top_foodicon_embedding_similarity", {
+    food_item_id: foodItem.id
+  })
+  if (error) {
+    console.error("Could not get top food icon embedding similarity")
+    console.error(error)
+    await sendRequestToGenerateIcon(foodItem)
+    return
+  }
+
+  if (closestIcons && closestIcons.length > 0) {
+    if (closestIcons[0].cosine_similarity > 0.9) {
+      // Link the icon
+      await supabase
+        .from("FoodItemImages")
+        .insert([
+          {
+            foodItemId: foodItem.id,
+            foodImageId: closestIcons[0].food_icon_id
+          }
+        ])
+        .select()
+        .single()
+      return
+    }
+  }
+  await sendRequestToGenerateIcon(foodItem)
+}
+async function sendRequestToGenerateIcon(foodItem: FoodItemWithNutrientsAndServing): Promise<void> {
+  const supabase = createAdminSupabase()
+  const { data: iconQueue, error: iconError } = await supabase
     .from("IconQueue")
-    .insert({ requested_food_item_id: bestMatch.id })
-    .select()
+    .select("requested_food_item_id")
+    .eq("requested_food_item_id", foodItem.id)
+    .single()
 
   if (iconError) {
     console.error("Error adding to icon queue", iconError)
   }
-  console.log("iconQueue", iconQueue)
-
-  console.log("Queued icon generation", updatedLoggedFoodItem.id)
-
-  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
 
 async function addFoodItemToDatabase(
@@ -410,7 +419,6 @@ async function addFoodItemToDatabase(
 
   console.log("foodWithoutId", foodWithoutId)
 
-  // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
   const { data: newFood, error: insertError } = await supabase
     .from("FoodItem")
     .insert({
