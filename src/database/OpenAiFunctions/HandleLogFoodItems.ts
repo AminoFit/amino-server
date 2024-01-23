@@ -145,10 +145,8 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
       // { delay: "24h" } // scheduling options
     )
 
-
     console.log(`Added food id to queue: ${food.id}`)
   }
-
 
   if (results.length === 0) {
     return "Sorry, I could not log your food items. Please try again later. E230"
@@ -317,19 +315,21 @@ export async function HandleLogFoodItem(
   console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
   console.log("bestMatch.name", bestMatch.name)
 
+  await LinkIconsOrCreateIfNeeded(bestMatch.id)
+
   return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
 
-async function LinkIconsOrCreateIfNeeded(foodItem: FoodItemWithNutrientsAndServing): Promise<void> {
+async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
   const supabase = createAdminSupabase()
 
   let { data: closestIcons, error } = await supabase.rpc("get_top_foodicon_embedding_similarity", {
-    food_item_id: foodItem.id
+    food_item_id: foodItemId
   })
   if (error) {
     console.error("Could not get top food icon embedding similarity")
     console.error(error)
-    await sendRequestToGenerateIcon(foodItem)
+    await sendRequestToGenerateIcon(foodItemId)
     return
   }
 
@@ -340,7 +340,7 @@ async function LinkIconsOrCreateIfNeeded(foodItem: FoodItemWithNutrientsAndServi
         .from("FoodItemImages")
         .insert([
           {
-            foodItemId: foodItem.id,
+            foodItemId: foodItemId,
             foodImageId: closestIcons[0].food_icon_id
           }
         ])
@@ -349,15 +349,15 @@ async function LinkIconsOrCreateIfNeeded(foodItem: FoodItemWithNutrientsAndServi
       return
     }
   }
-  await sendRequestToGenerateIcon(foodItem)
+  await sendRequestToGenerateIcon(foodItemId)
 }
-async function sendRequestToGenerateIcon(foodItem: FoodItemWithNutrientsAndServing): Promise<void> {
+async function sendRequestToGenerateIcon(foodItemId: number): Promise<void> {
   const supabase = createAdminSupabase()
+  await supabase.from("IconQueue").insert({ requested_food_item_id: foodItemId }).select()
   const { data: iconQueue, error: iconError } = await supabase
     .from("IconQueue")
-    .select("requested_food_item_id")
-    .eq("requested_food_item_id", foodItem.id)
-    .single()
+    .insert({ requested_food_item_id: foodItemId })
+    .select()
 
   if (iconError) {
     console.error("Error adding to icon queue", iconError)
