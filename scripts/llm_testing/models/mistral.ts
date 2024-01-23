@@ -10,35 +10,56 @@ type MistralRequestBody = {
     model: string;
     messages: MistralMessage[];
 };
-
-// Define the function
-export async function callMistralApi(promptString: string, model: string = "mistral-small"): Promise<any> {
-    // Construct the request body
-    const requestBody: MistralRequestBody = {
-        model: model,
-        messages: [{ role: 'user', content: promptString }]
-    };
-
-    // Get the API key from the environment variables
+export async function* callMistralApi(promptString: string, model: string = "mistral-small") {
+    // Construct the request URL and headers
+    const url = 'https://api.mistral.ai/v1/chat/completions';
     const apiKey = process.env.MISTRAL_API_KEY;
     if (!apiKey) {
         throw new Error('Mistral API key is not set in the environment variables');
     }
-
-    // Set up the headers
     const headers = {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
         'Authorization': `Bearer ${apiKey}`
     };
 
-    try {
-        // Make the API call
-        const response = await axios.post('https://api.mistral.ai/v1/chat/completions', requestBody, { headers });
-        return response.data;
-    } catch (error) {
-        // Handle any errors
-        console.error('Error calling Mistral API:', error);
-        throw error;
+    // Construct the request body
+    const data = {
+        model,
+        messages: [{ role: 'user', content: promptString }],
+        stream: true, // Enable streaming
+    };
+
+    // Make the API call using Fetch API
+    const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
+    });
+
+    if (response.body) {
+        const reader = response.body.getReader();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            let chunk = new TextDecoder('utf-8').decode(value);
+            chunk = chunk.startsWith('data: ') ? chunk.substring(6) : chunk;
+
+            const jsonStrings = chunk.split('data:').filter(Boolean);
+
+            for (const jsonString of jsonStrings) {
+                if (jsonString.trim() === '[DONE]') {
+                    return; // Exit the loop and function
+                }
+
+                try {
+                    const chunkData = JSON.parse(jsonString);
+                    yield chunkData;
+                } catch (error) {
+                    console.error('Error parsing JSON:', error);
+                }
+            }
+        }
     }
 }
