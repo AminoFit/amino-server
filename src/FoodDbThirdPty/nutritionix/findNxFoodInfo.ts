@@ -5,7 +5,7 @@ import {
   NutritionixBrandedItem,
   NutritionixCommonItem
 } from "./searchFoodIds"
-import { cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import { cosineSimilarity } from "../../languageModelProviders/openai/utils/embeddingsHelper"
 import { isNutritionixBrandedItem } from "./nxInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 

@@ -1,7 +1,7 @@
 // OpenAI
-import { findBestServingMatchInstruct } from "../../openai/customFunctions/servingMatchRequestInstruct"
-import { findBestServingMatchFunction } from "../../openai/customFunctions/servingMatchRequestFunction"
-import { findBestFoodMatchtoLocalDb } from "../../openai/customFunctions/matchFoodItemToLocalDb"
+import { findBestServingMatchInstruct } from "../../foodMessageProcessing/servingMatchRequestInstruct"
+import { findBestServingMatchFunction } from "../../foodMessageProcessing/servingMatchRequestFunction"
+import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
@@ -21,19 +21,19 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
-import { foodItemMissingFieldComplete } from "@/openai/customFunctions/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "@/openai/customFunctions/foodItemCompleteMissingServingInfo"
+import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/foodItemMissingFieldComplete"
+import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/foodItemCompleteMissingServingInfo"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { checkRateLimit } from "@/utils/apiUsageLogging"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { findBestFoodMatchExternalDb } from "@/openai/customFunctions/matchFoodItemtoExternalDb"
+import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/matchFoodItemtoExternalDb"
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
-import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
-import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
+import { foodItemCompletion } from "@/foodMessageProcessing/foodItemCompletion"
+import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/foodItemInterface"
 
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975

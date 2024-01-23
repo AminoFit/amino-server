@@ -17,9 +17,9 @@ import { ChatCompletionRole } from "openai/resources/chat"
 
 // Custom functions and helpers
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
-import { getOpenAICompletion } from "./utils/openAiHelper"
-import { logFoodItemFunctionStream } from "./customFunctions/logFoodItemStreamFunction"
-import { logFoodItemStreamInstruct } from "./customFunctions/logFoodItemStreamInstruct"
+import { getOpenAICompletion } from "../utils/openAiHelper"
+import { logFoodItemFunctionStream } from "../../../foodMessageProcessing/logFoodItemExtract/logFoodItemStreamFunction"
+import { logFoodItemStreamInstruct } from "../../../foodMessageProcessing/logFoodItemExtract/logFoodItemStreamInstruct"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 

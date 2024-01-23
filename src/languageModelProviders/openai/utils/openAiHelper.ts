@@ -1,22 +1,33 @@
-import { openai } from "../../utils/openaiFunctionSchemas"
+import { openai } from "../../../utils/openaiFunctionSchemas"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import OpenAI from "openai"
 import { Tables } from "types/supabase"
 
 // Log usage
-export async function LogOpenAiUsage(user: Tables<"User">, usage: OpenAI.CompletionUsage, modelName: string) {
+export async function LogOpenAiUsage(
+  user: Tables<"User">,
+  usage: OpenAI.CompletionUsage,
+  modelName: string,
+  provider: string = "openai",
+  completionTimeMs: null | number = null
+) {
   //console.log(`This request used ${usage.total_tokens || "??"} tokens`)
   //console.log(`user id: ${user.id}`)
   const data = {
-    promptTokens: usage.prompt_tokens,
-    completionTokens: usage.completion_tokens,
-    totalTokens: usage.total_tokens,
+    promptTokens: usage.prompt_tokens || 0, // Default to 0 if undefined
+    completionTokens: usage.completion_tokens || 0, // Default to 0 if undefined
+    totalTokens: usage.total_tokens || 0, // Default to 0 if undefined
     userId: user.id,
-    modelName
+    modelName,
+    provider,
+    completionTimeMs: completionTimeMs !== null ? Number(Math.trunc(completionTimeMs)) : null
   }
   const supabase = createAdminSupabase()
   const { error } = await supabase.from("OpenAiUsage").insert(data)
+  if (error) {
+    console.log("Error logging OpenAI usage:", error)
+  }
 }
 
 function checkType(actual: any, expected: any) {

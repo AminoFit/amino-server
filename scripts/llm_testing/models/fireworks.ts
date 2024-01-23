@@ -13,7 +13,7 @@ export async function* callFireworksAPI(prompt: string) {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant.'
+            content: 'You are a helpful assistant that answers using exact JSON output.'
           },
           { role: 'user', content: prompt }
         ],

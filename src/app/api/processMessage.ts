@@ -1,5 +1,5 @@
 import SaveMessageFromUser from "@/database/SaveMessageFromUser"
-import { GenerateResponseForQuickLog } from "@/openai/RespondToMessage"
+import { GenerateResponseForQuickLog } from "@/languageModelProviders/openai/legacy/RespondToMessage"
 import { Tables, Enums } from "types/supabase"
 
 export enum MessageSource {

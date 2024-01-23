@@ -1,6 +1,6 @@
 import { performance } from "perf_hooks";
 import { getCfEmbedding } from "../src/utils/embeddingsCache/getCachedOrFetchEmbeddings";
-import { getAdaEmbedding } from "../src/openai/utils/embeddingsHelper";
+import { getAdaEmbedding } from "../src/languageModelProviders/openai/utils/embeddingsHelper";
 
 async function benchmarkEmbeddings(textSamples: string[]): Promise<void> {
   const cfTimes: number[] = [];

@@ -1,4 +1,4 @@
-import { chatCompletionFunctionStream } from "./chatCompletion"
+import { chatCompletionFunctionStream } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { logFoodSchema } from "@/utils/openaiFunctionSchemas"

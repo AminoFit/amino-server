@@ -1,7 +1,7 @@
 import { searchFoodIds, UsdaSearchResponse, UsdaFoodIdResults } from "./searchFoodIds"
 import { getUsdaFoodsInfo } from "./getFoodInfo"
 import { UsdaFoodItem } from "./usdaInterfaceHelper"
-import { getAdaEmbedding, cosineSimilarity } from "../../openai/utils/embeddingsHelper"
+import { getAdaEmbedding, cosineSimilarity } from "../../languageModelProviders/openai/utils/embeddingsHelper"
 import { FoodItemWithServings, mapUsdaFoodItemToFoodItem } from "./usdaInterfaceHelper"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 

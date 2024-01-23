@@ -1,7 +1,7 @@
-import { chatCompletion } from "./chatCompletion"
+import { chatCompletion } from "../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
-import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { FoodItemWithNutrientsAndServing } from "../app/dashboard/utils/FoodHelper"
+import { checkCompliesWithSchema } from "../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 

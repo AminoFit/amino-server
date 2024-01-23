@@ -53,7 +53,7 @@
     "moment-timezone": "^0.5.43",
     "next": "^13.5.2",
     "nodemailer": "^6.9.5",
-    "openai": "4.20.1",
+    "openai": "^4.25.0",
     "pgvector": "^0.1.5",
     "postcss": "8.4.31",
     "quirrel": "^1.14.1",

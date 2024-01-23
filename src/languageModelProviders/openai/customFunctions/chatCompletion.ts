@@ -3,6 +3,8 @@ import { LogOpenAiUsage } from "../utils/openAiHelper"
 import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
+import { encode } from "gpt-tokenizer"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -289,4 +291,66 @@ export async function* chatCompletionFunctionStream(
     console.error(error)
     throw error
   }
+}
+
+
+// Define the options interface with additional user and model details
+export interface ChatCompletionJsonStreamOptions {
+  model?: string
+  prompt: string
+  temperature?: number
+  max_tokens?: number
+  stop?: string
+  [key: string]: any
+}
+
+// Define the async generator function
+export async function* ChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+  const { model = "gpt-3.5-turbo-1106", prompt, temperature = 0, max_tokens = 2048, stop, ...otherParams } = options
+
+  const systemPrompt = "You are a helpful assistant that only replies in valid JSON."
+  const startTime = performance.now()
+
+  const stream = await openai.chat.completions.create({
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt }
+    ],
+    temperature,
+    model,
+    max_tokens,
+    stop,
+    ...otherParams,
+    response_format: { type: "json_object" },
+    stream: true
+  })
+
+  let totalResponse = ""
+  for await (const chunk of stream) {
+    if (chunk?.choices[0]?.delta?.content) {
+      const content = chunk.choices[0].delta.content
+      yield content
+      totalResponse += content
+    }
+  }
+
+  // Calculate token count and log usage
+  const completionTimeMs = performance.now() - startTime
+  const resultTokens = encode(totalResponse).length
+  const promptTokens = encode(prompt + systemPrompt).length
+  const totalTokens = resultTokens + promptTokens
+
+  console.log("logging performance", completionTimeMs, resultTokens, promptTokens, totalTokens)
+
+  await LogOpenAiUsage(
+    user,
+    {
+      total_tokens: totalTokens,
+      prompt_tokens: promptTokens,
+      completion_tokens: resultTokens
+    },
+    model,
+    "openai",
+    completionTimeMs
+  )
 }

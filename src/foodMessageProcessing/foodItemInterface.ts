@@ -1,5 +1,5 @@
 import { Enums, Tables } from "types/supabase"
-import { sanitizeServingName } from "../../database/utils/textSanitize"
+import { sanitizeServingName } from "../database/utils/textSanitize"
 
 export interface FoodItems {
   food_info: FoodInfo[]

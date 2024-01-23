@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { NextRequest, NextResponse } from "next/server"
-import { GenerateResponseForQuickLog } from "@/openai/RespondToMessage"
+import { GenerateResponseForQuickLog } from "@/languageModelProviders/openai/legacy/RespondToMessage"
 
 export async function POST(
   request: NextRequest // needed so we don't cache this request

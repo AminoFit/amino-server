@@ -1,6 +1,6 @@
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { chatCompletionInstructStream } from "./chatCompletion"
+import { chatCompletionInstructStream } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"

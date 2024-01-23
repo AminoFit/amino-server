@@ -1,9 +1,9 @@
-import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
+import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
+import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
-import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
-import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
-import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { FoodItemIdAndEmbedding } from "../database/OpenAiFunctions/utils/foodLoggingTypes"
+import { FoodEmbeddingCache } from "../utils/foodEmbedding"
+import { checkCompliesWithSchema } from "../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 
 /**
