@@ -305,9 +305,10 @@ export interface ChatCompletionJsonStreamOptions {
 }
 
 // Define the async generator function
-export async function* ChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
   const { model = "gpt-3.5-turbo-1106", prompt, temperature = 0, max_tokens = 2048, stop, ...otherParams } = options
 
+  console.log("model and temp", model, temperature)
   const systemPrompt = "You are a helpful assistant that only replies in valid JSON."
   const startTime = performance.now()
 

@@ -22,6 +22,7 @@ import { logFoodItemFunctionStream } from "../../../foodMessageProcessing/logFoo
 import { logFoodItemStreamInstruct } from "../../../foodMessageProcessing/logFoodItemExtract/logFoodItemStreamInstruct"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
+import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -237,15 +238,17 @@ export async function GenerateResponseForQuickLog(
 
 
   let foodItemsToLog: FoodItemToLog[] = []
+  let isBadFoodLogRequest = false
 
   try {
     // Try using the instruct model first
-    foodItemsToLog = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId)
+    ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage));
+    // {foodItemsToLog, isBadFoodLogRequest} = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId)
   } catch (error) {
     console.log("Error using instruct model:", error)
 
     // If an error occurs, fallback to the function stream method
-    foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
+    // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
   }
 
   // Check if we have received any valid food items to log
