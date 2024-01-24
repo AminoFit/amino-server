@@ -87,16 +87,14 @@ function isServerTimeData(data: any): data is { current_timestamp: number } {
   return data && typeof data === "object" && "current_timestamp" in data
 }
 
-export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, lastUserMessageId: number) {
-  console.log("parameters", parameters)
-
-  const foodItemsToLog: FoodItemToLog[] = parameters.food_items
-
-  const supabase = await createAdminSupabase()
-
-  // Increment itemsToProcess by foodItemsToLog.length
-  await supabase.from("Message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
-
+export async function AddLoggedFoodItemToQueue(
+  user: Tables<"User">,
+  user_message: Tables<"Message">,
+  food_item_to_log: FoodItemToLog
+) {
+  console.log("food_item_to_log", food_item_to_log)
+  UpdateMessage({ id: user_message.id, incrementItemsProcessedBy: 1 })
+  const supabase = createAdminSupabase()
   const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
 
   if (serverTimeError) {
@@ -111,19 +109,17 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
   // Create all the pending food items
   let { data: foodsNeedProcessing, error } = await supabase
     .from("LoggedFoodItem")
-    .insert(
-      foodItemsToLog.map((food) => {
-        return {
-          userId: user.id,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          consumedOn: food.timeEaten ? new Date(food.timeEaten).toISOString() : new Date().toISOString(),
-          messageId: lastUserMessageId,
-          status: "Needs Processing",
-          extendedOpenAiData: food as any
-        }
-      })
-    )
+    .insert({
+      userId: user.id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      consumedOn: food_item_to_log.timeEaten
+        ? new Date(food_item_to_log.timeEaten).toISOString()
+        : new Date().toISOString(),
+      messageId: user_message.id,
+      status: "Needs Processing",
+      extendedOpenAiData: food_item_to_log as any
+    })
     .select()
 
   if (error) {
@@ -134,28 +130,16 @@ export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, 
 
   foodsNeedProcessing = foodsNeedProcessing || []
 
-  const results = []
-  foodItemsToLog.forEach((food) => results.push(constructFoodRequestString(food)))
-
   // Add each pending food item to queue
   for (let food of foodsNeedProcessing) {
     console.log("Adding food item to queue:", food.id)
     await processFoodItemQueue.enqueue(
       `${food.id}` // job to be enqueued
-      // { delay: "24h" } // scheduling options
     )
-
     console.log(`Added food id to queue: ${food.id}`)
   }
-
-  if (results.length === 0) {
-    return "Sorry, I could not log your food items. Please try again later. E230"
-  }
-
-  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
-
-  return results.join(" ")
 }
+
 function printSearchResults(results: FoodItemIdAndEmbedding[]): void {
   console.log("Searching in database")
   console.log("__________________________________________________________")

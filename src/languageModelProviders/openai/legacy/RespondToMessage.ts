@@ -18,8 +18,6 @@ import { ChatCompletionRole } from "openai/resources/chat"
 // Custom functions and helpers
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
 import { getOpenAICompletion } from "../utils/openAiHelper"
-import { logFoodItemFunctionStream } from "../../../foodMessageProcessing/logFoodItemExtract/logFoodItemStreamFunction"
-import { logFoodItemStreamInstruct } from "../../../foodMessageProcessing/logFoodItemExtract/logFoodItemStreamInstruct"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat"
@@ -241,9 +239,8 @@ export async function GenerateResponseForQuickLog(
   let isBadFoodLogRequest = false
 
   try {
-    // Try using the instruct model first
+    // Try using the based
     ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage));
-    // {foodItemsToLog, isBadFoodLogRequest} = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId)
   } catch (error) {
     console.log("Error using instruct model:", error)
 

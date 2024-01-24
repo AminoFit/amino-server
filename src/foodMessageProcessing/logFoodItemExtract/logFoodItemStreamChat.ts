@@ -6,7 +6,7 @@ import {
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { AddLoggedFoodItemToQueue } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { mode } from "mathjs"
 
 const food_logging_prompt = `
@@ -160,7 +160,7 @@ export async function logFoodItemStream(
   const stream = processStreamedLoggedFoodItems(user, {
     prompt: food_logging_prompt.replace("INPUT_HERE", user_message.content),
     temperature: 0.1,
-    model: model,
+    model: model
   })
 
   for await (const chunk of stream) {
@@ -175,8 +175,8 @@ export async function logFoodItemStream(
         brand: chunk.brand || ""
       }
       foodItemsToLog.push(foodItemToLog)
-      console.log("just logged: ", foodItemToLog)
-      const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, user_message.id)
+      // console.log("just logged: ", foodItemToLog)
+      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
       loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log(chunk.contains_valid_food_items)
@@ -199,12 +199,19 @@ async function getUserByEmail(email: string) {
 }
 
 async function testChatCompletionJsonStream() {
+  const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
-  await logFoodItemStream(user![0], { content: userMessage} as Tables<"Message">)
+  // const {data, error} = await supabase.from("Message").insert([{content: userMessage, userId: user![0].id}]).select("*").single()
+  const { data, error } = await supabase
+    .from("Message")
+    .insert([{ content: userMessage, userId: user![0].id}])
+    .select()
+  const message = data![0] as Tables<"Message">
+  await logFoodItemStream(user![0], message)
 }
 
 async function testFoodLoggingStream() {
   // const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
 }
-// testChatCompletionJsonStream()
+//  testChatCompletionJsonStream()
