@@ -7,6 +7,7 @@ import {
 import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { mode } from "mathjs"
 
 const food_logging_prompt = `
 Your task is to analyze a sentence provided by a user, describing their meal for logging purposes. Follow these steps to ensure accurate identification and logging of each food item:
@@ -151,12 +152,15 @@ export async function logFoodItemStream(
   // Add logging task to the tasks array
   const loggingTasks: Promise<any>[] = []
 
+  let model = "gpt-3.5-turbo-1106"
+  // if (user_message.status === "FAILED") {
+  //   model = "gpt-4-1106-preview"
+  // }
+
   const stream = processStreamedLoggedFoodItems(user, {
     prompt: food_logging_prompt.replace("INPUT_HERE", user_message.content),
-    temperature: 0,
-    seed: 1,
-    // use the 1106 gpt 3.5 turbo
-    model: "gpt-3.5-turbo-1106"
+    temperature: 0.1,
+    model: model,
   })
 
   for await (const chunk of stream) {
@@ -197,10 +201,10 @@ async function getUserByEmail(email: string) {
 async function testChatCompletionJsonStream() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
-  await logFoodItemStream(user![0], { content: userMessage } as Tables<"Message">)
+  await logFoodItemStream(user![0], { content: userMessage} as Tables<"Message">)
 }
 
 async function testFoodLoggingStream() {
   // const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
 }
-testChatCompletionJsonStream()
+// testChatCompletionJsonStream()
