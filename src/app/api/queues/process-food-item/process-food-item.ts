@@ -25,7 +25,7 @@ async function processFoodItem(loggedFoodIdString: string) {
     throw new Error("Invalid loggedFoodId")
   }
 
-  console.log("supabase", SupabaseURL, SupabaseServiceKey)
+  // console.log("supabase", SupabaseURL, SupabaseServiceKey)
 
   const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
     auth: {
@@ -81,4 +81,4 @@ async function testProcessFoodItem() {
   await processFoodItem("1959")
 }
 
-testProcessFoodItem()
+// testProcessFoodItem()
