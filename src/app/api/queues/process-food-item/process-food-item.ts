@@ -78,7 +78,7 @@ async function processFoodItem(loggedFoodIdString: string) {
 }
 
 async function testProcessFoodItem() {
-  await processFoodItem("1960")
+  await processFoodItem("1959")
 }
 
-// testProcessFoodItem()
+testProcessFoodItem()

@@ -1,4 +1,4 @@
-import { SendRequestToGenerateIcon } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { SendRequestToGenerateIcon } from "@/foodMessageProcessing/foodIconsProcess"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 console.log("This script will generate any missing food icons.")
