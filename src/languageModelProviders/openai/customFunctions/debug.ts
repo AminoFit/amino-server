@@ -1,6 +1,6 @@
 import {
   foodItemCompletion
-} from "../../../foodMessageProcessing/foodItemCompletion"; 
+} from "../../../foodMessageProcessing/legacy/foodItemCompletion"; 
 
 import { checkCompliesWithSchema } from "@/languageModelProviders/openai/utils/openAiHelper";
 async function main() {

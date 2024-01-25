@@ -1,4 +1,4 @@
-import { chatCompletionInstruct, correctAndParseResponse } from "../languageModelProviders/openai/customFunctions/chatCompletion"
+import { chatCompletionInstruct, correctAndParseResponse } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
 import * as math from "mathjs"

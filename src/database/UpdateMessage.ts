@@ -7,12 +7,13 @@ type UpdateMessageProps = {
   resolvedAt?: Date
   messageType?: Enums<"MessageType">
   itemsToProcess?: number
-  incrementItemsProcessedBy?: number // New field to specify how much to increment by
+  incrementItemsProcessedBy?: number 
+  incrementItemsToProcessBy?: number 
   itemsProcessed?: number
 }
 
 export default async function UpdateMessage(props: UpdateMessageProps) {
-  const { id, incrementItemsProcessedBy } = props
+  const { id, incrementItemsProcessedBy, incrementItemsToProcessBy } = props
 
   const supabase = createAdminSupabase()
 
@@ -22,6 +23,8 @@ export default async function UpdateMessage(props: UpdateMessageProps) {
   // Increment the itemsProcessed count
   const newItemsProcessed = (currentMessage?.itemsProcessed ?? 0) + (incrementItemsProcessedBy ?? 0)
 
+  const itemsToProcess = props.itemsToProcess || ((currentMessage?.itemsToProcess ?? 0) + (incrementItemsToProcessBy ?? 0));
+  
   // Check if all items have been processed
   if (newItemsProcessed === currentMessage?.itemsToProcess) {
     props.status = "RESOLVED"
@@ -32,7 +35,7 @@ export default async function UpdateMessage(props: UpdateMessageProps) {
     status: props.status,
     resolvedAt: props.resolvedAt,
     messageType: props.messageType,
-    itemsToProcess: props.itemsToProcess,
+    itemsToProcess: itemsToProcess,
     itemsProcessed: newItemsProcessed
   }
 

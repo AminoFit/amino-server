@@ -6,7 +6,7 @@ import {
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { AddLoggedFoodItemToQueue } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { mode } from "mathjs"
 
 const food_logging_prompt = `
@@ -201,13 +201,27 @@ async function getUserByEmail(email: string) {
 async function testChatCompletionJsonStream() {
   const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
-  const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
-  // const {data, error} = await supabase.from("Message").insert([{content: userMessage, userId: user![0].id}]).select("*").single()
-  const { data, error } = await supabase
-    .from("Message")
-    .insert([{ content: userMessage, userId: user![0].id}])
-    .select()
+  // const userMessage = "Two apples with a latte from starbucks with 2% milk and 3 waffles with butter and maple syrup"
+  // // Make sure to include all required fields in your insert object
+  // const insertObject = {
+  //   content: userMessage,
+  //   userId: user![0].id,
+  //   role: "User",
+  //   messageType: "FOOD_LOG_REQUEST",
+  //   createdAt: new Date().toISOString(),
+  //   function_name: null,
+  //   hasimages: false,
+  //   itemsProcessed: 0,
+  //   itemsToProcess: 0,
+  //   local_id: null,
+  //   resolvedAt: null,
+  //   status: "RECEIVED"
+  // } as Tables<"Message">
+
+  // const { data, error } = await supabase.from("Message").insert([insertObject]).select()
+  const {data, error} = await supabase.from("Message").select("*").eq("id", 997)
   const message = data![0] as Tables<"Message">
+  // console.log(message)
   await logFoodItemStream(user![0], message)
 }
 

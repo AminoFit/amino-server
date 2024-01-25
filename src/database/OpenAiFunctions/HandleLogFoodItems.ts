@@ -1,17 +1,17 @@
 // OpenAI
-import { findBestServingMatchInstruct } from "../../foodMessageProcessing/servingMatchRequestInstruct"
-import { findBestServingMatchFunction } from "../../foodMessageProcessing/servingMatchRequestFunction"
-import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/matchFoodItemToLocalDb"
+import { findBestServingMatchInstruct } from "../../foodMessageProcessing/legacy/servingMatchRequestInstruct"
+import { findBestServingMatchFunction } from "../../foodMessageProcessing/legacy/servingMatchRequestFunction"
+import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/legacy/matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
 import { foodToLogEmbedding, FoodEmbeddingCache, getFoodEmbedding } from "../../utils/foodEmbedding"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
+import { isServerTimeData } from "@/foodMessageProcessing/common/processFoodItemsUtils"
 
 // App
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "../FoodAddFunctions/findAndAddFood"
-
+import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "@/foodMessageProcessing/common/foodProcessingConstants"
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
@@ -21,19 +21,19 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
-import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/foodItemCompleteMissingServingInfo"
+import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/legacy/foodItemMissingFieldComplete"
+import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/legacy/foodItemCompleteMissingServingInfo"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { checkRateLimit } from "@/utils/apiUsageLogging"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/matchFoodItemtoExternalDb"
+import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/legacy/matchFoodItemtoExternalDb"
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
-import { foodItemCompletion } from "@/foodMessageProcessing/foodItemCompletion"
-import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/foodItemInterface"
+import { foodItemCompletion } from "@/foodMessageProcessing/legacy/foodItemCompletion"
+import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/legacy/foodItemInterface"
 
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
@@ -83,270 +83,13 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
   }
 } */
 
-function isServerTimeData(data: any): data is { current_timestamp: number } {
-  return data && typeof data === "object" && "current_timestamp" in data
-}
 
-export async function AddLoggedFoodItemToQueue(
-  user: Tables<"User">,
-  user_message: Tables<"Message">,
-  food_item_to_log: FoodItemToLog
-) {
-  console.log("food_item_to_log", food_item_to_log)
-  UpdateMessage({ id: user_message.id, incrementItemsProcessedBy: 1 })
-  const supabase = createAdminSupabase()
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
 
-  if (serverTimeError) {
-    throw serverTimeError
-  }
 
-  // Extract the timestamp from the server's response
-  const timestamp = isServerTimeData(serverTimeData)
-    ? new Date(serverTimeData.current_timestamp).toISOString()
-    : new Date().toISOString()
-  console.log("serverTimeData", serverTimeData)
-  // Create all the pending food items
-  let { data: foodsNeedProcessing, error } = await supabase
-    .from("LoggedFoodItem")
-    .insert({
-      userId: user.id,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      consumedOn: food_item_to_log.timeEaten
-        ? new Date(food_item_to_log.timeEaten).toISOString()
-        : new Date().toISOString(),
-      messageId: user_message.id,
-      status: "Needs Processing",
-      extendedOpenAiData: food_item_to_log as any
-    })
-    .select()
 
-  if (error) {
-    console.error("Foods need processing error", error)
-  }
 
-  console.log("foodsNeedProcessing", foodsNeedProcessing)
 
-  foodsNeedProcessing = foodsNeedProcessing || []
 
-  // Add each pending food item to queue
-  for (let food of foodsNeedProcessing) {
-    console.log("Adding food item to queue:", food.id)
-    await processFoodItemQueue.enqueue(
-      `${food.id}` // job to be enqueued
-    )
-    console.log(`Added food id to queue: ${food.id}`)
-  }
-}
-
-function printSearchResults(results: FoodItemIdAndEmbedding[]): void {
-  console.log("Searching in database")
-  console.log("__________________________________________________________")
-  results.forEach((item) => {
-    const similarity = item.cosine_similarity.toFixed(3)
-    const description = item.brand ? `${item.name} - ${item.brand}` : item.name
-    console.log(`Similarity: ${similarity} - Item: ${item.id} - ${description}`)
-  })
-}
-
-async function findBestMatch(
-  cosineSearchResults: FoodItemIdAndEmbedding[],
-  food: FoodItemToLog,
-  userQueryVectorCache: FoodEmbeddingCache,
-  user: Tables<"User">,
-  messageId: number
-): Promise<FoodItemWithNutrientsAndServing> {
-  // Filter items above the COSINE_THRESHOLD
-  const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
-
-  const supabase = createAdminSupabase()
-
-  if (bestMatches.length) {
-    // Return the highest match instantly
-
-    const { data: match } = await supabase
-      .from("FoodItem")
-      .select(`*, Nutrient(*), Serving(*)`)
-      .eq("id", bestMatches[0].id)
-      .single()
-
-    if (match) return match as FoodItemWithNutrientsAndServing
-    throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
-  }
-
-  // No items above COSINE_THRESHOLD, filter for items above COSINE_THRESHOLD_LOW_QUALITY
-  const lowQualityMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD_LOW_QUALITY)
-
-  if (lowQualityMatches.length) {
-    const top9Matches = lowQualityMatches.slice(0, 9)
-    const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
-    if (localDbMatch) {
-      // Return the highest match instantly
-      const { data: match } = await supabase
-        .from("FoodItem")
-        .select(`*, Nutrient(*), Serving(*)`)
-        .eq("id", localDbMatch.id)
-        .single()
-      if (match) return match as FoodItemWithNutrientsAndServing
-      throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
-    }
-  }
-
-  // Fetch from external databases
-  return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
-}
-
-async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
-  const supabase = createAdminSupabase()
-
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
-
-  if (serverTimeError) {
-    console.log("serverTimeError error:", serverTimeError)
-    throw serverTimeError
-  }
-
-  // Extract the timestamp from the server's response
-  console.log("serverTimeData", serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
-  const timestamp = isServerTimeData(serverTimeData)
-    ? new Date(serverTimeData.current_timestamp).toISOString()
-    : new Date().toISOString()
-
-  // Add the timestamp to the data object for updating the updatedAt field
-  data.updatedAt = timestamp
-
-  const { data: result, error } = await supabase
-    .from("LoggedFoodItem")
-    .update(data)
-    .eq("id", loggedFoodItemId)
-    .select()
-    .single()
-  if (error) {
-    console.log("logFoodItem error:", error)
-    throw error
-  }
-
-  return result
-}
-
-export async function HandleLogFoodItem(
-  loggedFoodItem: Tables<"LoggedFoodItem">,
-  food: FoodItemToLog,
-  messageId: number,
-  user: Tables<"User">
-): Promise<string> {
-  const supabase = createServerActionClient<Database>({ cookies })
-
-  const userQueryVectorCache = await foodToLogEmbedding(food)
-
-  let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
-  })
-
-  if (!cosineSearchResults) cosineSearchResults = []
-
-  if (error) {
-    console.error(error)
-  }
-
-  //console.log("result", cosineSearchResults)
-
-  // const cosineSearchResults = (await pris.$queryRaw`
-  //   SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
-  //   1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity
-  //   FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
-  // `) as FoodItemIdAndEmbedding[]
-
-  printSearchResults(cosineSearchResults)
-
-  const bestMatch = await findBestMatch(cosineSearchResults, food, userQueryVectorCache, user, messageId)
-
-  try {
-    food = await findBestServingMatchInstruct(food, bestMatch as FoodItemWithNutrientsAndServing, user)
-  } catch (err1) {
-    try {
-      console.log("Error finding best serving match with instruct model, retrying with function", err1)
-      food = await findBestServingMatchFunction(food, bestMatch as FoodItemWithNutrientsAndServing, user)
-    } catch (err2) {
-      throw err2 // or handle the error in a different way if needed
-    }
-  }
-
-  const data = {
-    foodItemId: bestMatch.id,
-    servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
-    servingAmount: food.serving!.serving_amount,
-    loggedUnit: food.serving!.serving_name,
-    grams: food.serving!.total_serving_g_or_ml,
-    userId: user.id,
-    //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-    messageId,
-    status: "Processed"
-  }
-
-  const updatedLoggedFoodItem = await updateLoggedFoodItem(loggedFoodItem.id, data)
-  if (!updatedLoggedFoodItem) {
-    console.log("Could not log food item")
-    return "Sorry, I could not log your food items. Please try again later."
-  }
-
-  UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
-
-  const supabaseAdmin = createAdminSupabase()
-
-  console.log("About to queue icon generation")
-  console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
-  console.log("bestMatch.name", bestMatch.name)
-
-  await LinkIconsOrCreateIfNeeded(bestMatch.id)
-
-  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
-}
-
-async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
-  const supabase = createAdminSupabase()
-
-  let { data: closestIcons, error } = await supabase.rpc("get_top_foodicon_embedding_similarity", {
-    food_item_id: foodItemId
-  })
-  if (error) {
-    console.error("Could not get top food icon embedding similarity")
-    console.error(error)
-    await SendRequestToGenerateIcon(foodItemId)
-    return
-  }
-
-  if (closestIcons && closestIcons.length > 0) {
-    if (closestIcons[0].cosine_similarity > 0.9) {
-      // Link the icon
-      await supabase
-        .from("FoodItemImages")
-        .insert([
-          {
-            foodItemId: foodItemId,
-            foodImageId: closestIcons[0].food_icon_id
-          }
-        ])
-        .select()
-        .single()
-      return
-    }
-  }
-  await SendRequestToGenerateIcon(foodItemId)
-}
-export async function SendRequestToGenerateIcon(foodItemId: number): Promise<void> {
-  const supabase = createAdminSupabase()
-  await supabase.from("IconQueue").insert({ requested_food_item_id: foodItemId }).select()
-  const { data: iconQueue, error: iconError } = await supabase
-    .from("IconQueue")
-    .insert({ requested_food_item_id: foodItemId })
-    .select()
-
-  if (iconError) {
-    console.error("Error adding to icon queue", iconError)
-  }
-}
 
 async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
