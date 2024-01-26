@@ -19,6 +19,7 @@ interface ChatCompletionOptions {
   function_call?: string
   prompt?: string
   stop?: string
+  response_format?: "text" | "json_object"
 }
 
 export async function chatCompletion(
@@ -29,17 +30,20 @@ export async function chatCompletion(
     temperature = 0.5,
     max_tokens = 2048,
     function_call = "auto",
+    response_format = "text",
     ...options
   }: ChatCompletionOptions,
   user: Tables<"User">
 ) {
+  let startTime = performance.now()
   try {
     const result = await openai.chat.completions.create({
       model,
       messages,
       max_tokens,
       temperature,
-      functions
+      functions,
+      response_format: { type: response_format }
     })
 
     if (!result.choices[0].message) {
@@ -48,7 +52,8 @@ export async function chatCompletion(
 
     if (result.usage) {
       // log usage
-      await LogOpenAiUsage(user, result.usage, model)
+      let completionTimeMs = performance.now() - startTime
+      await LogOpenAiUsage(user, result.usage, model, "openai",completionTimeMs)
     }
 
     return result.choices[0].message
