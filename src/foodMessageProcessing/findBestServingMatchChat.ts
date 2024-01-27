@@ -167,7 +167,7 @@ async function testServingMatchRequest() {
     brand: "Skinny Dipped",
     branded: true,
     food_database_search_name: "Chocolate skinny dipped almonds",
-    full_item_user_message_including_serving: "12 skinny dipped almonds"
+    full_item_user_message_including_serving: "12 oz of skinny dipped almonds"
   }
 
   const food_item = (await getFoodItem(497)) as FoodItemWithNutrientsAndServing
