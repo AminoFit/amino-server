@@ -9,7 +9,7 @@ import * as math from "mathjs"
 const serving_assignement_prompt = `Your task is to calculate the gram amount of a specified serving, using available information.
 1. If the user's description is vague, estimate as accurately as possible.
 2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).
-3. Only user the serving info if useful.
+3. Only use the serving info if it seems that user is referring to it.
 4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.
 5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.
 
@@ -24,7 +24,7 @@ servingName might provide additional insights into the serving size.
 Your output should be in JSON format, structured as follows:
 
 equation:
-Also known as the User Serving. Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. It will be run in a js math eval environment so cannot contain any variable or unit names.
+Also known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. It will be run in a js math eval environment so cannot contain any variable or unit names.
 serving_name: 
 User serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. "g", "lg", "small", "oz", "oz", "bun", "cookie", "serving" etc all ok
 amount
@@ -167,7 +167,7 @@ async function testServingMatchRequest() {
     brand: "Skinny Dipped",
     branded: true,
     food_database_search_name: "Chocolate skinny dipped almonds",
-    full_item_user_message_including_serving: "12 oz of skinny dipped almonds"
+    full_item_user_message_including_serving: "0.1lb of skinny dipped almonds"
   }
 
   const food_item = (await getFoodItem(497)) as FoodItemWithNutrientsAndServing

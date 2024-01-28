@@ -83,3 +83,22 @@ export async function ProcessLogFoodItem(
 
   return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
+
+
+async function testFoodMatching() {
+  const supabase = createAdminSupabase()
+  const food = {
+    food_database_search_name: "butter",
+    full_item_user_message_including_serving: "1 serving of butter",
+  } as FoodItemToLog
+
+  const userQueryVectorCache = await foodToLogEmbedding(food)
+
+  let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
+    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
+  })
+
+  printSearchResults(cosineSearchResults!)
+}
+
+testFoodMatching()
