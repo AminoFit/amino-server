@@ -380,6 +380,7 @@ export interface Database {
           foodItemId: number | null
           grams: number
           id: number
+          isBadFoodItemRequest: boolean | null
           local_id: string | null
           loggedUnit: string | null
           messageId: number | null
@@ -398,6 +399,7 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
+          isBadFoodItemRequest?: boolean | null
           local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
@@ -416,6 +418,7 @@ export interface Database {
           foodItemId?: number | null
           grams?: number
           id?: number
+          isBadFoodItemRequest?: boolean | null
           local_id?: string | null
           loggedUnit?: string | null
           messageId?: number | null
@@ -470,6 +473,8 @@ export interface Database {
           function_name: string | null
           hasimages: boolean
           id: number
+          isAudio: boolean | null
+          isBadFoodRequest: boolean | null
           itemsProcessed: number | null
           itemsToProcess: number | null
           local_id: string | null
@@ -485,6 +490,8 @@ export interface Database {
           function_name?: string | null
           hasimages?: boolean
           id?: number
+          isAudio?: boolean | null
+          isBadFoodRequest?: boolean | null
           itemsProcessed?: number | null
           itemsToProcess?: number | null
           local_id?: string | null
@@ -500,6 +507,8 @@ export interface Database {
           function_name?: string | null
           hasimages?: boolean
           id?: number
+          isAudio?: boolean | null
+          isBadFoodRequest?: boolean | null
           itemsProcessed?: number | null
           itemsToProcess?: number | null
           local_id?: string | null
@@ -553,29 +562,35 @@ export interface Database {
       }
       OpenAiUsage: {
         Row: {
+          completionTimeMs: number | null
           completionTokens: number
           createdAt: string
           id: number
           modelName: string
           promptTokens: number
+          provider: string | null
           totalTokens: number
           userId: string
         }
         Insert: {
+          completionTimeMs?: number | null
           completionTokens: number
           createdAt?: string
           id?: number
           modelName: string
           promptTokens: number
+          provider?: string | null
           totalTokens: number
           userId: string
         }
         Update: {
+          completionTimeMs?: number | null
           completionTokens?: number
           createdAt?: string
           id?: number
           modelName?: string
           promptTokens?: number
+          provider?: string | null
           totalTokens?: number
           userId?: string
         }
@@ -1014,18 +1029,32 @@ export interface Database {
           cosineSimilarity: number
         }[]
       }
-      get_cosine_results: {
-        Args: {
-          p_embedding_cache_id: number
-        }
-        Returns: {
-          id: number
-          name: string
-          brand: string
-          embedding: string
-          cosine_similarity: number
-        }[]
-      }
+      get_cosine_results:
+        | {
+            Args: {
+              p_embedding_cache_id: number
+            }
+            Returns: {
+              id: number
+              name: string
+              brand: string
+              embedding: string
+              cosine_similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              p_embedding_cache_id: number
+              amount_of_results?: number
+            }
+            Returns: {
+              id: number
+              name: string
+              brand: string
+              embedding: string
+              cosine_similarity: number
+            }[]
+          }
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
