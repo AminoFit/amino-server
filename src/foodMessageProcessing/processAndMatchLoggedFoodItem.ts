@@ -95,7 +95,8 @@ async function testFoodMatching() {
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
   let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
+    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id,
+    amount_of_results: 10
   })
 
   printSearchResults(cosineSearchResults!)
