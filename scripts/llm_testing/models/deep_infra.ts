@@ -40,7 +40,8 @@ async function callDeepInfraAPI(
 
         if (lines.length > 1) {
           // Process and output each complete line
-          process.stdout.write(lines[0].match(/"content": "(.*?)"/)?.[1]?.toString() || "")
+          process.stdout.write(lines.toString() || "")
+          // process.stdout.write(lines[0].match(/"content": "(.*?)"/)?.[1]?.toString() || "")
           accumulatedData = lines[1]
         }
 
