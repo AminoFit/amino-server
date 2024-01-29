@@ -88,8 +88,8 @@ export async function ProcessLogFoodItem(
 async function testFoodMatching() {
   const supabase = createAdminSupabase()
   const food = {
-    food_database_search_name: "butter",
-    full_item_user_message_including_serving: "1 serving of butter",
+    food_database_search_name: "tuna",
+    full_item_user_message_including_serving: "120g  of tuna steak",
   } as FoodItemToLog
 
   const userQueryVectorCache = await foodToLogEmbedding(food)
