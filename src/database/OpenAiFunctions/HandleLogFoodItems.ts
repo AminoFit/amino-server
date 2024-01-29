@@ -329,7 +329,7 @@ async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
   if (error) {
     console.error("Could not get top food icon embedding similarity")
     console.error(error)
-    await SendRequestToGenerateIcon(foodItemId)
+    await SendRequestToGenerateIcons([foodItemId])
     return
   }
 
@@ -349,15 +349,14 @@ async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
       return
     }
   }
-  await SendRequestToGenerateIcon(foodItemId)
+  await SendRequestToGenerateIcons([foodItemId])
 }
-export async function SendRequestToGenerateIcon(foodItemId: number): Promise<void> {
+export async function SendRequestToGenerateIcons(foodItemIds: number[]): Promise<void> {
   const supabase = createAdminSupabase()
-  await supabase.from("IconQueue").insert({ requested_food_item_id: foodItemId }).select()
-  const { data: iconQueue, error: iconError } = await supabase
-    .from("IconQueue")
-    .insert({ requested_food_item_id: foodItemId })
-    .select()
+  const data = foodItemIds.map((foodItemId) => {
+    return { requested_food_item_id: foodItemId }
+  })
+  const { data: iconQueue, error: iconError } = await supabase.from("IconQueue").insert(data).select()
 
   if (iconError) {
     console.error("Error adding to icon queue", iconError)
