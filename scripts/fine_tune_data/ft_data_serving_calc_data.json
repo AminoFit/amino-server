@@ -1,0 +1,386 @@
+[
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"quarter of an ounce of almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "1 oz is 28.35oz. User had 1 / 4 of an oz.\n\n```json\n{\n  \"equation\": \"1 / 4 * 28.35\",\n  \"serving_name\": \"oz\",\n  \"amount\": 0.25,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"1 handful of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "It's unclear how many almonds one handful is. Let's assume 14. One serving is 28g and there's 16 per serving.\n```json\n{\n  \"equation\": \"14 / 16 * 28\",\n  \"serving_name\": \"handful\",\n  \"amount\": 1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"1 bag of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "It's unclear how many servings one bag is. Let's assume 4. One serving is 28g.\n```json\n{\n  \"equation\": \"4 * 28\",\n  \"serving_name\": \"bag\",\n  \"amount\": 1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"1kg ounces of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "1 kg is 1000g. User had 1kg.\n\n```json\n{\n  \"equation\": \"1 * 1000\",\n  \"serving_name\": \"kg\",\n  \"amount\": 1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.3 ounces of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "1 oz is 28.35g. User had 0.3.\n\n```json\n{\n  \"equation\": \"0.3 * 28.35\",\n  \"serving_name\": \"oz\",\n  \"amount\": 0.3,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"small serving of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "a small serving is likely less than the default amount of 16. let's say 8. default grams is 28.\n\n```json\n{\n  \"equation\": \"8 / 16 * 28\",\n  \"serving_name\": \"small serving\",\n  \"amount\": 1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"large serving of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "a large serving is likely more than the default amount of 16. let's say 24. default grams is 28.\n\n```json\n{\n  \"equation\": \"24 / 16 * 28\",\n  \"serving_name\": \"large serving\",\n  \"amount\": 1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"12.5g skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "they had 12.5g\n```json\n{\n  \"equation\": \"12.5\",\n  \"serving_name\": \"g\",\n  \"amount\": 12.5,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"a few skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "a few could mean 8 considering the default amount is 16. default grams for serving is 28.\n```json\n{\n  \"equation\": \"8 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 8,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"a dozen skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 12 almonds. default amount is 16 and default serving weight is 28g.\n```json\n{\n  \"equation\": \"12 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 12,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"a couple of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 2 almonds. default amount is 16 and default serving weight is 28g.\n```json\n{\n  \"equation\": \"2 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 2,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"a single serving of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 1 serving. default serving weight is 28g.\n```json\n{\n  \"equation\": \"1 * 28\",\n  \"serving_name\": \"serving\",\n  \"amount\": 1,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"a single skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 1 almond. default amount for one serving is 16 and default serving weight is 28g.\n```json\n{\n  \"equation\": \"1 / 16 * 28\",\n  \"serving_name\": \"almond\",\n  \"amount\": 1,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"8 skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 8 almonds. default amount for one serving is 16 and default serving weight is 28g.\n```json\n{\n  \"equation\": \"8 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 8,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"28 skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 28 almonds. default amount for one serving is 16 and default serving weight is 28g.\n```json\n{\n  \"equation\": \"28 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 28,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"1 serving of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 1 servings. default serving weight is 28g.\n```json\n{\n  \"equation\": \"1 * 28\",\n  \"serving_name\": \"serving\",\n  \"amount\": 1,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"2 servings of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 2 servings. default serving weight is 28g.\n```json\n{\n  \"equation\": \"2 * 28\",\n  \"serving_name\": \"servings\",\n  \"amount\": 2,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"2 skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user had 2. default serving amount is 16 and serving weight is 28g.\n```json\n{\n  \"equation\": \"2 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 2,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"13 skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "default serving amount is 16 and serving weight is 28g.\n```json\n{\n  \"equation\": \"13 / 16 * 28\",\n  \"serving_name\": \"almonds\",\n  \"amount\": 13,\n  \"matching_serving_id\": 1\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.05 oz of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user specified 0.05 oz. 1 oz is 28.35 g\n\n```json\n{\n  \"equation\": \"28.35 * 0.05\",\n  \"serving_name\": \"oz\",\n  \"amount\": 0.05,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.25 oz of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user specified 0.25 oz. 1 oz is 28.35 g\n\n```json\n{\n  \"equation\": \"28.35 * 0.25\",\n  \"serving_name\": \"oz\",\n  \"amount\": 0.25,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.5 oz of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user specified 0.5 oz. 1oz is 28.35 g\n\n```json\n{\n  \"equation\": \"28.35 * 0.5\",\n  \"serving_name\": \"oz\",\n  \"amount\": 0.5,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.5 lb of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user specified 0.5 lbs. 1lb is 453.59g\n\n```json\n{\n  \"equation\": \"453.59 * 0.5\",\n  \"serving_name\": \"lb\",\n  \"amount\": 0.5,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON."
+        },
+        {
+          "role": "user",
+          "content": "User_message:\n\"0.1lb of skinny dipped almonds\"\n\nfood_info:  \nname: 'Dark Chocolate Cocoa Almonds',\nbrand: 'Skinny Dipped',\ndefaultServingWeightGram: 28,\nkcalPerServing: 140,\ndefaultServingLiquidMl: null,\nisLiquid: false,\nweightUnknown: false\n\nfood_serving_info:\n{\n  id: 1,\n  servingWeightGram: 28,\n  servingName: 'almonds',\n  servingAlternateAmount: null,\n  servingAlternateUnit: null,\n  defaultServingAmount: 16\n}\n\nGoal:\nYour task is to calculate the gram amount of a specified serving, using available information.\n\nInformation\n1. If the user's description is vague, estimate as accurately as possible.\n2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).\n3. Only use the serving info if it seems that user is referring to it.\n4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.\n5. Ultimately make sure that the user_serving_equation_amount_grams results in what would be a reasonable amount in grams for the serving.\n\nYour output should be in JSON format, structured as follows:\n\nequation:\nAlso known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. Represent this as a mathematical equation (using operators like */+-) for precision. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. \n\nserving_name: \nUser serving name of unit short - short description of the serving unit the user specified, ideally less than 10 characters and limited to 1-2 words. \"g\", \"lg\", \"small\", \"oz\", \"oz\", \"bun\", \"cookie\", \"serving\" etc all ok\n\namount:\nUser Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.\n\nmatching_serving_id:\nThe matching serving id - if there is a serving that matches the user request we can use that.\n\nYou will output in this perfect JSON format:\n{\n  \"equation\": \"string\",\n  \"serving_name\": \"string\",\n  \"amount\": \"number,\n  \"matching_serving_id\":\"number | null\"\n}"
+        },
+        {
+          "role": "assistant",
+          "content": "user specified 0.1 lbs. 1lb is 453.59g\n\n```json\n{\n  \"equation\": \"453.59 * 0.1\",\n  \"serving_name\": \"lb\",\n  \"amount\": 0.1,\n  \"matching_serving_id\": null\n}\n```"
+        }
+      ]
+    }
+  ]

@@ -172,8 +172,14 @@ async function testServingMatchRequest() {
 
   const food_item = (await getFoodItem(497)) as FoodItemWithNutrientsAndServing
 
-  const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
-  console.log(serving_result)
+  console.log(food_item)
+
+  // Print everything in the object except for the bgeBaseEmbedding field
+  const { bgeBaseEmbedding, ...rest } = food_item
+  console.log(rest)
+
+  // const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
+  // console.log(serving_result)
 }
 
-// testServingMatchRequest()
+testServingMatchRequest()
