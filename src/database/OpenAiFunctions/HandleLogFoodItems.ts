@@ -1,7 +1,7 @@
 // OpenAI
 import { findBestServingMatchInstruct } from "../../foodMessageProcessing/legacy/servingMatchRequestInstruct"
 import { findBestServingMatchFunction } from "../../foodMessageProcessing/legacy/servingMatchRequestFunction"
-import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/legacy/matchFoodItemToLocalDb"
+import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils

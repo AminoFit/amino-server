@@ -41,7 +41,7 @@ export async function ProcessLogFoodItem(
 
   printSearchResults(cosineSearchResults)
 
-  const bestMatch = await findBestLoggedFoodItemMatchToFood(
+  const [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
     cosineSearchResults,
     food,
     userQueryVectorCache,

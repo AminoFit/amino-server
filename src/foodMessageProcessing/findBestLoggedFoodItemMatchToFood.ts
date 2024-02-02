@@ -1,5 +1,5 @@
 // OpenAI
-import { findBestFoodMatchtoLocalDb } from "./legacy/matchFoodItemToLocalDb"
+import { findBestFoodMatchtoLocalDb } from "./matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "@/database/OpenAiFunctions/utils/foodLoggingTypes"
 
 // Utils
@@ -21,7 +21,7 @@ export async function findBestLoggedFoodItemMatchToFood(
     userQueryVectorCache: FoodEmbeddingCache,
     user: Tables<"User">,
     messageId: number
-  ): Promise<FoodItemWithNutrientsAndServing> {
+  ): Promise<[FoodItemWithNutrientsAndServing, number | null]> {
     // Filter items above the COSINE_THRESHOLD
     const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
   
@@ -36,7 +36,7 @@ export async function findBestLoggedFoodItemMatchToFood(
         .eq("id", bestMatches[0].id)
         .single()
   
-      if (match) return match as FoodItemWithNutrientsAndServing
+      if (match) return [match as FoodItemWithNutrientsAndServing, null]
       throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
     }
   
@@ -45,7 +45,7 @@ export async function findBestLoggedFoodItemMatchToFood(
   
     if (lowQualityMatches.length) {
       const top9Matches = lowQualityMatches.slice(0, 9)
-      const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
+      const [localDbMatch, secondBestMatchId] = await findBestFoodMatchtoLocalDb(top9Matches, food, user)
       if (localDbMatch) {
         // Return the highest match instantly
         const { data: match } = await supabase
@@ -53,11 +53,11 @@ export async function findBestLoggedFoodItemMatchToFood(
           .select(`*, Nutrient(*), Serving(*)`)
           .eq("id", localDbMatch.id)
           .single()
-        if (match) return match as FoodItemWithNutrientsAndServing
+        if (match) return [match as FoodItemWithNutrientsAndServing, secondBestMatchId]
         throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
       }
     }
   
     // Fetch from external databases
-    return await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId)
+    return [await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId), null]
   }
