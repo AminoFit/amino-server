@@ -96,31 +96,30 @@ export async function findBestServingMatchChat(
 
   const serving_amount_grams = math.evaluate(serving_result.equation)
 
-  let matchingServingId = 0; // Default to 0 if no match is found
+  let matchingServingId = 0 // Default to 0 if no match is found
 
   // Define the threshold as a percentage of the user's serving amount in grams
-  const thresholdPercentage = 0.01; // 1%
-  const threshold = serving_amount_grams * thresholdPercentage;
-  
+  const thresholdPercentage = 0.01 // 1%
+  const threshold = serving_amount_grams * thresholdPercentage
+
   // Filter, sort servings by weight per unit, and find the best match
-  const sortedServings = food_item.Serving
-      .filter(serving => serving.servingWeightGram !== null) // Filter out null servingWeightGram
-      .sort((a, b) => {
-          const weightPerUnitA = (a.servingWeightGram ?? 0) / (a.defaultServingAmount ?? 1);
-          const weightPerUnitB = (b.servingWeightGram ?? 0) / (b.defaultServingAmount ?? 1);
-          return weightPerUnitA - weightPerUnitB;
-      });
-  console.log('sortedServings',sortedServings);
-  console.log('serving_amount_grams',serving_amount_grams);
-  console.log('amount',serving_result.amount);
+  const sortedServings = food_item.Serving.filter((serving) => serving.servingWeightGram !== null) // Filter out null servingWeightGram
+    .sort((a, b) => {
+      const weightPerUnitA = (a.servingWeightGram ?? 0) / (a.defaultServingAmount ?? 1)
+      const weightPerUnitB = (b.servingWeightGram ?? 0) / (b.defaultServingAmount ?? 1)
+      return weightPerUnitA - weightPerUnitB
+    })
+  console.log("sortedServings", sortedServings)
+  console.log("serving_amount_grams", serving_amount_grams)
+  console.log("amount", serving_result.amount)
   for (const serving of sortedServings) {
-      const weightPerUnit = (serving.servingWeightGram ?? 0) / (serving.defaultServingAmount ?? 1);
-      const userUnits = serving_amount_grams / weightPerUnit;
-  
-      if (Number.isInteger(userUnits) && Math.abs(serving_amount_grams - (userUnits * weightPerUnit)) <= threshold) {
-          matchingServingId = serving.id;
-          break;
-      }
+    const weightPerUnit = (serving.servingWeightGram ?? 0) / (serving.defaultServingAmount ?? 1)
+    const userUnits = serving_amount_grams / weightPerUnit
+
+    if (Number.isInteger(userUnits) && Math.abs(serving_amount_grams - userUnits * weightPerUnit) <= threshold) {
+      matchingServingId = serving.id
+      break
+    }
   }
 
   // Update the serving details in food_item_to_log
@@ -169,14 +168,41 @@ async function testServingMatchRequest() {
     food_database_search_name: "Chocolate skinny dipped almonds",
     full_item_user_message_including_serving: "0.1lb of skinny dipped almonds"
   }
+  const indicesFood = [385, 424, 481, 396, 531, 406, 150, 303, 84]
 
-  const food_item = (await getFoodItem(497)) as FoodItemWithNutrientsAndServing
+  for (const index of indicesFood) {
+    const originalData = (await getFoodItem(index)) as FoodItemWithNutrientsAndServing
+    if (originalData) {
+      const simplifiedData = {
+        food_info: {
+          name: originalData.name,
+          brand: originalData.brand,
+          defaultServingWeightGram: originalData.defaultServingWeightGram,
+          kcalPerServing: originalData.kcalPerServing,
+          defaultServingLiquidMl: originalData.defaultServingLiquidMl,
+          isLiquid: originalData.isLiquid,
+          weightUnknown: originalData.weightUnknown
+        },
+        food_serving_info: originalData.Serving.map((serving, index) => ({
+          id: index + 1, // Start indexing at 1
+          servingWeightGram: serving.servingWeightGram,
+          servingName: serving.servingName,
+          servingAlternateAmount: serving.servingAlternateAmount,
+          servingAlternateUnit: serving.servingAlternateUnit,
+          defaultServingAmount: serving.defaultServingAmount
+        }))
+      }
 
-  console.log(food_item)
+      console.log(simplifiedData)
+    }
+  }
+  // const food_item = (await getFoodItem(1)) as FoodItemWithNutrientsAndServing
+
+  // console.log(food_item)
 
   // Print everything in the object except for the bgeBaseEmbedding field
-  const { bgeBaseEmbedding, ...rest } = food_item
-  console.log(rest)
+  // const { bgeBaseEmbedding, ...rest } = food_item
+  // console.log(rest)
 
   // const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
   // console.log(serving_result)
