@@ -1,6 +1,6 @@
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
-import { Tables } from "types/supabase-generated.types"
+import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { chatCompletion } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"

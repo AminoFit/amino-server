@@ -1,4 +1,4 @@
-import { Tables } from "types/supabase-generated.types"
+import { Tables } from "types/supabase"
 import { LogOpenAiUsage } from "@/languageModelProviders/openai/utils/openAiHelper"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import test from "node:test"
