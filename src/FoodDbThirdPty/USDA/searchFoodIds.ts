@@ -2,7 +2,7 @@ import axios from "axios"
 import {
   getAdaEmbedding,
   cosineSimilarity
-} from "../../openai/utils/embeddingsHelper"
+} from "../../languageModelProviders/openai/utils/embeddingsHelper"
 import { recordQuery } from "../../utils/apiUsageLogging"
 import { levenshteinDistance, wordLevenshtein, toTitleCase } from "../../utils/nlpHelper"
 

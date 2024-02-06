@@ -1,8 +1,9 @@
-import { chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
+import { chatCompletionInstruct, correctAndParseResponse } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterface"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 interface ServingMatchRequest {
   item_name: string
@@ -107,7 +108,7 @@ function mapServingMatchRequest(request: ServingMatchRequest) {
         serving_amount: shouldNormalize ? 1 : serving.serving_alternate_amount, // Retain original serving amount if not normalized
         serving_unit: serving.serving_alternate_unit
       }
-      console.log("Seb, check this:", uniqueServings)
+      // console.log("Seb, check this:", uniqueServings)
       if (uniqueServings[key].name) delete uniqueServings[key].name
       delete uniqueServings[key].serving_alternate_amount
       delete uniqueServings[key].serving_alternate_unit
@@ -180,11 +181,19 @@ export async function findBestServingMatchInstruct(
     }
   }
 
+  console.log("matchRequest:",JSON.stringify(food_item.Serving))
+
   const match_request_obj = mapServingMatchRequest(matchRequest)
 
   const model = "gpt-3.5-turbo-instruct-0914"
   const max_tokens = 500
   const temperature = 0
+
+  console.log("match_request_obj:", match_request_obj)
+
+  console.log(customStringify(match_request_obj))
+
+  throw new Error("Seb, check this")
 
   const prompt = `Determine the serving size from user_message and Food Item details:
 
@@ -265,46 +274,44 @@ Output:
   return food_item_to_log
 }
 
-// async function testServingMatchRequest() {
-//   const user: User = {
-//     id: "clklnwf090000lzssqhgfm8kr",
-//     firstName: "Sebastian",
-//     lastName: "",
-//     email: "seb.grubb@gmail.com",
-//     emailVerified: new Date("2023-10-09 22:45:35.771"),
-//     phone: "+16503079963",
-//     dateOfBirth: new Date("1992-05-06 04:00:00"),
-//     weightKg: 75,
-//     heightCm: 175,
-//     calorieGoal: 2440,
-//     proteinGoal: 200,
-//     carbsGoal: 230,
-//     fatGoal: 80,
-//     fitnessGoal: "Lose weight",
-//     unitPreference: "METRIC",
-//     setupCompleted: false,
-//     sentContact: true,
-//     sendCheckins: false,
-//     tzIdentifier: "America/New_York"
-//   }
+async function getUserByEmail(email: string) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("User").select("*").eq("email", email)
 
-//   const oikos_serving = {
-//     brand: "Oikos",
-//     branded: true,
-//     food_database_search_name: "Peach Yogurt",
-//     full_item_user_message_including_serving: "1 Oikos Peach Yogurt"
-//   }
-//   const oikos_food = (await pris.foodItem.findUnique({
-//     where: { id: 94 },
-//     include: {
-//       Nutrients: true,
-//       Servings: true
-//     }
-//   })) as FoodItemWithNutrientsAndServing
-//   console.dir(oikos_food, { depth: null })
+  if (error) {
+    console.error(error)
+    return null
+  }
 
-//   const oikos_result = await findBestServingMatchInstruct(oikos_serving, oikos_food, user)
-//   console.log(oikos_result)
-// }
+  return data
+}
 
-//testServingMatchRequest()
+async function getFoodItem(id: number) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("FoodItem").select("*, Serving(*)").eq("id", id).single()
+
+  if (error) {
+    console.error(error)
+    return null
+  }
+
+  return data
+}
+
+async function testServingMatchRequest() {
+  const user = (await getUserByEmail("seb.grubb@gmail.com"))![0] as Tables<"User">
+
+  const food_serving_request = {
+    brand: "Skinny Dipped",
+    branded: true,
+    food_database_search_name: "Chocolate skinny dipped almonds",
+    full_item_user_message_including_serving: "12 skinny dipped almonds",
+  }
+
+  const food_item = (await getFoodItem(497)) as FoodItemWithNutrientsAndServing
+
+  const serving_result = await findBestServingMatchInstruct(food_serving_request, food_item, user)
+  console.log(serving_result)
+}
+
+// testServingMatchRequest()
