@@ -12,7 +12,9 @@
     "run:ts-node-prod": "DOTENV_CONFIG_PATH=.env.prod ts-node -r dotenv/config -r tsconfig-paths/register -P tsconfig.json",
     "update-types": "npx supabase gen types typescript --local > types/supabase-generated.types.ts",
     "update-icons": "npm run run:ts-node scripts/update-icons.ts",
-    "update-icons:prod": "npm run run:ts-node-prod scripts/update-icons.ts"
+    "update-icons:prod": "npm run run:ts-node-prod scripts/update-icons.ts",
+    "fix-icon-paths": "npm run run:ts-node scripts/fix-icon-paths.ts",
+    "fix-icon-paths:prod": "npm run run:ts-node-prod scripts/fix-icon-paths.ts"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.0.1",

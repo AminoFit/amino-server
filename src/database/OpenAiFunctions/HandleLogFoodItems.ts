@@ -73,23 +73,84 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
   return result
 }
 
-/* export async function VerifyHandleLogFoodItems(parameters: any) {
-  const foodItems: FoodItemToLog[] = parameters.food_items
-  for (let food of foodItems) {
-    // Ensure total_weight_grams is not 0
-    if (food.serving.total_serving_g_or_ml === 0) {
-      throw new Error("The value for total_weight_grams cannot be 0.")
+
+
+async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
+  const supabase = createAdminSupabase()
+
+  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
+
+  if (serverTimeError) {
+    console.log("serverTimeError error:", serverTimeError)
+    throw serverTimeError
+  }
+
+  // Extract the timestamp from the server's response
+  console.log("serverTimeData", serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
+  const timestamp = isServerTimeData(serverTimeData)
+    ? new Date(serverTimeData.current_timestamp).toISOString()
+    : new Date().toISOString()
+
+  // Add the timestamp to the data object for updating the updatedAt field
+  data.updatedAt = timestamp
+
+  const { data: result, error } = await supabase
+    .from("LoggedFoodItem")
+    .update(data)
+    .eq("id", loggedFoodItemId)
+    .select()
+    .single()
+  if (error) {
+    console.log("logFoodItem error:", error)
+    throw error
+  }
+
+  return result
+}
+
+
+async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
+  const supabase = createAdminSupabase()
+
+  let { data: closestIcons, error } = await supabase.rpc("get_top_foodicon_embedding_similarity", {
+    food_item_id: foodItemId
+  })
+  if (error) {
+    console.error("Could not get top food icon embedding similarity")
+    console.error(error)
+    await SendRequestToGenerateIcons([foodItemId])
+    return
+  }
+
+  if (closestIcons && closestIcons.length > 0) {
+    if (closestIcons[0].cosine_similarity > 0.9) {
+      // Link the icon
+      await supabase
+        .from("FoodItemImages")
+        .insert([
+          {
+            foodItemId: foodItemId,
+            foodImageId: closestIcons[0].food_icon_id
+          }
+        ])
+        .select()
+        .single()
+      return
     }
   }
-} */
+  await SendRequestToGenerateIcons([foodItemId])
+}
+export async function SendRequestToGenerateIcons(foodItemIds: number[]): Promise<void> {
+  const supabase = createAdminSupabase()
+  const data = foodItemIds.map((foodItemId) => {
+    return { requested_food_item_id: foodItemId }
+  })
+  const { data: iconQueue, error: iconError } = await supabase.from("IconQueue").insert(data).select()
 
-
-
-
-
-
-
-
+  if (iconError) {
+    console.error("Error adding to icon queue", iconError)
+  }
+}
 
 async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,

@@ -28,8 +28,6 @@ export async function GetAminoUserOnRequest() {
     }
   }
 
-  console.log("data", data)
-
   // Now that you have the user, you can use it to fetch user-specific data or perform other actions
   // res.status(200).json({ user })
 
@@ -48,7 +46,7 @@ export async function GetAminoUserOnRequest() {
 
   const aminoUser = response.data as Tables<"User">
 
-  console.log("aminoUser", aminoUser)
+  // console.log("aminoUser", aminoUser)
 
   if (!aminoUser) {
     console.log("No amino user for authenticated user")
@@ -57,6 +55,6 @@ export async function GetAminoUserOnRequest() {
     }
   }
 
-  console.log("Amino User Auth'd")
+  // console.log("Amino User Auth'd")
   return { aminoUser }
 }
