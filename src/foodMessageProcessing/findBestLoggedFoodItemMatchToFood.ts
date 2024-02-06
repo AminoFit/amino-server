@@ -22,6 +22,7 @@ export async function findBestLoggedFoodItemMatchToFood(
     user: Tables<"User">,
     messageId: number
   ): Promise<[FoodItemWithNutrientsAndServing, number | null]> {
+    console.log("Finding best match for logged food item")
     // Filter items above the COSINE_THRESHOLD
     const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
   
@@ -44,8 +45,9 @@ export async function findBestLoggedFoodItemMatchToFood(
     const lowQualityMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD_LOW_QUALITY)
   
     if (lowQualityMatches.length) {
-      const top9Matches = lowQualityMatches.slice(0, 9)
-      const [localDbMatch, secondBestMatchId] = await findBestFoodMatchtoLocalDb(top9Matches, food, user)
+      const topMatches = lowQualityMatches.slice(0, 20)
+      console.log("Trying to find best match in local db")
+      const [localDbMatch, secondBestMatchId] = await findBestFoodMatchtoLocalDb(topMatches, food, user)
       if (localDbMatch) {
         // Return the highest match instantly
         const { data: match } = await supabase

@@ -303,7 +303,7 @@ async function findAndAddItemInDatabase(
         }
         // console.log("usda_find_food_params", usda_find_food_params)
         const result = await searchUsdaByEmbedding(usda_find_food_params)
-        console.log("result", result)
+        console.log("resultFood info", result)
         console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
         return result
       } catch (err) {

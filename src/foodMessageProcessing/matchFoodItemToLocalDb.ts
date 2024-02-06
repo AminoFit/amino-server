@@ -143,6 +143,7 @@ export async function findBestFoodMatchtoLocalDb(
     { role: "system", content: matchSystemPrompt },
     { role: "user", content: prompt }
   ]
+  console.log("Prompt:", prompt)
 
   try {
     const timerStart = Date.now()

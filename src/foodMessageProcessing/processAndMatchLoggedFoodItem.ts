@@ -17,6 +17,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { findBestLoggedFoodItemMatchToFood } from "./findBestLoggedFoodItemMatchToFood"
 import { updateLoggedFoodItemWithData } from "./common/updateLoggedFoodItemData"
 import { LinkIconsOrCreateIfNeeded } from "./foodIconsProcess"
+import { re } from "mathjs"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
@@ -30,7 +31,8 @@ export async function ProcessLogFoodItem(
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
   let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
+    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id,
+    amount_of_results: 20
   })
 
   if (!cosineSearchResults) cosineSearchResults = []
@@ -48,6 +50,8 @@ export async function ProcessLogFoodItem(
     user,
     messageId
   )
+
+  console.log("bestMatch", bestMatch)
 
   try {
     food = await findBestServingMatchChat(food, bestMatch as FoodItemWithNutrientsAndServing, user)
@@ -105,15 +109,35 @@ async function testFoodMatching() {
   printSearchResults(cosineSearchResults!)
 }
 
-// async function testProcessFood(){
-//   const loggedFoodItem 
-//   const food
-//   messageId
+async function getLoggedFoodItem(id: number) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("LoggedFoodItem").select("*").eq("id", id).single()
+  return data
+}
 
-//   const result = await ProcessLogFoodItem(
-//     loggedFoodItem: Tables<"LoggedFoodItem">,
-//     food: FoodItemToLog,
-//     messageId: number,
-//     user: Tables<"User">
-//   )
-// }
+async function getUserByEmail(email: string) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("User").select("*").eq("email", email).single()
+  return data
+}
+
+async function testProcessFood(){
+  const loggedFoodItem =  await getLoggedFoodItem(2205)
+  const messageId = 1129
+  const food = { 
+    food_database_search_name:'tuna',
+    full_item_user_message_including_serving: 'tuna',
+    branded: false,
+    brand: "",
+  } as FoodItemToLog
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+
+  const result = await ProcessLogFoodItem(
+    loggedFoodItem!,
+    food,
+    messageId,
+    user!
+  )
+}
+
+testProcessFood()
