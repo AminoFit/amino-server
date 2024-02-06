@@ -133,7 +133,7 @@ export async function foodItemCompleteMissingServingInfo(
       user
     )
 
-    console.log("Result:", result)
+    console.log("Result Complete Missing:", result)
     const servingInfoCompletionResult = JSON.parse(result.function_call.arguments)
 
     const has_valid_schema = checkCompliesWithSchema(servingInfoCompleteProperties, servingInfoCompletionResult)
