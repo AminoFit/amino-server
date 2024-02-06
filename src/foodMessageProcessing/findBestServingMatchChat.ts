@@ -104,6 +104,7 @@ export async function findBestServingMatchChat(
     .replace("USER_SERVING_INPUT", food_item_to_log.full_item_user_message_including_serving)
     .replace("FOOD_INFO_DETAILS", JSON.stringify(simplifiedData.food_info))
     .replace("FOOD_SERVING_DETAILS", JSON.stringify(simplifiedData.food_serving_info))
+    
 
   let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -116,7 +117,7 @@ export async function findBestServingMatchChat(
   let max_tokens = 2048
   let temperature = 0.05
 
-  const response = await chatCompletion(
+  let response = await chatCompletion(
     {
       messages,
       model,
@@ -125,6 +126,18 @@ export async function findBestServingMatchChat(
     },
     user
   )
+  if (!response.content || extractAndParseLastJSON(response.content) === null) {
+    response = await chatCompletion(
+      {
+        messages,
+        model: backup_model,
+        temperature,
+        max_tokens
+      },
+      user
+    )
+  }
+  
 
   const JSON_result = remapIds(extractAndParseLastJSON(response.content!), idMapping) as {
     equation_grams: string
@@ -199,21 +212,21 @@ async function testServingMatchRequest() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))![0] as Tables<"User">
 
   const food_serving_request = {
-    brand: "metamucil",
-    branded: true,
-    food_database_search_name: "gummies",
-    full_item_user_message_including_serving: "9 gummies"
+    brand: "",
+    branded: false,
+    food_database_search_name: "sushi",
+    full_item_user_message_including_serving: "5 salmon sushi"
   }
-  const food_item = (await getFoodItem(198)) as FoodItemWithNutrientsAndServing
+  const food_item = (await getFoodItem(56)) as FoodItemWithNutrientsAndServing
 
   // console.log(food_item)
 
   // Print everything in the object except for the bgeBaseEmbedding field
   // const { bgeBaseEmbedding, ...rest } = food_item
   // console.log(rest)
-console.log(food_item)
+// console.log(food_item)
   const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
   console.log(serving_result)
 }
 
-testServingMatchRequest()
+// testServingMatchRequest()

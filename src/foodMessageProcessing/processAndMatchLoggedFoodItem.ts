@@ -55,6 +55,8 @@ export async function ProcessLogFoodItem(
     throw err1
   }
 
+  let extendedFoodData = {...food, second_best_match:secondBestMatch}
+
   const data = {
     foodItemId: bestMatch.id,
     servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
@@ -62,6 +64,7 @@ export async function ProcessLogFoodItem(
     loggedUnit: food.serving!.serving_name,
     grams: food.serving!.total_serving_g_or_ml,
     userId: user.id,
+    extendedOpenAiData: extendedFoodData as any,
     //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
     messageId,
     status: "Processed"
@@ -88,8 +91,8 @@ export async function ProcessLogFoodItem(
 async function testFoodMatching() {
   const supabase = createAdminSupabase()
   const food = {
-    food_database_search_name: "fairlife",
-    full_item_user_message_including_serving: "120g  of salmon",
+    food_database_search_name: "salmon sushi",
+    full_item_user_message_including_serving: "5 salmon sushi",
   } as FoodItemToLog
 
   const userQueryVectorCache = await foodToLogEmbedding(food)
@@ -102,4 +105,15 @@ async function testFoodMatching() {
   printSearchResults(cosineSearchResults!)
 }
 
-testFoodMatching()
+// async function testProcessFood(){
+//   const loggedFoodItem 
+//   const food
+//   messageId
+
+//   const result = await ProcessLogFoodItem(
+//     loggedFoodItem: Tables<"LoggedFoodItem">,
+//     food: FoodItemToLog,
+//     messageId: number,
+//     user: Tables<"User">
+//   )
+// }
