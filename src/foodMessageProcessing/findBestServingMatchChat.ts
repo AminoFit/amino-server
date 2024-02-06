@@ -168,7 +168,7 @@ async function testServingMatchRequest() {
     food_database_search_name: "Chocolate skinny dipped almonds",
     full_item_user_message_including_serving: "0.1lb of skinny dipped almonds"
   }
-  const indicesFood = [385, 424, 481, 396, 531, 406, 150, 303, 84]
+  const indicesFood = [411, 49, 366, 197, 162, 227, 385, 424, 481, 396, 531, 406, 150, 303, 84]
 
   for (const index of indicesFood) {
     const originalData = (await getFoodItem(index)) as FoodItemWithNutrientsAndServing
