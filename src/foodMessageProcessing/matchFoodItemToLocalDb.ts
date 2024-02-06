@@ -30,6 +30,8 @@ const matchSystemPrompt = `You are a helpful food matching assistant that precis
 const matchUserRequestPrompt = `user_food_logged:
 "LOGGED_FOOD_NAME"
 
+IMPORTANT: assume the most common preparation if user has not specified.
+
 database_search_results:
 DATABASE_SEARCH_RESULTS
 
@@ -143,7 +145,6 @@ export async function findBestFoodMatchtoLocalDb(
     { role: "system", content: matchSystemPrompt },
     { role: "user", content: prompt }
   ]
-  console.log("Prompt:", prompt)
 
   try {
     const timerStart = Date.now()
@@ -157,12 +158,11 @@ export async function findBestFoodMatchtoLocalDb(
       user
     )
     const timerEnd = Date.now()
-    console.log("Time taken:", timerEnd - timerStart, "ms") 
+    console.log("Time taken for food match:", timerEnd - timerStart, "ms") 
 
     // console.log(response)
     const database_match = remapIds(extractAndParseLastJSON(response.content!) as DatabaseMatch, idMapping);
-    // console.log(database_match)
-
+    console.log(database_match)
     if (database_match.no_good_matches || !database_match.best_food_match_id) {
       return [null, null]
     } else if (database_match.best_food_match_id) {
@@ -178,8 +178,8 @@ export async function findBestFoodMatchtoLocalDb(
 
 async function testMatching() {
   const sampleUserRequest: FoodItemToLog = {
-    food_database_search_name: "hagndzs ice cream",
-    full_item_user_message_including_serving: "bagel",
+    food_database_search_name: "tuna",
+    full_item_user_message_including_serving: "tuna",
     branded: false,
     brand: "",
     serving: {
@@ -189,17 +189,19 @@ async function testMatching() {
   }
 
   const foodItems: FoodItemIdAndEmbedding[] = [
-    { id: 231, name: "Bagel", brand: "Pepperidge Farm", cosine_similarity: 0, embedding: "" },
-    { id: 232, name: "Dr Pepper", brand: "Keurig Dr Pepper", cosine_similarity: 0, embedding: "" },
-    { id: 233, name: "Cream", brand: "Dairyland", cosine_similarity: 0, embedding: "" },
-    { id: 234, name: "Ice Cream", brand: "Haagen-Dazs", cosine_similarity: 0, embedding: "" },
-    { id: 235, name: "Plain Bagel", brand: "", cosine_similarity: 0, embedding: "" },
-    { id: 236, name: "Mint Chocolate", brand: "Andes", cosine_similarity: 0, embedding: "" },
-    { id: 237, name: "Coffee", brand: "Folgers", cosine_similarity: 0, embedding: "" },
-    { id: 238, name: "Coffee Cake", brand: "Entenmann's", cosine_similarity: 0, embedding: "" },
-    { id: 239, name: "Bagel", brand: "", cosine_similarity: 0, embedding: "" },
-    { id: 240, name: "Hot Cocoa", brand: "Swiss Miss", cosine_similarity: 0, embedding: "" }
-  ]
+    { "id": 231, "name": "tuna steak", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 232, "name": "canned tuna", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 233, "name": "tuna nigiri", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 234, "name": "albacore tuna", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 235, "name": "albacore tuna can", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 236, "name": "tuna sushi roll", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 237, "name": "Tuna avocado maki", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 238, "name": "Spicy Tuna Rolls", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 239, "name": "Albacore Wild Tuna", brand: "365 Whole Foods Market", "cosine_similarity": 0, "embedding": "" },
+    { "id": 240, "name": "spicy tuna avocado roll", brand: "", "cosine_similarity": 0, "embedding": "" },
+    { "id": 241, "name": "spicy tuna avocado sushi roll", brand: "", "cosine_similarity": 0, "embedding": "" }
+]
+
   const user: Tables<"User"> = {
     id: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
     email: ""
