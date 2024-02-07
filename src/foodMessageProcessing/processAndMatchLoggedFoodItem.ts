@@ -123,11 +123,11 @@ async function getUserByEmail(email: string) {
 }
 
 async function testProcessFood(){
-  const loggedFoodItem =  await getLoggedFoodItem(2218)
-  const messageId = 1142
+  const loggedFoodItem =  await getLoggedFoodItem(2282)
+  const messageId = 1200
   const food = { 
-    food_database_search_name:'tuna',
-    full_item_user_message_including_serving: 'tuna',
+    food_database_search_name:'one full milk latte 1 cup',
+    full_item_user_message_including_serving: 'one full milk latte 1 cup',
     branded: false,
     brand: "",
   } as FoodItemToLog
@@ -141,4 +141,4 @@ async function testProcessFood(){
   )
 }
 
-testProcessFood()
+// testProcessFood()

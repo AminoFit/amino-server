@@ -7,17 +7,23 @@ import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/lega
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 
-function compareFoodItems(item1: FoodItemWithNutrientsAndServing, item2: FoodItemWithNutrientsAndServing): boolean {
-  // Normalize the name and brand values to lowercase for case-insensitive comparison
-  const name1 = item1.name.toLowerCase();
-  const name2 = item2.name.toLowerCase();
+function compareFoodItems(item1: FoodItemWithNutrientsAndServing | null, item2: FoodItemWithNutrientsAndServing | null): boolean {
+  // Check if either item is null
+  if (item1 === null || item2 === null) {
+    return false; // Consider null items as not matching any other item
+  }
 
-  const brand1 = item1.brand?.toLowerCase() || ""; // Treat null or undefined as an empty string
-  const brand2 = item2.brand?.toLowerCase() || ""; // Treat null or undefined as an empty string
+  // Normalize the name and brand values to lowercase for case-insensitive comparison
+  const name1 = item1.name.toLowerCase().trim();
+  const name2 = item2.name.toLowerCase().trim();
+
+  const brand1 = item1.brand?.toLowerCase().trim() || ""; // Treat null or undefined as an empty string
+  const brand2 = item2.brand?.toLowerCase().trim() || ""; // Treat null or undefined as an empty string
 
   // Compare the normalized name and brand values
   return name1 === name2 && brand1 === brand2;
 }
+
 
 export async function addFoodItemToDatabase(
     food: FoodItemWithNutrientsAndServing,

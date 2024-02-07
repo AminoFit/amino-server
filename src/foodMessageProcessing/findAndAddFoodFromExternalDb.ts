@@ -247,10 +247,10 @@ async function getUserByEmail(email: string) {
 
 async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
-  const messageId = 1142
+  const messageId = 1200
   const foodToLog = {
-    food_database_search_name: "tuna",
-    full_item_user_message_including_serving: "tuna",
+    food_database_search_name: "full fat milk latte",
+    full_item_user_message_including_serving: "2% milk latte",
     branded: false,
     brand: ""
   } as FoodItemToLog
@@ -261,4 +261,4 @@ async function testAddFoodFromExternal() {
   console.log("result", result)
 }
 
-testAddFoodFromExternal()
+// testAddFoodFromExternal()
