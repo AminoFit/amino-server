@@ -1027,44 +1027,22 @@ export interface Database {
           cosineSimilarity: number
         }[]
       }
-      get_cosine_results:
-        | {
-            Args: {
-              p_embedding_cache_id: number
-            }
-            Returns: {
-              id: number
-              name: string
-              brand: string
-              embedding: string
-              cosine_similarity: number
-            }[]
-          }
-        | {
-            Args: {
-              p_embedding_cache_id: number
-              amount_of_results?: number
-            }
-            Returns: {
-              id: number
-              name: string
-              brand: string
-              embedding: string
-              cosine_similarity: number
-            }[]
-          }
+      get_cosine_results: {
+        Args: {
+          p_embedding_cache_id: number
+          amount_of_results?: number
+        }
+        Returns: {
+          id: number
+          name: string
+          brand: string
+          embedding: string
+          cosine_similarity: number
+        }[]
+      }
       get_current_timestamp: {
         Args: Record<PropertyKey, never>
         Returns: Json
-      }
-      get_top_foodicon_embedding_similarity: {
-        Args: {
-          food_item_id: number
-        }
-        Returns: {
-          food_icon_id: number
-          cosine_similarity: number
-        }[]
       }
       get_top_foodimage_embedding_similarity: {
         Args: {
@@ -1073,6 +1051,15 @@ export interface Database {
         Returns: {
           food_image_id: number
           image_description: string
+          cosine_similarity: number
+        }[]
+      }
+      get_top_foodimage_foodid_similarity: {
+        Args: {
+          food_item_id: number
+        }
+        Returns: {
+          food_icon_id: number
           cosine_similarity: number
         }[]
       }
