@@ -3,6 +3,7 @@ import OpenAI from "openai"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 const foodItemMissingFieldCompleteProperties = {
   type: "object",
@@ -323,64 +324,70 @@ DefaultServingMl: ${foodItem.defaultServingLiquidMl}\n` + generateServingString(
 //   //   Nutrient: []
 //   // }
 
-//   const mcflurryFood: FoodItemWithNutrientsAndServing = {
-//     id: 1234124,
-//     externalId: "56568",
-//     UPC: null,
-//     knownAs: [],
-//     description: null,
-//     lastUpdated: new Date("2023-10-12T16:08:10.626Z").toISOString(),
-//     verified: true,
-//     userId: null,
-//     foodInfoSource: "FATSECRET",
-//     messageId: null,
-//     name: "McFlurry with Oreo Cookies",
-//     brand: "McDonald's",
-//     defaultServingWeightGram: NaN,
-//     defaultServingLiquidMl: null,
-//     isLiquid: false,
-//     weightUnknown: true,
-//     kcalPerServing: 510,
-//     totalFatPerServing: 16,
-//     carbPerServing: 80,
-//     proteinPerServing: 12,
-//     satFatPerServing: 8,
-//     fiberPerServing: 1,
-//     sugarPerServing: 60,
-//     transFatPerServing: 0.5,
-//     addedSugarPerServing: 48,
-//     Serving: [
-//       {
-//         id: 12412,
-//         foodItemId: 1234124,
-//         servingWeightGram: null,
-//         servingAlternateAmount: null,
-//         servingAlternateUnit: null,
-//         servingName: "1 serving"
-//       }
-//     ],
-//     Nutrient: [
-//       {
-//         id: 0,
-//         foodItemId: 0,
-//         nutrientName: "Cholesterol",
-//         nutrientAmountPerDefaultServing: 40,
-//         nutrientUnit: "mg"
-//       },
-//       {
-//         id: 0,
-//         foodItemId: 0,
-//         nutrientName: "Potassium",
-//         nutrientAmountPerDefaultServing: 540,
-//         nutrientUnit: "mg"
-//       }
-//     ]
-//   }
-//   console.dir(await foodItemMissingFieldComplete(mcflurryFood, user), {
-//     depth: null
-//   })
+async function getUserByEmail(email: string) : Promise<Tables<"User"> | null>{
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("User").select("*").eq("email", email).single()
+  return data
+}
 
+async function testRun() {
+  const mcflurryFood: FoodItemWithNutrientsAndServing = {
+    id: 0,
+    createdAtDateTime: '2024-02-07T16:50:22.451Z',
+    externalId: '2479220',
+    UPC: null,
+    knownAs: [],
+    description: null,
+    lastUpdated: '2024-02-07T16:50:22.451Z',
+    verified: true,
+    userId: null,
+    foodInfoSource: 'FATSECRET',
+    messageId: null,
+    name: 'Shrimp Shumai',
+    brand: 'JFC',
+    defaultServingWeightGram: NaN,
+    defaultServingLiquidMl: null,
+    isLiquid: false,
+    weightUnknown: true,
+    kcalPerServing: 230,
+    totalFatPerServing: 10,
+    carbPerServing: 24,
+    proteinPerServing: 13,
+    satFatPerServing: null,
+    fiberPerServing: null,
+    sugarPerServing: null,
+    transFatPerServing: null,
+    addedSugarPerServing: null,
+    Serving: [
+      {
+        servingWeightGram: NaN,
+        servingAlternateAmount: null,
+        servingAlternateUnit: null,
+        servingName: '10 pieces',
+        defaultServingAmount: null,
+        id: 0,
+        foodItemId: 0
+      }
+    ],
+    Nutrient: [
+      {
+        nutrientName: 'Cholesterol',
+        nutrientAmountPerDefaultServing: 55,
+        nutrientUnit: 'mg',
+        id: 0,
+        foodItemId: 0,
+      }
+    ],
+    adaEmbedding: null,
+    bgeBaseEmbedding: null
+  }
+
+  const user = await getUserByEmail('seb.grubb@gmail.com')
+  console.dir(await foodItemMissingFieldComplete(mcflurryFood, user!), {
+    depth: null
+  })
+}
 //   //console.log(stringifyFoodItem(mcflurryFood))
 // }
 
-//testRun()
+testRun()
