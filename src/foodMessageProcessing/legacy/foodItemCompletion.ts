@@ -1,8 +1,8 @@
-import { chatCompletion } from "./chatCompletion"
+import { chatCompletion } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
 import { FoodInfo } from "./foodItemInterface"
-import { checkCompliesWithSchema } from "../utils/openAiHelper"
-import { mapOpenAiFoodInfoToFoodItem } from "src/openai/customFunctions/foodItemInterface"
+import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
+import { mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/legacy/foodItemInterface"
 import { Tables } from "types/supabase"
 
 const SPECIAL_CASES = ["water", "diet", "tea"]

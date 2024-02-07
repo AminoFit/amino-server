@@ -1,8 +1,8 @@
 import {
   foodItemCompletion
-} from "./foodItemCompletion"; 
+} from "../../../foodMessageProcessing/legacy/foodItemCompletion"; 
 
-import { checkCompliesWithSchema } from "src/openai/utils/openAiHelper";
+import { checkCompliesWithSchema } from "@/languageModelProviders/openai/utils/openAiHelper";
 async function main() {
   const outputSchema = {
     type: "object",

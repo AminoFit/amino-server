@@ -18,7 +18,7 @@ Your task is to analyze a sentence provided by a user, describing their meal for
 Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
 
 INPUT_TO_PROCESS:
-"two avocado tuna rolls with two salmon avocado rolls and a side of miso soup"
+"two avocado tuna rolls with two salmon avocado rolls and a side of miso soup and a starbucks latte"
 
 Expected JSON Output:
 {"food_items":

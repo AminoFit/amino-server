@@ -1,6 +1,6 @@
 import { HfInference } from "@huggingface/inference"
 import { vectorToSql } from "@/utils/pgvectorHelper"
-import { getAdaEmbedding } from "../../openai/utils/embeddingsHelper"
+import { getAdaEmbedding } from "../../languageModelProviders/openai/utils/embeddingsHelper"
 import { createAdminSupabase } from "../supabase/serverAdmin"
 
 const hf = new HfInference(process.env.HF_API_KEY)

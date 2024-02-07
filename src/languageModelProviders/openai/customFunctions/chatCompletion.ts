@@ -3,6 +3,8 @@ import { LogOpenAiUsage } from "../utils/openAiHelper"
 import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
+import { encode } from "gpt-tokenizer"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -17,6 +19,7 @@ interface ChatCompletionOptions {
   function_call?: string
   prompt?: string
   stop?: string
+  response_format?: "text" | "json_object"
 }
 
 export async function chatCompletion(
@@ -27,17 +30,20 @@ export async function chatCompletion(
     temperature = 0.5,
     max_tokens = 2048,
     function_call = "auto",
+    response_format = "text",
     ...options
   }: ChatCompletionOptions,
   user: Tables<"User">
 ) {
+  let startTime = performance.now()
   try {
     const result = await openai.chat.completions.create({
       model,
       messages,
       max_tokens,
       temperature,
-      functions
+      functions,
+      response_format: { type: response_format }
     })
 
     if (!result.choices[0].message) {
@@ -46,7 +52,8 @@ export async function chatCompletion(
 
     if (result.usage) {
       // log usage
-      await LogOpenAiUsage(user, result.usage, model)
+      let completionTimeMs = performance.now() - startTime
+      await LogOpenAiUsage(user, result.usage, model, "openai",completionTimeMs)
     }
 
     return result.choices[0].message
@@ -289,4 +296,67 @@ export async function* chatCompletionFunctionStream(
     console.error(error)
     throw error
   }
+}
+
+
+// Define the options interface with additional user and model details
+export interface ChatCompletionJsonStreamOptions {
+  model?: string
+  prompt: string
+  temperature?: number
+  max_tokens?: number
+  stop?: string
+  [key: string]: any
+}
+
+// Define the async generator function
+export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+  const { model = "gpt-3.5-turbo-1106", prompt, temperature = 0, max_tokens = 2048, stop, ...otherParams } = options
+
+  console.log("model and temp", model, temperature)
+  const systemPrompt = "You are a helpful assistant that only replies in valid JSON."
+  const startTime = performance.now()
+
+  const stream = await openai.chat.completions.create({
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt }
+    ],
+    temperature,
+    model,
+    max_tokens,
+    stop,
+    ...otherParams,
+    response_format: { type: "json_object" },
+    stream: true
+  })
+
+  let totalResponse = ""
+  for await (const chunk of stream) {
+    if (chunk?.choices[0]?.delta?.content) {
+      const content = chunk.choices[0].delta.content
+      yield content
+      totalResponse += content
+    }
+  }
+
+  // Calculate token count and log usage
+  const completionTimeMs = performance.now() - startTime
+  const resultTokens = encode(totalResponse).length
+  const promptTokens = encode(prompt + systemPrompt).length
+  const totalTokens = resultTokens + promptTokens
+
+  console.log("logging performance", completionTimeMs, resultTokens, promptTokens, totalTokens)
+
+  await LogOpenAiUsage(
+    user,
+    {
+      total_tokens: totalTokens,
+      prompt_tokens: promptTokens,
+      completion_tokens: resultTokens
+    },
+    model,
+    "openai",
+    completionTimeMs
+  )
 }

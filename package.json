@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently 'next dev' 'quirrel'",
-    "dev-prod": "DOTENV_CONFIG_PATH=.env.prod concurrently 'next dev' 'quirrel'",
+    "dev-prod": "concurrently 'DOTENV_CONFIG_PATH=.env.prod next dev' 'DOTENV_CONFIG_PATH=.env.prod quirrel'",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -56,7 +56,7 @@
     "moment-timezone": "^0.5.43",
     "next": "^13.5.2",
     "nodemailer": "^6.9.5",
-    "openai": "4.20.1",
+    "openai": "^4.25.0",
     "pgvector": "^0.1.5",
     "postcss": "8.4.31",
     "quirrel": "^1.14.1",

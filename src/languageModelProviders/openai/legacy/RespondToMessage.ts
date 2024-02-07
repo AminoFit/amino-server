@@ -17,11 +17,10 @@ import { ChatCompletionRole } from "openai/resources/chat"
 
 // Custom functions and helpers
 import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
-import { getOpenAICompletion } from "./utils/openAiHelper"
-import { logFoodItemFunctionStream } from "./customFunctions/logFoodItemStreamFunction"
-import { logFoodItemStreamInstruct } from "./customFunctions/logFoodItemStreamInstruct"
+import { getOpenAICompletion } from "../utils/openAiHelper"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
+import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -237,15 +236,16 @@ export async function GenerateResponseForQuickLog(
 
 
   let foodItemsToLog: FoodItemToLog[] = []
+  let isBadFoodLogRequest = false
 
   try {
-    // Try using the instruct model first
-    foodItemsToLog = await logFoodItemStreamInstruct(user, loadedMessage.content, inputMessageId)
+    // Try using the based
+    ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage));
   } catch (error) {
     console.log("Error using instruct model:", error)
 
     // If an error occurs, fallback to the function stream method
-    foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
+    // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
   }
 
   // Check if we have received any valid food items to log

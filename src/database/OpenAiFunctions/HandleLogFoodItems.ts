@@ -1,17 +1,17 @@
 // OpenAI
-import { findBestServingMatchInstruct } from "../../openai/customFunctions/servingMatchRequestInstruct"
-import { findBestServingMatchFunction } from "../../openai/customFunctions/servingMatchRequestFunction"
-import { findBestFoodMatchtoLocalDb } from "../../openai/customFunctions/matchFoodItemToLocalDb"
+import { findBestServingMatchInstruct } from "../../foodMessageProcessing/legacy/servingMatchRequestInstruct"
+import { findBestServingMatchFunction } from "../../foodMessageProcessing/legacy/servingMatchRequestFunction"
+import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
 import { foodToLogEmbedding, FoodEmbeddingCache, getFoodEmbedding } from "../../utils/foodEmbedding"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
+import { isServerTimeData } from "@/foodMessageProcessing/common/processFoodItemsUtils"
 
 // App
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "../FoodAddFunctions/findAndAddFood"
-
+import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "@/foodMessageProcessing/common/foodProcessingConstants"
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
@@ -21,19 +21,21 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Database } from "types/supabase-generated.types"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
-import { foodItemMissingFieldComplete } from "@/openai/customFunctions/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "@/openai/customFunctions/foodItemCompleteMissingServingInfo"
+import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/legacy/foodItemMissingFieldComplete"
+import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/legacy/foodItemCompleteMissingServingInfo"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { checkRateLimit } from "@/utils/apiUsageLogging"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
 import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { findBestFoodMatchExternalDb } from "@/openai/customFunctions/matchFoodItemtoExternalDb"
+import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/legacy/matchFoodItemtoExternalDb"
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
-import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
-import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
+
+import { foodItemCompletion } from "@/foodMessageProcessing/legacy/foodItemCompletion"
+import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/legacy/foodItemInterface"
+
 import { IconQueue } from "@/bull-queues/BullMqQueues"
 
 // Used to determine if an item is a good match
@@ -74,145 +76,7 @@ function constructFoodRequestString(foodToLog: FoodItemToLog) {
   return result
 }
 
-/* export async function VerifyHandleLogFoodItems(parameters: any) {
-  const foodItems: FoodItemToLog[] = parameters.food_items
-  for (let food of foodItems) {
-    // Ensure total_weight_grams is not 0
-    if (food.serving.total_serving_g_or_ml === 0) {
-      throw new Error("The value for total_weight_grams cannot be 0.")
-    }
-  }
-} */
 
-function isServerTimeData(data: any): data is { current_timestamp: number } {
-  return data && typeof data === "object" && "current_timestamp" in data
-}
-
-export async function HandleLogFoodItems(user: Tables<"User">, parameters: any, lastUserMessageId: number) {
-  console.log("parameters", parameters)
-
-  const foodItemsToLog: FoodItemToLog[] = parameters.food_items
-
-  const supabase = await createAdminSupabase()
-
-  // Increment itemsToProcess by foodItemsToLog.length
-  await supabase.from("Message").update({ itemsToProcess: foodItemsToLog.length }).eq("id", lastUserMessageId)
-
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
-
-  if (serverTimeError) {
-    throw serverTimeError
-  }
-
-  // Extract the timestamp from the server's response
-  const timestamp = isServerTimeData(serverTimeData)
-    ? new Date(serverTimeData.current_timestamp).toISOString()
-    : new Date().toISOString()
-  console.log("serverTimeData", serverTimeData)
-  // Create all the pending food items
-  let { data: foodsNeedProcessing, error } = await supabase
-    .from("LoggedFoodItem")
-    .insert(
-      foodItemsToLog.map((food) => {
-        return {
-          userId: user.id,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          consumedOn: food.timeEaten ? new Date(food.timeEaten).toISOString() : new Date().toISOString(),
-          messageId: lastUserMessageId,
-          status: "Needs Processing",
-          extendedOpenAiData: food as any
-        }
-      })
-    )
-    .select()
-
-  if (error) {
-    console.error("Foods need processing error", error)
-  }
-
-  console.log("foodsNeedProcessing", foodsNeedProcessing)
-
-  foodsNeedProcessing = foodsNeedProcessing || []
-
-  const results = []
-  foodItemsToLog.forEach((food) => results.push(constructFoodRequestString(food)))
-
-  // Add each pending food item to queue
-  for (let food of foodsNeedProcessing) {
-    console.log("Adding food item to queue:", food.id)
-    await processFoodItemQueue.enqueue(
-      `${food.id}` // job to be enqueued
-      // { delay: "24h" } // scheduling options
-    )
-
-    console.log(`Added food id to queue: ${food.id}`)
-  }
-
-  if (results.length === 0) {
-    return "Sorry, I could not log your food items. Please try again later. E230"
-  }
-
-  results.unshift("We're logging your food. It might take a few mins for us to look up all the information:")
-
-  return results.join(" ")
-}
-function printSearchResults(results: FoodItemIdAndEmbedding[]): void {
-  console.log("Searching in database")
-  console.log("__________________________________________________________")
-  results.forEach((item) => {
-    const similarity = item.cosine_similarity.toFixed(3)
-    const description = item.brand ? `${item.name} - ${item.brand}` : item.name
-    console.log(`Similarity: ${similarity} - Item: ${item.id} - ${description}`)
-  })
-}
-
-async function findBestMatch(
-  cosineSearchResults: FoodItemIdAndEmbedding[],
-  food: FoodItemToLog,
-  userQueryVectorCache: FoodEmbeddingCache,
-  user: Tables<"User">,
-  messageId: number
-): Promise<FoodItemWithNutrientsAndServing> {
-  // Filter items above the COSINE_THRESHOLD
-  const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
-
-  const supabase = createAdminSupabase()
-
-  if (bestMatches.length) {
-    // Return the highest match instantly
-
-    const { data: match } = await supabase
-      .from("FoodItem")
-      .select(`*, Nutrient(*), Serving(*)`)
-      .eq("id", bestMatches[0].id)
-      .single()
-
-    if (match) return match as FoodItemWithNutrientsAndServing
-    throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
-  }
-
-  // No items above COSINE_THRESHOLD, filter for items above COSINE_THRESHOLD_LOW_QUALITY
-  const lowQualityMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD_LOW_QUALITY)
-
-  if (lowQualityMatches.length) {
-    const top9Matches = lowQualityMatches.slice(0, 9)
-    const localDbMatch = await findBestFoodMatchtoLocalDb(top9Matches, food, userQueryVectorCache, messageId, user)
-    if (localDbMatch) {
-      // Return the highest match instantly
-      const { data: match } = await supabase
-        .from("FoodItem")
-        .select(`*, Nutrient(*), Serving(*)`)
-        .eq("id", localDbMatch.id)
-        .single()
-      if (match) return match as FoodItemWithNutrientsAndServing
-      throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
-    }
-  }
-
-  // Fetch from external databases
-  return await findAndAddItemInDatabase(food, userQueryVectorCache, user, messageId)
-}
 
 async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
   const supabase = createAdminSupabase()
@@ -247,79 +111,6 @@ async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promis
   return result
 }
 
-export async function HandleLogFoodItem(
-  loggedFoodItem: Tables<"LoggedFoodItem">,
-  food: FoodItemToLog,
-  messageId: number,
-  user: Tables<"User">
-): Promise<string> {
-  const supabase = createServerActionClient<Database>({ cookies })
-
-  const userQueryVectorCache = await foodToLogEmbedding(food)
-
-  let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
-  })
-
-  if (!cosineSearchResults) cosineSearchResults = []
-
-  if (error) {
-    console.error(error)
-  }
-
-  //console.log("result", cosineSearchResults)
-
-  // const cosineSearchResults = (await pris.$queryRaw`
-  //   SELECT id, name, brand, "bgeBaseEmbedding"::text as embedding,
-  //   1 - ("bgeBaseEmbedding" <=> (SELECT "bgeBaseEmbedding" FROM "foodEmbeddingCache" WHERE id = ${userQueryVectorCache.embedding_cache_id})) AS cosine_similarity
-  //   FROM "FoodItem" WHERE "bgeBaseEmbedding" IS NOT NULL ORDER BY cosine_similarity DESC LIMIT 5
-  // `) as FoodItemIdAndEmbedding[]
-
-  printSearchResults(cosineSearchResults)
-
-  const bestMatch = await findBestMatch(cosineSearchResults, food, userQueryVectorCache, user, messageId)
-
-  try {
-    food = await findBestServingMatchInstruct(food, bestMatch as FoodItemWithNutrientsAndServing, user)
-  } catch (err1) {
-    try {
-      console.log("Error finding best serving match with instruct model, retrying with function", err1)
-      food = await findBestServingMatchFunction(food, bestMatch as FoodItemWithNutrientsAndServing, user)
-    } catch (err2) {
-      throw err2 // or handle the error in a different way if needed
-    }
-  }
-
-  const data = {
-    foodItemId: bestMatch.id,
-    servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
-    servingAmount: food.serving!.serving_amount,
-    loggedUnit: food.serving!.serving_name,
-    grams: food.serving!.total_serving_g_or_ml,
-    userId: user.id,
-    //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-    messageId,
-    status: "Processed"
-  }
-
-  const updatedLoggedFoodItem = await updateLoggedFoodItem(loggedFoodItem.id, data)
-  if (!updatedLoggedFoodItem) {
-    console.log("Could not log food item")
-    return "Sorry, I could not log your food items. Please try again later."
-  }
-
-  UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
-
-  const supabaseAdmin = createAdminSupabase()
-
-  console.log("About to queue icon generation")
-  console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
-  console.log("bestMatch.name", bestMatch.name)
-
-  await LinkIconsOrCreateIfNeeded(bestMatch.id)
-
-  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
-}
 
 async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
   const supabase = createAdminSupabase()
@@ -536,7 +327,7 @@ async function findAndAddItemInDatabase(
         }
         // console.log("usda_find_food_params", usda_find_food_params)
         const result = await searchUsdaByEmbedding(usda_find_food_params)
-        console.log("result", result)
+        console.log("resultFood info", result)
         console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
         return result
       } catch (err) {

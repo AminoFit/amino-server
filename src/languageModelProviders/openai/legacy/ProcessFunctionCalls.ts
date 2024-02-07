@@ -1,5 +1,5 @@
-import { HandleLogFoodItems } from "@/database/OpenAiFunctions/HandleLogFoodItems"
 import { HandleUpdateUserInfo } from "@/database/OpenAiFunctions/HandleUpdateUserInfo"
+import { AddLoggedFoodItemToQueue } from "@/foodMessageProcessing/addLogFoodItemToQueue"
 import UpdateMessage from "@/database/UpdateMessage"
 import OpenAI from "openai"
 import { Tables } from "types/supabase"
@@ -18,8 +18,8 @@ export const ProcessFunctionCalls = async (
   switch (functionName) {
     case "log_food_items":
       console.log("log_food_items", parameters)
-      const resultMessage = await HandleLogFoodItems(user, parameters, lastUserMessageId)
-      return resultMessage
+      // const resultMessage = await AddLoggedFoodItemToQueue(user, parameters, lastUserMessageId)
+      return 'resultMessage'
     case "update_user_info":
       const user_info_reply = await HandleUpdateUserInfo(user, parameters)
       UpdateMessage({

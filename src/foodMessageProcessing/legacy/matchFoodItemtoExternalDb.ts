@@ -1,7 +1,7 @@
 import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import OpenAI from "openai"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "./chatCompletion"
+import { chatCompletion, chatCompletionInstruct, correctAndParseResponse } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { Tables } from "types/supabase"
 
 const matchFoodItemsToDatabaseFunctionDescription =

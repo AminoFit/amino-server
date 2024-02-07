@@ -1,8 +1,9 @@
-import { chatCompletionFunctionStream } from "./chatCompletion"
+// legacy function
+
+import { chatCompletionFunctionStream } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { logFoodSchema } from "@/utils/openaiFunctionSchemas"
-import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 
@@ -136,8 +137,8 @@ export async function logFoodItemFunctionStream(
               // Skip processing if this item is already processed
               if (itemsExtracted > itemsAlreadyProcessed) {
                 // Add logging task to the tasks array
-                const loggingTask = HandleLogFoodItems(user, { food_items: [parsedItem] }, lastUserMessageId)
-                loggingTasks.push(loggingTask)
+                // const loggingTask = HandleLogFoodItems(user, { food_items: [parsedItem] }, lastUserMessageId)
+                // loggingTasks.push(loggingTask)
               }
               break
             } catch (err) {

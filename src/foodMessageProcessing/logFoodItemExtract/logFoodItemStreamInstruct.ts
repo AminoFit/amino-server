@@ -1,7 +1,7 @@
 import { isWithinTokenLimit } from "gpt-tokenizer"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { chatCompletionInstructStream } from "./chatCompletion"
-import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
+import { chatCompletionInstructStream } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
+// import { HandleLogFoodItems } from "../../database/OpenAiFunctions/HandleLogFoodItems"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
@@ -114,8 +114,8 @@ Output:
         continue
       }
       // Add logging task to the tasks array
-      const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, messageId)
-      loggingTasks.push(loggingTask)
+      // const loggingTask = HandleLogFoodItems(user, { food_items: [foodItemToLog] }, messageId)
+      // loggingTasks.push(loggingTask)
     }
 
     // Wait for all logging tasks to complete

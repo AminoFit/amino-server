@@ -1,7 +1,7 @@
-import { chatCompletion } from "./chatCompletion"
+import { chatCompletion } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
 import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
-import { checkCompliesWithSchema } from "../utils/openAiHelper"
+import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
@@ -133,7 +133,7 @@ export async function foodItemCompleteMissingServingInfo(
       user
     )
 
-    console.log("Result:", result)
+    console.log("Result Complete Missing:", result)
     const servingInfoCompletionResult = JSON.parse(result.function_call.arguments)
 
     const has_valid_schema = checkCompliesWithSchema(servingInfoCompleteProperties, servingInfoCompletionResult)
