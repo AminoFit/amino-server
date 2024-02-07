@@ -72,7 +72,7 @@ export const processFoodItemQueue = Queue(
       console.log("No messageId")
     }
 
-    console.log("Done processing food item", loggedFoodItem.id)
+    console.log("Done processing logged food item", loggedFoodItem.id)
 
     return
   }

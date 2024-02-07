@@ -34,6 +34,7 @@ import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
 import { foodItemCompletion } from "@/openai/customFunctions/foodItemCompletion"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/openai/customFunctions/foodItemInterface"
+import { IconQueue } from "@/bull-queues/BullMqQueues"
 
 // Used to determine if an item is a good match
 const COSINE_THRESHOLD = 0.975
@@ -352,15 +353,36 @@ async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
   await SendRequestToGenerateIcons([foodItemId])
 }
 export async function SendRequestToGenerateIcons(foodItemIds: number[]): Promise<void> {
-  const supabase = createAdminSupabase()
-  const data = foodItemIds.map((foodItemId) => {
-    return { requested_food_item_id: foodItemId }
-  })
-  const { data: iconQueue, error: iconError } = await supabase.from("IconQueue").insert(data).select()
+  console.log("Sending request to generate icons", foodItemIds)
+  await Promise.all(
+    foodItemIds.map((foodItemId) => {
+      return IconQueue.add(
+        "Generate food icon",
+        { foodItemId },
+        {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000
+          }
+        }
+      )
+    })
+  )
 
-  if (iconError) {
-    console.error("Error adding to icon queue", iconError)
-  }
+  // const supabase = createAdminSupabase()
+  // const data = foodItemIds.map((foodItemId) => {
+  //   return { requested_food_item_id: foodItemId }
+  // })
+  // await Promise.all(foodItemIds.map((foodItemId) => {
+  //   return IconQueue.add('Generate food icon', { requested_food_item_id: foodItemId });
+  // })
+  // const { data: iconQueue, error: iconError } = await supabase.from("IconQueue").insert(data).select()
+  // await IconQueue.add('Generate food icons', { color: 'red' });
+
+  // if (iconError) {
+  //   console.error("Error adding to icon queue", iconError)
+  // }
 }
 
 async function addFoodItemToDatabase(
