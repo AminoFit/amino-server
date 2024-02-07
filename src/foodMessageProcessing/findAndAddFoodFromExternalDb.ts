@@ -15,6 +15,8 @@ import { constructFoodItemRequestString } from "@/database/OpenAiFunctions/utils
 import { Tables } from "types/supabase"
 import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
 import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS, COSINE_THRESHOLD } from "./common/foodProcessingConstants"
+import { printSearchResults } from "./common/processFoodItemsUtils"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 export async function findAndAddFoodItemInExternalDatabase(
   foodToLog: FoodItemToLog,
@@ -69,7 +71,8 @@ export async function findAndAddFoodItemInExternalDatabase(
         }
         // console.log("usda_find_food_params", usda_find_food_params)
         const result = await searchUsdaByEmbedding(usda_find_food_params)
-        console.log("Usda result", result)
+        console.log("USDA result")
+        printSearchResults(result || [])
         console.log("Time taken for USDA API:", Date.now() - startTime, "ms") // Log the time taken
         return result
       } catch (err) {
@@ -158,13 +161,15 @@ export async function findAndAddFoodItemInExternalDatabase(
       )
     })
 
+    // rank the foodInfoResponses array based on similarityToQuery
+    foodInfoResponses.sort((a, b) => b.similarityToQuery - a.similarityToQuery)
+
     // Start by finding the highest similarity item.
-    highestSimilarityItem = foodInfoResponses.reduce((prev, current) => {
-      return prev.similarityToQuery > current.similarityToQuery ? prev : current
-    }, foodInfoResponses[0])
+    highestSimilarityItem = foodInfoResponses[0]
 
     // Check the highest similarity score
     if (highestSimilarityItem.similarityToQuery <= COSINE_THRESHOLD) {
+      console.log("")
       const betterMatchItem = await findBestFoodMatchExternalDb(user, foodToLog, foodInfoResponses)
       if (betterMatchItem) {
         highestSimilarityItem = betterMatchItem
@@ -227,3 +232,33 @@ export async function findAndAddFoodItemInExternalDatabase(
     throw err
   }
 }
+
+async function getLoggedFoodItem(id: number) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("LoggedFoodItem").select("*").eq("id", id).single()
+  return data
+}
+
+async function getUserByEmail(email: string) {
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("User").select("*").eq("email", email).single()
+  return data
+}
+
+async function testAddFoodFromExternal() {
+  // const logged_food_item = await getLoggedFoodItem(2218)
+  const messageId = 1142
+  const foodToLog = {
+    food_database_search_name: "tuna",
+    full_item_user_message_including_serving: "tuna",
+    branded: false,
+    brand: ""
+  } as FoodItemToLog
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+  const food_embed_cache = await foodToLogEmbedding(foodToLog)
+
+  const result = await findAndAddFoodItemInExternalDatabase(foodToLog!, food_embed_cache, user!, messageId)
+  console.log("result", result)
+}
+
+testAddFoodFromExternal()

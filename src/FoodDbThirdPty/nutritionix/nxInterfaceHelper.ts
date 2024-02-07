@@ -45,7 +45,7 @@ function deduplicateServings(servings: NxFoodServing[]): NxFoodServing[] {
 }
 
 export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemResponse[] {
-  console.log("response", response)
+  console.log("nxresponse", response.foods[0].brand_name ? `${response.foods[0].food_name} - ${response.foods[0].brand_name}` : response.foods[0].food_name)
   return response.foods.map((food) => {
     let default_serving_name = `${food.serving_qty} ${food.serving_unit}`
     // Preprocessing step to convert serving units from oz to g or ml

@@ -134,6 +134,7 @@ export async function findBestFoodMatchtoLocalDb(
 ): Promise<[FoodItemIdAndEmbedding | null, number | null]> {
   const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
+  console.log("databaseOptionsString", databaseOptionsString)
   let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8nXQZjeQ"
   let max_tokens = 300
   let temperature = 0

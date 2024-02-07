@@ -7,6 +7,18 @@ import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/lega
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 
+function compareFoodItems(item1: FoodItemWithNutrientsAndServing, item2: FoodItemWithNutrientsAndServing): boolean {
+  // Normalize the name and brand values to lowercase for case-insensitive comparison
+  const name1 = item1.name.toLowerCase();
+  const name2 = item2.name.toLowerCase();
+
+  const brand1 = item1.brand?.toLowerCase() || ""; // Treat null or undefined as an empty string
+  const brand2 = item2.brand?.toLowerCase() || ""; // Treat null or undefined as an empty string
+
+  // Compare the normalized name and brand values
+  return name1 === name2 && brand1 === brand2;
+}
+
 export async function addFoodItemToDatabase(
     food: FoodItemWithNutrientsAndServing,
     bgeBaseEmbedding: number[],
@@ -23,10 +35,11 @@ export async function addFoodItemToDatabase(
       .ilike("name", `%${food.name}%`)
       .or(`brand.ilike.%${food.brand || ""}%,brand.is.null`)
       .limit(1)
-      .single()
+      .single() as { data: FoodItemWithNutrientsAndServing; error: any }
   
     // If it exists, return the existing food item ID
-    if (existingFoodItem) {
+    if (compareFoodItems(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
+      console.log(`Food item ${food.name} already exists in the database`)
       return existingFoodItem as FoodItemWithNutrientsAndServing
     }
   
