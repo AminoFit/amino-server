@@ -53,7 +53,7 @@ export async function chatCompletion(
     if (result.usage) {
       // log usage
       let completionTimeMs = performance.now() - startTime
-      await LogOpenAiUsage(user, result.usage, model, "openai",completionTimeMs)
+      await LogOpenAiUsage(user, result.usage, model, "openai", completionTimeMs)
     }
 
     return result.choices[0].message
@@ -298,9 +298,8 @@ export async function* chatCompletionFunctionStream(
   }
 }
 
-
 // Define the options interface with additional user and model details
-export interface ChatCompletionJsonStreamOptions {
+export interface ChatCompletionStreamOptions {
   model?: string
   prompt: string
   temperature?: number
@@ -310,7 +309,7 @@ export interface ChatCompletionJsonStreamOptions {
 }
 
 // Define the async generator function
-export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionStreamOptions) {
   const { model = "gpt-3.5-turbo-1106", prompt, temperature = 0, max_tokens = 2048, stop, ...otherParams } = options
 
   console.log("model and temp", model, temperature)
@@ -360,3 +359,111 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     completionTimeMs
   )
 }
+
+export interface ChatCompletionVisionStreamOptions {
+  model?: string
+  messages: OpenAI.Chat.ChatCompletionMessageParam[]
+  temperature?: number
+  max_tokens?: number
+  stop?: string
+  [key: string]: any
+}
+
+export async function* OpenAiVisionChatStream(
+  user: Tables<"User">,
+  options: ChatCompletionVisionStreamOptions
+) {
+  const {
+    model = "gpt-4-vision-preview",
+    prompt, 
+    messages,
+    temperature = 0,
+    max_tokens = 2048,
+    stop,
+    detail = "auto",
+    ...otherParams
+  } = options
+
+  console.log("Model, Temperature, Detail", model, temperature, detail)
+  const systemPrompt = "You are a helpful assistant."
+  const startTime = performance.now()
+
+  const stream = await openai.chat.completions.create({
+    model,
+    messages,
+    temperature,
+    max_tokens,
+    stop,
+    ...otherParams,
+    stream: true
+  })
+
+  let totalResponse = ""
+  for await (const chunk of stream) {
+    if (chunk?.choices[0]?.delta?.content) {
+      const content = chunk.choices[0].delta.content
+      yield content
+      totalResponse += content
+    }
+  }
+
+  const imageTokenCounts = messages.reduce((acc, message) => {
+    // Check if the message's content is an array, indicating it might include text and/or images.
+    if (Array.isArray(message.content)) {
+      const tokensForImages = message.content.reduce((innerAcc, contentPart) => {
+        // Check if the content part is an image by its type
+        if (contentPart.type === "image_url") {
+          // Safely cast the contentPart to ChatCompletionContentPartImage now that we've confirmed its type
+          const imagePart = contentPart as OpenAI.Chat.ChatCompletionContentPartImage
+          const imageDetail = imagePart.image_url.detail || "low" // Defaulting to low if detail is not specified
+
+          // Accumulate tokens based on the detail level
+          return innerAcc + (imageDetail === "high" ? 130 : 65)
+        }
+        return innerAcc
+      }, 0)
+
+      return acc + tokensForImages
+    }
+    return acc
+  }, 0)
+
+  const textTokenCount = messages.reduce((acc, message) => {
+    // If the message content is a string, directly count its tokens.
+    if (typeof message.content === "string") {
+      return acc + new TextEncoder().encode(message.content).length
+    }
+    // If the message content is an array, filter for text parts and count their tokens.
+    else if (Array.isArray(message.content)) {
+      const textParts = message.content.filter(
+        (part) => part.type === "text"
+      ) as OpenAI.Chat.ChatCompletionContentPartText[]
+      const textPartsTokenCount = textParts.reduce((innerAcc, part) => {
+        return innerAcc + new TextEncoder().encode(part.text).length
+      }, 0)
+      return acc + textPartsTokenCount
+    }
+    return acc
+  }, 0)
+  const systemPromptTokenCount = new TextEncoder().encode(systemPrompt).length
+  const promptTokens = textTokenCount + systemPromptTokenCount + imageTokenCounts
+
+  const resultTokens = new TextEncoder().encode(totalResponse).length
+  const totalTokens = resultTokens + promptTokens
+
+  console.log("Logging performance", performance.now() - startTime, resultTokens, promptTokens, totalTokens)
+
+  await LogOpenAiUsage(
+    user,
+    {
+      total_tokens: totalTokens,
+      prompt_tokens: promptTokens,
+      completion_tokens: resultTokens
+    },
+    model,
+    "openai",
+    performance.now() - startTime
+  )
+  console.log("Logging performance done")
+}
+

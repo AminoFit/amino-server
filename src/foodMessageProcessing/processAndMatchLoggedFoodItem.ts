@@ -17,6 +17,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { findBestLoggedFoodItemMatchToFood } from "./findBestLoggedFoodItemMatchToFood"
 import { updateLoggedFoodItemWithData } from "./common/updateLoggedFoodItemData"
 import { LinkIconsOrCreateIfNeeded } from "./foodIconsProcess"
+import { getUserByEmail } from "./common/debugHelper"
 import { re } from "mathjs"
 
 export async function ProcessLogFoodItem(
@@ -112,12 +113,6 @@ async function testFoodMatching() {
 async function getLoggedFoodItem(id: number) {
   const supabase = createAdminSupabase()
   const { data, error } = await supabase.from("LoggedFoodItem").select("*").eq("id", id).single()
-  return data
-}
-
-async function getUserByEmail(email: string) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("User").select("*").eq("email", email).single()
   return data
 }
 

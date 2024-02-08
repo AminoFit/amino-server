@@ -6,6 +6,7 @@ import { chatCompletion } from "@/languageModelProviders/openai/customFunctions/
 import OpenAI from "openai"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "./common/extractJSON"
+import { getUserByEmail } from "./common/debugHelper"
 
 const serving_assignement_prompt = `User_message:
 "USER_SERVING_INPUT"
@@ -184,18 +185,6 @@ export async function findBestServingMatchChat(
   return food_item_to_log
 }
 
-async function getUserByEmail(email: string) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("User").select("*").eq("email", email)
-
-  if (error) {
-    console.error(error)
-    return null
-  }
-
-  return data
-}
-
 async function getFoodItem(id: number) {
   const supabase = createAdminSupabase()
   const { data, error } = await supabase.from("FoodItem").select("*, Serving(*)").eq("id", id).single()
@@ -209,7 +198,7 @@ async function getFoodItem(id: number) {
 }
 
 async function testServingMatchRequest() {
-  const user = (await getUserByEmail("seb.grubb@gmail.com"))![0] as Tables<"User">
+  const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
   const food_serving_request = {
     brand: "",

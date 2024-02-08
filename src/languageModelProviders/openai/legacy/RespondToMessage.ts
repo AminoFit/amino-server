@@ -21,6 +21,7 @@ import { getOpenAICompletion } from "../utils/openAiHelper"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat"
+import { logFoodItemStreamWithImages } from "@/foodMessageProcessing/logFoodItemWithImageExtract/logFoodItemWithImageStreamChat"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -46,7 +47,7 @@ Loads the messages for the user and gets a new response from OpenAI
 */
 export async function GenerateResponseForUser(user: Tables<"User">): Promise<ResponseForUser> {
   // Get messages
-  const messages:any = [
+  const messages: any = [
     {
       role: ROLE_MAPPING.System,
       content: GetSystemStartPrompt(user)
@@ -66,17 +67,17 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
 
   let prevMessage: OpenAI.ChatCompletionMessageParam | undefined = undefined
   const tempProcessedMessage: OpenAI.ChatCompletionAssistantMessageParam = {
-    role: 'assistant',
+    role: "assistant",
     content: "ok! got it."
-  }  
+  }
   for (const message of messagesForUser) {
     let msg: OpenAI.ChatCompletionMessageParam = {
       role: ROLE_MAPPING[message.role],
       content: message.content,
-      ...(message.role === 'Function' && { name: message.function_name })
-    } as OpenAI.ChatCompletionMessageParam;
+      ...(message.role === "Function" && { name: message.function_name })
+    } as OpenAI.ChatCompletionMessageParam
     if (message.function_name && msg.role === "function") {
-      (msg as OpenAI.ChatCompletionFunctionMessageParam).name = message.function_name;
+      ;(msg as OpenAI.ChatCompletionFunctionMessageParam).name = message.function_name
     }
     // Check if the message ID matches and the user's first name is not known or is an empty string
     // if (message.id === lastUserMessage.id && (!user.firstName || user.firstName.trim() === "")) {
@@ -193,7 +194,7 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
 
 // Helper function to handle error scenarios and update the message accordingly
 function handleQuickLogError(inputMessageId: number, logMessage: string) {
-  console.log("error",logMessage)
+  console.log("error", logMessage)
   UpdateMessage({
     id: inputMessageId,
     status: "FAILED",
@@ -231,21 +232,32 @@ export async function GenerateResponseForQuickLog(
 
   await UpdateMessage({
     id: inputMessageId,
-    status: "PROCESSING",
+    status: "PROCESSING"
   })
-
 
   let foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
 
-  try {
-    // Try using the based
-    ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage));
-  } catch (error) {
-    console.log("Error using instruct model:", error)
+  if (loadedMessage.hasimages) {
+    try {
+      // Try using the based
+      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage))
+    } catch (error) {
+      console.log("Error using image model:", error)
 
-    // If an error occurs, fallback to the function stream method
-    // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
+      // If an error occurs, fallback to the function stream method
+      // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
+    }
+  } else {
+    try {
+      // Try using the based
+      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage))
+    } catch (error) {
+      console.log("Error using chat model:", error)
+
+      // If an error occurs, fallback to the function stream method
+      // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
+    }
   }
 
   // Check if we have received any valid food items to log
