@@ -1,4 +1,4 @@
-import { SendRequestToGenerateIcons } from "@/database/OpenAiFunctions/HandleLogFoodItems"
+import { SendRequestToGenerateIcon } from "@/foodMessageProcessing/foodIconsProcess"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 console.log("This script will generate any missing food icons.")
@@ -25,7 +25,7 @@ async function addMissingFoodItems() {
   }
   console.log("Found " + data.length + " food items without images.")
 
-  await SendRequestToGenerateIcons(data.map((foodItem) => foodItem.id))
+  await Promise.all(data.map((foodItem) => SendRequestToGenerateIcon(foodItem.id)))
 }
 async function cleanupNullFoodId() {
   console.log("Cleaning up null food id")

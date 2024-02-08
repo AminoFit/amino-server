@@ -59,6 +59,7 @@ async function processFoodItem(loggedFoodIdString: string) {
 
   const openAiData = loggedFoodItem?.extendedOpenAiData?.valueOf() as any
 
+
   if (!openAiData) {
     throw new Error("No openAiData")
   }

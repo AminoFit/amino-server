@@ -1,37 +1,29 @@
 // OpenAI
-import { findBestServingMatchInstruct } from "../../foodMessageProcessing/legacy/servingMatchRequestInstruct"
-import { findBestServingMatchFunction } from "../../foodMessageProcessing/legacy/servingMatchRequestFunction"
-import { findBestFoodMatchtoLocalDb } from "../../foodMessageProcessing/matchFoodItemToLocalDb"
-import { FoodItemIdAndEmbedding } from "./utils/foodLoggingTypes"
 
 // Utils
-import { foodToLogEmbedding, FoodEmbeddingCache, getFoodEmbedding } from "../../utils/foodEmbedding"
-import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { isServerTimeData } from "@/foodMessageProcessing/common/processFoodItemsUtils"
+import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
+import { FoodEmbeddingCache, foodToLogEmbedding, getFoodEmbedding } from "../../utils/foodEmbedding"
 
 // App
-import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS } from "@/foodMessageProcessing/common/foodProcessingConstants"
+import { FoodItemWithNutrientsAndServing } from "../../app/dashboard/utils/FoodHelper"
 // Database
-import UpdateMessage from "@/database/UpdateMessage"
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { Tables } from "types/supabase"
-import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { Database } from "types/supabase-generated.types"
-import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
-import { generateFoodIconQueue } from "@/app/api/queues/generate-food-icon/generate-food-icon"
-import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/legacy/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/legacy/foodItemCompleteMissingServingInfo"
-import { vectorToSql } from "@/utils/pgvectorHelper"
-import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
-import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
-import { checkRateLimit } from "@/utils/apiUsageLogging"
 import { searchUsdaByEmbedding } from "@/FoodDbThirdPty/USDA/searchUsdaByEmbedding"
-import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
-import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/legacy/matchFoodItemtoExternalDb"
+import { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import { getCompleteFoodInfo } from "@/FoodDbThirdPty/common/getCompleteFoodInfo"
+import { findFsFoodInfo } from "@/FoodDbThirdPty/fatsecret/findFsFoodInfo"
+import { FoodQuery, findNxFoodInfo } from "@/FoodDbThirdPty/nutritionix/findNxFoodInfo"
+import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/legacy/foodItemCompleteMissingServingInfo"
+import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/legacy/foodItemMissingFieldComplete"
+import { findBestFoodMatchExternalDb } from "@/foodMessageProcessing/legacy/matchFoodItemtoExternalDb"
+import { checkRateLimit } from "@/utils/apiUsageLogging"
+import { vectorToSql } from "@/utils/pgvectorHelper"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { Tables } from "types/supabase"
 import { constructFoodItemRequestString } from "./utils/foodLogHelper"
+
+import { IconQueue } from "@/bull-queues/BullMqQueues"
 import { foodItemCompletion } from "@/foodMessageProcessing/legacy/foodItemCompletion"
 import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/legacy/foodItemInterface"
 
@@ -39,118 +31,6 @@ import { FoodInfo, mapOpenAiFoodInfoToFoodItem } from "@/foodMessageProcessing/l
 const COSINE_THRESHOLD = 0.975
 // used to determine if an item should be included in a compare list
 const COSINE_THRESHOLD_LOW_QUALITY = 0.85
-
-function constructFoodRequestString(foodToLog: FoodItemToLog) {
-  let result = foodToLog.full_item_user_message_including_serving || foodToLog.food_database_search_name
-
-  if (foodToLog.brand) {
-    // Check if brand exists in full name
-    if (result.toLowerCase().indexOf(foodToLog.brand.toLowerCase()) === -1) {
-      result += " " + foodToLog.brand
-    }
-  }
-
-  // Add serving details
-  let servingDetails = ""
-  if (foodToLog.serving) {
-    if (foodToLog.serving.serving_amount) {
-      servingDetails += foodToLog.serving.serving_amount + " " + foodToLog.serving.serving_name
-    }
-
-    if (foodToLog.serving.serving_amount && foodToLog.serving.total_serving_g_or_ml) {
-      servingDetails += " - "
-    }
-
-    if (foodToLog.serving.total_serving_g_or_ml) {
-      servingDetails += foodToLog.serving.total_serving_g_or_ml + "g"
-    }
-
-    if (servingDetails) {
-      result += " (" + servingDetails + ")"
-    }
-  }
-
-  return result
-}
-
-
-
-async function updateLoggedFoodItem(loggedFoodItemId: number, data: any): Promise<Tables<"LoggedFoodItem"> | null> {
-  const supabase = createAdminSupabase()
-
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
-
-  if (serverTimeError) {
-    console.log("serverTimeError error:", serverTimeError)
-    throw serverTimeError
-  }
-
-  // Extract the timestamp from the server's response
-  console.log("serverTimeData", serverTimeData, "is it server time data?", isServerTimeData(serverTimeData))
-  const timestamp = isServerTimeData(serverTimeData)
-    ? new Date(serverTimeData.current_timestamp).toISOString()
-    : new Date().toISOString()
-
-  // Add the timestamp to the data object for updating the updatedAt field
-  data.updatedAt = timestamp
-
-  const { data: result, error } = await supabase
-    .from("LoggedFoodItem")
-    .update(data)
-    .eq("id", loggedFoodItemId)
-    .select()
-    .single()
-  if (error) {
-    console.log("logFoodItem error:", error)
-    throw error
-  }
-
-  return result
-}
-
-
-async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<void> {
-  const supabase = createAdminSupabase()
-
-  let { data: closestIcons, error } = await supabase.rpc("get_top_foodicon_embedding_similarity", {
-    food_item_id: foodItemId
-  })
-  if (error) {
-    console.error("Could not get top food icon embedding similarity")
-    console.error(error)
-    await SendRequestToGenerateIcons([foodItemId])
-    return
-  }
-
-  if (closestIcons && closestIcons.length > 0) {
-    if (closestIcons[0].cosine_similarity > 0.9) {
-      // Link the icon
-      await supabase
-        .from("FoodItemImages")
-        .insert([
-          {
-            foodItemId: foodItemId,
-            foodImageId: closestIcons[0].food_icon_id
-          }
-        ])
-        .select()
-        .single()
-      return
-    }
-  }
-  await SendRequestToGenerateIcons([foodItemId])
-}
-export async function SendRequestToGenerateIcons(foodItemIds: number[]): Promise<void> {
-  const supabase = createAdminSupabase()
-  const data = foodItemIds.map((foodItemId) => {
-    return { requested_food_item_id: foodItemId }
-  })
-  const { data: iconQueue, error: iconError } = await supabase.from("IconQueue").insert(data).select()
-
-  if (iconError) {
-    console.error("Error adding to icon queue", iconError)
-  }
-}
 
 async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
