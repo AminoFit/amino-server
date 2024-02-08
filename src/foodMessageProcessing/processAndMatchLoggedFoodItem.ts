@@ -52,7 +52,8 @@ export async function ProcessLogFoodItem(
     messageId
   )
 
-  console.log("bestMatch", bestMatch)
+  console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
+  console.log("bestMatchSource", bestMatch.foodInfoSource)
 
   try {
     food = await findBestServingMatchChat(food, bestMatch as FoodItemWithNutrientsAndServing, user)
@@ -117,11 +118,11 @@ async function getLoggedFoodItem(id: number) {
 }
 
 async function testProcessFood(){
-  const loggedFoodItem =  await getLoggedFoodItem(2212)
-  const messageId = 1136
+  const loggedFoodItem =  await getLoggedFoodItem(2282)
+  const messageId = 1200
   const food = { 
-    food_database_search_name:'butter',
-    full_item_user_message_including_serving: 'butter',
+    food_database_search_name:'one full milk latte 1 cup',
+    full_item_user_message_including_serving: 'one full milk latte 1 cup',
     branded: false,
     brand: "",
   } as FoodItemToLog

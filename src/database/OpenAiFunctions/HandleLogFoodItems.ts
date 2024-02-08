@@ -323,7 +323,7 @@ async function findAndAddItemInDatabase(
     // Construct the request string
     const foodItemRequestString = constructFoodItemRequestString(foodToLog, top3PopulatedFoodItems)
     console.log("foodItemRequestString:\n", foodItemRequestString)
-    const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user)
+    const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user, foodToLog.branded ? `${foodToLog.food_database_search_name} - ${foodToLog.brand}` : foodToLog.food_database_search_name)
     console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
 
     let food: FoodInfo = foodItemInfo

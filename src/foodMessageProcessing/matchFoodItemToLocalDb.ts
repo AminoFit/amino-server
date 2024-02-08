@@ -39,8 +39,7 @@ DATABASE_SEARCH_RESULTS
 GOAL:
 We want to accurately and precisely match user_food_logged to the results in database_search_results if correct matches exist. If the entries don't overlap we can instead opt to continue searching. You do this by setting "no_good_matches" to true.
 
-IMPORTANT:
-We should NEVER match with items that we know have a different nutritional profiles or are clearly different preparations or variations.
+IMPORTANT: If the user specifies a preparation  we must match with that. If they don't specify some details we can match with the most common options. DO NOT ASSUME ANYTHING ABOUT THE DATABASE RESULTS.
 
 READ AND FOLLOW THESE STEPS:
 1. Look at user_food_logged and make any reasonable assumptions about what they ate. (e.g. "milk" could mean "whole milk" or "fat free milk")
@@ -134,6 +133,7 @@ export async function findBestFoodMatchtoLocalDb(
 ): Promise<[FoodItemIdAndEmbedding | null, number | null]> {
   const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
+  console.log("databaseOptionsString", databaseOptionsString)
   let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8nXQZjeQ"
   let max_tokens = 300
   let temperature = 0
