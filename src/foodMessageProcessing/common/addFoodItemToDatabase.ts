@@ -1,11 +1,10 @@
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { vectorToSql } from "@/utils/pgvectorHelper"
-import { foodItemMissingFieldComplete } from "@/foodMessageProcessing/legacy/foodItemMissingFieldComplete"
-import { foodItemCompleteMissingServingInfo } from "@/foodMessageProcessing/legacy/foodItemCompleteMissingServingInfo"
 
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
+import { completeMissingFoodInfo } from "../completeMissingFoodInfo"
 
 function compareFoodItems(item1: FoodItemWithNutrientsAndServing | null, item2: FoodItemWithNutrientsAndServing | null): boolean {
   // Check if either item is null
@@ -51,7 +50,11 @@ export async function addFoodItemToDatabase(
   
     // If the food item is missing a field, complete it
     if (!food.defaultServingWeightGram || food.weightUnknown) {
-      food = await foodItemMissingFieldComplete(food as FoodItemWithNutrientsAndServing, user)
+      food = await completeMissingFoodInfo(food, user) || food
+    }
+
+    if (food.isLiquid && !food.defaultServingLiquidMl) {
+      food = await completeMissingFoodInfo(food, user) || food
     }
   
     // Check for missing servingAlternateAmount and servingAlternateUnit in servings
@@ -60,9 +63,14 @@ export async function addFoodItemToDatabase(
         serving.servingAlternateAmount === null ||
         serving.servingAlternateAmount === undefined ||
         serving.servingAlternateUnit === null ||
-        serving.servingAlternateUnit === undefined
+        serving.servingAlternateUnit === undefined ||
+        serving.servingWeightGram === null ||
+        serving.servingWeightGram === undefined || 
+        serving.servingWeightGram === 0 ||
+        serving.servingName === null ||
+        serving.servingName === ""
       ) {
-        food = await foodItemCompleteMissingServingInfo(food, user)
+        food = await completeMissingFoodInfo(food, user) || food
         break
       }
     }

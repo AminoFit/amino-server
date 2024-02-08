@@ -20,6 +20,7 @@ serving: {
 }[]
 } 
 WEIGHT MUST BE INCLUDED IN ANY UNIT POSSIBLE (g, oz, ml)
+1a. If it's a liquid try to include the liquid density in g/ml otherwise don't say anything about liquid density.
 
 2. If you can't find the info, please do a best guess based on similar items.
 If weight is not available, estimate using 1-2 sentences of reasoning what it could be based on common info and say the macro info.
@@ -27,7 +28,7 @@ The weight of an item cannot be less than the sum of the weight of its macronutr
 `
 
 export async function getMissingFoodInfoOnlineQuery(foodName: string): Promise<string | null> {
-  const model = "pplx-70b-online"
+  const model = "pplx-7b-online"
   const messages = [
     { role: "system", content: "You are a useful food assistant that knows all about calories and item weights." },
     {
@@ -46,7 +47,7 @@ export async function getMissingFoodInfoOnlineQuery(foodName: string): Promise<s
 }
 
 async function testGetFoodInfo() {
-  const result = await getMissingFoodInfoOnlineQuery("shrimp shumai by JFC")
+  const result = await getMissingFoodInfoOnlineQuery("fiber gummies")
   console.log(result)
 }
 
