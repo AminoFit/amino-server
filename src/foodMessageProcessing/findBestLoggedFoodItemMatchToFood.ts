@@ -59,7 +59,7 @@ export async function findBestLoggedFoodItemMatchToFood(
         throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
       }
     }
-  
+    console.log("Trying to find best match in external db")
     // Fetch from external databases
     return [await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId), null]
   }
