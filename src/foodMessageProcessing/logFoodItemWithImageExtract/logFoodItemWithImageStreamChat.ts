@@ -1,34 +1,37 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import {
-  OpenAiChatCompletionJsonStream,
-  ChatCompletionStreamOptions
+  OpenAiVisionChatStream,
+  ChatCompletionVisionStreamOptions
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
-import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
-import { mode } from "mathjs"
-import { getUserByEmail } from "../common/debugHelper"
+import OpenAI from "openai"
+import { getUserByEmail, getUserMessageById } from "../common/debugHelper"
+import { e, mode } from "mathjs"
+import { exit } from "process"
+
+const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
 
 const food_logging_prompt = `
-Your task is to analyze a sentence provided by a user, describing their meal for logging purposes. Follow these steps to ensure accurate identification and logging of each food item:
+Your task is to identify based on pictures provided and the user INPUT_TO_PROCESS text what a user ate along with good portion estimates.
 
-1. Identify Distinct Food Items: Examine the user's sentence and identify each distinct food item. Ensure that each entry corresponds to a unique item that can be found in our food database.
+1. Identify Distinct Food Items: Look at both the images and the user input and determine for each unique food item what it is. Sometimes the user is trying to add detail to the picture and sometimes trying to say they had something in addition.
 
 2. Fix any typos: Typos may exist due to fast typing or because the text is a result of voice recognition. If you notice any typos, correct them to the best of your ability. E.g. "one pair" should be corrected to "one pear" or "lin choclate" likely means "lindt chocolate".
 
-3. Seperate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For examples ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
+3. Separate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For example, ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
 
-4. Determine 'full_single_food_database_search_name': For each identified food item, determine its 'full_single_food_database_search_name'. This name should be specific enough to encompass various forms and preparations of the food (e.g., specify if oats are cooked, or if butter is salted or unsalted).
+4. IMPORTANT: 'full_single_food_database_search_name' must as specific as possible to correctly search. Include any detail provided or obviously inferrable from the text or picture like brand, flavor, preparation (cooked, blended, dry, uncooked, raw etc). Do not includes details about sides (e.g. pancake with honey, just create a new entry for honey, unless it is definitely part of the item like cinammon pancake would just be one thing).
 
-5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). It is fine to assume serving details if not provided.
+5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). Serving details must always be included and can be inferred from the picture.
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
 Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
 
 INPUT_TO_PROCESS:
-"INPUT_HERE"
+"USER_INPUT_CONTENT"
 
 Expected JSON Output:
 {
@@ -43,39 +46,21 @@ Expected JSON Output:
   "contains_valid_food_items": "boolean"
 }
 
-Beginning of JSON output: 
+You can only output JSON. Beginning of JSON output: 
 `
 
-function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
-  // Since serving is no longer available in the output, we need to handle its absence
-  let serving: LoggedFoodServing | undefined
-  // if (outputItem.serving) {
-  //   serving = {
-  //     serving_amount: outputItem.serving.serving_amount,
-  //     serving_name: outputItem.serving.serving_name,
-  //     total_serving_g_or_ml: outputItem.serving.total_serving_size_g_or_ml,
-  //     serving_g_or_ml: outputItem.serving.g_or_ml
-  //   }
-  // }
-
-  return {
-    food_database_search_name: outputItem.full_single_food_database_search_name,
-    full_item_user_message_including_serving: outputItem.full_single_item_user_message_including_serving_or_quantity,
-    brand: outputItem.brand || "",
-    branded: outputItem.branded || false,
-    serving: serving || undefined
-  }
-}
-
-async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: ChatCompletionStreamOptions) {
+async function* processStreamedLoggedFoodItemsWithImages(user: Tables<"User">, options: ChatCompletionVisionStreamOptions) {
   // Call ChatCompletionJsonStream to get the stream
-  const stream = await OpenAiChatCompletionJsonStream(user, options)
+  const stream = await OpenAiVisionChatStream(user, options)
 
   let buffer = "" // Buffer to accumulate chunks of data
   let lastProcessedIndex = -1 // Track the last processed index
-
   for await (const chunk of stream) {
+    if (chunk === null || chunk === undefined) {
+      return // Exit the generator when no more data is available
+    }
     buffer += chunk // Append the new chunk to the buffer
+    // process.stdout.write(chunk)
     const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
 
     if (jsonObj && endIndex !== lastProcessedIndex) {
@@ -84,36 +69,27 @@ async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: Ch
       yield jsonObj // Yield the new JSON object
     }
   }
+  return
 }
 
-async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, options: ChatCompletionStreamOptions) {
-  //   console.log("calling mixtral with options", options)
-  // Call ChatCompletionJsonStream to get the stream
-  const stream = await fireworksChatCompletionStream(
-    {
-      model: "accounts/fireworks/models/mixtral-8x7b-instruct",
-      systemPrompt: "You are a helpful assistant that only replies with valid JSON.",
-      prompt: options.prompt
-    },
-    user
-  )
-
-  let buffer = "" // Buffer to accumulate chunks of data
-  let lastProcessedIndex = -1 // Track the last processed index
-
-  for await (const chunk of stream) {
-    // console.log(chunk)
-    process.stdout.write(chunk.toString())
-    buffer += chunk // Append the new chunk to the buffer
-    const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
-
-    if (jsonObj && endIndex !== lastProcessedIndex) {
-      // console.log(jsonObj); // Output the new JSON object
-      lastProcessedIndex = endIndex // Update the last processed index
-      yield jsonObj // Yield the new JSON object
-    }
+async function generateSignedUrls(userImages: Tables<"UserMessageImages">[]) {
+    const supabase = createAdminSupabase()
+    return await Promise.all(userImages.map(async image => {
+      const { data, error } = await supabase.storage
+        .from('userUploadedImages')
+        .createSignedUrl(image.imagePath, 3600); // 3600 seconds = 1 hour
+  
+      if (error) {
+        console.error('Error generating signed URL:', error.message);
+        return null; // Handle this as appropriate for your application
+      }
+  
+      return {
+        ...image,
+        signedImageUrl: data.signedUrl,
+      };
+    }));
   }
-}
 
 function extractLatestValidJSON(inputString: string) {
   let braceCount = 0
@@ -146,23 +122,59 @@ function extractLatestValidJSON(inputString: string) {
   return { jsonObj: null, endIndex: -1 } // Return null if no well-formed JSON object is found
 }
 
-export async function logFoodItemStream(
+async function getUserImagesByMessageId(messageId: number) {
+    const supabase = createAdminSupabase()
+    const { data, error } = await supabase
+      .from('UserMessageImages')
+      .select('imagePath, uploadedAt') // Specify the columns you want to retrieve
+      .eq('messageId', messageId)
+  
+    if (error) {
+      console.error(error)
+      return null
+    }
+  
+    return data
+  }
+
+export async function logFoodItemStreamWithImages(
   user: Tables<"User">,
   user_message: Tables<"Message">
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
-  // Add logging task to the tasks array
   const loggingTasks: Promise<any>[] = []
 
-  let model = "gpt-3.5-turbo-0125"
-  // if (user_message.status === "FAILED") {
-  //   model = "gpt-4-1106-preview"
-  // }
+  let model = "gpt-4-vision-preview"
 
-  const stream = processStreamedLoggedFoodItems(user, {
-    prompt: food_logging_prompt.replace("INPUT_HERE", user_message.content),
-    temperature: 0.1,
+  const user_images = await getUserImagesByMessageId(user_message.id) as Tables<"UserMessageImages">[]
+  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content)
+  const user_images_with_signed_urls = await generateSignedUrls(user_images);
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content: image_system_prompt,
+    },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        // Filter out any images that are null or do not have a signed URL
+        ...(user_images_with_signed_urls ?? []).filter(image => image && image.signedImageUrl).map(image => ({
+          "type": "image_url",
+          image_url: {
+            url: image?.signedImageUrl,
+            detail: "low" as const, // 
+          },
+        })) as OpenAI.Chat.ChatCompletionContentPartImage[],
+      ],
+    },
+  ];
+  
+  const stream = processStreamedLoggedFoodItemsWithImages(user, {
+    messages,
+    temperature: 0.01,
     model: model
   })
 
@@ -178,7 +190,7 @@ export async function logFoodItemStream(
         brand: chunk.brand || ""
       }
       foodItemsToLog.push(foodItemToLog)
-      // console.log("just logged: ", foodItemToLog)
+      console.log("just logged: ", foodItemToLog)
       const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
       loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
@@ -210,13 +222,20 @@ async function testChatCompletionJsonStream() {
   // } as Tables<"Message">
 
   // const { data, error } = await supabase.from("Message").insert([insertObject]).select()
-  const {data, error} = await supabase.from("Message").select("*").eq("id", 997)
+  const { data, error } = await supabase.from("Message").select("*").eq("id", 997)
   const message = data![0] as Tables<"Message">
   // console.log(message)
-  await logFoodItemStream(user!, message)
+  await logFoodItemStreamWithImages(user!, message)
 }
 
-async function testFoodLoggingStream() {
-  // const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
+async function testVisionFoodLoggingStream() {
+  const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
+  const message = await getUserMessageById(1235)
+
+  await logFoodItemStreamWithImages(user, message!)
 }
-//  testChatCompletionJsonStream()
+
+// testVisionFoodLoggingStream().then(() => {
+//   console.log("Test complete")
+//   exit()
+// })
