@@ -8,8 +8,9 @@ import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInte
 import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import OpenAI from "openai"
 import { getUserByEmail, getUserMessageById } from "../common/debugHelper"
-import { e, mode } from "mathjs"
 import { exit } from "process"
+import { fetchRotateAndConvertToBase64 } from "../common/imageTools/rotateImageFromUrl"
+import { re } from "mathjs"
 
 const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
 
@@ -49,7 +50,10 @@ Expected JSON Output:
 You can only output JSON. Beginning of JSON output: 
 `
 
-async function* processStreamedLoggedFoodItemsWithImages(user: Tables<"User">, options: ChatCompletionVisionStreamOptions) {
+async function* processStreamedLoggedFoodItemsWithImages(
+  user: Tables<"User">,
+  options: ChatCompletionVisionStreamOptions
+) {
   // Call ChatCompletionJsonStream to get the stream
   const stream = await OpenAiVisionChatStream(user, options)
 
@@ -73,23 +77,23 @@ async function* processStreamedLoggedFoodItemsWithImages(user: Tables<"User">, o
 }
 
 async function generateSignedUrls(userImages: Tables<"UserMessageImages">[]) {
-    const supabase = createAdminSupabase()
-    return await Promise.all(userImages.map(async image => {
-      const { data, error } = await supabase.storage
-        .from('userUploadedImages')
-        .createSignedUrl(image.imagePath, 3600); // 3600 seconds = 1 hour
-  
+  const supabase = createAdminSupabase()
+  return await Promise.all(
+    userImages.map(async (image) => {
+      const { data, error } = await supabase.storage.from("userUploadedImages").createSignedUrl(image.imagePath, 3600)
+
       if (error) {
-        console.error('Error generating signed URL:', error.message);
-        return null; // Handle this as appropriate for your application
+        console.error("Error generating signed URL:", error.message)
+        return null // Handle this as appropriate for your application
       }
-  
+
       return {
         ...image,
-        signedImageUrl: data.signedUrl,
-      };
-    }));
-  }
+        signedImageUrl: data.signedUrl
+      }
+    })
+  )
+}
 
 function extractLatestValidJSON(inputString: string) {
   let braceCount = 0
@@ -123,23 +127,58 @@ function extractLatestValidJSON(inputString: string) {
 }
 
 async function getUserImagesByMessageId(messageId: number) {
-    const supabase = createAdminSupabase()
-    const { data, error } = await supabase
-      .from('UserMessageImages')
-      .select('imagePath, uploadedAt') // Specify the columns you want to retrieve
-      .eq('messageId', messageId)
-  
-    if (error) {
-      console.error(error)
-      return null
-    }
-  
-    return data
+  const supabase = createAdminSupabase()
+  const { data, error } = await supabase
+    .from("UserMessageImages")
+    .select("imagePath, uploadedAt") // Specify the columns you want to retrieve
+    .eq("messageId", messageId)
+
+  if (error) {
+    console.error(error)
+    return null
   }
 
-export async function logFoodItemStreamWithImages(
-  user: Tables<"User">,
-  user_message: Tables<"Message">
+  return data
+}
+
+async function createMessagesWithRotatedImages(messages: OpenAI.Chat.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+  const processedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = await Promise.all(messages.map(async (message): Promise<OpenAI.Chat.ChatCompletionMessageParam> => {
+    // Check if the message is from a user and contains content that can be processed
+    if (message.role === 'user' && Array.isArray(message.content)) {
+      const processedContent = await Promise.all(message.content.map(async (contentPart): Promise<OpenAI.Chat.ChatCompletionContentPartImage | typeof contentPart> => {
+        // Only process parts that are of type image_url
+        if (contentPart.type === 'image_url' && contentPart.image_url?.url) {
+          const base64Image = await fetchRotateAndConvertToBase64(contentPart.image_url.url);
+          if (base64Image) {
+            // Explicitly cast the modified part to the correct type
+            return {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+                detail: 'low' as const, // Explicitly set the detail level to 'low'
+              },
+            } as OpenAI.Chat.ChatCompletionContentPartImage; // Explicit type casting
+          }
+        }
+        return contentPart; // Return unmodified if not an image_url type or if rotation/conversion fails
+      }));
+
+      // Explicitly cast the entire message to ChatCompletionMessageParam
+      return {
+        ...message,
+        content: processedContent,
+      } as OpenAI.Chat.ChatCompletionMessageParam;
+    }
+    return message; // Return unmodified if the message does not need processing
+  }));
+
+  return processedMessages;
+}
+
+async function processOpenAiVisionChatStream(
+  user_message: Tables<"Message">,
+  messages: OpenAI.Chat.ChatCompletionMessageParam[],
+  user: Tables<"User">
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
@@ -147,31 +186,6 @@ export async function logFoodItemStreamWithImages(
 
   let model = "gpt-4-vision-preview"
 
-  const user_images = await getUserImagesByMessageId(user_message.id) as Tables<"UserMessageImages">[]
-  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content)
-  const user_images_with_signed_urls = await generateSignedUrls(user_images);
-
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    {
-      role: "system",
-      content: image_system_prompt,
-    },
-    {
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        // Filter out any images that are null or do not have a signed URL
-        ...(user_images_with_signed_urls ?? []).filter(image => image && image.signedImageUrl).map(image => ({
-          "type": "image_url",
-          image_url: {
-            url: image?.signedImageUrl,
-            detail: "low" as const, // 
-          },
-        })) as OpenAI.Chat.ChatCompletionContentPartImage[],
-      ],
-    },
-  ];
-  
   const stream = processStreamedLoggedFoodItemsWithImages(user, {
     messages,
     temperature: 0.01,
@@ -194,9 +208,52 @@ export async function logFoodItemStreamWithImages(
       const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
       loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
-      console.log(chunk.contains_valid_food_items)
+      console.log("valid items?", chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
+  }
+  return { foodItemsToLog, isBadFoodLogRequest }
+}
+
+export async function logFoodItemStreamWithImages(
+  user: Tables<"User">,
+  user_message: Tables<"Message">
+): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
+  const user_images = (await getUserImagesByMessageId(user_message.id)) as Tables<"UserMessageImages">[]
+  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content)
+  const user_images_with_signed_urls = await generateSignedUrls(user_images)
+
+  console.log("user_images_with_signed_urls", user_images_with_signed_urls)
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content: image_system_prompt
+    },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        // Filter out any images that are null or do not have a signed URL
+        ...((user_images_with_signed_urls ?? [])
+          .filter((image) => image && image.signedImageUrl)
+          .map((image) => ({
+            type: "image_url",
+            image_url: {
+              url: image?.signedImageUrl,
+              detail: "low" as const //
+            }
+          })) as OpenAI.Chat.ChatCompletionContentPartImage[])
+      ]
+    }
+  ]
+
+  let { foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, messages, user)
+
+  if (isBadFoodLogRequest || foodItemsToLog.length === 0) {
+    const rotatedMessages = await createMessagesWithRotatedImages(messages);
+
+    ({ foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, rotatedMessages, user))
   }
   return { foodItemsToLog, isBadFoodLogRequest }
 }
@@ -230,7 +287,7 @@ async function testChatCompletionJsonStream() {
 
 async function testVisionFoodLoggingStream() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-  const message = await getUserMessageById(1235)
+  const message = await getUserMessageById(1311)
 
   await logFoodItemStreamWithImages(user, message!)
 }
