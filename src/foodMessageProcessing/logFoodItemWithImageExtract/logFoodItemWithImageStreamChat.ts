@@ -287,7 +287,7 @@ async function testChatCompletionJsonStream() {
 
 async function testVisionFoodLoggingStream() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-  const message = await getUserMessageById(1311)
+  const message = await getUserMessageById(1326)
 
   await logFoodItemStreamWithImages(user, message!)
 }
