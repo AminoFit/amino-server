@@ -25,7 +25,7 @@ Your task is to identify based on pictures provided and the user INPUT_TO_PROCES
 
 4. IMPORTANT: 'full_single_food_database_search_name' must as specific as possible to correctly search. Include any detail provided or obviously inferrable from the text or picture like brand, flavor, preparation (cooked, blended, dry, uncooked, raw etc). Do not includes details about sides (e.g. pancake with honey, just create a new entry for honey, unless it is definitely part of the item like cinammon pancake would just be one thing).
 
-5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). Serving details must always be included and can be inferred from the picture.
+5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or approximate weight (e.g., '100g of full-fat salted butter'). Serving details must always be included and can be inferred from the picture. Be as descriptive as possible such that a weight can be inferred (e.g. 2 chicken vs 2 chicken breasts is wildly different). Hence the more details to estimate the weight the better.
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
@@ -155,7 +155,7 @@ async function createMessagesWithRotatedImages(messages: OpenAI.Chat.ChatComplet
               type: 'image_url',
               image_url: {
                 url: `data:image/jpeg;base64,${base64Image}`,
-                detail: 'low' as const, // Explicitly set the detail level to 'low'
+                detail: 'high' as const, // Explicitly set the detail level to 'low'
               },
             } as OpenAI.Chat.ChatCompletionContentPartImage; // Explicit type casting
           }
@@ -241,7 +241,7 @@ export async function logFoodItemStreamWithImages(
             type: "image_url",
             image_url: {
               url: image?.signedImageUrl,
-              detail: "low" as const //
+              detail: "high" as const //
             }
           })) as OpenAI.Chat.ChatCompletionContentPartImage[])
       ]

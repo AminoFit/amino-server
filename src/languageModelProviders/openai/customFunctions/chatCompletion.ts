@@ -378,7 +378,7 @@ export async function* OpenAiVisionChatStream(
     prompt, 
     messages,
     temperature = 0,
-    max_tokens = 2048,
+    max_tokens = 3096,
     stop,
     detail = "auto",
     ...otherParams
