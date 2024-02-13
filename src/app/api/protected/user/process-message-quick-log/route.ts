@@ -12,6 +12,7 @@ export async function POST(
   const { aminoUser, error } = await GetAminoUserOnRequest()
 
   if (error) {
+    console.log("request", JSON.stringify(request))
     console.error("Error getting amino user on request: ", error)
     return new Response(error, { status: 400 })
   }
