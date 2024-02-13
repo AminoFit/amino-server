@@ -12,10 +12,12 @@ export async function POST(
   const { aminoUser, error } = await GetAminoUserOnRequest()
 
   if (error) {
+    console.error("Error getting amino user on request: ", error)
     return new Response(error, { status: 400 })
   }
 
   const requestBody = await request.json();
+  console.log(requestBody)
   const { messageId } = requestBody;
   // Default consumedOn to the current date/time if not provided
   const consumedOn = requestBody.consumedOn || new Date().toISOString();
