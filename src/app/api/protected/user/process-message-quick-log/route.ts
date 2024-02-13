@@ -9,19 +9,20 @@ export async function POST(
 ) {
   console.log("QUICK LOG MESSAGE PROCESS POST request")
 
-  const { aminoUser, error } = await GetAminoUserOnRequest()
-  console.log("request", JSON.stringify(request.json()))
-  if (error) {
-    console.error("Error getting amino user on request: ", error)
-    return new Response(error, { status: 400 })
-  }
-
   const requestBody = await request.json()
-  console.log(requestBody)
+  console.log("Request body: ", requestBody) 
   const { messageId } = requestBody
-  // Default consumedOn to the current date/time if not provided
   const consumedOn = requestBody.consumedOn || new Date().toISOString()
   const isMessageBeingEdited = requestBody.isMessageBeingEdited || false
+
+  const { aminoUser, error: aminoUserError } = await GetAminoUserOnRequest()
+
+  if (aminoUserError) {
+    console.error("Error getting amino user on request: ", aminoUserError)
+    return new Response(aminoUserError, { status: 400 })
+  }
+
+
 
   if (!messageId || typeof messageId !== "number") {
     return new Response("Invalid message ID provided", { status: 400 })
