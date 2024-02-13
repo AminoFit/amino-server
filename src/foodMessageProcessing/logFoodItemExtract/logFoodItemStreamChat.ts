@@ -2,25 +2,28 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import {
   OpenAiChatCompletionJsonStream,
-  ChatCompletionJsonStreamOptions
+  ChatCompletionStreamOptions
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { mode } from "mathjs"
+import { getUserByEmail } from "../common/debugHelper"
 
 const food_logging_prompt = `
 Your task is to analyze a sentence provided by a user, describing their meal for logging purposes. Follow these steps to ensure accurate identification and logging of each food item:
 
 1. Identify Distinct Food Items: Examine the user's sentence and identify each distinct food item. Ensure that each entry corresponds to a unique item that can be found in our food database.
 
-2. Seperate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For examples ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
+2. Fix any typos: Typos may exist due to fast typing or because the text is a result of voice recognition. If you notice any typos, correct them to the best of your ability. E.g. "one pair" should be corrected to "one pear" or "lin choclate" likely means "lindt chocolate".
 
-3. Determine 'full_single_food_database_search_name': For each identified food item, determine its 'full_single_food_database_search_name'. This name should be specific enough to encompass various forms and preparations of the food (e.g., specify if oats are cooked, or if butter is salted or unsalted).
+3. Seperate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For examples ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
 
-4. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). It is fine to assume serving details if not provided.
+4. Determine 'full_single_food_database_search_name': For each identified food item, determine its 'full_single_food_database_search_name'. This name should be specific enough to encompass various forms and preparations of the food (e.g., specify if oats are cooked, or if butter is salted or unsalted).
 
-5. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
+5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). It is fine to assume serving details if not provided.
+
+6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
 Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
 
@@ -64,7 +67,7 @@ function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
   }
 }
 
-async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: ChatCompletionStreamOptions) {
   // Call ChatCompletionJsonStream to get the stream
   const stream = await OpenAiChatCompletionJsonStream(user, options)
 
@@ -83,7 +86,7 @@ async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: Ch
   }
 }
 
-async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, options: ChatCompletionJsonStreamOptions) {
+async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, options: ChatCompletionStreamOptions) {
   //   console.log("calling mixtral with options", options)
   // Call ChatCompletionJsonStream to get the stream
   const stream = await fireworksChatCompletionStream(
@@ -152,7 +155,7 @@ export async function logFoodItemStream(
   // Add logging task to the tasks array
   const loggingTasks: Promise<any>[] = []
 
-  let model = "gpt-3.5-turbo-1106"
+  let model = "gpt-3.5-turbo-0125"
   // if (user_message.status === "FAILED") {
   //   model = "gpt-4-1106-preview"
   // }
@@ -186,18 +189,6 @@ export async function logFoodItemStream(
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 
-async function getUserByEmail(email: string) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("User").select("*").eq("email", email)
-
-  if (error) {
-    console.error(error)
-    return null
-  }
-
-  return data
-}
-
 async function testChatCompletionJsonStream() {
   const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
@@ -222,7 +213,7 @@ async function testChatCompletionJsonStream() {
   const {data, error} = await supabase.from("Message").select("*").eq("id", 997)
   const message = data![0] as Tables<"Message">
   // console.log(message)
-  await logFoodItemStream(user![0], message)
+  await logFoodItemStream(user!, message)
 }
 
 async function testFoodLoggingStream() {

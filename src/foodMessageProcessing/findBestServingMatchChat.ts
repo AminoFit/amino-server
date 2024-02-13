@@ -6,6 +6,7 @@ import { chatCompletion } from "@/languageModelProviders/openai/customFunctions/
 import OpenAI from "openai"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "./common/extractJSON"
+import { getUserByEmail } from "./common/debugHelper"
 
 const serving_assignement_prompt = `User_message:
 "USER_SERVING_INPUT"
@@ -93,53 +94,8 @@ const remapIds = (jsonResult: any, idMapping: Record<number, number>): any => {
   return jsonResult
 }
 
-export async function findBestServingMatchChat(
-  food_item_to_log: FoodItemToLog,
-  food_item: FoodItemWithNutrientsAndServing,
-  user: Tables<"User">
-): Promise<FoodItemToLog> {
-  const { simplifiedData, idMapping } = convertToDatabaseOptions(food_item)
-
-  let serving_prompt = serving_assignement_prompt
-    .replace("USER_SERVING_INPUT", food_item_to_log.full_item_user_message_including_serving)
-    .replace("FOOD_INFO_DETAILS", JSON.stringify(simplifiedData.food_info))
-    .replace("FOOD_SERVING_DETAILS", JSON.stringify(simplifiedData.food_serving_info))
-    
-
-  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: serving_prompt }
-  ]
-
-  // throw new Error("stop")
-  let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8oaRSJIo"
-  let backup_model = "gpt-4-0125-preview"
-  let max_tokens = 2048
-  let temperature = 0.05
-
-  let response = await chatCompletion(
-    {
-      messages,
-      model,
-      temperature,
-      max_tokens
-    },
-    user
-  )
-  if (!response.content || extractAndParseLastJSON(response.content) === null) {
-    response = await chatCompletion(
-      {
-        messages,
-        model: backup_model,
-        temperature,
-        max_tokens
-      },
-      user
-    )
-  }
-  
-
-  const JSON_result = remapIds(extractAndParseLastJSON(response.content!), idMapping) as {
+function convertToServing(response: string, idMapping: Record<number, number>, food_item: FoodItemWithNutrientsAndServing, food_item_to_log: any){
+  const JSON_result = remapIds(extractAndParseLastJSON(response), idMapping) as {
     equation_grams: string
     serving_name: string
     amount: number
@@ -184,16 +140,73 @@ export async function findBestServingMatchChat(
   return food_item_to_log
 }
 
-async function getUserByEmail(email: string) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("User").select("*").eq("email", email)
-
-  if (error) {
-    console.error(error)
-    return null
+async function getResponseWithRetry(messages:OpenAI.Chat.ChatCompletionMessageParam[],
+  model: string,
+  backup_model: string,
+  temperature: number,
+  max_tokens: number,
+  user: Tables<"User">){
+  let response = await chatCompletion(
+    {
+      messages,
+      model,
+      temperature,
+      max_tokens
+    },
+    user
+  )
+  if (!response.content || extractAndParseLastJSON(response.content) === null) {
+    response = await chatCompletion(
+      {
+        messages,
+        model: backup_model,
+        temperature,
+        max_tokens
+      },
+      user
+    )
   }
+  return response
+}
 
-  return data
+export async function findBestServingMatchChat(
+  food_item_to_log: FoodItemToLog,
+  food_item: FoodItemWithNutrientsAndServing,
+  user: Tables<"User">
+): Promise<FoodItemToLog> {
+  const { simplifiedData, idMapping } = convertToDatabaseOptions(food_item)
+
+  let serving_prompt = serving_assignement_prompt
+    .replace("USER_SERVING_INPUT", food_item_to_log.full_item_user_message_including_serving)
+    .replace("FOOD_INFO_DETAILS", JSON.stringify(simplifiedData.food_info))
+    .replace("FOOD_SERVING_DETAILS", JSON.stringify(simplifiedData.food_serving_info))
+    
+
+  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: serving_prompt }
+  ]
+
+  // throw new Error("stop")
+  let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8oaRSJIo"
+  let backup_model = "gpt-4-0125-preview"
+  let max_tokens = 2048
+  let temperature = 0.00
+
+  let response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
+  
+  food_item_to_log = convertToServing(response.content!, idMapping, food_item, food_item_to_log)
+
+  if (food_item_to_log.serving?.total_serving_g_or_ml === 0) {
+    temperature = 0.1
+    response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
+    food_item_to_log = convertToServing(response.content!, idMapping, food_item, food_item_to_log)
+  }
+  if (food_item_to_log.serving?.total_serving_g_or_ml === 0) {
+    model = 'gpt-4-0125-preview'
+    response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
+  }
+  return food_item_to_log
 }
 
 async function getFoodItem(id: number) {
@@ -209,15 +222,15 @@ async function getFoodItem(id: number) {
 }
 
 async function testServingMatchRequest() {
-  const user = (await getUserByEmail("seb.grubb@gmail.com"))![0] as Tables<"User">
+  const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
   const food_serving_request = {
-    brand: "",
-    branded: false,
-    food_database_search_name: "sushi",
-    full_item_user_message_including_serving: "5 salmon sushi"
+    brand: "Aplenty",
+    branded: true,
+    food_database_search_name: "chicken dumplings",
+    full_item_user_message_including_serving: "3 chicken dumplings by aplenty"
   }
-  const food_item = (await getFoodItem(56)) as FoodItemWithNutrientsAndServing
+  const food_item = (await getFoodItem(557)) as FoodItemWithNutrientsAndServing
 
   // console.log(food_item)
 

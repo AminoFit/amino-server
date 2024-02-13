@@ -4,6 +4,7 @@ import { FoodItemToLog, LoggedFoodServing } from "src/utils/loggedFoodItemInterf
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { getUserByEmail } from "../common/debugHelper"
 
 interface ServingMatchRequest {
   item_name: string
@@ -274,17 +275,6 @@ Output:
   return food_item_to_log
 }
 
-async function getUserByEmail(email: string) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("User").select("*").eq("email", email)
-
-  if (error) {
-    console.error(error)
-    return null
-  }
-
-  return data
-}
 
 async function getFoodItem(id: number) {
   const supabase = createAdminSupabase()
@@ -299,7 +289,7 @@ async function getFoodItem(id: number) {
 }
 
 async function testServingMatchRequest() {
-  const user = (await getUserByEmail("seb.grubb@gmail.com"))![0] as Tables<"User">
+  const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
   const food_serving_request = {
     brand: "Skinny Dipped",

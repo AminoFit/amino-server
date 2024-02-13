@@ -195,7 +195,7 @@ export async function getUsdaFoodsInfo(params: UsdaFoodsParams): Promise<FoodIte
   try {
     const response = await axios.get(API_URL, { params: requestParams })
 
-    //console.log(JSON.stringify(response.data))
+    console.log(JSON.stringify(response.data))
 
     // do not await this
     recordQuery("usda", API_URL)
@@ -243,6 +243,6 @@ function dummyTest() {
 
 // food for 172963, 168460, 2175192
 async function runTests() {
-  console.dir(await getUsdaFoodsInfo({ fdcIds: ["172963", "168460","2175192"] }), { depth: null })
+  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2531832"] }), { depth: null })
 }
 // runTests()

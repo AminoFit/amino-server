@@ -60,7 +60,7 @@ export async function findBestFoodMatchExternalDb(
   database_options: foodSearchResultsWithSimilarityAndEmbedding[]
 ): Promise<foodSearchResultsWithSimilarityAndEmbedding | null> {
   const matchRequest = convertToMatchRequest(user_request, database_options)
-  //console.log(JSON.stringify(matchRequest))
+  console.log(JSON.stringify(matchRequest))
 
   let model = "gpt-3.5-turbo-instruct-0914"
   let max_tokens = 250

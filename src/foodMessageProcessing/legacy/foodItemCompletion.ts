@@ -1,4 +1,6 @@
 import { chatCompletion } from "../../languageModelProviders/openai/customFunctions/chatCompletion"
+import { getMissingFoodInfoOnlineQuery } from "../missingFoodInfoOnlineQuery"
+
 import OpenAI from "openai"
 import { FoodInfo } from "./foodItemInterface"
 import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
@@ -72,7 +74,7 @@ function addDefaultValues(foodItemInfo: any) {
   return foodItemInfo
 }
 
-export async function foodItemCompletion(inquiry: string, user: Tables<"User">): Promise<any> {
+export async function foodItemCompletion(inquiry: string, user: Tables<"User">, foodName: string): Promise<any> {
   if (!inquiry) {
     throw new Error("Bad prompt")
   }
@@ -207,7 +209,7 @@ export async function foodItemCompletion(inquiry: string, user: Tables<"User">):
   ]
 
   let result: any = {}
-
+  
   let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: system },
     { role: "user", content: inquiry }
@@ -307,7 +309,7 @@ async function testRun() {
     emailVerified: null,
     activityLevel: null,
   } as Tables<"User">;
-  const result = await foodItemCompletion("cooked apple pie", user)
+  const result = await foodItemCompletion("cooked apple pie", user, "apple pie")
   console.log(mapOpenAiFoodInfoToFoodItem(result.foodItemInfo, result.model))
 }
 
