@@ -9,6 +9,7 @@ export default function PasswordChange() {
   const [password, setPassword] = useState("")
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
+  const [isSubmitting, setSubmitting] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
 
@@ -16,28 +17,36 @@ export default function PasswordChange() {
 
   console.log("Using redirect:", `${origin}/auth/callback`)
 
-  const searchParams = useSearchParams()
-  const expiresAt = searchParams.get("expires_at")
-  const access_token = searchParams.get("access_token")
-  const refresh_token = searchParams.get("refresh_token")
-  const error_description = searchParams.get("error_description")
-  const error_code = searchParams.get("error_code")
+  // useEffect(() => {
+  //   if (error_description) {
+  //     setError(error_description)
+  //     return
+  //   }
+  //   ;(async () => {
+  //     const { data, error } = await supabase.auth.getUser()
 
-  console.log("error_description", error_description)
+  //     if (data && data.user) {
+  //       // setSuccess("Password reset email sent. Go check your email and follow the instructions.")
+  //     } else {
+  //       if (error_description) setError(error_description)
+  //     }
+  //   })()
+  // }, [error_description])
 
-  useEffect(() => {
-    ;(async () => {
-      const { data, error } = await supabase.auth.getUser()
-
-      if (data && data.user) {
-        // setSuccess("Password reset email sent. Go check your email and follow the instructions.")
-      } else {
-        if (error_description) setError(error_description)
-      }
-    })()
-  }, [])
-
-  const handleRequestUpdatePassword = async () => {
+  const updatePasswordFromHash = async () => {
+    var hashParams = parseHashParams(window.location.hash)
+    const access_token = hashParams.get("access_token")
+    const refresh_token = hashParams.get("refresh_token")
+    if (!access_token || !refresh_token) {
+      setError("Missing access token or refresh token")
+      return
+    }
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token
+    })
+  }
+  const updatePasswordFromExistingSession = async () => {
     const { data, error } = await supabase.auth.updateUser({ password })
 
     if (data && data.user) {
@@ -49,6 +58,19 @@ export default function PasswordChange() {
         setError("Error updating password")
       }
     }
+  }
+
+  const handleRequestUpdatePassword = async () => {
+    setSubmitting(true)
+    const { data, error } = await supabase.auth.getSession()
+
+    if (data && data.session) {
+      await updatePasswordFromExistingSession()
+    } else {
+      await updatePasswordFromHash()
+      await updatePasswordFromExistingSession()
+    }
+    setSubmitting(false)
   }
 
   const renderError = () => {
@@ -84,7 +106,7 @@ export default function PasswordChange() {
 
   const renderForm = () => {
     return (
-      <form className="space-y-6" action="#" method="POST">
+      <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
@@ -107,13 +129,14 @@ export default function PasswordChange() {
         <div>
           <button
             type="submit"
+            disabled={isSubmitting}
             onClick={handleRequestUpdatePassword}
             className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
-            Update Password
+            {isSubmitting ? "Sending..." : "Update Password"}
           </button>
         </div>
-      </form>
+      </div>
     )
   }
 
@@ -146,4 +169,19 @@ export default function PasswordChange() {
       </div>
     </>
   )
+}
+
+// Function to parse hash parameters into an object
+function parseHashParams(hash: string) {
+  var params = new Map<string, string>()
+  // Remove the "#" character
+  var queryString = hash.substring(1)
+  // Split into key-value pairs
+  var queries = queryString.split("&")
+  // Iterate over each pair
+  queries.forEach((query) => {
+    var pair = query.split("=")
+    params.set(decodeURIComponent(pair[0]), decodeURIComponent(pair[1] || ""))
+  })
+  return params
 }
