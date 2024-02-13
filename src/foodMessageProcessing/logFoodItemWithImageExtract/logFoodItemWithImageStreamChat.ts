@@ -178,13 +178,15 @@ async function createMessagesWithRotatedImages(messages: OpenAI.Chat.ChatComplet
 async function processOpenAiVisionChatStream(
   user_message: Tables<"Message">,
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
-  user: Tables<"User">
+  user: Tables<"User">,
+  consumedOn: Date
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
   const loggingTasks: Promise<any>[] = []
 
   let model = "gpt-4-vision-preview"
+  const currentDateTime = new Date()
 
   const stream = processStreamedLoggedFoodItemsWithImages(user, {
     messages,
@@ -196,13 +198,15 @@ async function processOpenAiVisionChatStream(
     // console.log(chunk);
 
     if (chunk.hasOwnProperty("full_single_food_database_search_name")) {
+      const elapsedTime = new Date().getTime() - currentDateTime.getTime()
       // It's a single food item
       const foodItemToLog = {
         food_database_search_name: chunk.full_single_food_database_search_name,
         full_item_user_message_including_serving: chunk.full_single_item_user_message_including_serving_or_quantity,
         branded: chunk.branded,
-        brand: chunk.brand || ""
-      }
+        brand: chunk.brand || "",
+        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString()
+      } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
       const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
@@ -217,7 +221,8 @@ async function processOpenAiVisionChatStream(
 
 export async function logFoodItemStreamWithImages(
   user: Tables<"User">,
-  user_message: Tables<"Message">
+  user_message: Tables<"Message">,
+  consumedOn: Date = new Date()
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const user_images = (await getUserImagesByMessageId(user_message.id)) as Tables<"UserMessageImages">[]
   const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content)
@@ -248,12 +253,12 @@ export async function logFoodItemStreamWithImages(
     }
   ]
 
-  let { foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, messages, user)
+  let { foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, messages, user, consumedOn)
 
   if (isBadFoodLogRequest || foodItemsToLog.length === 0) {
     const rotatedMessages = await createMessagesWithRotatedImages(messages);
 
-    ({ foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, rotatedMessages, user))
+    ({ foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, rotatedMessages, user, consumedOn))
   }
   return { foodItemsToLog, isBadFoodLogRequest }
 }

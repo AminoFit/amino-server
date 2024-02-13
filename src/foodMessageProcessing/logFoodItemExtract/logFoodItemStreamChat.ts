@@ -148,12 +148,14 @@ function extractLatestValidJSON(inputString: string) {
 
 export async function logFoodItemStream(
   user: Tables<"User">,
-  user_message: Tables<"Message">
+  user_message: Tables<"Message">,
+  consumedOn: Date = new Date()
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
   // Add logging task to the tasks array
   const loggingTasks: Promise<any>[] = []
+  const currentDateTime = new Date()
 
   let model = "gpt-3.5-turbo-0125"
   // if (user_message.status === "FAILED") {
@@ -170,13 +172,15 @@ export async function logFoodItemStream(
     // console.log(chunk);
 
     if (chunk.hasOwnProperty("full_single_food_database_search_name")) {
+      const elapsedTime = new Date().getTime() - currentDateTime.getTime()
       // It's a single food item
       const foodItemToLog = {
         food_database_search_name: chunk.full_single_food_database_search_name,
         full_item_user_message_including_serving: chunk.full_single_item_user_message_including_serving_or_quantity,
         branded: chunk.branded,
-        brand: chunk.brand || ""
-      }
+        brand: chunk.brand || "",
+        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString()
+      } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       // console.log("just logged: ", foodItemToLog)
       const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)

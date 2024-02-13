@@ -16,12 +16,14 @@ import OpenAI from "openai"
 import { ChatCompletionRole } from "openai/resources/chat"
 
 // Custom functions and helpers
-import { ProcessFunctionCalls } from "./ProcessFunctionCalls"
-import { getOpenAICompletion } from "../utils/openAiHelper"
+import { ProcessFunctionCalls } from "../languageModelProviders/openai/legacy/ProcessFunctionCalls"
+import { getOpenAICompletion } from "../languageModelProviders/openai/utils/openAiHelper"
 import { Enums, Tables } from "types/supabase"
 import { GetSystemStartPrompt } from "@/twilio/SystemPrompt"
 import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat"
 import { logFoodItemStreamWithImages } from "@/foodMessageProcessing/logFoodItemWithImageExtract/logFoodItemWithImageStreamChat"
+import { i } from "mathjs"
+import { softDeleteLoggedFoodItemsByMessageId } from "./common/deleteAssociatedMessageFoodItems"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -205,7 +207,9 @@ function handleQuickLogError(inputMessageId: number, logMessage: string) {
 // Utility function to generate a response for the user when they send a quick log food request
 export async function GenerateResponseForQuickLog(
   user: Tables<"User">,
-  inputMessageId: number
+  inputMessageId: number,
+  consumedOn: string = new Date().toISOString(),
+  isMessageBeingEdited: boolean = false
 ): Promise<ResponseForUser> {
   const loadedMessage = await GetMessageById(inputMessageId)
   if (!loadedMessage) {
@@ -223,16 +227,22 @@ export async function GenerateResponseForQuickLog(
     }
   }
 
-  // if message is already resolved or processing, return
-  if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
-    return {
-      resultMessage: "Message is already processed or processing."
+  if (isMessageBeingEdited) {
+    // if message is being edited, delete all associated items since we are going to start again.
+    await softDeleteLoggedFoodItemsByMessageId(inputMessageId)
+  } else {
+    // if message is already resolved or processing, return
+    if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
+      return {
+        resultMessage: "Message is already processed or processing."
+      }
     }
   }
 
   await UpdateMessage({
     id: inputMessageId,
-    status: "PROCESSING"
+    status: "PROCESSING",
+    consumedOn: new Date(consumedOn)
   })
 
   let foodItemsToLog: FoodItemToLog[] = []
@@ -241,7 +251,7 @@ export async function GenerateResponseForQuickLog(
   if (loadedMessage.hasimages) {
     try {
       // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage))
+      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using image model:", error)
 
@@ -251,7 +261,7 @@ export async function GenerateResponseForQuickLog(
   } else {
     try {
       // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage))
+      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using chat model:", error)
 

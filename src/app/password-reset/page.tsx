@@ -16,22 +16,26 @@ function PasswordResetForm() {
 
   console.log("Using redirect:", `${origin}/auth/callback`)
 
-  const searchParams = useSearchParams()
-  const expiresAt = searchParams.get("expires_at")
-  const access_token = searchParams.get("access_token")
-  const refresh_token = searchParams.get("refresh_token")
-  const error_description = searchParams.get("error_description")
-  const error_code = searchParams.get("error_code")
-
-  console.log("error_description", error_description)
+  function UseSearchParamsComponent() {
+    const searchParams = useSearchParams();
+    const expiresAt = searchParams.get("expires_at");
+    const access_token = searchParams.get("access_token");
+    const refresh_token = searchParams.get("refresh_token");
+    const error_description = searchParams.get("error_description");
+    const error_code = searchParams.get("error_code");
+  
+    console.log("error_description", error_description);
+  
+    // You can return these values or use them directly within this component.
+    return null; // Adjust based on your use case
+  }
 
   const handleRequestPasswordReset = async () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${
-        process.env.NEXT_PUBLIC_VERCEL_URL
+      redirectTo: `${process.env.NEXT_PUBLIC_VERCEL_URL
           ? "https://" + process.env.NEXT_PUBLIC_VERCEL_URL + "/password-change"
           : "http://localhost:3000/password-change"
-      }`
+        }`
     })
 
     if (error) {
@@ -115,8 +119,13 @@ function PasswordResetForm() {
         </div>
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          {success ? renderSuccess() : error ? renderError() : renderForm()}
+            {success ? renderSuccess() : error ? renderError() : renderForm()}
         </div>
+
+
+        <Suspense fallback={<div>Loading...</div>}>
+          <UseSearchParamsComponent />
+        </Suspense>
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
           <p className="mt-10 text-center text-sm text-gray-500">
