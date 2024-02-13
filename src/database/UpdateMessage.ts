@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Enums } from "types/supabase"
+import { Tables } from "types/supabase-generated.types"
 
 type UpdateMessageProps = {
   id: number
@@ -10,6 +11,8 @@ type UpdateMessageProps = {
   incrementItemsProcessedBy?: number 
   incrementItemsToProcessBy?: number 
   itemsProcessed?: number
+  consumedOn?: Date
+  deletedAt?: Date
 }
 
 export default async function UpdateMessage(props: UpdateMessageProps) {
@@ -31,9 +34,11 @@ export default async function UpdateMessage(props: UpdateMessageProps) {
   }
 
   // Build the update object based on the provided fields
-  const updateData: any = {
+  const updateData: Partial<Tables<"Message">> = {
     status: props.status,
-    resolvedAt: props.resolvedAt,
+    resolvedAt: props.resolvedAt?.toISOString(),
+    consumedOn: props.consumedOn?.toISOString(),
+    deletedAt: props.deletedAt?.toISOString(),
     messageType: props.messageType,
     itemsToProcess: itemsToProcess,
     itemsProcessed: newItemsProcessed
