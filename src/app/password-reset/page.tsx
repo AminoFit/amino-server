@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 import { Database } from "types/supabase-generated.types"
 
-export default function ForgotPassword() {
+function PasswordResetForm() {
   const [email, setEmail] = useState("")
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
@@ -129,7 +129,7 @@ export default function ForgotPassword() {
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
           <p className="mt-10 text-center text-sm text-gray-500">
-            Don{"'"}t have Amino?{" "}
+            {"Don't have Amino? "}
             <a href="/" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
               Download in the Apple App Store
             </a>
@@ -137,5 +137,14 @@ export default function ForgotPassword() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function PasswordReset() {
+  return (
+    // You could have a loading skeleton as the `fallback` too
+    <Suspense>
+      <PasswordResetForm />
+    </Suspense>
   )
 }
