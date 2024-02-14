@@ -285,7 +285,8 @@ export async function GenerateResponseForQuickLog(
   await UpdateMessage({
     id: inputMessageId,
     status: "RESOLVED",
-    resolvedAt: new Date()
+    resolvedAt: new Date(),
+    isBadFoodLogRequest: isBadFoodLogRequest
   })
 
   return {

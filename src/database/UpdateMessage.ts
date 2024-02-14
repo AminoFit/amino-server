@@ -13,6 +13,7 @@ type UpdateMessageProps = {
   itemsProcessed?: number
   consumedOn?: Date
   deletedAt?: Date
+  isBadFoodLogRequest?: boolean
 }
 
 export default async function UpdateMessage(props: UpdateMessageProps) {
@@ -33,16 +34,16 @@ export default async function UpdateMessage(props: UpdateMessageProps) {
     props.status = "RESOLVED"
   }
 
-  // Build the update object based on the provided fields
-  const updateData: Partial<Tables<"Message">> = {
-    status: props.status,
-    resolvedAt: props.resolvedAt?.toISOString(),
-    consumedOn: props.consumedOn?.toISOString(),
-    deletedAt: props.deletedAt?.toISOString(),
-    messageType: props.messageType,
-    itemsToProcess: itemsToProcess,
-    itemsProcessed: newItemsProcessed
-  }
+  const updateData: Partial<Tables<"Message">> = {}
+  
+  if (props.status !== undefined) updateData.status = props.status
+  if (props.resolvedAt !== undefined) updateData.resolvedAt = props.resolvedAt.toISOString()
+  if (props.consumedOn !== undefined) updateData.consumedOn = props.consumedOn.toISOString()
+  if (props.deletedAt !== undefined) updateData.deletedAt = props.deletedAt.toISOString()
+  if (props.messageType !== undefined) updateData.messageType = props.messageType
+  updateData.itemsToProcess = itemsToProcess
+  updateData.itemsProcessed = newItemsProcessed
+  if (props.isBadFoodLogRequest !== undefined) updateData.isBadFoodRequest = props.isBadFoodLogRequest 
 
   const { data: updatedMessage } = await supabase.from("Message").update(updateData).eq("id", id).single()
 
