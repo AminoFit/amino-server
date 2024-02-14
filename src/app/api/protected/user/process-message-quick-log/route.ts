@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const maxDuration = 120;
 
 import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { NextRequest, NextResponse } from "next/server"
@@ -39,6 +40,8 @@ export async function POST(
     consumedOn,
     isMessageBeingEdited
   )
+
+  console.log("Response message: ", responseMessage)
 
   return NextResponse.json(responseMessage)
 }
