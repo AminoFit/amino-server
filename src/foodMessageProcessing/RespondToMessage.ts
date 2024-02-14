@@ -272,6 +272,12 @@ export async function GenerateResponseForQuickLog(
 
   // Check if we have received any valid food items to log
   if (foodItemsToLog.length === 0) {
+    await UpdateMessage({
+      id: inputMessageId,
+      status: "FAILED",
+      resolvedAt: new Date(),
+      isBadFoodLogRequest: true
+    })
     return {
       resultMessage: "Sorry, I couldn't understand the food items you mentioned. Please try again."
     }
