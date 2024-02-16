@@ -6,8 +6,8 @@ export async function softDeleteLoggedFoodItemsByMessageId(messageId: number): P
 
   const { data, error } = await supabaseAdmin
     .from("LoggedFoodItem")
-    .update({ deletedAt: new Date().toISOString() }) // Set deletedAt to current timestamp
-    .match({ messageId: messageId, deletedAt: null }) // Target rows where messageId matches and not already deleted
+    .update({ deletedAt: new Date().toISOString() })
+    .match({ messageId: messageId}).select("id")
 
   if (error) {
     console.error("Error soft-deleting logged food items:", error)
@@ -20,3 +20,9 @@ export async function softDeleteLoggedFoodItemsByMessageId(messageId: number): P
     console.log(`Soft-deleted ${(<any>data).length} logged food items.`)
   }
 }
+
+async function testSoftDeleteLoggedFoodItemsByMessageId() {
+  await softDeleteLoggedFoodItemsByMessageId(1404)
+}
+
+// testSoftDeleteLoggedFoodItemsByMessageId()

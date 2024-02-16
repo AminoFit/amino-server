@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic"
+export const maxDuration = 120;
 
 import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { NextRequest, NextResponse } from "next/server"
@@ -9,28 +10,38 @@ export async function POST(
 ) {
   console.log("QUICK LOG MESSAGE PROCESS POST request")
 
-  const { aminoUser, error } = await GetAminoUserOnRequest()
+  const requestBody = await request.json()
+  console.log("Request body: ", requestBody) 
+  const { messageId } = requestBody
+  const consumedOn = requestBody.consumedOn || new Date().toISOString()
+  const isMessageBeingEdited = requestBody.isMessageBeingEdited || false
 
-  if (error) {
-    return new Response(error, { status: 400 })
+  const { aminoUser, error: aminoUserError } = await GetAminoUserOnRequest()
+
+  if (aminoUserError) {
+    console.error("Error getting amino user on request: ", aminoUserError)
+    return new Response(aminoUserError, { status: 400 })
   }
 
-  const requestBody = await request.json();
-  const { messageId } = requestBody;
-  // Default consumedOn to the current date/time if not provided
-  const consumedOn = requestBody.consumedOn || new Date().toISOString();
-  const isMessageBeingEdited = requestBody.isMessageBeingEdited || false;
+
 
   if (!messageId || typeof messageId !== "number") {
     return new Response("Invalid message ID provided", { status: 400 })
-}
+  }
 
   if (!aminoUser) {
     return new Response("No amino user found?", { status: 400 })
   }
 
   // const messageResult = await QuickLogMessage(aminoUser, message)
-  let responseMessage = await GenerateResponseForQuickLog(aminoUser, messageId as number, consumedOn, isMessageBeingEdited)
+  let responseMessage = await GenerateResponseForQuickLog(
+    aminoUser,
+    messageId as number,
+    consumedOn,
+    isMessageBeingEdited
+  )
+
+  console.log("Response message: ", responseMessage)
 
   return NextResponse.json(responseMessage)
 }
