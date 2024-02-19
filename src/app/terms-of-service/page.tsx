@@ -20,14 +20,14 @@ export default function TermsOfService() {
             <strong>Last revised on: February 19th, 2024</strong>
           </p>
           <p className="mb-3">
-            The website and application located at www.amino.fit (the " <strong>Site</strong>") is a copyrighted work
-            belonging to Hedge Labs Inc. (" <strong>Company</strong>", " <strong>us</strong>", " <strong>our</strong>",
-            and " <strong>we</strong>"). Certain features of the Site may be subject to additional guidelines, terms, or
+            The website and application located at www.amino.fit (the &quot; <strong>Site</strong>&quot;) is a copyrighted work
+            belonging to Hedge Labs Inc. (&quot; <strong>Company</strong>&quot;, &quot; <strong>us</strong>&quot;, &quot; <strong>our</strong>&quot;,
+            and &quot; <strong>we</strong>&quot;). Certain features of the Site may be subject to additional guidelines, terms, or
             rules, which will be posted on the Site in connection with such features. All such additional terms,
             guidelines, and rules are incorporated by reference into these Terms.
           </p>
           <p className="mb-3">
-            THESE TERMS OF USE (THESE " <strong>TERMS</strong>") SET FORTH THE LEGALLY BINDING TERMS AND CONDITIONS THAT
+            THESE TERMS OF USE (THESE &quot; <strong>TERMS</strong>&quot;) SET FORTH THE LEGALLY BINDING TERMS AND CONDITIONS THAT
             GOVERN YOUR USE OF THE SITE. BY ACCESSING OR USING THE SITE, YOU ARE ACCEPTING THESE TERMS (ON BEHALF OF
             YOURSELF OR THE ENTITY THAT YOU REPRESENT), AND YOU REPRESENT AND WARRANT THAT YOU HAVE THE RIGHT,
             AUTHORITY, AND CAPACITY TO ENTER INTO THESE TERMS (ON BEHALF OF YOURSELF OR THE ENTITY THAT YOU REPRESENT).
@@ -67,7 +67,7 @@ export default function TermsOfService() {
               </p>
               <p className="mb-3">
                 <strong>1.1 Account Creation.</strong> In order to use certain features of the Site, you must register
-                for an account (" <strong>Account</strong>") and provide certain information about yourself as prompted
+                for an account (&quot; <strong>Account</strong>&quot;) and provide certain information about yourself as prompted
                 by the account registration form. You represent and warrant that: (a) all required registration
                 information you submit is truthful and accurate; (b) you will maintain the accuracy of such information.
                 You may delete your Account at any time, for any reason, by following the instructions on the Site.
@@ -115,7 +115,7 @@ export default function TermsOfService() {
               <p className="mb-3">
                 <strong>2.5 Ownership.</strong> Excluding any User Content that you may provide (defined below), you
                 acknowledge that all the intellectual property rights, including copyrights, patents, trade marks, and
-                trade secrets, in the Site and its content are owned by Company or Company's suppliers. Neither these
+                trade secrets, in the Site and its content are owned by Company or Company&apos;s suppliers. Neither these
                 Terms (nor your access to the Site) transfers to you or any third party any rights, title or interest in
                 or to such intellectual property rights, except for the limited access rights expressly set forth in
                 Section 2.1. Company and its suppliers reserve all rights not granted in these Terms. There are no
@@ -123,7 +123,7 @@ export default function TermsOfService() {
               </p>
               <p className="mb-3">
                 <strong>2.6 Feedback.</strong> If you provide Company with any feedback or suggestions regarding the
-                Site (" <strong>Feedback</strong>"), you hereby assign to Company all rights in such Feedback and agree
+                Site (&quot; <strong>Feedback</strong>&quot;), you hereby assign to Company all rights in such Feedback and agree
                 that Company shall have the right to use and fully exploit such Feedback and related information in any
                 manner it deems appropriate. Company will treat any Feedback you provide to Company as non-confidential
                 and non-proprietary. You agree that you will not submit to Company any information or ideas that you
@@ -135,8 +135,8 @@ export default function TermsOfService() {
                 <strong>User Content</strong>
               </p>
               <p className="mb-3">
-                <strong>3.1 User Content.</strong>" <strong>User Content</strong>" means any and all information and
-                content that a user submits to, or uses with, the Site (e.g., content in the user's profile or
+                <strong>3.1 User Content.</strong>&quot; <strong>User Content</strong>&quot; means any and all information and
+                content that a user submits to, or uses with, the Site (e.g., content in the user&apos;s profile or
                 postings). You are solely responsible for your User Content. You assume all risks associated with use of
                 your User Content, including any reliance on its accuracy, completeness or usefulness by others, or any
                 disclosure of your User Content that personally identifies you or any third party. You hereby represent
@@ -158,15 +158,15 @@ export default function TermsOfService() {
                 to your User Content.
               </p>
               <p className="mb-3">
-                <strong>3.3 Acceptable Use Policy.</strong> The following terms constitute our "{" "}
-                <strong>Acceptable Use Policy</strong>":
+                <strong>3.3 Acceptable Use Policy.</strong> The following terms constitute our &quot;{" "}
+                <strong>Acceptable Use Policy</strong>&quot;:
               </p>
               <p className="mb-3">
                 <strong>(a)</strong> You agree not to use the Site to collect, upload, transmit, display, or distribute
                 any User Content (i) that violates any third-party right, including any copyright, trademark, patent,
                 trade secret, moral right, privacy right, right of publicity, or any other intellectual property or
                 proprietary right, (ii) that is unlawful, harassing, abusive, tortious, threatening, harmful, invasive
-                of another's privacy, vulgar, defamatory, false, intentionally misleading, trade libelous, pornographic,
+                of another&apos;s privacy, vulgar, defamatory, false, intentionally misleading, trade libelous, pornographic,
                 obscene, patently offensive, promotes racism, bigotry, hatred, or physical harm of any kind against any
                 group or individual or is otherwise objectionable, (iii) that is harmful to minors in any way, or (iv)
                 that is in violation of any law, regulation, or obligations or restrictions imposed by any third party.
@@ -181,7 +181,7 @@ export default function TermsOfService() {
                 disrupt, or create an undue burden on servers or networks connected to the Site, or violate the
                 regulations, policies or procedures of such networks; (v) attempt to gain unauthorized access to the
                 Site (or to other computer systems or networks connected to or used together with the Site), whether
-                through password mining or any other means; (vi) harass or interfere with any other user's use and
+                through password mining or any other means; (vi) harass or interfere with any other user&apos;s use and
                 enjoyment of the Site; or (vi) use software or automated agents or scripts to produce multiple accounts
                 on the Site, or to generate automated searches, requests, or queries to (or to strip, scrape, or mine
                 data from) the Site (provided, however, that we conditionally grant to the operators of public search
@@ -201,7 +201,7 @@ export default function TermsOfService() {
           </ol>
           <p className="mb-3">
             <strong>4. Indemnification.</strong> You agree to indemnify and hold Company (and its officers, employees,
-            and agents) harmless, including costs and attorneys' fees, from any claim or demand made by any third party
+            and agents) harmless, including costs and attorneys&apos; fees, from any claim or demand made by any third party
             due to or arising out of (a) your use of the Site, (b) your violation of these Terms, (c) your violation of
             applicable laws or regulations or (d) your User Content. Company reserves the right, at your expense, to
             assume the exclusive defense and control of any matter for which you are required to indemnify us, and you
@@ -214,14 +214,14 @@ export default function TermsOfService() {
           </p>
           <p className="mb-3">
             <strong>5.1 Third-Party Links &amp; Ads.</strong> The Site may contain links to third-party websites and
-            services, and/or display advertisements for third parties (collectively, "{" "}
-            <strong>Third-Party Links &amp; Ads</strong>"). Such Third-Party Links &amp; Ads are not under the control
+            services, and/or display advertisements for third parties (collectively, &quot;{" "}
+            <strong>Third-Party Links &amp; Ads</strong>&quot;). Such Third-Party Links &amp; Ads are not under the control
             of Company, and Company is not responsible for any Third-Party Links &amp; Ads. Company provides access to
             these Third-Party Links &amp; Ads only as a convenience to you, and does not review, approve, monitor,
             endorse, warrant, or make any representations with respect to Third-Party Links &amp; Ads. You use all
             Third-Party Links &amp; Ads at your own risk, and should apply a suitable level of caution and discretion in
-            doing so. When you click on any of the Third-Party Links &amp; Ads, the applicable third party's terms and
-            policies apply, including the third party's privacy and data gathering practices. You should make whatever
+            doing so. When you click on any of the Third-Party Links &amp; Ads, the applicable third party&apos;s terms and
+            policies apply, including the third party&apos;s privacy and data gathering practices. You should make whatever
             investigation you feel necessary or appropriate before proceeding with any transaction in connection with
             such Third-Party Links &amp; Ads.
           </p>
@@ -242,15 +242,15 @@ export default function TermsOfService() {
             directly or indirectly out of, or that relates directly or indirectly to, the Site (including any
             interactions with, or act or omission of, other Site users or any Third-Party Links &amp; Ads). IF YOU ARE A
             CALIFORNIA RESIDENT, YOU HEREBY WAIVE CALIFORNIA CIVIL CODE SECTION 1542 IN CONNECTION WITH THE FOREGOING,
-            WHICH STATES: "A GENERAL RELEASE DOES NOT EXTEND TO CLAIMS WHICH THE CREDITOR OR RELEASING PARTY DOES NOT
+            WHICH STATES: &quot;A GENERAL RELEASE DOES NOT EXTEND TO CLAIMS WHICH THE CREDITOR OR RELEASING PARTY DOES NOT
             KNOW OR SUSPECT TO EXIST IN HIS OR HER FAVOR AT THE TIME OF EXECUTING THE RELEASE, WHICH IF KNOWN BY HIM OR
-            HER MUST HAVE MATERIALLY AFFECTED HIS OR HER SETTLEMENT WITH THE DEBTOR OR RELEASED PARTY."
+            HER MUST HAVE MATERIALLY AFFECTED HIS OR HER SETTLEMENT WITH THE DEBTOR OR RELEASED PARTY.&quot;
           </p>
           <p className="mb-3">
             <strong>6. Disclaimers</strong>
           </p>
           <p className="mb-3">
-            THE SITE IS PROVIDED ON AN "AS-IS" AND "AS AVAILABLE" BASIS, AND COMPANY (AND OUR SUPPLIERS) EXPRESSLY
+            THE SITE IS PROVIDED ON AN &quot;AS-IS&quot; AND &quot;AS AVAILABLE&quot; BASIS, AND COMPANY (AND OUR SUPPLIERS) EXPRESSLY
             DISCLAIM ANY AND ALL WARRANTIES AND CONDITIONS OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY,
             INCLUDING ALL WARRANTIES OR CONDITIONS OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, QUIET
             ENJOYMENT, ACCURACY, OR NON-INFRINGEMENT. WE (AND OUR SUPPLIERS) MAKE NO WARRANTY THAT THE SITE WILL MEET
@@ -323,7 +323,7 @@ export default function TermsOfService() {
           <p className="mb-3">
             Please note that, pursuant to 17 U.S.C. § 512(f), any misrepresentation of material fact (falsities) in a
             written notification automatically subjects the complaining party to liability for any damages, costs and
-            attorney's fees incurred by us in connection with the written notification and allegation of copyright
+            attorney&apos;s fees incurred by us in connection with the written notification and allegation of copyright
             infringement.
           </p>
           <p className="mb-3">
@@ -341,16 +341,16 @@ export default function TermsOfService() {
           </p>
           <p className="mb-3">
             <strong>10.2 Dispute Resolution.</strong> Please read the following arbitration agreement in this Section
-            (the " <strong>Arbitration Agreement</strong>") carefully. It requires you to arbitrate disputes with
+            (the &quot; <strong>Arbitration Agreement</strong>&quot;) carefully. It requires you to arbitrate disputes with
             Company, its parent companies, subsidiaries, affiliates, successors and assigns and all of their respective
-            officers, directors, employees, agents, and representatives (collectively, the "{" "}
-            <strong>Company Parties</strong>") and limits the manner in which you can seek relief from the Company
+            officers, directors, employees, agents, and representatives (collectively, the &quot;{" "}
+            <strong>Company Parties</strong>&quot;) and limits the manner in which you can seek relief from the Company
             Parties.
           </p>
           <p className="mb-3">
             <strong>(a)Applicability of Arbitration Agreement</strong> You agree that any dispute between you and any of
-            the Company Parties relating in any way to the Site, the services offered on the Site (the "{" "}
-            <strong>Services</strong>") or these Terms will be resolved by binding arbitration, rather than in court,
+            the Company Parties relating in any way to the Site, the services offered on the Site (the &quot;{" "}
+            <strong>Services</strong>&quot;) or these Terms will be resolved by binding arbitration, rather than in court,
             except that (1) you and the Company Parties may assert individualized claims in small claims court if the
             claims qualify, remain in such court and advance solely on an individual, non-class basis; and (2) you or
             the Company Parties may seek equitable relief in court for infringement or other misuse of intellectual
@@ -362,7 +362,7 @@ export default function TermsOfService() {
             </strong>{" "}
             This Arbitration Agreement does not preclude you from bringing issues to the attention of federal, state or
             local agencies. Such agencies can, if the law allows, seek relief against the Company Parties on your
-            behalf. For purposes of this Arbitration Agreement, " <strong>Dispute</strong>" will also include disputes
+            behalf. For purposes of this Arbitration Agreement, &quot; <strong>Dispute</strong>&quot; will also include disputes
             that arose or involve facts occurring before the existence of this or any prior versions of the Agreement as
             well as claims that may arise after the termination of these Terms.
           </p>
@@ -373,18 +373,18 @@ export default function TermsOfService() {
             mutually beneficial outcome. You and Company therefore agree that before either party commences arbitration
             against the other (or initiates an action in small claims court if a party so elects), we will personally
             meet and confer telephonically or via videoconference, in a good faith effort to resolve informally any
-            Dispute covered by this Arbitration Agreement (" <strong>Informal Dispute Resolution Conference</strong>").
+            Dispute covered by this Arbitration Agreement (&quot; <strong>Informal Dispute Resolution Conference</strong>&quot;).
             If you are represented by counsel, your counsel may participate in the conference, but you will also
             participate in the conference.
           </p>
           <p className="mb-3">
             The party initiating a Dispute must give notice to the other party in writing of its intent to initiate an
-            Informal Dispute Resolution Conference (" <strong>Notice</strong>"), which shall occur within 45 days after
+            Informal Dispute Resolution Conference (&quot; <strong>Notice</strong>&quot;), which shall occur within 45 days after
             the other party receives such Notice, unless an extension is mutually agreed upon by the parties. Notice to
             Company that you intend to initiate an Informal Dispute Resolution Conference should be sent by email to:
             info@amino.fit, or by regular mail to 232 Waller Street, San Francisco, California 94102. The Notice must
-            include: (1) your name, telephone number, mailing address, e‐mail address associated with your account (if
-            you have one); (2) the name, telephone number, mailing address and e‐mail address of your counsel, if any;
+            include: (1) your name, telephone number, mailing address, e{"‐"}mail address associated with your account (if
+            you have one); (2) the name, telephone number, mailing address and e{"‐"}mail address of your counsel, if any;
             and (3) a description of your Dispute.
           </p>
           <p className="mb-3">
@@ -394,7 +394,7 @@ export default function TermsOfService() {
             participate in the same Informal Dispute Resolution Conference unless all parties agree. In the time between
             a party receiving the Notice and the Informal Dispute Resolution Conference, nothing in this Arbitration
             Agreement shall prohibit the parties from engaging in informal communications to resolve the initiating
-            party's Dispute. Engaging in the Informal Dispute Resolution Conference is a condition precedent and
+            party&apos;s Dispute. Engaging in the Informal Dispute Resolution Conference is a condition precedent and
             requirement that must be fulfilled before commencing arbitration. The statute of limitations and any filing
             fee deadlines shall be tolled while the parties engage in the Informal Dispute Resolution Conference process
             required by this section.
@@ -408,31 +408,31 @@ export default function TermsOfService() {
             that either party shall have the right to finally resolve the Dispute through binding arbitration. The
             Federal Arbitration Act governs the interpretation and enforcement of this Arbitration Agreement. The
             arbitration will be conducted by JAMS, an established alternative dispute resolution provider. Disputes
-            involving claims and counterclaims with an amount in controversy under $250,000, not inclusive of attorneys'
-            fees and interest, shall be subject to JAMS' most current version of the Streamlined Arbitration Rules and
+            involving claims and counterclaims with an amount in controversy under $250,000, not inclusive of attorneys&apos;
+            fees and interest, shall be subject to JAMS&apos; most current version of the Streamlined Arbitration Rules and
             procedures available at{" "}
             <a href="http://www.jamsadr.com/rules-streamlined-arbitration/">
               http://www.jamsadr.com/rules-streamlined-arbitration/
             </a>
-            ; all other claims shall be subject to JAMS's most current version of the Comprehensive Arbitration Rules
+            ; all other claims shall be subject to JAMS&apos;s most current version of the Comprehensive Arbitration Rules
             and Procedures, available at{" "}
             <a href="http://www.jamsadr.com/rules-comprehensive-arbitration/">
               http://www.jamsadr.com/rules-comprehensive-arbitration/
             </a>
-            . JAMS's rules are also available at <a href="http://www.jamsadr.com/">www.jamsadr.com</a> or by calling
+            . JAMS&apos;s rules are also available at <a href="http://www.jamsadr.com/">www.jamsadr.com</a> or by calling
             JAMS at 800-352-5267. A party who wishes to initiate arbitration must provide the other party with a request
-            for arbitration (the " <strong>Request</strong>"). The Request must include: (1) the name, telephone number,
-            mailing address, e‐mail address of the party seeking arbitration and the account username (if applicable) as
+            for arbitration (the &quot; <strong>Request</strong>&quot;). The Request must include: (1) the name, telephone number,
+            mailing address, e{"‐m"}ail address of the party seeking arbitration and the account username (if applicable) as
             well as the email address associated with any applicable account; (2) a statement of the legal claims being
             asserted and the factual bases of those claims; (3) a description of the remedy sought and an accurate,
-            good‐faith calculation of the amount in controversy in United States Dollars; (4) a statement certifying
+            good{"‐"}faith calculation of the amount in controversy in United States Dollars; (4) a statement certifying
             completion of the Informal Dispute Resolution process as described above; and (5) evidence that the
             requesting party has paid any necessary filing fees in connection with such arbitration.
           </p>
           <p className="mb-3">
-            If the party requesting arbitration is represented by counsel, the Request shall also include counsel's
+            If the party requesting arbitration is represented by counsel, the Request shall also include counsel&apos;s
             name, telephone number, mailing address, and email address. Such counsel must also sign the Request. By
-            signing the Request, counsel certifies to the best of counsel's knowledge, information, and belief, formed
+            signing the Request, counsel certifies to the best of counsel&apos;s knowledge, information, and belief, formed
             after an inquiry reasonable under the circumstances, that: (1) the Request is not being presented for any
             improper purpose, such as to harass, cause unnecessary delay, or needlessly increase the cost of dispute
             resolution; (2) the claims, defenses and other legal contentions are warranted by existing law or by a
@@ -450,7 +450,7 @@ export default function TermsOfService() {
           </p>
           <p className="mb-3">
             You and Company agree that all materials and documents exchanged during the arbitration proceedings shall be
-            kept confidential and shall not be shared with anyone except the parties' attorneys, accountants, or
+            kept confidential and shall not be shared with anyone except the parties&apos; attorneys, accountants, or
             business advisors, and then subject to the condition that they agree to keep all materials and documents
             exchanged during the arbitration proceedings confidential.
           </p>
@@ -459,20 +459,20 @@ export default function TermsOfService() {
             disputes subject to arbitration hereunder including, without limitation, any dispute related to the
             interpretation, applicability, enforceability or formation of this Arbitration Agreement or any portion of
             the Arbitration Agreement, except for the following: (1) all Disputes arising out of or relating to the
-            subsection entitled "Waiver of Class or Other Non-Individualized Relief," including any claim that all or
-            part of the subsection entitled "Waiver of Class or Other Non-Individualized Relief" is unenforceable,
-            illegal, void or voidable, or that such subsection entitled "Waiver of Class or Other Non-Individualized
-            Relief" has been breached, shall be decided by a court of competent jurisdiction and not by an arbitrator;
-            (2) except as expressly contemplated in the subsection entitled "Batch Arbitration," all Disputes about the
+            subsection entitled &quot;Waiver of Class or Other Non-Individualized Relief,&quot; including any claim that all or
+            part of the subsection entitled &quot;Waiver of Class or Other Non-Individualized Relief&quot; is unenforceable,
+            illegal, void or voidable, or that such subsection entitled &quot;Waiver of Class or Other Non-Individualized
+            Relief&quot; has been breached, shall be decided by a court of competent jurisdiction and not by an arbitrator;
+            (2) except as expressly contemplated in the subsection entitled &quot;Batch Arbitration,&quot; all Disputes about the
             payment of arbitration fees shall be decided only by a court of competent jurisdiction and not by an
             arbitrator; (3) all Disputes about whether either party has satisfied any condition precedent to arbitration
             shall be decided only by a court of competent jurisdiction and not by an arbitrator; and (4) all Disputes
             about which version of the Arbitration Agreement applies shall be decided only by a court of competent
             jurisdiction and not by an arbitrator. The arbitration proceeding will not be consolidated with any other
             matters or joined with any other cases or parties, except as expressly provided in the subsection entitled
-            "Batch Arbitration." The arbitrator shall have the authority to grant motions dispositive of all or part of
+            &quot;Batch Arbitration.&quot; The arbitrator shall have the authority to grant motions dispositive of all or part of
             any claim or dispute. The arbitrator shall have the authority to award monetary damages and to grant any
-            non-monetary remedy or relief available to an individual party under applicable law, the arbitral forum's
+            non-monetary remedy or relief available to an individual party under applicable law, the arbitral forum&apos;s
             rules, and these Terms (including the Arbitration Agreement). The arbitrator shall issue a written award and
             statement of decision describing the essential findings and conclusions on which any award (or decision not
             to render an award) is based, including the calculation of any damages awarded. The arbitrator shall follow
@@ -496,11 +496,11 @@ export default function TermsOfService() {
             MASS ACTION BASIS. ONLY INDIVIDUAL RELIEF IS AVAILABLE, AND DISPUTES OF MORE THAN ONE CUSTOMER OR USER
             CANNOT BE ARBITRATED OR CONSOLIDATED WITH THOSE OF ANY OTHER CUSTOMER OR USER. Subject to this Arbitration
             Agreement, the arbitrator may award declaratory or injunctive relief only in favor of the individual party
-            seeking relief and only to the extent necessary to provide relief warranted by the party's individual claim.
+            seeking relief and only to the extent necessary to provide relief warranted by the party&apos;s individual claim.
             Nothing in this paragraph is intended to, nor shall it, affect the terms and conditions under the Subsection
-            10.2(h) entitled "Batch Arbitration." Notwithstanding anything to the contrary in this Arbitration
+            10.2(h) entitled &quot;Batch Arbitration.&quot; Notwithstanding anything to the contrary in this Arbitration
             Agreement, if a court decides by means of a final decision, not subject to any further appeal or recourse,
-            that the limitations of this subsection, "Waiver of Class or Other Non-Individualized Relief," are invalid
+            that the limitations of this subsection, &quot;Waiver of Class or Other Non-Individualized Relief,&quot; are invalid
             or unenforceable as to a particular claim or request for relief (such as a request for public injunctive
             relief), you and Company agree that that particular claim or request for relief (and only that particular
             claim or request for relief) shall be severed from the arbitration and may be litigated in the state or
@@ -509,16 +509,16 @@ export default function TermsOfService() {
             settlement of claims.
           </p>
           <p className="mb-3">
-            <strong>(g) Attorneys' Fees and Costs.</strong> The parties shall bear their own attorneys' fees and costs
+            <strong>(g) Attorneys&apos; Fees and Costs.</strong> The parties shall bear their own attorneys&apos; fees and costs
             in arbitration unless the arbitrator finds that either the substance of the Dispute or the relief sought in
             the Request was frivolous or was brought for an improper purpose (as measured by the standards set forth in
             Federal Rule of Civil Procedure 11(b)). If you or Company need to invoke the authority of a court of
             competent jurisdiction to compel arbitration, then the party that obtains an order compelling arbitration in
             such action shall have the right to collect from the other party its reasonable costs, necessary
-            disbursements, and reasonable attorneys' fees incurred in securing an order compelling arbitration. The
+            disbursements, and reasonable attorneys&apos; fees incurred in securing an order compelling arbitration. The
             prevailing party in any court action relating to whether either party has satisfied any condition precedent
             to arbitration, including the Informal Dispute Resolution Process, is entitled to recover their reasonable
-            costs, necessary disbursements, and reasonable attorneys' fees and costs.
+            costs, necessary disbursements, and reasonable attorneys&apos; fees and costs.
           </p>
           <p className="mb-3">
             <strong>(h) Batch Arbitration.</strong> To increase the efficiency of administration and resolution of
@@ -530,17 +530,17 @@ export default function TermsOfService() {
             Requests); (2) appoint one arbitrator for each batch; and (3) provide for the resolution of each batch as a
             single consolidated arbitration with one set of filing and administrative fees due per side per batch, one
             procedural calendar, one hearing (if any) in a place to be determined by the arbitrator, and one final award
-            (" <strong>Batch Arbitration</strong>").
+            (&quot; <strong>Batch Arbitration</strong>&quot;).
           </p>
           <p className="mb-3">
-            All parties agree that Requests are of a "substantially similar nature" if they arise out of or relate to
+            All parties agree that Requests are of a &quot;substantially similar nature&quot; if they arise out of or relate to
             the same event or factual scenario and raise the same or similar legal issues and seek the same or similar
             relief. To the extent the parties disagree on the application of the Batch Arbitration process, the
             disagreeing party shall advise the JAMS, and the JAMS shall appoint a sole standing arbitrator to determine
-            the applicability of the Batch Arbitration process (" <strong>Administrative Arbitrator</strong>"). In an
+            the applicability of the Batch Arbitration process (&quot; <strong>Administrative Arbitrator</strong>&quot;). In an
             effort to expedite resolution of any such dispute by the Administrative Arbitrator, the parties agree the
             Administrative Arbitrator may set forth such procedures as are necessary to resolve any disputes promptly.
-            The Administrative Arbitrator's fees shall be paid by Company.
+            The Administrative Arbitrator&apos;s fees shall be paid by Company.
           </p>
           <p className="mb-3">
             You and Company agree to cooperate in good faith with the JAMS to implement the Batch Arbitration process
@@ -565,8 +565,8 @@ export default function TermsOfService() {
             with us, or may enter into in the future with us.
           </p>
           <p className="mb-3">
-            <strong>(j) Invalidity, Expiration.</strong> Except as provided in the subsection entitled "Waiver of Class
-            or Other Non-Individualized Relief", if any part or parts of this Arbitration Agreement are found under the
+            <strong>(j) Invalidity, Expiration.</strong> Except as provided in the subsection entitled &quot;Waiver of Class
+            or Other Non-Individualized Relief&quot;, if any part or parts of this Arbitration Agreement are found under the
             law to be invalid or unenforceable, then such specific part or parts shall be of no force and effect and
             shall be severed and the remainder of the Arbitration Agreement shall continue in full force and effect. You
             further agree that any Dispute that you have with Company as detailed in this Arbitration Agreement must be
@@ -618,19 +618,19 @@ export default function TermsOfService() {
             <strong>10.6 Entire Terms.</strong> These Terms constitute the entire agreement between you and us regarding
             the use of the Site. Our failure to exercise or enforce any right or provision of these Terms shall not
             operate as a waiver of such right or provision. The section titles in these Terms are for convenience only
-            and have no legal or contractual effect. The word "including" means "including without limitation". If any
+            and have no legal or contractual effect. The word &quot;including&quot; means &quot;including without limitation&quot;. If any
             provision of these Terms is, for any reason, held to be invalid or unenforceable, the other provisions of
             these Terms will be unimpaired and the invalid or unenforceable provision will be deemed modified so that it
             is valid and enforceable to the maximum extent permitted by law. Your relationship to Company is that of an
             independent contractor, and neither party is an agent or partner of the other. These Terms, and your rights
             and obligations herein, may not be assigned, subcontracted, delegated, or otherwise transferred by you
-            without Company's prior written consent, and any attempted assignment, subcontract, delegation, or transfer
+            without Company&apos;s prior written consent, and any attempted assignment, subcontract, delegation, or transfer
             in violation of the foregoing will be null and void. Company may freely assign these Terms. The terms and
             conditions set forth in these Terms shall be binding upon assignees.
           </p>
           <p className="mb-3">
             <strong>10.7 Copyright/Trademark Information</strong>. Copyright © 2023 Hedge Labs Inc. All rights reserved.
-            All trademarks, logos and service marks (" <strong>Marks</strong>") displayed on the Site are our property
+            All trademarks, logos and service marks (&quot; <strong>Marks</strong>&quot;) displayed on the Site are our property
             or the property of other third parties. You are not permitted to use these Marks without our prior written
             consent or the consent of such third party which may own the Marks.
           </p>

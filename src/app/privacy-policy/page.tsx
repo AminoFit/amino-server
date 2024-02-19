@@ -21,7 +21,7 @@ export default function PrivacyPolicy() {
           </p>
           <p className="mb-3">
             Your privacy is really important to us when using Amino. You are trusting us with your thoughts and we want
-            to make sure they’re safe, secure, and you know exactly what we do with them. Below is the privacy policy
+            to make sure they{"’"}re safe, secure, and you know exactly what we do with them. Below is the privacy policy
             that we (Amino Intelligence, inc.) commit to which outlines what information we collect and how it is used.
             We reserve the right to update this policy and will post any changes here. If you have any questions, please
             reach out to us by emailing <a href="mailto:info@amino.fit">info@amino.fit</a>.
@@ -34,7 +34,7 @@ export default function PrivacyPolicy() {
           <ul>
             <li>
               <strong>Email</strong>: This is used as your account login and we may occasionally send emails
-              communicating to you. We will not share this with any third party that's not necessary for the product to
+              communicating to you. We will not share this with any third party that{"'"}s not necessary for the product to
               function (e.g. it would be shared with our authentication provider). We will not share your information or
               email to any 3p that is not necessary.
             </li>
@@ -85,7 +85,7 @@ export default function PrivacyPolicy() {
           <h2>4. Deletion of data</h2>
           <p className="mb-3">
             If you want to delete your data associated with your account or your account entirely, please email{" "}
-            <a href="mailto:info@amino.fit">info@amino.fit</a> and we’ll be happy to delete all of it from our servers.
+            <a href="mailto:info@amino.fit">info@amino.fit</a> and we{"'"}ll be happy to delete all of it from our servers.
           </p>
           <h2>5. Use of Amino by Children</h2>
           <p className="mb-3">
@@ -134,7 +134,7 @@ export default function PrivacyPolicy() {
           </ul>
           <p className="mb-3">
             We don’t sell or share Personal Information as defined by the California Consumer Privacy Act, as amended by
-            the California Privacy Rights Act. We also don’t process sensitive personal information for the purposes of
+            the California Privacy Rights Act. We also don{"'"}t process sensitive personal information for the purposes of
             inferring characteristics about a consumer.
           </p>
           <p className="mb-3">
