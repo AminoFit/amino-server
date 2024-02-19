@@ -156,7 +156,7 @@ export default function PrivacyPolicy() {
           <h2>7. Contact Us</h2>
           <p className="mb-3">
             If you have any questions about our privacy policy or information practices, please feel free to contact us
-            at <a href="mailto:info@amino.fit">alex@sumimt.im</a>
+            at <a href="mailto:info@amino.fit">info@amino.fit</a>
           </p>
         </div>
       </main>
