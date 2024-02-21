@@ -230,6 +230,13 @@ export async function GenerateResponseForQuickLog(
   if (isMessageBeingEdited) {
     // if message is being edited, delete all associated items since we are going to start again.
     await softDeleteLoggedFoodItemsByMessageId(inputMessageId)
+    // reset items to process to 0
+    UpdateMessage({
+      id: inputMessageId,
+      itemsToProcess: 0,
+      itemsProcessed: 0,
+      // consumedOn: new Date(consumedOn)
+    })
   } else {
     // if message is already resolved or processing, return
     if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
