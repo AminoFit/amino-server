@@ -178,7 +178,7 @@ export async function findBestFoodMatchtoLocalDb(
 
 async function testMatching() {
   const sampleUserRequest: FoodItemToLog = {
-    food_database_search_name: "tuna",
+    food_database_search_name: "tuna steak",
     full_item_user_message_including_serving: "tuna",
     branded: false,
     brand: "",

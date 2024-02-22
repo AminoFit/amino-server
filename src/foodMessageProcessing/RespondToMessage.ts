@@ -257,8 +257,8 @@ export async function GenerateResponseForQuickLog(
 
   if (loadedMessage.hasimages) {
     try {
-      // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
+      // Try with images
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using image model:", error)
 
@@ -267,8 +267,8 @@ export async function GenerateResponseForQuickLog(
     }
   } else {
     try {
-      // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
+      // Try using just text
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using chat model:", error)
 

@@ -21,7 +21,7 @@ export async function* fireworksChatCompletionStream(
     prompt,
     stop = "",
     temperature = 0.1,
-    max_tokens = 2048,
+    max_tokens = 200,
     prompt_truncate_len = 2048,
     ...apiOptions
   }: FireworksAPIOptions,
@@ -53,6 +53,7 @@ export async function* fireworksChatCompletionStream(
       stream: true,
       max_tokens: max_tokens,
       stop: null,
+      response_format:{"type": "json_object"},
       prompt_truncate_len: prompt_truncate_len,
       model: model,
       ...apiOptions
@@ -119,42 +120,188 @@ async function getUserByEmail(email: string) {
 }
 
 const test_prompt = `
-Your task is to analyze a sentence provided by a user, describing their meal for logging purposes. Follow these steps to ensure accurate identification and logging of each food item:
-
-1. Identify Distinct Food Items: Examine the user's sentence and identify each distinct food item. Ensure that each entry corresponds to a unique item that can be found in our food database.
-
-2. Seperate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For examples ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
-
-3. Determine 'full_unique_food_database_search_name': For each identified food item, determine its 'full_unique_food_database_search_name'. This name should be specific enough to encompass various forms and preparations of the food (e.g., specify if oats are cooked, or if butter is salted or unsalted).
-
-4. Include Detailed Serving Information: The 'full_unique_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or type (e.g., '100g of full-fat salted butter'). It is fine to assume serving details if not provided.
-
-5. The sum of all items in the full_unique_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
-
-Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
+Your task is to determine based on INPUT_TO_PROCESS if a user has indicated any info relating to time or date eaten. Use the DATE to figure relative times. You can only output in JSON with the format below.
 
 INPUT_TO_PROCESS:
-"starbucks latte with 2% milk and 3 waffles with butter and maple syrup with two oikos strawberry greek yogurts and a banana"
+"half an hour ago i had a banana with my breakfast"
+DATE:
+Wednesday, Feb 21, 2024, at 11:14 military time
 
-Expected JSON Output:
+Output Format: Your output must be in JSON format. Do not output anything else.
+
+For each item, include details under month_consumed, day_consumed, hour_consumed, and minutes_consumed, choosing either the relative or absolute measure based on the user's input.
+For relative numbers use positive numbers for days in the future and negative numbers for days in the past.
+For hours use 24-hour time.
+Do not include day_consumed if the user has not specified a day or the day is today.
+
+Example Input and Outputs:
+
+Sample 1:
+Input: "i had a banana last Monday at 3pm"
+Assumption: Date is Wednesday, January 24, 2024, at 15:14 military time
+Reasoning: Monday is 2 days ago, and 3pm is 15:00 in military time.
+Output:
 {
-  "contains_valid_food_items": "boolean",
-  "food_items": [
-    {
-      "full_unique_food_database_search_name": "string",
-      "full_unique_item_user_message_including_serving_or_quantity": "string",
-      "branded": "boolean",
-      "brand": "string"
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "day_consumed": {
+      "relative_days_number": -2
+    },
+    "hour_consumed": {
+      "absolute_hour_number": 15
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
     }
-  ]
+  }
 }
 
-Beginning of JSON output: 
+Sample 2:
+Input: "i had a banana for lunch today"
+Reasoning: Lunch is likely at 12pm. Today is today so no need to specify the day.
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "hour_consumed": {
+      "absolute_hour_number": 12
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
+    }
+  }
+}
+
+Sample 3:
+Input: "yesterday morning I ate an apple"
+Reasoning: Morning is likely breakfast time, so assume 9am.
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "day_consumed": {
+      "relative_days_number": -1
+    },
+    "hour_consumed": {
+      "absolute_hour_number": 9
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
+    }
+  }
+}
+
+
+
+Sample 4:
+Input: "Tomorow for dinner i will eat some oats"
+Reasoning: Tomorow for is 1 day from now and dinner is likely 7pm
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "day_consumed": {
+      "relative_days_number": 1
+    },
+    "hour_consumed": {
+      "absolute_hour_number": 19
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
+    }
+  }
+}
+
+Sample 5:
+Input: "On Monday 15th of January 2024, I had a banana as afternoon snack"
+Reasoning: User is explicit about the date. Afternoon snack is likely 3pm.
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "month_consumed": {
+      "absolute_month_number": 1
+    },
+    "day_consumed": {
+      "absolute_day_number": 15
+    },
+    "hour_consumed": {
+      "absolute_hour_number": 15
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
+    }
+  }
+}
+
+Sample 6:
+Input: "This coming Friday I will eat half a chicken breast"
+Assumption: Date is Wednesday, January 24, 2024, at 15:14 military time)
+Reasoning: Friday is 2 days from Wednesday.
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "day_consumed": {
+      "relative_days_number": 2
+    }
+  }
+}
+
+Sample 7:
+Input: "This afternoon i will have 100g of cheese with some crackers"
+Reasoning: Day hasn't change just the time. Afternoon is likely 3pm.
+Output:
+{
+  "user_has_specified_time_or_date": true,
+  "date_time_food_consumed": {
+    "hour_consumed": {
+      "absolute_hour_number": 15
+    },
+    "minutes_consumed": {
+      "absolute_minutes_number": 0
+    }
+  }
+}
+
+Sample 8:
+Input: "With some friends i ate some pasta and grilled beef"
+Reasoning: No specific date specified
+Output:
+{
+  "user_has_specified_time_or_date": false
+}
+
+
+Expected JSON Output Structure:
+{
+  "user_has_specified_time_or_date": "boolean",
+  "date_time_food_consumed"?: {
+    "month_consumed"?: {
+      "absolute_month_number": "number | null", 
+      "relative_months_number": "number | null"
+    },
+    "day_consumed"?: {
+      "absolute_day_number": "number | null", 
+      "relative_days_number": "number | null"
+    },
+    "hour_consumed"?: {
+      "absolute_hour_number": "number | null",
+      "relative_hours_number": "number | null"
+    },
+    "minutes_consumed"?: {
+      "absolute_minutes_number": "number | null",
+      "relative_minutes_number": "number | null"
+    }
+  }
+}
 `
 
 async function testFireworks() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))![0]
-  const stream = fireworksChatCompletionStream({ prompt: test_prompt, systemPrompt: "You are a helpful assistant that only replies with valid JSON." }, user)
+  const stream = fireworksChatCompletionStream({ 
+    // model: "accounts/fireworks/models/mixtral-8x7b-instruct-hf",
+    prompt: test_prompt, systemPrompt: "You are a helpful assistant that only replies with valid JSON." }, user)
 
   for await (const chunk of stream) {
     process.stdout.write(chunk.toString())
@@ -164,4 +311,4 @@ async function testFireworks() {
   }
 }
 
-// testFireworks()
+testFireworks()

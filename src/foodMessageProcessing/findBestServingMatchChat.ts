@@ -240,6 +240,7 @@ async function testServingMatchRequest() {
 // console.log(food_item)
   const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
   console.log(serving_result)
+  return
 }
 
 // testServingMatchRequest()
