@@ -7,7 +7,6 @@ import {
 import { fireworksChatCompletionStream } from "@/languageModelProviders/fireworks/fireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
 import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
-import { mode } from "mathjs"
 import { getUserByEmail } from "../common/debugHelper"
 import { getMessageTimeChat } from "../messageTime/extractMessageTime"
 
@@ -200,7 +199,7 @@ export async function logFoodItemStream(
   user_message: Tables<"Message">,
   consumedOn: Date = new Date(),
   isMessageBeingEdited: boolean = false
-): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
+): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean, newConsumedOnTime?: Date }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
   // Add logging task to the tasks array
@@ -254,10 +253,11 @@ export async function logFoodItemStream(
     }
   }
   
-
+  let newConsumedOnTime: Date | null = null
   //await getTimeEatenPromise
   if (getTimeEatenPromise && messageContainsTemporalExpression) {
     const { timeWasSpecified, consumedDateTime } = await getTimeEatenPromise
+    newConsumedOnTime = consumedDateTime
     let additionalTime = 0
     for (const foodItemToLog of foodItemsToLog) {
       let consumedOnForFoodItem = consumedDateTime || consumedOn
@@ -269,6 +269,10 @@ export async function logFoodItemStream(
     }
   }
   await Promise.all(loggingTasks)
+  
+  if (newConsumedOnTime) {
+    return { foodItemsToLog, isBadFoodLogRequest, newConsumedOnTime }
+  }
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 

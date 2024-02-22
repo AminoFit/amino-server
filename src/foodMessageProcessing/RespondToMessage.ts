@@ -254,6 +254,7 @@ export async function GenerateResponseForQuickLog(
 
   let foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
+  let newConsumedOnTime: Date | undefined = undefined
 
   if (loadedMessage.hasimages) {
     try {
@@ -268,7 +269,7 @@ export async function GenerateResponseForQuickLog(
   } else {
     try {
       // Try using just text
-      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn), isMessageBeingEdited))
+      ({ foodItemsToLog, isBadFoodLogRequest, newConsumedOnTime } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn), isMessageBeingEdited))
     } catch (error) {
       console.log("Error using chat model:", error)
 
@@ -299,6 +300,7 @@ export async function GenerateResponseForQuickLog(
     id: inputMessageId,
     status: "RESOLVED",
     resolvedAt: new Date(),
+    consumedOn: newConsumedOnTime,
     isBadFoodLogRequest: isBadFoodLogRequest
   })
 

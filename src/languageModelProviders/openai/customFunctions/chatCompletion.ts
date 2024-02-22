@@ -4,7 +4,6 @@ import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
 import { encode } from "gpt-tokenizer"
-import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getPromptOutputFromCache, writePromptOutputToCache } from "@/languageModelProviders/promptCaching/redisPromptCache"
 
 const openai = new OpenAI({
