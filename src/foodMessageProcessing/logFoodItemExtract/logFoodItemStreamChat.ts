@@ -253,7 +253,7 @@ export async function logFoodItemStream(
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
-  await Promise.all(loggingTasks)
+  
 
   //await getTimeEatenPromise
   if (getTimeEatenPromise && messageContainsTemporalExpression) {
@@ -268,6 +268,7 @@ export async function logFoodItemStream(
       additionalTime += 1000
     }
   }
+  await Promise.all(loggingTasks)
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 
