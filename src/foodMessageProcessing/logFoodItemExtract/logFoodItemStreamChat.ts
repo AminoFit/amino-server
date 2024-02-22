@@ -191,6 +191,7 @@ export async function logFoodItemStream(
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
+  await Promise.all(loggingTasks)
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 
