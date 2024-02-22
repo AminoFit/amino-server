@@ -342,6 +342,7 @@ export interface ChatCompletionStreamOptions {
   max_tokens?: number
   stop?: string
   systemPrompt?: string
+  response_format?: "json_object" | "text"
   [key: string]: any
 }
 
@@ -353,9 +354,32 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     temperature = 0,
     max_tokens = 2048,
     stop,
+    response_format = "json_object",
     systemPrompt = "You are a helpful assistant that only replies in valid JSON.",
     ...otherParams
   } = options
+
+  const cachedResult = await getPromptOutputFromCache({
+    systemPrompt,
+    userMessage: prompt,
+    modelName: model,
+    temperature,
+    max_tokens,
+    response_format: response_format
+  })
+
+  if (cachedResult) {
+    // console.log("cached result", cachedResult);
+    const resultLength = cachedResult.length;
+    let startIndex = 0;
+    while (startIndex < resultLength) {
+      const endIndex = Math.min(startIndex + 4, resultLength);
+      const chunk = cachedResult.slice(startIndex, endIndex);
+      yield chunk;
+      startIndex += 4;
+    }
+    return;
+  }
 
   console.log("model and temp", model, temperature)
   const startTime = performance.now()
@@ -370,7 +394,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     max_tokens,
     stop,
     ...otherParams,
-    response_format: { type: "json_object" },
+    response_format: { type: response_format },
     stream: true
   })
 
@@ -389,6 +413,18 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
   const resultTokens = encode(totalResponse).length
   const promptTokens = encode(prompt + systemPrompt).length
   const totalTokens = resultTokens + promptTokens
+
+  await writePromptOutputToCache(
+    {
+      systemPrompt,
+      userMessage: prompt,
+      modelName: model,
+      temperature,
+      max_tokens,
+      response_format: response_format
+    },
+    totalResponse
+  )
 
   console.log("logging performance", completionTimeMs, resultTokens, promptTokens, totalTokens)
 

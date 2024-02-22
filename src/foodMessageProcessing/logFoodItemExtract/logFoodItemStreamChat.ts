@@ -165,7 +165,8 @@ export async function logFoodItemStream(
   const stream = processStreamedLoggedFoodItems(user, {
     prompt: food_logging_prompt.replace("INPUT_HERE", user_message.content),
     temperature: 0.1,
-    model: model
+    model: model,
+    response_format: "json_object"
   })
 
   for await (const chunk of stream) {
@@ -182,9 +183,9 @@ export async function logFoodItemStream(
         timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString()
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
-      // console.log("just logged: ", foodItemToLog)
-      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
-      loggingTasks.push(loggingTask)
+      console.log("just logged: ", foodItemToLog)
+      // const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
+      // loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log(chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
