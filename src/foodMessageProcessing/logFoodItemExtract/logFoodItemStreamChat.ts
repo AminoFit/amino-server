@@ -184,8 +184,8 @@ export async function logFoodItemStream(
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
-      // const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
-      // loggingTasks.push(loggingTask)
+      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
+      loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log(chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
