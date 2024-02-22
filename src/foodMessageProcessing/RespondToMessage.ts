@@ -268,7 +268,7 @@ export async function GenerateResponseForQuickLog(
   } else {
     try {
       // Try using just text
-      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn), isMessageBeingEdited))
     } catch (error) {
       console.log("Error using chat model:", error)
 

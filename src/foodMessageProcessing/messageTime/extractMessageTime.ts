@@ -187,26 +187,6 @@ Output:
   "user_has_specified_time_or_date": false
 }
 
-Some quick reminder of how to calculate relative days:
-We can index days of the week like this:
-0: Sunday
-1: Monday
-2: Tuesday
-3: Wednesday
-4: Thursday
-5: Friday
-6: Saturday
-7: Sunday
-8: Monday
-9: Tuesday
-10: Wednesday
-11: Thursday
-12: Friday
-13: Saturday
-etc.
-
-So if user says "this coming Friday" and today is Wednesday, that would be 2 days from now.
-
 Expected JSON Output Structure:
 {
   "user_has_specified_time_or_date": "boolean",
@@ -216,12 +196,10 @@ Expected JSON Output Structure:
       "absolute_month_number": "number | null", 
       "relative_months_number": "number | null"
     },
-"day_absolute_or_relative_specified":"boolean",
     "day_consumed"?: {
       "absolute_day_number": "number | null", 
       "relative_days_number": "number | null"
     },
-"hour_absolute_or_relative_specified":"boolean",
     "hour_consumed"?: {
       "absolute_hour_number": "number | null",
       "relative_hours_number": "number | null"
@@ -354,9 +332,8 @@ function transformCurrentDateTime(changeValues: DateTimeFoodConsumed, timezone: 
 
 export async function getMessageTimeChat(
   user: Tables<"User">,
-  user_message: Tables<"Message">,
-  consumedOn: Date = new Date()
-): Promise<{ timeWasSpecified: boolean; consumedDateTime: Date | null }> {
+  user_message: string
+  ): Promise<{ timeWasSpecified: boolean; consumedDateTime: Date | null }> {
 
   let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8utlaQAo"
   // if (user_message.status === "FAILED") {
@@ -366,12 +343,13 @@ export async function getMessageTimeChat(
   const formattedDateTime = dayjs().tz(user.tzIdentifier).format("ddd MMM DD YYYY HH:mm")
 
   const requestPrompt = date_find_prompt
-    .replace("USER_INPUT_REPLACED_HERE", user_message.content)
+    .replace("USER_INPUT_REPLACED_HERE", user_message)
     .replace("CURRENT_DATE_TIME", formattedDateTime)
 
   const stream = processMessageTimeExtractStream(user, {
     prompt: requestPrompt,
-    temperature: 0.1,
+    temperature: 0,
+    max_tokens: 250,
     model: model,
     systemPrompt: "You are a helpful time assistant that outputs the absolute or relative time a user is specifying in JSON."
   })
@@ -419,7 +397,7 @@ async function testChatCompletionJsonStream() {
   const message = {
     id: 997,
     createdAt: new Date().toISOString(),
-    content: "yesterdya i had a banana for lunchtime",
+    content: "i had a banana",
     function_name: null,
     role: "User",
     userId: "uuid-of-the-user",
@@ -435,7 +413,10 @@ async function testChatCompletionJsonStream() {
     consumedOn: null,
     deletedAt: null
   } as Tables<"Message">
-  const result = await getMessageTimeChat(user!, message)
+  const startTime = new Date()
+  const result = await getMessageTimeChat(user!, message.content)
+  const endTime = new Date()
+  console.log("Time taken in milliseconds:", endTime.getTime() - startTime.getTime())
   //format result date to user timezone
   // have it be in format Wed Jan 23 20204 11:14:00 GMT-0500 (Eastern Standard Time)
   console.log(result)
