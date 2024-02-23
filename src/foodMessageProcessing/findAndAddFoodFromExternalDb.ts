@@ -249,10 +249,10 @@ async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
   const messageId = 1200
   const foodToLog = {
-    food_database_search_name: "Mushroom Coffee Latte Blend",
-    full_item_user_message_including_serving: "1tbsp of Mushroom Coffee Latte Blend",
-    branded: true,
-    brand: "Om"
+    food_database_search_name: "english muffin",
+    full_item_user_message_including_serving: "english muffin",
+    branded: false,
+    brand: ""
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const food_embed_cache = await foodToLogEmbedding(foodToLog)
