@@ -220,6 +220,7 @@ async function* processMessageTimeExtractStream(user: Tables<"User">, options: C
   let lastProcessedIndex = -1 // Track the last processed index
 
   for await (const chunk of stream) {
+    process.stdout.write(chunk)
     buffer += chunk // Append the new chunk to the buffer
     const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
 
@@ -346,6 +347,8 @@ export async function getMessageTimeChat(
     .replace("USER_INPUT_REPLACED_HERE", user_message)
     .replace("CURRENT_DATE_TIME", formattedDateTime)
 
+    console.log(requestPrompt)
+
   const stream = processMessageTimeExtractStream(user, {
     prompt: requestPrompt,
     temperature: 0,
@@ -397,7 +400,7 @@ async function testChatCompletionJsonStream() {
   const message = {
     id: 997,
     createdAt: new Date().toISOString(),
-    content: "i had a banana",
+    content: "This morning around 7AM, I had some bok choy,",
     function_name: null,
     role: "User",
     userId: "uuid-of-the-user",

@@ -101,16 +101,16 @@ export async function findUsdaFoodInfo(
   return foodSearchResults.slice(0, 3)
 }
 */
-/*
-async function runTests() {
-  const queryEmbedding = (await getAdaEmbedding(["Triple Zero Strawberry Yogurt".toLowerCase()])).data[0].embedding
-  const results = await findUsdaFoodInfo({
-    queryEmbedding: queryEmbedding,
-    food_name: "Triple Zero Strawberry Yogurt",
-    branded: true,
-    brand_name: "Oikos"
-  })
-  console.log(results)
-}
-*/
+
+// async function runTests() {
+//   const queryEmbedding = (await getAdaEmbedding(["Triple Zero Strawberry Yogurt".toLowerCase()])).data[0].embedding
+//   const results = await findUsdaFoodInfo({
+//     queryEmbedding: queryEmbedding,
+//     food_name: "Triple Zero Strawberry Yogurt",
+//     branded: true,
+//     brand_name: "Oikos"
+//   })
+//   console.log(results)
+// }
+
 //runTests()
