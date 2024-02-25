@@ -77,9 +77,9 @@ export async function POST(
   const result = await supabaseAdmin
     .from("FoodItem")
     .select(
-      `id, name, brand, defaultServingWeightGram,kcalPerServing,totalFatPerServing,satFatPerServing,
+      `id, name, brand, description, defaultServingWeightGram,kcalPerServing,totalFatPerServing,satFatPerServing,
     transFatPerServing, carbPerServing, sugarPerServing,addedSugarPerServing, 
-    proteinPerServing, userId, messageId, foodInfoSource, defaultServingLiquidMl,
+    proteinPerServing, userId, messageId, defaultServingLiquidMl,
     fiberPerServing, isLiquid,
     FoodItemImages(
       *, FoodImage(id, pathToImage, downvotes)
@@ -107,8 +107,7 @@ export async function POST(
     // Return the foodItem with the filtered list of FoodItemImages.
     return {
       ...foodItem,
-      FoodItemImages: sortedAndFilteredImages,
-      foodInfoSource: "Online"
+      FoodItemImages: sortedAndFilteredImages
     };
   }
 
