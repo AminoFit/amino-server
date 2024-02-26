@@ -1,3 +1,4 @@
+'use client'
 import { createClientSupabase } from "@/utils/supabase/client"
 import { SupabaseClient } from "@supabase/supabase-js"
 import { CopyButton } from "./CopyButton"
@@ -59,7 +60,7 @@ export default async function BadIconsPage() {
                           {item.similarity}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
-                          <CopyButton name={item.FoodItem?.name || ''} />
+                          <CopyButton name={item.FoodItem?.name || ""} />
                         </td>
                       </tr>
                     ))}
