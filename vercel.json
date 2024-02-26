@@ -1,8 +1,10 @@
 {
-  "crons": [
+  "headers": [
     {
-      "path": "/api/cron/send-checkin-texts",
-      "schedule": "*/5 * * * *"
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
     }
   ]
 }
