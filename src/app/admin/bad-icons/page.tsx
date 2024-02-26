@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import { createClientSupabase } from "@/utils/supabase/client"
 import { CopyButton } from "./CopyButton"
 
