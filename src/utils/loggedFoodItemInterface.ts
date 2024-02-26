@@ -14,4 +14,5 @@ export interface FoodItemToLog {
   branded: boolean;
   brand?: string; 
   serving?: LoggedFoodServing; 
+  database_id?: number;
 }

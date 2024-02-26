@@ -209,13 +209,19 @@ async function processOpenAiVisionChatStream(
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
-      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog)
+      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
       loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log("valid items?", chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
+  // Await for all tasks and get their return values
+  const results = await Promise.all(loggingTasks)
+  // Update each foodItemToLog with its corresponding database_id
+  results.forEach(({ loggedFoodItemId, index }) => {
+    foodItemsToLog[index].database_id = loggedFoodItemId
+  })
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 

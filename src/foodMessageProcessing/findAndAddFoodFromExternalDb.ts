@@ -249,10 +249,10 @@ async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
   const messageId = 1200
   const foodToLog = {
-    food_database_search_name: "White Corn Tortillas",
-    full_item_user_message_including_serving: "White Corn Tortillas",
+    food_database_search_name: "kettle & fire classic chicken bone broth",
+    full_item_user_message_including_serving: "kettle & fire classic chicken bone broth",
     branded: true,
-    brand: "Mission"
+    brand: "kettle & fire"
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const food_embed_cache = await foodToLogEmbedding(foodToLog)
@@ -298,10 +298,10 @@ async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog)
 async function testAddCustomMadeFood() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const foodToLog = {
-    food_database_search_name: "Zesty Lemon Bar",
-    full_item_user_message_including_serving: "Zesty Lemon Bar",
+    food_database_search_name: "Classic Chicken Bone Broth",
+    full_item_user_message_including_serving: "Classic Chicken Bone Broth",
     branded: true,
-    brand: "Why Bars"
+    brand: "Kettle & Fire"
   } as FoodItemToLog
 
   const result = await addCustomMadeFood(user!, foodToLog)
@@ -311,4 +311,4 @@ async function testAddCustomMadeFood() {
 
 // testAddCustomMadeFood()
 
-// testAddFoodFromExternal()
+testAddFoodFromExternal()
