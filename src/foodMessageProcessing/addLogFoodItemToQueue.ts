@@ -7,6 +7,8 @@ import UpdateMessage from "@/database/UpdateMessage"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
+import { getUserByEmail, getUserMessageById } from "./common/debugHelper"
+import { get, select } from "underscore"
 
 export async function AddLoggedFoodItemToQueue(
   user: Tables<"User">,
@@ -44,6 +46,7 @@ export async function AddLoggedFoodItemToQueue(
       status: "Needs Processing",
       extendedOpenAiData: food_item_to_log as any
     })
+    .select()
     .single()
   const error = insertResult.error
   if (error) {
@@ -57,9 +60,28 @@ export async function AddLoggedFoodItemToQueue(
   }
   console.log("Adding food item to queue:", loggedFoodToProcess.id)
   await processFoodItemQueue.enqueue(
-    `${loggedFoodToProcess.id}` // job to be enqueued
+    `${loggedFoodToProcess.id}` 
   )
   console.log(`Added food id to queue: ${loggedFoodToProcess.id}`)
 
   return {loggedFoodItemId: loggedFoodToProcess.id, index: index}
 }
+
+
+async function testAddToQueue(){
+  const user = await getUserByEmail("seb.grubb@gmail.com") as Tables<"User">
+  const user_message = await getUserMessageById(1906) as Tables<"Message">
+  const food_item_to_log = {
+    timeEaten: "2022-02-22T22:22:22Z",
+    food_database_search_name: "apple",
+    full_item_user_message_including_serving: "1 apple",
+    branded: false,
+    serving: {
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 182
+    }
+  } as FoodItemToLog
+  await AddLoggedFoodItemToQueue(user, user_message, food_item_to_log, 0)
+}
+
+// testAddToQueue()
