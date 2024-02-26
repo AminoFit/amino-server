@@ -1,10 +1,13 @@
 "use client"
 
+
 import { createClientSupabase } from "@/utils/supabase/client"
 import { CopyButton } from "./CopyButton"
 import { NextRequest } from "next/server"
 
-export default async function BadIconsPage(request: NextRequest) {
+export const revalidate = 1
+
+export default async function BadIconsPage() {
   const supabase = createClientSupabase()
 
   const { data: FoodItemImages, error } = await supabase
