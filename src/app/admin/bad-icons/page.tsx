@@ -1,6 +1,5 @@
 'use client'
 import { createClientSupabase } from "@/utils/supabase/client"
-import { SupabaseClient } from "@supabase/supabase-js"
 import { CopyButton } from "./CopyButton"
 
 export default async function BadIconsPage() {
