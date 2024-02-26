@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -330,18 +330,21 @@ export type Database = {
           foodImageId: number | null
           foodItemId: number | null
           id: number
+          similarity: number
         }
         Insert: {
           createdAt?: string
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number
+          similarity?: number
         }
         Update: {
           createdAt?: string
           foodImageId?: number | null
           foodItemId?: number | null
           id?: number
+          similarity?: number
         }
         Relationships: [
           {
@@ -1108,6 +1111,54 @@ export type Database = {
           cosineSimilarity: number
         }[]
       }
+      hnswhandler: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      vector_avg: {
+        Args: {
+          "": number[]
+        }
+        Returns: string
+      }
+      vector_dims: {
+        Args: {
+          "": string
+        }
+        Returns: number
+      }
+      vector_norm: {
+        Args: {
+          "": string
+        }
+        Returns: number
+      }
+      vector_out: {
+        Args: {
+          "": string
+        }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: {
+          "": string
+        }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: {
+          "": unknown[]
+        }
+        Returns: number
+      }
     }
     Enums: {
       ActivityLevel:
@@ -1405,3 +1456,4 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
   ? Database["public"]["Enums"][PublicEnumNameOrOptions]
   : never
+

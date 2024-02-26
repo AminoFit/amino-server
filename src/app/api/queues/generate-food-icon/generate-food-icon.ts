@@ -50,33 +50,35 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   // SEB. Please do this since Chris is bad at this shit.
 
   // Retrieve embedding ID for the food name
-  const embeddingData = await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name]);
-  const embeddingId = embeddingData[0].id;
+  const embeddingData = await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name])
+  const embeddingId = embeddingData[0].id
 
   // Call the Supabase function to get top similar images
-  const { data: similarImages, error: similarityError } = await supabase.rpc('get_top_foodimage_embedding_similarity', { p_embedding_cache_id: embeddingId });
+  const { data: similarImages, error: similarityError } = await supabase.rpc("get_top_foodimage_embedding_similarity", {
+    p_embedding_cache_id: embeddingId
+  })
 
-  if (similarityError) throw similarityError;
+  if (similarityError) throw similarityError
 
   // Check if any similar image is close enough
-  const closeEnoughImage = similarImages.find(image => image.cosine_similarity >= COSINE_THRESHOLD);
-  if (closeEnoughImage) {
+  if (similarImages.length > 0) {
     // Link the found image to the food item
     const { data: foodItemImages, error: errorFoodItemImages } = await supabase
       .from("FoodItemImages")
       .insert([
         {
           foodItemId: foodItemId,
-          foodImageId: closeEnoughImage.food_image_id
+          foodImageId: similarImages[0].food_image_id,
+          similarity: similarImages[0].cosine_similarity
         }
       ])
       .select()
-      .single();
+      .single()
 
-    if (errorFoodItemImages) throw errorFoodItemImages;
+    if (errorFoodItemImages) throw errorFoodItemImages
 
-    console.log(`Linked existing FoodImage ${closeEnoughImage.food_image_id} to FoodItem ${foodItemId}`);
-    return;
+    console.log(`Linked existing FoodImage ${similarImages[0].food_image_id} to FoodItem ${foodItemId}`)
+    return
   }
 
   // if there's a brand name we should append it to the food name

@@ -16,20 +16,19 @@ export async function LinkIconsOrCreateIfNeeded(foodItemId: number): Promise<voi
   }
 
   if (closestIcons && closestIcons.length > 0) {
-    if (closestIcons[0].cosine_similarity > 0.9) {
-      // Link the icon
-      await supabase
-        .from("FoodItemImages")
-        .insert([
-          {
-            foodItemId: foodItemId,
-            foodImageId: closestIcons[0].food_icon_id
-          }
-        ])
-        .select()
-        .single()
-      return
-    }
+    // Link the icon
+    await supabase
+      .from("FoodItemImages")
+      .insert([
+        {
+          foodItemId: foodItemId,
+          foodImageId: closestIcons[0].food_icon_id,
+          similarity: closestIcons[0].cosine_similarity
+        }
+      ])
+      .select()
+      .single()
+    return
   }
   await SendRequestToGenerateIcon(foodItemId)
 }
