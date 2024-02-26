@@ -24,6 +24,9 @@ import { logFoodItemStream } from "@/foodMessageProcessing/logFoodItemExtract/lo
 import { logFoodItemStreamWithImages } from "@/foodMessageProcessing/logFoodItemWithImageExtract/logFoodItemWithImageStreamChat"
 import { i } from "mathjs"
 import { softDeleteLoggedFoodItemsByMessageId } from "./common/deleteAssociatedMessageFoodItems"
+import { getMessageTimeChat } from "./messageTime/extractMessageTime"
+import { get } from "underscore"
+import { updateConsumedOnTimesAsync } from "./common/updateLoggedFoodItemConsumedOnTime"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -234,7 +237,7 @@ export async function GenerateResponseForQuickLog(
     UpdateMessage({
       id: inputMessageId,
       itemsToProcess: 0,
-      itemsProcessed: 0,
+      itemsProcessed: 0
       // consumedOn: new Date(consumedOn)
     })
   } else {
@@ -256,10 +259,20 @@ export async function GenerateResponseForQuickLog(
   let isBadFoodLogRequest = false
   let newConsumedOnTime: Date | undefined = undefined
 
+  // start promise to get the message logged time
+  let getTimeEatenPromise: Promise<{ timeWasSpecified: boolean; consumedDateTime: Date | null }> | undefined = undefined
+  if (!isMessageBeingEdited) {
+    getTimeEatenPromise = getMessageTimeChat(user, loadedMessage.content)
+  }
+
   if (loadedMessage.hasimages) {
     try {
       // Try with images
-      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(
+        user,
+        loadedMessage,
+        new Date(consumedOn)
+      ))
     } catch (error) {
       console.log("Error using image model:", error)
 
@@ -269,7 +282,7 @@ export async function GenerateResponseForQuickLog(
   } else {
     try {
       // Try using just text
-      ({ foodItemsToLog, isBadFoodLogRequest, newConsumedOnTime } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn), isMessageBeingEdited))
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using chat model:", error)
 
@@ -294,6 +307,14 @@ export async function GenerateResponseForQuickLog(
   // Process the returned food items to generate a response message for the user
   const loggedFoodItems = foodItemsToLog.map((item) => item.food_database_search_name).join(", ")
   const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`
+
+  if (getTimeEatenPromise) {
+    const { timeWasSpecified, consumedDateTime } = await getTimeEatenPromise
+    if (timeWasSpecified && consumedDateTime) {
+      newConsumedOnTime = consumedDateTime
+      await updateConsumedOnTimesAsync(foodItemsToLog, consumedDateTime)
+    }
+  }
 
   // Update the message status as RESOLVED
   await UpdateMessage({
