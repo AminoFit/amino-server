@@ -249,10 +249,10 @@ async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
   const messageId = 1200
   const foodToLog = {
-    food_database_search_name: "full fat milk latte",
-    full_item_user_message_including_serving: "2% milk latte",
-    branded: false,
-    brand: ""
+    food_database_search_name: "White Corn Tortillas",
+    full_item_user_message_including_serving: "White Corn Tortillas",
+    branded: true,
+    brand: "Mission"
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const food_embed_cache = await foodToLogEmbedding(foodToLog)
@@ -260,5 +260,55 @@ async function testAddFoodFromExternal() {
   const result = await findAndAddFoodItemInExternalDatabase(foodToLog!, food_embed_cache, user!, messageId)
   console.log("result", result)
 }
+
+async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog) {
+  let foodItemRequestString = `{
+    "name": "Zesty Lemon Bar",
+    "brand": "Why Bars",
+    "defaultServingWeightGram": 58,
+    "kcalPerServing": 240,
+    "totalFatPerServing": 5,
+    "satFatPerServing": 1,
+    "transFatPerServing": 0,
+    "carbPerServing": 32,
+    "sugarPerServing": 6,
+    "addedSugarPerServing": 3,
+    "proteinPerServing": 5,
+    "lastUpdated": null,
+    "verified": false,
+    "foodInfoSource": "User",
+    "fiberPerServing": 4,
+    "isLiquid": false,
+  }
+  `
+  const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user, foodToLog.branded ? `${foodToLog.food_database_search_name} - ${foodToLog.brand}` : foodToLog.food_database_search_name)
+
+  let food: FoodInfo = foodItemInfo
+  console.log("food req string:\n", foodItemRequestString)
+  const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
+  const newFood = await addFoodItemToDatabase(
+    llmFoodItemToSave,
+    await getFoodEmbedding(llmFoodItemToSave),
+    1861,
+    user
+  )
+  return newFood
+}
+
+async function testAddCustomMadeFood() {
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+  const foodToLog = {
+    food_database_search_name: "Zesty Lemon Bar",
+    full_item_user_message_including_serving: "Zesty Lemon Bar",
+    branded: true,
+    brand: "Why Bars"
+  } as FoodItemToLog
+
+  const result = await addCustomMadeFood(user!, foodToLog)
+  console.log("done")
+  console.log(result)
+}
+
+// testAddCustomMadeFood()
 
 // testAddFoodFromExternal()

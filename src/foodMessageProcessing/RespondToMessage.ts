@@ -230,6 +230,13 @@ export async function GenerateResponseForQuickLog(
   if (isMessageBeingEdited) {
     // if message is being edited, delete all associated items since we are going to start again.
     await softDeleteLoggedFoodItemsByMessageId(inputMessageId)
+    // reset items to process to 0
+    UpdateMessage({
+      id: inputMessageId,
+      itemsToProcess: 0,
+      itemsProcessed: 0,
+      // consumedOn: new Date(consumedOn)
+    })
   } else {
     // if message is already resolved or processing, return
     if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
@@ -247,11 +254,12 @@ export async function GenerateResponseForQuickLog(
 
   let foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
+  let newConsumedOnTime: Date | undefined = undefined
 
   if (loadedMessage.hasimages) {
     try {
-      // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
+      // Try with images
+      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn)))
     } catch (error) {
       console.log("Error using image model:", error)
 
@@ -260,8 +268,8 @@ export async function GenerateResponseForQuickLog(
     }
   } else {
     try {
-      // Try using the based
-      ;({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
+      // Try using just text
+      ({ foodItemsToLog, isBadFoodLogRequest, newConsumedOnTime } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn), isMessageBeingEdited))
     } catch (error) {
       console.log("Error using chat model:", error)
 
@@ -292,6 +300,7 @@ export async function GenerateResponseForQuickLog(
     id: inputMessageId,
     status: "RESOLVED",
     resolvedAt: new Date(),
+    consumedOn: newConsumedOnTime,
     isBadFoodLogRequest: isBadFoodLogRequest
   })
 

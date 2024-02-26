@@ -4,7 +4,7 @@ import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
 import { encode } from "gpt-tokenizer"
-import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { getPromptOutputFromCache, writePromptOutputToCache } from "@/languageModelProviders/promptCaching/redisPromptCache"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -35,6 +35,24 @@ export async function chatCompletion(
   }: ChatCompletionOptions,
   user: Tables<"User">
 ) {
+    // Extract the first system message
+    let systemPrompt = messages.find((message) => message.role === "system")?.content
+
+    // Extract the first user message
+    let userMessage = messages.find((message) => message.role === "user")?.content
+  if (!functions && typeof systemPrompt === "string" && typeof userMessage === "string") {
+    const cachedResponse = await getPromptOutputFromCache({
+      systemPrompt,
+      userMessage,
+      modelName: model,
+      temperature,
+      max_tokens,
+      response_format: response_format
+    })
+    if (cachedResponse) {
+      return {content: cachedResponse} as OpenAI.Chat.ChatCompletionMessage
+    }
+  }
   let startTime = performance.now()
   try {
     const result = await openai.chat.completions.create({
@@ -54,6 +72,23 @@ export async function chatCompletion(
       // log usage
       let completionTimeMs = performance.now() - startTime
       await LogOpenAiUsage(user, result.usage, model, "openai", completionTimeMs)
+    }
+
+    if (!functions && typeof systemPrompt === "string" && typeof userMessage === "string" && result.choices[0].message.content !== null) {
+      await writePromptOutputToCache(
+        {
+          systemPrompt,
+          userMessage,
+          modelName: model,
+          temperature,
+          max_tokens,
+          response_format: response_format
+        },
+        result.choices[0].message.content
+      );
+    } else {
+      // Handle the case where systemPrompt or userMessage are not strings
+      console.log("Either systemPrompt or userMessage is not a string.");
     }
 
     return result.choices[0].message
@@ -305,15 +340,47 @@ export interface ChatCompletionStreamOptions {
   temperature?: number
   max_tokens?: number
   stop?: string
+  systemPrompt?: string
+  response_format?: "json_object" | "text"
   [key: string]: any
 }
 
 // Define the async generator function
 export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, options: ChatCompletionStreamOptions) {
-  const { model = "gpt-3.5-turbo-1106", prompt, temperature = 0, max_tokens = 2048, stop, ...otherParams } = options
+  const {
+    model = "gpt-3.5-turbo-1106",
+    prompt,
+    temperature = 0,
+    max_tokens = 2048,
+    stop,
+    response_format = "json_object",
+    systemPrompt = "You are a helpful assistant that only replies in valid JSON.",
+    ...otherParams
+  } = options
+
+  const cachedResult = await getPromptOutputFromCache({
+    systemPrompt,
+    userMessage: prompt,
+    modelName: model,
+    temperature,
+    max_tokens,
+    response_format: response_format
+  })
+
+  if (cachedResult) {
+    // console.log("cached result", cachedResult);
+    const resultLength = cachedResult.length;
+    let startIndex = 0;
+    while (startIndex < resultLength) {
+      const endIndex = Math.min(startIndex + 4, resultLength);
+      const chunk = cachedResult.slice(startIndex, endIndex);
+      yield chunk;
+      startIndex += 4;
+    }
+    return;
+  }
 
   console.log("model and temp", model, temperature)
-  const systemPrompt = "You are a helpful assistant that only replies in valid JSON."
   const startTime = performance.now()
 
   const stream = await openai.chat.completions.create({
@@ -326,7 +393,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     max_tokens,
     stop,
     ...otherParams,
-    response_format: { type: "json_object" },
+    response_format: { type: response_format },
     stream: true
   })
 
@@ -339,11 +406,24 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     }
   }
 
+  console.log("comppleted response", totalResponse)
   // Calculate token count and log usage
   const completionTimeMs = performance.now() - startTime
   const resultTokens = encode(totalResponse).length
   const promptTokens = encode(prompt + systemPrompt).length
   const totalTokens = resultTokens + promptTokens
+
+  await writePromptOutputToCache(
+    {
+      systemPrompt,
+      userMessage: prompt,
+      modelName: model,
+      temperature,
+      max_tokens,
+      response_format: response_format
+    },
+    totalResponse
+  )
 
   console.log("logging performance", completionTimeMs, resultTokens, promptTokens, totalTokens)
 
@@ -369,13 +449,10 @@ export interface ChatCompletionVisionStreamOptions {
   [key: string]: any
 }
 
-export async function* OpenAiVisionChatStream(
-  user: Tables<"User">,
-  options: ChatCompletionVisionStreamOptions
-) {
+export async function* OpenAiVisionChatStream(user: Tables<"User">, options: ChatCompletionVisionStreamOptions) {
   const {
     model = "gpt-4-vision-preview",
-    prompt, 
+    prompt,
     messages,
     temperature = 0,
     max_tokens = 3096,
@@ -466,4 +543,3 @@ export async function* OpenAiVisionChatStream(
   )
   console.log("Logging performance done")
 }
-
