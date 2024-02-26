@@ -1,28 +1,31 @@
 "use client"
 
-
 import { createClientSupabase } from "@/utils/supabase/client"
 import { CopyButton } from "./CopyButton"
 import { NextRequest } from "next/server"
+import { useEffect, useState } from "react"
 
-export const revalidate = 1
+export const revalidate = 1 // revalidate the data at most every hour
 
-export default async function BadIconsPage() {
+export default function BadIconsPage() {
+  const [foods, setFoods] = useState<any>([])
   const supabase = createClientSupabase()
 
-  const { data: FoodItemImages, error } = await supabase
-    .from("FoodItemImages")
-    .select("*, FoodItem(name)")
-    .order("similarity", { ascending: true })
-    .limit(30)
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {error.code} - {error.message} - {error.details}
-      </div>
-    )
-  }
+  useEffect(() => {
+    async function fetchData() {
+      const { data: FoodItemImages, error } = await supabase
+        .from("FoodItemImages")
+        .select("*, FoodItem(name)")
+        .order("similarity", { ascending: true })
+        .limit(30)
+      if (error) {
+        console.error(error)
+        return
+      }
+      setFoods(FoodItemImages)
+    }
+    fetchData()
+  }, [])
 
   return (
     <div className="mx-auto my-16 max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -55,7 +58,7 @@ export default async function BadIconsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {FoodItemImages.map((item) => (
+                    {foods.map((item: any) => (
                       <tr key={item.id}>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
                           {item.FoodItem?.name}
