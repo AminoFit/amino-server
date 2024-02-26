@@ -2,8 +2,9 @@
 
 import { createClientSupabase } from "@/utils/supabase/client"
 import { CopyButton } from "./CopyButton"
+import { NextRequest } from "next/server"
 
-export default async function BadIconsPage() {
+export default async function BadIconsPage(request: NextRequest) {
   const supabase = createClientSupabase()
 
   const { data: FoodItemImages, error } = await supabase
