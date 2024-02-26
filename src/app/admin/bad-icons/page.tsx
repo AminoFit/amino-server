@@ -1,5 +1,6 @@
 import { createClientSupabase } from "@/utils/supabase/client"
 import { SupabaseClient } from "@supabase/supabase-js"
+import { CopyButton } from "./CopyButton"
 
 export default async function BadIconsPage() {
   const supabase = createClientSupabase()
@@ -11,7 +12,11 @@ export default async function BadIconsPage() {
     .limit(30)
 
   if (error) {
-    return <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{error.code} - {error.message} - {error.details}</div>
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {error.code} - {error.message} - {error.details}
+      </div>
+    )
   }
 
   return (
@@ -50,7 +55,12 @@ export default async function BadIconsPage() {
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
                           {item.FoodItem?.name}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">{item.similarity}</td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                          {item.similarity}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                          <CopyButton name={item.FoodItem?.name || ''} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
