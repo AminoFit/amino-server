@@ -59,7 +59,8 @@ function BadIconTable({ currentPage }: { currentPage: number }) {
       setFoods(FoodItemImages)
     }
     fetchData()
-  }, [])
+  }, [currentPage])
+  
   return (
     <div className="">
       <div className="sm:flex sm:items-center">
