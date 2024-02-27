@@ -17,7 +17,7 @@ export default function BadIconsPage() {
         .from("FoodItemImages")
         .select("*, FoodItem(name), FoodImage(pathToImage)")
         .order("similarity", { ascending: true })
-        .limit(30)
+        .limit(100)
       if (error) {
         console.error(error)
         return
