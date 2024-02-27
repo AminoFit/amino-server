@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -1051,6 +1051,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      calculate_user_streak: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          localdate: string
+          dailycount: number
+        }[]
+      }
       get_branded_usda_embedding: {
         Args: {
           embeddingId: number
@@ -1110,54 +1119,6 @@ export interface Database {
           bgeBaseEmbedding: string
           cosineSimilarity: number
         }[]
-      }
-      hnswhandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      vector_avg: {
-        Args: {
-          "": number[]
-        }
-        Returns: string
-      }
-      vector_dims: {
-        Args: {
-          "": string
-        }
-        Returns: number
-      }
-      vector_norm: {
-        Args: {
-          "": string
-        }
-        Returns: number
-      }
-      vector_out: {
-        Args: {
-          "": string
-        }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: {
-          "": string
-        }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: {
-          "": unknown[]
-        }
-        Returns: number
       }
     }
     Enums: {
@@ -1456,4 +1417,3 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
   ? Database["public"]["Enums"][PublicEnumNameOrOptions]
   : never
-
