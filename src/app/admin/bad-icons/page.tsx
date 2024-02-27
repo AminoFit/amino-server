@@ -15,7 +15,7 @@ export default function BadIconsPage() {
     async function fetchData() {
       const { data: FoodItemImages, error } = await supabase
         .from("FoodItemImages")
-        .select("*, FoodItem(name)")
+        .select("*, FoodItem(name), FoodImage(pathToImage)")
         .order("similarity", { ascending: true })
         .limit(30)
       if (error) {
@@ -50,6 +50,12 @@ export default function BadIconsPage() {
                         scope="col"
                         className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
                       >
+                        Current Icon
+                      </th>
+                      <th
+                        scope="col"
+                        className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+                      >
                         Name
                       </th>
                       <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
@@ -60,6 +66,9 @@ export default function BadIconsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {foods.map((item: any) => (
                       <tr key={item.id}>
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+                          <img src={item.FoodImage?.pathToImage} alt={item.name} width={60} height={60} />
+                        </td>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
                           {item.FoodItem?.name}
                         </td>
