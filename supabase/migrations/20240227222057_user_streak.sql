@@ -1,8 +1,6 @@
-set check_function_bodies = off;
-
 CREATE OR REPLACE FUNCTION public.calculate_user_streak(user_id uuid)
- RETURNS TABLE(localdate date, dailycount integer)
- LANGUAGE plpgsql
+RETURNS TABLE(localdate date, dailycount integer)
+LANGUAGE plpgsql
 AS $function$
 DECLARE
     user_tz text;
@@ -13,7 +11,7 @@ BEGIN
     -- Return the filtered and counted logged food items
     RETURN QUERY SELECT
         ("consumedOn" AT TIME ZONE 'UTC' AT TIME ZONE user_tz)::date AS localDate,
-        COUNT(*) AS dailyCount
+        COUNT(*)::integer AS dailyCount -- Explicitly cast COUNT(*) result to integer
     FROM public."LoggedFoodItem"
     WHERE "userId" = user_id AND "deletedAt" IS NULL
     GROUP BY localDate
@@ -22,5 +20,3 @@ BEGIN
 END;
 $function$
 ;
-
-
