@@ -230,6 +230,8 @@ export type Database = {
           externalId: string | null
           fiberPerServing: number | null
           foodInfoSource: Database["public"]["Enums"]["FoodInfoSource"]
+          foodItemCategoryID: string | null
+          foodItemCategoryName: string | null
           id: number
           isLiquid: boolean
           kcalPerServing: number
@@ -260,6 +262,8 @@ export type Database = {
           externalId?: string | null
           fiberPerServing?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
+          foodItemCategoryID?: string | null
+          foodItemCategoryName?: string | null
           id?: number
           isLiquid?: boolean
           kcalPerServing?: number
@@ -290,6 +294,8 @@ export type Database = {
           externalId?: string | null
           fiberPerServing?: number | null
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
+          foodItemCategoryID?: string | null
+          foodItemCategoryName?: string | null
           id?: number
           isLiquid?: boolean
           kcalPerServing?: number

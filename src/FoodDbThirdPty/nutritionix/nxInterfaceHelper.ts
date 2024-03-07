@@ -109,7 +109,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
         nutrient.nutrientAmountPerDefaultServing != undefined && nutrient.nutrientAmountPerDefaultServing != -1
     )
 
-    return {
+    return {...{
       id: 0,
       createdAtDateTime: new Date().toISOString(),
       UPC: food.upc ? Number(food.upc) : null,
@@ -159,7 +159,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
       ]),
       Nutrient: nutrients,
 
-    }
+    }, ...({} as Partial<NxFoodItemResponse>)} as NxFoodItemResponse
   })
 }
 

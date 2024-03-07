@@ -134,53 +134,53 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
 
   // Map fsFoodItem to FoodItem
   const foodItem: FoodItemWithServings = {
-    id: 0,
-    createdAtDateTime: new Date().toISOString(),
-    externalId: fsFoodItem.food_id,
-    UPC: null,
-    knownAs: [],
-    description: null,
-    lastUpdated: new Date().toISOString(),
-    verified: true,
-    userId: null,
-    foodInfoSource: "FATSECRET",
-    messageId: null,
-    name: fsFoodItem.food_name,
-    brand: fsFoodItem.brand_name,
-    defaultServingWeightGram: serving.metric_serving_unit === "g" ? Number(serving.metric_serving_amount) : null,
-    defaultServingLiquidMl: serving.metric_serving_unit === "ml" ? serving.metric_serving_amount : null,
-    isLiquid: serving.metric_serving_unit === "ml",
-    weightUnknown: weightUnknown,
-    // For fields that are Float (non-nullable) in your schema:
-    kcalPerServing: Number(serving.calories) || 0,
-    totalFatPerServing: Number(serving.fat) || 0,
-    carbPerServing: Number(serving.carbohydrate) || 0,
-    proteinPerServing: Number(serving.protein) || 0,
-
-    // For fields that are Float? (nullable) in your schema:
-    satFatPerServing: serving.saturated_fat ? Number(serving.saturated_fat) : null,
-    fiberPerServing: serving.fiber ? Number(serving.fiber) : null,
-    sugarPerServing: serving.sugar ? Number(serving.sugar) : null,
-    transFatPerServing: serving.trans_fat ? Number(serving.trans_fat) : null,
-    addedSugarPerServing: serving.added_sugars ? Number(serving.added_sugars) : null,
-    Serving: deduplicatedServings
-      .filter(
-        (serving) => !(Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g") &&
-          !(Number(serving.metric_serving_amount) === 28.35 && serving.measurement_description === "oz")
-      )
-      .map((serving) => ({
-        servingWeightGram: serving.metric_serving_unit === "g" || serving.metric_serving_unit === "ml" ? Number(serving.metric_serving_amount) : null,
-        servingAlternateAmount: serving.metric_serving_unit !== "g" && serving.metric_serving_unit !== "ml" && serving.number_of_units ? Number(serving.number_of_units) : null,
-        servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.measurement_description
-          ? serving.measurement_description
-          : null,
-        servingName: serving.serving_description,
-        defaultServingAmount: null
-      })),
-    Nutrient: nutrients,
-    adaEmbedding: null,
-    bgeBaseEmbedding: null,
-  }
+    ...{
+      id: 0,
+      createdAtDateTime: new Date().toISOString(),
+      externalId: fsFoodItem.food_id,
+      UPC: null,
+      knownAs: [],
+      description: null,
+      lastUpdated: new Date().toISOString(),
+      verified: true,
+      userId: null,
+      foodInfoSource: "FATSECRET",
+      messageId: null,
+      name: fsFoodItem.food_name,
+      brand: fsFoodItem.brand_name,
+      defaultServingWeightGram: serving.metric_serving_unit === "g" ? Number(serving.metric_serving_amount) : null,
+      defaultServingLiquidMl: serving.metric_serving_unit === "ml" ? serving.metric_serving_amount : null,
+      isLiquid: serving.metric_serving_unit === "ml",
+      weightUnknown: weightUnknown,
+      kcalPerServing: Number(serving.calories) || 0,
+      totalFatPerServing: Number(serving.fat) || 0,
+      carbPerServing: Number(serving.carbohydrate) || 0,
+      proteinPerServing: Number(serving.protein) || 0,
+      satFatPerServing: serving.saturated_fat ? Number(serving.saturated_fat) : null,
+      fiberPerServing: serving.fiber ? Number(serving.fiber) : null,
+      sugarPerServing: serving.sugar ? Number(serving.sugar) : null,
+      transFatPerServing: serving.trans_fat ? Number(serving.trans_fat) : null,
+      addedSugarPerServing: serving.added_sugars ? Number(serving.added_sugars) : null,
+      Serving: deduplicatedServings
+        .filter(
+          (serving) => !(Number(serving.metric_serving_amount) === 100 && serving.metric_serving_unit === "g") &&
+            !(Number(serving.metric_serving_amount) === 28.35 && serving.measurement_description === "oz")
+        )
+        .map((serving) => ({
+          servingWeightGram: serving.metric_serving_unit === "g" || serving.metric_serving_unit === "ml" ? Number(serving.metric_serving_amount) : null,
+          servingAlternateAmount: serving.metric_serving_unit !== "g" && serving.metric_serving_unit !== "ml" && serving.number_of_units ? Number(serving.number_of_units) : null,
+          servingAlternateUnit: serving.metric_serving_unit !== "g" && serving.metric_serving_unit !== "ml" && serving.measurement_description
+            ? serving.measurement_description
+            : null,
+          servingName: serving.serving_description,
+          defaultServingAmount: null
+        })),
+      Nutrient: nutrients,
+      adaEmbedding: null,
+      bgeBaseEmbedding: null,
+    },
+    ...({} as Partial<FoodItemWithServings>),
+  } as FoodItemWithServings;
 
   return foodItem
 }

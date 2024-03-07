@@ -203,7 +203,7 @@ async function getUserByEmail(email: string) {
 }
 
 async function testCompleteMissingFoodInfo() {
-  const foodItemToComplete: FoodItemWithNutrientsAndServing = {
+  const foodItemToComplete: FoodItemWithNutrientsAndServing = {...{
     id: 0,
     createdAtDateTime: "2024-02-07T16:50:22.451Z",
     externalId: "2479220",
@@ -252,7 +252,7 @@ async function testCompleteMissingFoodInfo() {
     ],
     adaEmbedding: null,
     bgeBaseEmbedding: null
-  }
+  }, ...({} as Partial<FoodItemWithNutrientsAndServing>)} as FoodItemWithNutrientsAndServing
 
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const fooditem = await completeMissingFoodInfo(foodItemToComplete, user!)

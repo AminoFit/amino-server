@@ -331,7 +331,7 @@ async function getUserByEmail(email: string) : Promise<Tables<"User"> | null>{
 }
 
 async function testRun() {
-  const mcflurryFood: FoodItemWithNutrientsAndServing = {
+  const mcflurryFood: FoodItemWithNutrientsAndServing = {...{
     id: 0,
     createdAtDateTime: '2024-02-07T16:50:22.451Z',
     externalId: '2479220',
@@ -380,7 +380,7 @@ async function testRun() {
     ],
     adaEmbedding: null,
     bgeBaseEmbedding: null
-  }
+  }, ...({} as Partial<FoodItemWithNutrientsAndServing>)} as FoodItemWithNutrientsAndServing
 
   const user = await getUserByEmail('seb.grubb@gmail.com')
   console.dir(await foodItemMissingFieldComplete(mcflurryFood, user!), {

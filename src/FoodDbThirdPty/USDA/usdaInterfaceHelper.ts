@@ -67,7 +67,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
 
   //console.log("portions:", JSON.stringify(usdaFoodItem.portions, null, 2))
 
-  const foodItem: FoodItemWithServings = {
+  const foodItem: FoodItemWithServings = {...{
     id: 0,
     createdAtDateTime: new Date().toISOString(),
     knownAs: [],
@@ -131,7 +131,7 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     addedSugarPerServing: null,
     adaEmbedding: null,
     bgeBaseEmbedding: null,
-  }
+  }, ...({} as Partial<FoodItemWithServings>)} as FoodItemWithServings
 
   for (const [nutrientName, nutrientInfo] of Object.entries(usdaFoodItem.foodInfo)) {
     const foodItemKey = nutrientNameToFoodItemKey[nutrientName]

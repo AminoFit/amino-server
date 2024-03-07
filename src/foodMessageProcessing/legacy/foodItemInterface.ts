@@ -65,7 +65,7 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
     const floatVal = parseFloat(value)
     return isNaN(floatVal) ? null : floatVal
   }
-  let dbFoodItem: FoodItemWithServings = {
+  let dbFoodItem: FoodItemWithServings = {...{
     id: 0,
     createdAtDateTime: new Date().toISOString(),
     lastUpdated: new Date().toISOString(),
@@ -106,6 +106,6 @@ export function mapOpenAiFoodInfoToFoodItem(food: FoodInfo, model: string): Food
         nutrientUnit: nutrient.nutrient_unit,
         nutrientAmountPerDefaultServing: nutrient.nutrient_amount_per_serving
       })) || [],
-  }
+  }} as FoodItemWithServings
   return dbFoodItem
 }
