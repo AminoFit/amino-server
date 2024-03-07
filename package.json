@@ -17,6 +17,8 @@
     "fix-icon-paths:prod": "npm run run:ts-node-prod scripts/fix-icon-paths.ts"
   },
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.9.1",
+    "@anthropic-ai/sdk": "^0.17.1",
     "@deepgram/sdk": "^3.1.9",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
