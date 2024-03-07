@@ -32,7 +32,7 @@ A. Dairy
 	5. Plant based dairy alternatives
 		A-5-1	Plant-Based Cheese
 		A-5-2	Plant-Based Yogurt
-		A-5-O	Other Dairy alternatives
+		A-5-O	Other Dairy alternatives (excluding beverages which are found in H-5)
 B. Grains
 	1. Breads
 	    B-1-1	Yeast Breads (Loaves)
@@ -56,9 +56,12 @@ B. Grains
 		B-4-2	Pasta
 		B-4-3	Noodles
 		B-4-4	Fried Rice
+		B-4-5	Rice baked products
 	5. Other Grain Products
 		B-5-1	Bulgur
 		B-5-2	Quinoa
+		B-5-3	Farro
+		B-5-4	Millet
 		B-5-O	Other Grain Products
 	6. Pastries
 		B-6-1	Croissants
@@ -117,11 +120,14 @@ D. Protein Foods
 		D-4-1	Eggs
 		D-4-2	Fried Eggs
 		D-4-3	Tea Eggs
+		D-4-4	Egg whites
+		D-4-5	Egg yolks
 	5. Plant-Based Protein
-		D-5-1	Vegetable based
+		D-5-1	Vegetable based protein
 		D-5-2	Nuts
 		D-5-3	Processed Nut Products (excluding nut butters)
 		D-5-4	Processed Soy Products (Tofu, Tempeh)
+		D-5-5	Plant based meat alternatives
 	6. Other Protein Sources
 		D-6-1	Protein Powders (excluding whey based)
 		D-6-2	Protein Drinks
@@ -262,10 +268,10 @@ G. Snacks & Sweets
 	3. Desserts
 		G-3-1	Cakes
 		G-3-2	Sweet Pies (e.g. apple/fruit pie or crumble)
-		G-3-3	Cookies & Brownies
+		G-3-3	Cookies
 		G-3-4	Macarons
 		G-3-5	Doughnuts
-		G-3-6	
+		G-3-6	Brownies
 		G-3-7	
 		G-3-8	Fruit Sorbets
 		G-3-9	Gelatin based dessert
@@ -295,6 +301,7 @@ H. Beverages
 		H-5-2	Soy Milk
 		H-5-3	Almond Milk
 		H-5-4	Cashew Milk
+		H-5-5	Macadamia Milk
 		H-5-O	Other Dairy Drink Alternatives
 	6. Coffee
 		H-6-1	Plain coffee
@@ -316,6 +323,7 @@ H. Beverages
 		H-9-2	Beer
 		H-9-3	Cider
 		H-9-4	Spirits
+		H-9-5	Premixed alcoholic beverages
 		H-9-O	Other alcoholic beverages
 	10. Smoothies
 		H-10-1	Fruit Smoothies
@@ -433,7 +441,7 @@ M. Other
 		M-1-3	Meal replacements bars
 	2. Supplements
 		M-2-1	Vitamins
-		M-2-2	Gel based supplements
+		M-2-2	Gel based supplements (e.g. energy gels)
 		M-2-3	Gummy based supplements
 		M-2-4	Powdered supplements
 		M-2-O	Other supplements
@@ -441,6 +449,11 @@ M. Other
 		M-3-1	Stevia
 		M-3-2	Coconut Sugar
 		M-3-O	Other Sweeteners
+	4. Leavening Agents
+		M-4-1	Yeast
+		M-4-2	Baking Powder
+		M-4-3	Baking Soda
+		M-4-O	Other Leavening Agents
 N. Spices and Herbs
 	1. Fresh Herbs
 		N-1-1   Basil

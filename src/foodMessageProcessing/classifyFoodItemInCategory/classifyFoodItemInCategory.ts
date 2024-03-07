@@ -18,8 +18,9 @@ interface FoodClassifyResult {
 export async function classifyFoodItemToCategory(
   foodItem: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
-): Promise<{ foodItemCategoryID: string; foodItemCategoryName: string }> {
+): Promise<{ foodItemCategoryID: string; foodItemCategoryName: string, foodItemId: number }> {
   const foodItemName = foodItem.brand ? `${foodItem.name} by ${foodItem.brand}` : foodItem.name
+  const temperature = 0.5
 
   const prompt =
     `RULES:
@@ -72,13 +73,14 @@ Item to match: ${foodItemName}\n` + foodItemCategoriesList
     const bedrockResult = await anthropicBedrockChatCompletion(
       {
         messages,
-        model: "anthropic.claude-3-sonnet-20240229-v1:0"
+        model: "anthropic.claude-3-sonnet-20240229-v1:0",
+        temperature
       },
       user
     )
-    const result: FoodClassifyResult = JSON.parse(bedrockResult)
+    const result: FoodClassifyResult = JSON.parse(`{`+bedrockResult)
     if (result && result.ID && result.subcategoryName) {
-      return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName }
+      return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName, foodItemId: foodItem.id }
     } else {
       throw new Error("Bedrock classification failed")
     }
@@ -87,13 +89,14 @@ Item to match: ${foodItemName}\n` + foodItemCategoriesList
     const anthropicResult = await anthropicChatCompletion(
       {
         messages,
-        model: "claude-3-sonnet-20240229"
+        model: "claude-3-sonnet-20240229",
+        temperature
       },
       user
     )
-    const result: FoodClassifyResult = JSON.parse(anthropicResult)
+    const result: FoodClassifyResult = JSON.parse(`{`+anthropicResult)
     if (result && result.ID && result.subcategoryName) {
-      return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName }
+      return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName, foodItemId: foodItem.id }
     } else {
       throw new Error("Anthropic classification also failed")
     }

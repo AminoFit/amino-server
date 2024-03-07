@@ -5,6 +5,7 @@ import { LinkIconsOrCreateIfNeeded } from "../foodIconsProcess"
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 import { completeMissingFoodInfo } from "../completeMissingFoodInfo"
+import { classifyFoodItemToCategory } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
 
 function compareFoodItems(
   item1: FoodItemWithNutrientsAndServing | null,
@@ -50,6 +51,8 @@ export async function addFoodItemToDatabase(
     return existingFoodItem as FoodItemWithNutrientsAndServing
   }
 
+  let foodClassificationResult = classifyFoodItemToCategory(food, user)
+
   // If the food item is missing a field, complete it
   if (!food.defaultServingWeightGram || food.weightUnknown) {
     food = (await completeMissingFoodInfo(food, user)) || food
@@ -93,13 +96,27 @@ export async function addFoodItemToDatabase(
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
 
+  // await foodClassificationResult that returns a promise of { foodItemCategoryID: string; foodItemCategoryName: string, foodItemId: number }
+  // handle the result of the promise if it returns an error else
+  let foodItemCategoryID = ""
+  let foodItemCategoryName = ""
+
+  try {
+    const { foodItemCategoryID: catID, foodItemCategoryName: catName } = await foodClassificationResult
+    foodItemCategoryID = catID
+    foodItemCategoryName = catName
+  } catch (error) {
+    console.error("Error classifying food item", error)
+  }
   // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
   const { data: newFood, error: insertError } = await supabase
     .from("FoodItem")
     .insert({
       ...foodWithoutId,
       messageId: messageId,
-      bgeBaseEmbedding: embeddingSql
+      bgeBaseEmbedding: embeddingSql,
+      foodItemCategoryID,
+      foodItemCategoryName
     })
     .select(`*, Nutrient(*), Serving(*)`)
     .single()
