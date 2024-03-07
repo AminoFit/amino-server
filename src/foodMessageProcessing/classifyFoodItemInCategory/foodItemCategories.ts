@@ -1,5 +1,5 @@
-export const foodItemCategoriesList = `
-Food Family	Category	ID	Subcategory
+export const foodItemCategoriesList =
+`Food Family	Category	ID	Subcategory
 A. Dairy
 	1. Milk
 		A-1-1   Whole Milk
