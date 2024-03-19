@@ -11,7 +11,7 @@ import { Database } from "types/supabase-generated.types"
 const navigation = [
   { name: "Amino", href: "/" },
   // { name: "Features", href: "#" },
-  { name: "Pricing", href: "/pricing" }
+  // { name: "Pricing", href: "/pricing" }
 ]
 
 export default function MarketingNav() {
