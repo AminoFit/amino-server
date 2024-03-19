@@ -116,7 +116,7 @@ export default function MarketingNav() {
               </a>
             ))}
           </div>
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end">{renderLogin()}</div>
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end"></div>
         </nav>
         <Dialog as="div" className="lg:hidden" open={mobileMenuOpen} onClose={setMobileMenuOpen}>
           <div className="fixed inset-0 z-50" />
@@ -148,7 +148,7 @@ export default function MarketingNav() {
                     </a>
                   ))}
                 </div>
-                <div className="py-6">{renderLogin()}</div>
+                {/* <div className="py-6">{renderLogin()}</div> */}
               </div>
             </div>
           </Dialog.Panel>
