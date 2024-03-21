@@ -1,3 +1,5 @@
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin";
+
 //src/subscription/getUserInfoFromRevenueCat.ts
 interface CustomerInfo {
 	request_date: string;
@@ -65,6 +67,49 @@ interface CustomerInfo {
 	  return customerInfo;
 	} catch (error) {
 	  console.error('Error fetching customer info:', error);
+	  throw error;
+	}
+  }
+
+
+  export async function getAndUpdateRevenueCatForUser(userId: string) {
+	try {
+	  const supabase = createAdminSupabase();
+	  const customerInfo = await getSubscriptionFromRevenueCat(userId);
+	  const latestSubscription = Object.values(customerInfo.subscriber.subscriptions).sort(
+		(a, b) =>
+		  (b?.expires_date ? new Date(b.expires_date).getTime() : 0) -
+		  (a?.expires_date ? new Date(a.expires_date).getTime() : 0)
+	  )[0];
+  
+	  let subscriptionExpiryDate: string | null = null;
+	  let subscriptionType: string | null = null;
+  
+	  if (latestSubscription) {
+		subscriptionExpiryDate = latestSubscription.expires_date;
+		subscriptionType = Object.keys(customerInfo.subscriber.entitlements)[0];
+	  }
+  
+	  if (DEBUG) {
+		console.log("Latest subscription:", latestSubscription);
+		console.log("Subscription expiry date:", subscriptionExpiryDate);
+		console.log("Subscription type:", subscriptionType);
+	  }
+  
+	  const { error } = await supabase
+		.from("User")
+		.update({
+		  subscriptionExpiryDate,
+		  subscriptionType,
+		})
+		.eq("id", userId);
+  
+	  if (error) {
+		console.error("Error updating user subscription:", error);
+		throw new Error("Failed to update user subscription");
+	  }
+	} catch (error) {
+	  console.error("Error processing RevenueCat update:", error);
 	  throw error;
 	}
   }
