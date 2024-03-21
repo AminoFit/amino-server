@@ -4,7 +4,7 @@ import { getUserByEmail } from "@/foodMessageProcessing/common/debugHelper"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 
-const misclassifiedItemIDs = [930]
+const misclassifiedItemIDs = [496]
 
 async function main() {
 	const user = await getUserByEmail("seb.grubb@gmail.com")
@@ -61,4 +61,4 @@ async function main() {
 	console.log("Food items categorised")
   }
 
-//   main()
+  main()
