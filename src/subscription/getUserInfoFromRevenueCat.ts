@@ -1,3 +1,4 @@
+//src/subscription/getUserInfoFromRevenueCat.ts
 interface CustomerInfo {
 	request_date: string;
 	request_date_ms: number;

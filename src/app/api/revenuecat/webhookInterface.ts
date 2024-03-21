@@ -1,4 +1,5 @@
-interface RevenueCatWebhookEvent {
+//src/app/api/revenuecat/interface.ts
+export interface RevenueCatWebhookEvent {
 	api_version: string;
 	event: {
 	  aliases: string[];
