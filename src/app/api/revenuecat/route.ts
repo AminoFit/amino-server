@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
 
   if (!authHeader || authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH_HEADER}`) {
+	console.log("authHeader", authHeader)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

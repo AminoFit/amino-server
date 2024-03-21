@@ -44,15 +44,15 @@ interface CustomerInfo {
 	};
   }
 
-  const DEBUG = true; // Set to false to disable sandbox events and less verbose output
+  const DEBUG = false; // Set to false to disable sandbox events and less verbose output
   
   export async function getSubscriptionFromRevenueCat(userId: string): Promise<CustomerInfo> {
 	try {
 	  const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${userId}`, {
 		headers: {
 		  'Authorization': `Bearer ${process.env.REVENUECAT_SECRET_API_KEY}`,
-		  'Content-Type': 'application/json',
-		  'X-Is-Sandbox': true ? 'true' : 'false',
+		  'Content-Type': 'application/json'
+		//   'X-Is-Sandbox': DEBUG ? 'true' : 'false',
 		}
 	  });
   
@@ -68,3 +68,12 @@ interface CustomerInfo {
 	  throw error;
 	}
   }
+
+  function testGetUserInfoFromRevenueCat() {
+    const userId = "0e99c4d8-0c40-4399-8565-8379ebfffc49"
+    getSubscriptionFromRevenueCat(userId).then((result) => {
+      console.log(JSON.stringify(result, null, 2))
+    })
+  }
+
+//   testGetUserInfoFromRevenueCat()
