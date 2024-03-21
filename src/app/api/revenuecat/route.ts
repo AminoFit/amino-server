@@ -5,6 +5,7 @@ import { RevenueCatWebhookEvent } from './webhookInterface';
 import { getSubscriptionFromRevenueCat } from '@/subscription/getUserInfoFromRevenueCat';
 
 const REVENUECAT_WEBHOOK_AUTH_HEADER = process.env.REVENUECAT_WEBHOOK_AUTH_HEADER;
+const DEBUG = true; // Set to false to disable sandbox events and less verbose output
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -21,6 +22,15 @@ export async function POST(request: NextRequest) {
 
   const appUserId = webhook.event.app_user_id;
 
+  if (DEBUG) {
+    console.log('Received webhook event:', webhook);
+  }
+
+  if (!DEBUG && webhook.event.environment === 'SANDBOX') {
+    console.log('Skipping sandbox event in production');
+    return NextResponse.json({ success: true });
+  }
+
   try {
     const supabase = createAdminSupabase();
 
@@ -35,6 +45,12 @@ export async function POST(request: NextRequest) {
     if (latestSubscription) {
       subscriptionExpiryDate = latestSubscription.expires_date;
       subscriptionType = Object.keys(customerInfo.subscriber.entitlements)[0];
+    }
+
+    if (DEBUG) {
+      console.log('Latest subscription:', latestSubscription);
+      console.log('Subscription expiry date:', subscriptionExpiryDate);
+      console.log('Subscription type:', subscriptionType);
     }
 
     const { error } = await supabase
