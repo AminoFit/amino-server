@@ -12,6 +12,14 @@ export async function POST(request: NextRequest) {
 
   if (!authHeader || authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH_HEADER}`) {
 	console.log("authHeader", authHeader)
+	  // Log the entire request object
+	  console.log("Received Request:", request);
+
+	  // Log all the headers
+	  console.log("Received Headers:");
+	  request.headers.forEach((value, key) => {
+		console.log(`${key}: ${value}`);
+	  });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
