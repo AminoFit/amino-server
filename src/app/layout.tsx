@@ -1,4 +1,3 @@
-import { Outfit } from "next/font/google"
 import "./globals.css"
 import { QueryDataProvider } from "./providers"
 
@@ -12,9 +11,6 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
-      <head>
-        <script src="https://kit.fontawesome.com/010ad89cee.js" crossOrigin="anonymous"></script>
-      </head>
       <body className={`h-full`}>
         <QueryDataProvider>{children}</QueryDataProvider>
       </body>
