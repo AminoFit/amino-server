@@ -5,8 +5,8 @@ import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 
 const navigation = [
-  { name: "Product", href: "/" },
-  { name: "Company", href: "#" }
+  // { name: "Product", href: "/" },
+  // { name: "Company", href: "#" }
 ]
 
 export default function MarketingNav() {
