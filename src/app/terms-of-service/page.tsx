@@ -636,7 +636,6 @@ export default function TermsOfService() {
           <p className="mb-3">
             <strong>10.8 Contact Information:</strong>
           </p>
-          <p className="mb-3">Alex Roe</p>
           <p className="mb-3">
             Email:info@amino.fit
           </p>
