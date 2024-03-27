@@ -14,10 +14,13 @@ async function testFoodMatching() {
 
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
+  // console.log("userQueryVectorCache", userQueryVectorCache)
   let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id,
-    amount_of_results: 20
+    amount_of_results: 20,
+    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id
   })
+
+  console.log("cosineSearchResults", cosineSearchResults)
 
   cosineSearchResults?.map((result, index) => {
     console.log(`${(index + 1).toString()}.`, result.brand ? `${result.name} - ${result.brand}` : result.name, result.cosine_similarity)
