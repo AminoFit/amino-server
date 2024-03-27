@@ -4,10 +4,10 @@ import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
 async function testFoodMatching() {
   const food = {
-    food_database_search_name: "corepower elite high protein chocolate",
-    full_item_user_message_including_serving: "one corepower elite high protein chocolate fairlife shake",
+    food_database_search_name: "lemon whybar",
+    full_item_user_message_including_serving: "zesty lemon why bar",
     branded: true,
-    brand: "Fairlife"
+    brand: "whybar"
   } as FoodItemToLog
 
   const supabase = createAdminSupabase()
@@ -20,24 +20,18 @@ async function testFoodMatching() {
   })
 
   cosineSearchResults?.map((result, index) => {
-    console.log(`${(index + 1).toString()}.`, result.brand ? `${result.name} - ${result.brand}` : result.name)
+    console.log(`${(index + 1).toString()}.`, result.brand ? `${result.name} - ${result.brand}` : result.name, result.cosine_similarity)
   })
 
-  const { data: usdaresults, error: usdaerror } = await supabase.rpc("get_branded_usda_embedding", {
-    embeddingId: userQueryVectorCache.embedding_cache_id
+  const { data: usdaresults, error: usdaerror } = await supabase.rpc("search_usda_database", {
+    embedding_id: userQueryVectorCache.embedding_cache_id,
+    limit_amount: 20
   })
 
   usdaresults?.map((result, index) => {
-    console.log(`${(index + 1).toString()}.`, result.foodBrand ? `${result.foodName} - ${result.foodBrand}` : result.foodName)
+    console.log(`${(index + 1).toString()}.`, result.foodBrand ? `${result.foodName} - ${result.foodBrand} - ${result.brandOwner}` : result.foodName, result.cosineSimilarity)
   })
 
-  const { data: usdaunbrandedresults, error: usdaunbrandederror } = await supabase.rpc("get_unbranded_usda_embedding", {
-    embeddingId: userQueryVectorCache.embedding_cache_id
-  })
-
-  usdaunbrandedresults?.map((result, index) => {
-    console.log(`${(index + 1).toString()}.`, result.foodBrand ? `${result.foodName} - ${result.foodBrand}` : result.foodName)
-  })
 }
 
 testFoodMatching()

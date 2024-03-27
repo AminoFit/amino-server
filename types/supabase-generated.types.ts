@@ -1093,6 +1093,8 @@ export type Database = {
           id: number
           name: string
           brand: string
+          foodInfoSource: string
+          externalId: string
           embedding: string
           cosine_similarity: number
         }[]
@@ -1129,6 +1131,19 @@ export type Database = {
           foodName: string
           foodBrand: string
           bgeBaseEmbedding: string
+          cosineSimilarity: number
+        }[]
+      }
+      search_usda_database: {
+        Args: {
+          embedding_id: number
+          limit_amount?: number
+        }
+        Returns: {
+          fdcId: number
+          foodName: string
+          foodBrand: string
+          brandOwner: string
           cosineSimilarity: number
         }[]
       }
