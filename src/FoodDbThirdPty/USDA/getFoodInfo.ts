@@ -243,6 +243,6 @@ function dummyTest() {
 
 // food for 172963, 168460, 2175192
 async function runTests() {
-  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2531832"] }), { depth: null })
+  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2214660"] }), { depth: null })
 }
 // runTests()
