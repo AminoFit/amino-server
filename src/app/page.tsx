@@ -31,12 +31,15 @@ export default async function Example() {
                 your progress over time.
               </p>
               <div className="mt-10 flex items-center gap-x-6">
-                <button
+                <a
                   type="button"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://apps.apple.com/us/app/amino-fitness/id6472242486"
                   className=" flex items-center align-middle rounded-md bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                 >
                   <AppleLogo /> Download App
-                </button>
+                </a>
               </div>
             </div>
             <div className="mx-auto mt-16 flex justify-center max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
