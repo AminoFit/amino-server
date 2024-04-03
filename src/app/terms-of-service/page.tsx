@@ -382,7 +382,7 @@ export default function TermsOfService() {
             Informal Dispute Resolution Conference (&quot; <strong>Notice</strong>&quot;), which shall occur within 45 days after
             the other party receives such Notice, unless an extension is mutually agreed upon by the parties. Notice to
             Company that you intend to initiate an Informal Dispute Resolution Conference should be sent by email to:
-            info@amino.fit, or by regular mail to 232 Waller Street, San Francisco, California 94102. The Notice must
+            info@amino.fit. The Notice must
             include: (1) your name, telephone number, mailing address, e{"‐"}mail address associated with your account (if
             you have one); (2) the name, telephone number, mailing address and e{"‐"}mail address of your counsel, if any;
             and (3) a description of your Dispute.
@@ -557,7 +557,7 @@ export default function TermsOfService() {
           <p className="mb-3">
             <strong>(i) 30-Day Right to Opt Out.</strong> You have the right to opt out of the provisions of this
             Arbitration Agreement by sending a timely written notice of your decision to opt out to the following
-            address: 232 Waller Street, SF, CA, 94102, San Francisco, California 94102, or email to info@amino.fit,
+            address: info@amino.fit,
             within 30 days after first becoming subject to this Arbitration Agreement. Your notice must include your
             name and address and a clear statement that you want to opt out of this Arbitration Agreement. If you opt
             out of this Arbitration Agreement, all other parts of these Terms will continue to apply to you. Opting out
@@ -578,8 +578,7 @@ export default function TermsOfService() {
           <p className="mb-3">
             <strong>(k) Modification.</strong> Notwithstanding any provision in these Terms to the contrary, we agree
             that if Company makes any future material change to this Arbitration Agreement, you may reject that change
-            within 30 days of such change becoming effective by writing Company at the following address: 232 Waller
-            Street, SF, CA, 94102, San Francisco, California 94102, or email to info@amino.fit. Unless you reject the
+            within 30 days of such change becoming effective by writing Company at the following email info@amino.fit. Unless you reject the
             change within 30 days of such change becoming effective by writing to Company in accordance with the
             foregoing, your continued use of the Site and/or Services, including the acceptance of products and services
             offered on the Site following the posting of changes to this Arbitration Agreement constitutes your
@@ -637,10 +636,8 @@ export default function TermsOfService() {
           <p className="mb-3">
             <strong>10.8 Contact Information:</strong>
           </p>
-          <p className="mb-3">Alex Roe</p>
           <p className="mb-3">
-            Address: 232 Waller Street, SF, CA, 94102 San Francisco, California 94102 Telephone: 404 7044356 Email:
-            info@amino.fit
+            Email:info@amino.fit
           </p>
         </div>
       </main>
