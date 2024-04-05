@@ -51,6 +51,8 @@ export async function findAndAddFoodItemInExternalDatabase(
         try {
           const result = await findNxFoodInfo(foodQuery)
           console.log("Time taken for Nutritionix API:", Date.now() - startTime, "ms") // Log the time taken
+          console.log("NX result")
+          printSearchResults(result || [])
           return result
         } catch (err) {
           console.log("Error finding NX food info", err) // Silently fail
@@ -90,6 +92,8 @@ export async function findAndAddFoodItemInExternalDatabase(
             branded: foodToLog.branded || false,
             queryBgeBaseEmbedding: queryEmbeddingCache.bge_base_embedding!
           })
+          console.log("FS result")
+          printSearchResults(result || [])
           console.log("Time taken for FatSecret API:", Date.now() - startTime, "ms") // Log the time taken
           return result
         } catch (err) {

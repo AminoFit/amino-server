@@ -1,11 +1,9 @@
-import {
-  anthropicChatCompletion,
-  anthropicBedrockChatCompletion
-} from "@/languageModelProviders/anthropic/anthropicChatCompletion"
+import { claudeChatCompletion } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { foodItemCategoriesList } from "./foodItemCategories"
 import Anthropic from "@anthropic-ai/sdk"
 import { Tables } from "types/supabase-generated.types"
+import { getUserByEmail } from "../common/debugHelper"
 
 interface FoodClassifyResult {
   reasoning: string
@@ -18,7 +16,7 @@ interface FoodClassifyResult {
 export async function classifyFoodItemToCategory(
   foodItem: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
-): Promise<{ foodItemCategoryID: string; foodItemCategoryName: string, foodItemId: number }> {
+): Promise<{ foodItemCategoryID: string; foodItemCategoryName: string; foodItemId: number }> {
   const foodItemName = foodItem.brand ? `${foodItem.name} by ${foodItem.brand}` : foodItem.name
   const temperature = 0.5
 
@@ -70,35 +68,32 @@ Item to match: ${foodItemName}\n` + foodItemCategoriesList
   ] as Anthropic.Messages.MessageParam[]
 
   try {
-    const bedrockResult = await anthropicBedrockChatCompletion(
+    const classifyResult = await claudeChatCompletion(
       {
         messages,
-        model: "anthropic.claude-3-sonnet-20240229-v1:0",
-        temperature
+        model: "claude-3-sonnet",
+        temperature,
+        provider: "bedrock",
+        max_tokens: 1024
       },
       user
     )
-    const result: FoodClassifyResult = JSON.parse(`{`+bedrockResult)
+    const result: FoodClassifyResult = JSON.parse(`{` + classifyResult)
     if (result && result.ID && result.subcategoryName) {
       return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName, foodItemId: foodItem.id }
     } else {
       throw new Error("Bedrock classification failed")
     }
   } catch (error) {
-    console.error("Bedrock classification failed, falling back to Anthropic", error)
-    const anthropicResult = await anthropicChatCompletion(
-      {
-        messages,
-        model: "claude-3-sonnet-20240229",
-        temperature
-      },
-      user
-    )
-    const result: FoodClassifyResult = JSON.parse(`{`+anthropicResult)
-    if (result && result.ID && result.subcategoryName) {
-      return { foodItemCategoryID: result.ID, foodItemCategoryName: result.subcategoryName, foodItemId: foodItem.id }
-    } else {
-      throw new Error("Anthropic classification also failed")
-    }
+    throw new Error("Unable to classify food item with either provider", error as Error)
   }
 }
+
+async function testClassification() {
+  const foodItem = { name: "Apple Crumble", id: "123", brand: "" }
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+  const result = await classifyFoodItemToCategory(foodItem as any, user!)
+  console.log(result)
+}
+
+// testClassification()

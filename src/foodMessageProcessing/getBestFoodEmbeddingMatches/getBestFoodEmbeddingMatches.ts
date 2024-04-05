@@ -24,8 +24,8 @@ function dedupeResults(results: FoodItemIdAndEmbedding[]): FoodItemIdAndEmbeddin
   }
 
 export async function getBestFoodEmbeddingMatches(
-  messageEmbeddingId: number,
-  foodEmbeddingId: number
+  foodEmbeddingId: number,
+  messageEmbeddingId: number
 ): Promise<FoodItemIdAndEmbedding[]> {
   const supabase = createAdminSupabase()
 
@@ -61,14 +61,14 @@ export async function getBestFoodEmbeddingMatches(
       ),
     supabase
       .rpc("get_cosine_results", {
-        amount_of_results: 20,
+        amount_of_results: 5,
         p_embedding_cache_id: messageEmbeddingId
       })
       .then((result) => result.data || []),
     supabase
       .rpc("search_usda_database", {
         embedding_id: messageEmbeddingId,
-        limit_amount: 20
+        limit_amount: 5
       })
       .then((result) =>
         result.data
@@ -84,6 +84,27 @@ export async function getBestFoodEmbeddingMatches(
           : []
       )
   ])
+
+  // console.log("results for FoodDbEmbedding")
+  // searchResultsFoodDbForFoodEmbedding.map((result, index) => {
+  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
+  // })
+
+  // console.log("results for UsdaFoods")
+  // searchResultsUSDAForFoodEmbedding.map((result, index) => {
+  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
+  // })
+
+  // console.log("results for MessageEmbedding")
+  // searchResultsFoodDbForMessageEmbedding.map((result, index) => {
+  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
+  // })
+
+  // console.log("results for Usda Message Embedding")
+  // searchResultsUSDAForMessageEmbedding.map((result, index) => {
+  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
+  // })
+  // console.log("_____________________")
 
   const dedupedResultsFoodDbForFoodEmbedding = dedupeResults([
     ...searchResultsFoodDbForFoodEmbedding,

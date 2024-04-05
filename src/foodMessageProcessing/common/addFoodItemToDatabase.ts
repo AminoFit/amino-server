@@ -53,6 +53,25 @@ export async function addFoodItemToDatabase(
     return existingFoodItem as FoodItemWithNutrientsAndServing
   }
 
+  let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null;
+
+  if (food.externalId && food.foodInfoSource) {
+    const { data, error: errorByExternalId } = (await supabase
+      .from("FoodItem")
+      .select("*, Nutrient(*), Serving(*)")
+      .eq("externalId", food.externalId)
+      .eq("foodInfoSource", food.foodInfoSource)
+      .limit(1)
+      .single()) as { data: FoodItemWithNutrientsAndServing; error: any };
+  
+    existingFoodItemByExternalId = data;
+  }
+  
+  if (existingFoodItemByExternalId) {
+    console.log(`Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`);
+    return existingFoodItemByExternalId;
+  }
+
   let foodClassificationResult = classifyFoodItemToCategory(food, user)
 
   // If the food item is missing a field, complete it

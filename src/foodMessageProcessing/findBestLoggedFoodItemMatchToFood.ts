@@ -1,5 +1,5 @@
 // OpenAI
-import { findBestFoodMatchtoLocalDb } from "./matchFoodItemToLocalDb"
+import { findBestFoodMatchtoLocalDb } from "./localDbFoodMatch/matchFoodItemToLocalDb"
 import { FoodItemIdAndEmbedding } from "@/database/OpenAiFunctions/utils/foodLoggingTypes"
 
 // Utils
@@ -18,6 +18,7 @@ import { re } from "mathjs"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
 import { getUserByEmail } from "./common/debugHelper"
+import { findBestFoodMatchtoLocalDbClaude } from "./localDbFoodMatch/matchFoodItemToLocalDbClaude"
 
 async function getFoodItemFromDbOrExternal(
   foodItem: FoodItemIdAndEmbedding,
@@ -75,8 +76,6 @@ export async function findBestLoggedFoodItemMatchToFood(
   // Filter items above the COSINE_THRESHOLD
   const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 
-  const supabase = createAdminSupabase()
-
   if (bestMatches.length) {
     // Return the highest match instantly
 
@@ -92,15 +91,21 @@ export async function findBestLoggedFoodItemMatchToFood(
   if (lowQualityMatches.length) {
     const topMatches = lowQualityMatches.slice(0, 20)
     console.log("Trying to find best match in local db")
-    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDb(topMatches, food, user)
+    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDbClaude(topMatches, food, user)
+    console.log("localDbMatch", localDbMatch?.name, localDbMatch?.brand)
+    console.log("secondBestMatch", secondBestMatch?.name, secondBestMatch?.brand)
     if (localDbMatch) {
       // Return the highest match instantly
-      let match = await getFoodItemFromDbOrExternal(bestMatches[0], user, messageId)
+      let match = await getFoodItemFromDbOrExternal(localDbMatch, user, messageId)
       let secondBestMatchId = null
       if (secondBestMatch) {
         secondBestMatchId = (await getFoodItemFromDbOrExternal(secondBestMatch, user, messageId)).id
       }
-      if (match) return [match as FoodItemWithNutrientsAndServing, secondBestMatchId]
+      console.log("match", match.name, match.brand)
+      if (match) {
+        console.log("FOUND best match in local db")
+        return [match as FoodItemWithNutrientsAndServing, secondBestMatchId]
+      }
       throw new Error(`Failed to find FoodItem with id ${localDbMatch.id}`)
     }
   }
@@ -109,19 +114,19 @@ export async function findBestLoggedFoodItemMatchToFood(
   return [await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId), null]
 }
 
-async function testGetFoodOrAdd() {
-  const user = await getUserByEmail("seb.grubb@gmail.com")
-  let fooditem = {
-    name: "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
-    brand: "Ghirardelli",
-    cosine_similarity: 0.907056764819736,
-    embedding: null,
-    foodInfoSource: "USDA",
-    externalId: "2214660"
-  } as FoodItemIdAndEmbedding
+// async function testGetFoodOrAdd() {
+//   const user = await getUserByEmail("seb.grubb@gmail.com")
+//   let fooditem = {
+//     name: "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
+//     brand: "Ghirardelli",
+//     cosine_similarity: 0.907056764819736,
+//     embedding: null,
+//     foodInfoSource: "USDA",
+//     externalId: "2214660"
+//   } as FoodItemIdAndEmbedding
 
-  let result = await getFoodItemFromDbOrExternal(fooditem, user!, 1)
-  console.log(result)
-}
+//   let result = await getFoodItemFromDbOrExternal(fooditem, user!, 1)
+//   console.log(result)
+// }
 
-// testGetFoodOrAdd()
+// 

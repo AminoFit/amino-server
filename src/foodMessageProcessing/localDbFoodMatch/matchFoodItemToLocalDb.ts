@@ -1,13 +1,13 @@
-import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import {
   chatCompletion
-} from "../languageModelProviders/openai/customFunctions/chatCompletion"
+} from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
-import { FoodItemIdAndEmbedding } from "../database/OpenAiFunctions/utils/foodLoggingTypes"
-import { FoodEmbeddingCache } from "../utils/foodEmbedding"
-import { checkCompliesWithSchema } from "../languageModelProviders/openai/utils/openAiHelper"
+import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
+import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
+import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
-import { extractAndParseLastJSON } from "./common/extractJSON"
+import { extractAndParseLastJSON } from "../common/extractJSON"
 
 /**
  * Discriminative Food Item Matcher
