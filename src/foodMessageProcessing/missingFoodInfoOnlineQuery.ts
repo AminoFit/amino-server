@@ -1,36 +1,30 @@
 import { perplexityChatCompletion } from "@/languageModelProviders/perplexity/perplexityChatCompletion"
 
 const prompt = `
-Please be brief and succinct.
-Using all possible info output in a short structured way all info about:
-FOOD_INFO
+Provide a structured response with nutritional information per serving about "FOOD_INFO". Find info for similar items if no nutritional information is found for the item.
 
-1. You must include:
-{ calories: number,
-    weight: number,
-weight_unit: string,
-protein: number,
-fat: number,
-carbs: number,
-serving: {
+Try to at least always include info about calories, weight, protein, fat, carbs, and servings.
+
+Once you have the information, please provide a structured response with the following information:
+{
+  food_name: string,
+  calories_per_serving: number,
+  weight_per_serving: number,
+  weight_unit: string,
+  protein_per_serving: number,
+  fat_per_serving: number,
+  carbs_per_serving: number,
+  serving: {
     serving_name: string,
-    serving_weight: number,
+    serving_weight_grams: number,
     serving_weight_unit: string,
-    serving_calories: number
-}[]
-} 
-WEIGHT MUST BE INCLUDED IN ANY UNIT POSSIBLE (g, oz, ml)
-1a. If it's a liquid try to include the liquid density in g/ml otherwise don't say anything about liquid density.
-
-2. If you can't find the info, please do a best guess based on similar items.
-If weight is not available, estimate using 1-2 sentences of reasoning what it could be based on common info and say the macro info.
-The weight of an item cannot be less than the sum of the weight of its macronutrients (e.g. if it has 10g carbs and 10g protein it is clearly 20g or more).
+  }[]
+}
 `
 
 export async function getMissingFoodInfoOnlineQuery(foodName: string): Promise<string | null> {
-  const model = "pplx-7b-online"
+  const model = "sonar-medium-online"
   const messages = [
-    { role: "system", content: "You are a useful food assistant that knows all about calories and item weights." },
     {
       role: "user",
       content: prompt.replace("FOOD_INFO", foodName)
@@ -47,7 +41,7 @@ export async function getMissingFoodInfoOnlineQuery(foodName: string): Promise<s
 }
 
 async function testGetFoodInfo() {
-  const result = await getMissingFoodInfoOnlineQuery("fiber gummies")
+  const result = await getMissingFoodInfoOnlineQuery("Why Bars Zesty Lemon")
   console.log(result)
 }
 

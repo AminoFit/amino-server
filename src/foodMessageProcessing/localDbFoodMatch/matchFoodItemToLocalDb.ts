@@ -1,13 +1,13 @@
-import { FoodItemToLog } from "../utils/loggedFoodItemInterface"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import {
   chatCompletion
-} from "../languageModelProviders/openai/customFunctions/chatCompletion"
+} from "../../languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
-import { FoodItemIdAndEmbedding } from "../database/OpenAiFunctions/utils/foodLoggingTypes"
-import { FoodEmbeddingCache } from "../utils/foodEmbedding"
-import { checkCompliesWithSchema } from "../languageModelProviders/openai/utils/openAiHelper"
+import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
+import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
+import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
-import { extractAndParseLastJSON } from "./common/extractJSON"
+import { extractAndParseLastJSON } from "../common/extractJSON"
 
 /**
  * Discriminative Food Item Matcher
@@ -89,22 +89,23 @@ type ConversionResult = {
 }
 
 const convertToDatabaseOptions = (foodItems: FoodItemIdAndEmbedding[]): ConversionResult => {
-  const databaseOptions: DatabaseItem[] = []
-  const idMapping: Record<number, number> = {}
+  const databaseOptions: DatabaseItem[] = foodItems.map((item, index) => ({
+    id: index + 1,
+    name: item.name,
+    brand: item.brand
+  }));
 
-  foodItems.forEach((item, index) => {
-    idMapping[item.id] = index + 1
-    databaseOptions.push({
-      id: index + 1,
-      name: item.name,
-      brand: item.brand
-    })
-  })
+  const idMapping: Record<number, number> = foodItems.reduce((acc, item, index) => {
+    if (item.id !== undefined) {
+      acc[item.id] = index + 1;
+    }
+    return acc;
+  }, {} as Record<number, number>);
 
-  const databaseOptionsString = databaseOptions.map((item) => JSON.stringify(item)).join("\n")
+  const databaseOptionsString = databaseOptions.map((item) => JSON.stringify(item)).join("\n");
 
-  return { databaseOptionsString, idMapping }
-}
+  return { databaseOptionsString, idMapping };
+};
 
 const remapIds = (match: DatabaseMatch, mapping: Record<number, number>): DatabaseMatch => {
   const remappedMatch = { ...match };
@@ -130,8 +131,8 @@ export async function findBestFoodMatchtoLocalDb(
   database_options: FoodItemIdAndEmbedding[],
   user_request: FoodItemToLog,
   user: Tables<"User">
-): Promise<[FoodItemIdAndEmbedding | null, number | null]> {
-  const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
+  ): Promise<[FoodItemIdAndEmbedding | null, FoodItemIdAndEmbedding | null]> {
+    const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
   console.log("databaseOptionsString", databaseOptionsString)
   let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8nXQZjeQ"
@@ -164,9 +165,12 @@ export async function findBestFoodMatchtoLocalDb(
     const database_match = remapIds(extractAndParseLastJSON(response.content!) as DatabaseMatch, idMapping);
     console.log(database_match)
     if (database_match.no_good_matches || !database_match.best_food_match_id) {
-      return [null, null]
-    } else if (database_match.best_food_match_id) {
-      return [database_options.find((item) => item.id === database_match.best_food_match_id) || null, database_match.alternative_match_id || null]
+      return [null, null];
+    } else {
+      return [
+        database_match.best_food_match_id ? database_options[database_match.best_food_match_id - 1] : null,
+        database_match.alternative_match_id ? database_options[database_match.alternative_match_id - 1] : null
+      ];
     }
 
   } catch (err) {

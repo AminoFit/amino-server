@@ -5,7 +5,7 @@ import { FsFoodInfo, convertFsToFoodItem, FoodItemWithServings } from "./fsInter
 import { foodSearchResultsWithSimilarityAndEmbedding } from "../common/commonFoodInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
-const COSINE_THRESHOLD = 0.85
+const COSINE_THRESHOLD = 0.6
 
 interface FsFoodInfoWithEmbedding {
   item: FoodItemWithServings
@@ -90,7 +90,7 @@ export async function findFsFoodInfo(
 }
 
 async function runTests() {
-  const query = "Triple Zero Nonfat Blended Greek Yogurt, Peach By Oikos"
+  const query = "Core Power Strawberry Banana"
   const queryEmbedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [query]))[0].embedding
   const results = await findFsFoodInfo({
     search_expression: query,
@@ -104,4 +104,4 @@ async function runTests() {
   }
 }
 
-//runTests()
+// runTests()

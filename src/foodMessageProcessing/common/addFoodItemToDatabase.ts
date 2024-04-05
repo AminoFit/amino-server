@@ -6,6 +6,8 @@ import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 import { completeMissingFoodInfo } from "../completeMissingFoodInfo"
 import { classifyFoodItemToCategory } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
+import { getUserByEmail } from "./debugHelper"
+import { getFoodEmbedding } from "@/utils/foodEmbedding"
 
 function compareFoodItems(
   item1: FoodItemWithNutrientsAndServing | null,
@@ -51,14 +53,35 @@ export async function addFoodItemToDatabase(
     return existingFoodItem as FoodItemWithNutrientsAndServing
   }
 
+  let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null;
+
+  if (food.externalId && food.foodInfoSource) {
+    const { data, error: errorByExternalId } = (await supabase
+      .from("FoodItem")
+      .select("*, Nutrient(*), Serving(*)")
+      .eq("externalId", food.externalId)
+      .eq("foodInfoSource", food.foodInfoSource)
+      .limit(1)
+      .single()) as { data: FoodItemWithNutrientsAndServing; error: any };
+  
+    existingFoodItemByExternalId = data;
+  }
+  
+  if (existingFoodItemByExternalId) {
+    console.log(`Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`);
+    return existingFoodItemByExternalId;
+  }
+
   let foodClassificationResult = classifyFoodItemToCategory(food, user)
 
   // If the food item is missing a field, complete it
   if (!food.defaultServingWeightGram || food.weightUnknown) {
+    console.log("trying to complete missing fields - no weight")
     food = (await completeMissingFoodInfo(food, user)) || food
   }
 
   if (food.isLiquid && !food.defaultServingLiquidMl) {
+    console.log("trying to complete missing fields - liquid")
     food = (await completeMissingFoodInfo(food, user)) || food
   }
 
@@ -66,10 +89,6 @@ export async function addFoodItemToDatabase(
   const hasMissingServingInfo =
     food.Serving?.some(
       (serving) =>
-        serving.servingAlternateAmount === null ||
-        serving.servingAlternateAmount === undefined ||
-        serving.servingAlternateUnit === null ||
-        serving.servingAlternateUnit === undefined ||
         serving.servingWeightGram === null ||
         serving.servingWeightGram === undefined ||
         serving.servingWeightGram === 0 ||
@@ -78,6 +97,7 @@ export async function addFoodItemToDatabase(
     ) ?? false // Use nullish coalescing to default to false if food.Serving is undefined
 
   if (hasMissingServingInfo) {
+    console.log("trying to complete missing fields - missing serving info")
     food = (await completeMissingFoodInfo(food, user)) || food
   }
 
@@ -156,3 +176,93 @@ export async function addFoodItemToDatabase(
 
   return newFood as FoodItemWithNutrientsAndServing
 }
+
+
+async function testAddToDatabase() {
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+  const food = {
+    "id": 0,
+    "createdAtDateTime": "2024-04-01T20:11:15.552Z",
+    "knownAs": [],
+    "description": null,
+    "lastUpdated": "2024-04-01T20:11:15.552Z",
+    "verified": true,
+    "userId": null,
+    "foodInfoSource": "USDA",
+    "messageId": null,
+    "name": "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
+    "brand": "Ghirardelli",
+    "weightUnknown": false,
+    "defaultServingWeightGram": 32,
+    "defaultServingLiquidMl": null,
+    "isLiquid": false,
+    foodItemCategoryID: null,
+    foodItemCategoryName: null,
+    "Serving": [
+      {
+        "id": 0,
+        foodItemId: 0,
+        "defaultServingAmount": null,
+        "servingWeightGram": 32,
+        "servingAlternateAmount": null,
+        "servingAlternateUnit": null,
+        "servingName": "3 squares"
+      }
+    ],
+    "UPC": 747599414275,
+    "externalId": "2214660",
+    "Nutrient": [
+      {
+        "id": 0,
+        "foodItemId": 0,
+        "nutrientName": "cholesterol",
+        "nutrientUnit": "mg",
+        "nutrientAmountPerDefaultServing": 0
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        "nutrientName": "sodium",
+        "nutrientUnit": "mg",
+        "nutrientAmountPerDefaultServing": 0
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        "nutrientName": "calcium",
+        "nutrientUnit": "mg",
+        "nutrientAmountPerDefaultServing": 19.8
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        "nutrientName": "iron",
+        "nutrientUnit": "mg",
+        "nutrientAmountPerDefaultServing": 1.2
+      },
+      {
+        id: 0,
+        foodItemId: 0,
+        "nutrientName": "potassium",
+        "nutrientUnit": "mg",
+        "nutrientAmountPerDefaultServing": 200
+      }
+    ],
+    "kcalPerServing": 170,
+    "proteinPerServing": 2,
+    "totalFatPerServing": 15,
+    "carbPerServing": 14,
+    "fiberPerServing": 3.01,
+    "sugarPerServing": 8,
+    "satFatPerServing": 9,
+    "transFatPerServing": 0,
+    "addedSugarPerServing": 8,
+    "adaEmbedding": null,
+    "bgeBaseEmbedding": null
+  } as FoodItemWithNutrientsAndServing
+
+  let result = await addFoodItemToDatabase(food, await getFoodEmbedding(food), 1, user!)
+  console.dir(result, { depth: null })
+}
+
+// testAddToDatabase()

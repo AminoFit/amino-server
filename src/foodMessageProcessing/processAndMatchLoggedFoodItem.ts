@@ -19,6 +19,9 @@ import { updateLoggedFoodItemWithData } from "./common/updateLoggedFoodItemData"
 import { LinkIconsOrCreateIfNeeded } from "./foodIconsProcess"
 import { getUserByEmail } from "./common/debugHelper"
 import { re } from "mathjs"
+import { GetMessageById } from "@/database/GetMessagesForUser"
+import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
+import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
@@ -27,22 +30,18 @@ export async function ProcessLogFoodItem(
   user: Tables<"User">
 ): Promise<string> {
   // const supabase = createServerActionClient<Database>({ cookies })
-  const supabase = createAdminSupabase()
 
+  const message = await GetMessageById(messageId)
+
+  const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
+  console.log(`getting embedding for food ${food.full_item_user_message_including_serving}`)
   const userQueryVectorCache = await foodToLogEmbedding(food)
 
-  let { data: cosineSearchResults, error } = await supabase.rpc("get_cosine_results", {
-    p_embedding_cache_id: userQueryVectorCache.embedding_cache_id,
-    amount_of_results: 20
-  })
+  let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20)
 
-  if (!cosineSearchResults) cosineSearchResults = []
-
-  if (error) {
-    console.error(error)
-  }
-
-  printSearchResults(cosineSearchResults)
+  // cosineSearchResults.map((result, index) => {
+  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
+  // })
 
   const [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
     cosineSearchResults,
@@ -53,7 +52,6 @@ export async function ProcessLogFoodItem(
   )
 
   console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
-  console.log("bestMatchSource", bestMatch.foodInfoSource)
 
   try {
     food = await findBestServingMatchChat(food, bestMatch as FoodItemWithNutrientsAndServing, user)
@@ -61,7 +59,7 @@ export async function ProcessLogFoodItem(
     throw err1
   }
 
-  let extendedFoodData = {...food, second_best_match:secondBestMatch}
+  let extendedFoodData = { ...food, second_best_match: secondBestMatch }
 
   const data = {
     foodItemId: bestMatch.id,
@@ -89,16 +87,14 @@ export async function ProcessLogFoodItem(
   console.log("bestMatch.name", bestMatch.name)
 
   await LinkIconsOrCreateIfNeeded(bestMatch.id)
-
   return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
 }
-
 
 async function testFoodMatching() {
   const supabase = createAdminSupabase()
   const food = {
     food_database_search_name: "salmon sushi",
-    full_item_user_message_including_serving: "5 salmon sushi",
+    full_item_user_message_including_serving: "5 salmon sushi"
   } as FoodItemToLog
 
   const userQueryVectorCache = await foodToLogEmbedding(food)
@@ -111,29 +107,46 @@ async function testFoodMatching() {
   printSearchResults(cosineSearchResults!)
 }
 
-async function getLoggedFoodItem(id: number) {
+async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> | null> {
   const supabase = createAdminSupabase()
   const { data, error } = await supabase.from("LoggedFoodItem").select("*").eq("id", id).single()
   return data
 }
 
-async function testProcessFood(){
-  const loggedFoodItem =  await getLoggedFoodItem(2282)
+async function testProcessFood() {
+
+
   const messageId = 1200
-  const food = { 
-    food_database_search_name:'one full milk latte 1 cup',
-    full_item_user_message_including_serving: 'one full milk latte 1 cup',
-    branded: false,
-    brand: "",
+  const food = {
+    food_database_search_name: "Fat free fairlife milk",
+    full_item_user_message_including_serving: "Fat free fairlife milk 1 cup",
+    branded: true,
+    brand: "Fairlife"
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
 
-  const result = await ProcessLogFoodItem(
-    loggedFoodItem!,
-    food,
-    messageId,
-    user!
-  )
+  const loggedFoodItem = {
+    id: 1,
+    consumedOn: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    deletedAt: null,
+    embeddingId: null,
+    extendedOpenAiData: food as any,
+    foodItemId: null,
+    grams: 0,
+    servingId: null,
+    servingAmount: null,
+    loggedUnit: null,
+    userId: user?.id,
+    messageId: messageId,
+    status: null,
+    isBadFoodItemRequest: null,
+    local_id: null,
+  } as Tables<"LoggedFoodItem">;
+
+
+  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
 }
 
 // testProcessFood()

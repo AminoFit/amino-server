@@ -19,57 +19,74 @@ export interface FatSecretFindFoodParams {
 // to rank the results which is a lot more accurate
 export async function findFatSecretFoodInfo(
   searchParams: FatSecretFindFoodParams
-): Promise<FsFoodInfo[] | any> {
-  console.log("Searching FatSecret for", searchParams.search_expression)
-  let token
-  token = await getFsAccessToken()
-  if (!token) return null
+): Promise<FsFoodInfo[]> {
+  const token = await getFsAccessToken();
+  if (!token) {
+    throw new Error("No FatSecret access token available");
+  }
 
-  const url = "https://platform.fatsecret.com/rest/server.api"
-
+  const url = "https://platform.fatsecret.com/rest/server.api";
   const headers = {
-    "Content-Type": "application/x-www-form-urlencoded",
-    Authorization: `Bearer ${token}`
-  }
-
-  const params: { [key: string]: any } = {
-    method: "foods.search.v2",
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const params = new URLSearchParams({
+    method: "foods.search.v3",
     format: "json",
-    ...searchParams,
-    max_results: searchParams.max_results || 25
+    search_expression: searchParams.search_expression,
+    max_results: String(searchParams.max_results || 25),
+    branded: searchParams.branded ? "true" : "false",
+    include_sub_categories: searchParams.include_sub_categories ? "true" : "false",
+    flag_default_serving: searchParams.flag_default_serving ? "true" : "false",
+  });
+  
+  if (searchParams.page_number !== undefined) {
+    params.append("page_number", String(searchParams.page_number));
   }
-
-  // Manually constructing the query string
-  const paramsString = Object.keys(params)
-    .map(
-      (key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`
-    )
-    .join("&")
 
   try {
-    const response = await axios.post(url, paramsString, { headers })
-    if (
-      response.data &&
-      response.data.foods_search &&
-      response.data.foods_search.results
-    ) {
-      let foods = response.data.foods_search.results.food
-      // Filter the results based on the branded flag
-      if (searchParams.branded === true) {
-        foods = foods.filter((food: any) => food.food_type === "Brand")
-      } else if (searchParams.branded === false) {
-        foods = foods.filter((food: any) => food.food_type === "Generic")
-      }
-      // console.log("Found", foods.length, "foods")
-      // console.log(foods)
+    const response = await axios.post(url, null, {
+      headers,
+      params,  
+    });
 
-      return foods as FsFoodInfo[]
+    const foods = response.data?.foods_search?.results?.food;
+
+    if (!foods || !Array.isArray(foods)) {
+      console.warn("No foods found in FatSecret API response");
+      return [];  
     }
-    console.log(response)
-    return null
+
+    const filteredFoods = foods.filter((food) => {
+      if (searchParams.branded === true) {
+        return food.food_type === "Brand";
+      } else if (searchParams.branded === false) {
+        return food.food_type === "Generic";
+      } else {
+        return true;
+      }
+    });
+
+    console.log(`Found ${filteredFoods.length} matching foods in FatSecret`);
+    
+    return filteredFoods;
+
   } catch (error) {
-    console.error(error)
-    return null
+    if (axios.isAxiosError(error)) {
+      console.error("Error in FatSecret API request:", error.message);
+      if (error.response) {
+        console.error("Response data:", error.response.data);
+        console.error("Response status:", error.response.status);  
+        console.error("Response headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error setting up the request:", error.message);
+      }
+    } else {
+      console.error("Unexpected error:", error);
+    }
+    throw error;
   }
 }
 

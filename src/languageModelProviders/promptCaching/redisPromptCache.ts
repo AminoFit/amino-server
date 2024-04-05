@@ -18,27 +18,9 @@ function generateCompositeKey({
   temperature,
   max_tokens,
   response_format = "text",
-}: {
-  systemPrompt: string;
-  userMessage: string;
-  modelName: string;
-  temperature: number;
-  max_tokens: number;
-  response_format?: string; 
-}) {
-  const combinedInput = systemPrompt + userMessage;
-  const hash = crypto.createHash("sha256").update(combinedInput).digest("hex");
-
-  return `prompt:${hash}:${modelName}:${temperature}:${max_tokens}:${response_format}`;
-}
-
-async function writePromptOutputToCache({
-  systemPrompt,
-  userMessage,
-  modelName,
-  temperature,
-  max_tokens,
-  response_format = "text",
+  stop,
+  stop_sequences,
+  options
 }: {
   systemPrompt: string;
   userMessage: string;
@@ -46,7 +28,38 @@ async function writePromptOutputToCache({
   temperature: number;
   max_tokens: number;
   response_format?: string;
-}, promptOutput: string) {
+  stop?: string;
+  stop_sequences?: string[];
+  options?: Record<string, any>;
+}) {
+  const combinedInput = systemPrompt + userMessage;
+  const hash = crypto.createHash("sha256").update(combinedInput).digest("hex");
+  const optionsString = options ? JSON.stringify(options) : "";
+  return `prompt:${hash}:${modelName}:${temperature}:${max_tokens}:${response_format}:${stop || ""}:${stop_sequences?.join(",") || ""}:${optionsString}`;
+}
+
+async function writePromptOutputToCache(
+  {
+    systemPrompt,
+    userMessage,
+    modelName,
+    temperature,
+    max_tokens,
+    response_format = "text",
+    stop_sequences = [],
+    options = {}
+  }: {
+    systemPrompt: string;
+    userMessage: string;
+    modelName: string;
+    temperature: number;
+    max_tokens: number;
+    response_format?: string;
+    stop_sequences?: string[];
+    options?: Record<string, any>;
+  },
+  promptOutput: string
+) {
   const compositeKey = generateCompositeKey({
     systemPrompt,
     userMessage,
@@ -54,6 +67,8 @@ async function writePromptOutputToCache({
     temperature,
     max_tokens,
     response_format,
+    stop_sequences,
+    options
   });
 
   try {
@@ -65,21 +80,27 @@ async function writePromptOutputToCache({
   return;
 }
 
-async function getPromptOutputFromCache({
-  systemPrompt,
-  userMessage,
-  modelName,
-  temperature,
-  max_tokens,
-  response_format = "text",
-}: {
-  systemPrompt: string;
-  userMessage: string;
-  modelName: string;
-  temperature: number;
-  max_tokens: number;
-  response_format?: string;
-}) {
+async function getPromptOutputFromCache(
+  {
+    systemPrompt,
+    userMessage,
+    modelName,
+    temperature,
+    max_tokens,
+    response_format = "text",
+    stop_sequences = [],
+    options = {}
+  }: {
+    systemPrompt: string;
+    userMessage: string;
+    modelName: string;
+    temperature: number;
+    max_tokens: number;
+    response_format?: string;
+    stop_sequences?: string[];
+    options?: Record<string, any>;
+  }
+) {
   const compositeKey = generateCompositeKey({
     systemPrompt,
     userMessage,
@@ -87,6 +108,8 @@ async function getPromptOutputFromCache({
     temperature,
     max_tokens,
     response_format,
+    stop_sequences,
+    options
   });
 
   try {
