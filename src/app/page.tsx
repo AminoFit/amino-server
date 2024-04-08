@@ -1,12 +1,15 @@
 import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import Footer from "./Footer"
 import MarketingNav, { AppleLogo } from "./MarketingNav"
-import ReactGA from 'react-ga4';
-
+import TagManager from 'react-gtm-module';
+const tagManagerArgs = {
+  gtmId: 'AW-16524932466', 
+};
+TagManager.initialize(tagManagerArgs);
 
 export default async function Example() {
-  ReactGA.initialize('AW-16524932466');
-  ReactGA.send({ hitType: 'pageview', page: '/', title: 'Home' });
+
+
   return (
     <div className="bg-white">
       {/* Header */}
