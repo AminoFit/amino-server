@@ -1,15 +1,19 @@
+'use client'
+
 import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import Footer from "./Footer"
 import MarketingNav, { AppleLogo } from "./MarketingNav"
+import { useEffect } from "react";
 import TagManager from 'react-gtm-module';
-const tagManagerArgs = {
-  gtmId: 'AW-16524932466', 
-};
-TagManager.initialize(tagManagerArgs);
-
-export default async function Example() {
 
 
+export default function Example() {
+  useEffect(() => {
+    const tagManagerArgs = {
+      gtmId: 'AW-16524932466',
+    };
+    TagManager.initialize(tagManagerArgs);
+  }, []);
   return (
     <div className="bg-white">
       {/* Header */}
