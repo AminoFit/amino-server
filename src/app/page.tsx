@@ -1,20 +1,14 @@
-'use client'
-
 import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import Footer from "./Footer"
 import MarketingNav, { AppleLogo } from "./MarketingNav"
 import { useEffect } from "react";
-import TagManager from 'react-gtm-module';
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 
 export default function Example() {
-  useEffect(() => {
-    const tagManagerArgs = {
-      gtmId: 'AW-16524932466',
-    };
-    TagManager.initialize(tagManagerArgs);
-  }, []);
+
   return (
+    <>
     <div className="bg-white">
       {/* Header */}
       <MarketingNav />
@@ -68,5 +62,7 @@ export default function Example() {
 
       <Footer />
     </div>
+    <GoogleAnalytics gaId="AW-16524932466" />
+    </>
   )
 }
