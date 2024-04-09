@@ -1,11 +1,17 @@
+"use client"
+
 import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import Footer from "./Footer"
 import MarketingNav, { AppleLogo } from "./MarketingNav"
-import { useEffect } from "react";
-import { GoogleAnalytics } from '@next/third-parties/google'
-
+import { sendGAEvent } from '@next/third-parties/google'
 
 export default function Example() {
+  const trackAppLinkClick = () => {
+    sendGAEvent({
+      event: 'conversion',
+      value: 'app_store_link_click',
+    });
+  };
 
   return (
     <>
@@ -42,6 +48,7 @@ export default function Example() {
                   rel="noopener noreferrer"
                   href="https://apps.apple.com/us/app/amino-fitness/id6472242486"
                   className=" flex items-center align-middle rounded-md bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  onClick={trackAppLinkClick}
                 >
                   <AppleLogo /> Download App
                 </a>
@@ -62,7 +69,6 @@ export default function Example() {
 
       <Footer />
     </div>
-    <GoogleAnalytics gaId="AW-16524932466" />
     </>
   )
 }
