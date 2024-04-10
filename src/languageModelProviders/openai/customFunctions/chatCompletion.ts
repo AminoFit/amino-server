@@ -1,6 +1,6 @@
 import OpenAI from "openai"
 import { LogOpenAiUsage } from "../utils/openAiHelper"
-import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
+import { ChatCompletionCreateParams, ChatCompletionCreateParamsStreaming } from "openai/resources/chat"
 import * as math from "mathjs"
 import { Tables } from "types/supabase"
 import { encode } from "gpt-tokenizer"
@@ -446,6 +446,7 @@ export interface ChatCompletionVisionStreamOptions {
   temperature?: number
   max_tokens?: number
   stop?: string
+  response_format?: ChatCompletionCreateParams.ResponseFormat
   [key: string]: any
 }
 
