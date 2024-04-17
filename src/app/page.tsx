@@ -160,10 +160,10 @@ export default function Example() {
                   </a>
                 </div>
                 <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                  Food logging doesn&apos;t have to be complicated
+                  Super simple food tracking
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Amino&apos;AI makes food logging a breeze by allowing you to snap a picture or just tell it what you ate. That&apos;s it. Track your daily intake and get a better understanding of your diet.
+                  Amino&apos;s AI makes food logging a breeze by allowing you to snap a picture or just tell it what you ate. That&apos;s it. Track your daily intake and get a better understanding of your diet.
                 </p>
                 <div className="mt-10 flex items-center gap-x-6">
                   <a
