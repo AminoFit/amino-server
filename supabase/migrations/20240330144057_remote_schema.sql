@@ -1,6 +1,3 @@
-create extension if not exists "vector" with schema "extensions";
-
-
 alter table "public"."Account" enable row level security;
 
 alter table "public"."ApiCalls" enable row level security;
@@ -28,8 +25,6 @@ alter table "public"."VerificationToken" enable row level security;
 alter table "public"."_prisma_migrations" enable row level security;
 
 alter table "public"."foodEmbeddingCache" enable row level security;
-
-drop extension if exists "vector";
 
 create policy "Enable read access for all users"
 on "public"."Nutrient"
