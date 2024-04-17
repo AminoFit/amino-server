@@ -11,6 +11,7 @@ import { getUserByEmail, getUserMessageById } from "../common/debugHelper"
 import { exit } from "process"
 import { fetchRotateAndConvertToBase64 } from "../common/imageTools/rotateImageFromUrl"
 import { re } from "mathjs"
+import { ChatCompletionCreateParams } from "openai/resources"
 
 const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
 
@@ -21,11 +22,11 @@ Your task is to identify based on pictures provided and the user INPUT_TO_PROCES
 
 2. Fix any typos: Typos may exist due to fast typing or because the text is a result of voice recognition. If you notice any typos, correct them to the best of your ability. E.g. "one pair" should be corrected to "one pear" or "lin choclate" likely means "lindt chocolate".
 
-3. Separate elements: Combine elements only when they naturally constitute a single item, such as in the case of a flavored yogurt. For example, ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries.
+3. Separate elements: Combine elements only when they naturally constitute a single food item, such as in the case of a flavored yogurt. For example, ensure that distinct components like a pancake and its topping (e.g., whipped cream) are logged as separate entries. But if someone says 'yogurt with strawberries and banana', then it is 3 items, yogurt, strawberries, and banana. It is very important to separate the items in this case. Another example is 'coffee with milk' should be logged as 'a shot of coffee' and 'milk' for example.
 
 4. IMPORTANT: 'full_single_food_database_search_name' must as specific as possible to correctly search. Include any detail provided or obviously inferrable from the text or picture like brand, flavor, preparation (cooked, blended, dry, uncooked, raw etc). Do not includes details about sides (e.g. pancake with honey, just create a new entry for honey, unless it is definitely part of the item like cinammon pancake would just be one thing).
 
-5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or approximate weight (e.g., '100g of full-fat salted butter'). Serving details must always be included and can be inferred from the picture. Be as descriptive as possible such that a weight can be inferred (e.g. 2 chicken vs 2 chicken breasts is wildly different). Hence the more details to estimate the weight the better.
+5. Include Detailed Serving Information: The 'full_single_item_user_message_including_serving_or_quantity' should include all available information about the specfic item (but not include information about sides since we create a new entry for those), including both explicitly stated and reasonably inferred details like quantity or approximate weight (e.g., '100g of full-fat salted butter'). Serving details must always be included and can be inferred from the picture. Be as descriptive as possible such that a weight can be inferred (e.g. 2 chicken vs 2 chicken breasts is wildly different). Hence the more details to estimate the weight the better. If weight is guessable include it ideally in grams or ml.
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
@@ -141,38 +142,46 @@ async function getUserImagesByMessageId(messageId: number) {
   return data
 }
 
-async function createMessagesWithRotatedImages(messages: OpenAI.Chat.ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
-  const processedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = await Promise.all(messages.map(async (message): Promise<OpenAI.Chat.ChatCompletionMessageParam> => {
-    // Check if the message is from a user and contains content that can be processed
-    if (message.role === 'user' && Array.isArray(message.content)) {
-      const processedContent = await Promise.all(message.content.map(async (contentPart): Promise<OpenAI.Chat.ChatCompletionContentPartImage | typeof contentPart> => {
-        // Only process parts that are of type image_url
-        if (contentPart.type === 'image_url' && contentPart.image_url?.url) {
-          const base64Image = await fetchRotateAndConvertToBase64(contentPart.image_url.url);
-          if (base64Image) {
-            // Explicitly cast the modified part to the correct type
-            return {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
-                detail: 'high' as const, // Explicitly set the detail level to 'low'
-              },
-            } as OpenAI.Chat.ChatCompletionContentPartImage; // Explicit type casting
-          }
-        }
-        return contentPart; // Return unmodified if not an image_url type or if rotation/conversion fails
-      }));
+async function createMessagesWithRotatedImages(
+  messages: OpenAI.Chat.ChatCompletionMessageParam[]
+): Promise<OpenAI.Chat.ChatCompletionMessageParam[]> {
+  const processedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = await Promise.all(
+    messages.map(async (message): Promise<OpenAI.Chat.ChatCompletionMessageParam> => {
+      // Check if the message is from a user and contains content that can be processed
+      if (message.role === "user" && Array.isArray(message.content)) {
+        const processedContent = await Promise.all(
+          message.content.map(
+            async (contentPart): Promise<OpenAI.Chat.ChatCompletionContentPartImage | typeof contentPart> => {
+              // Only process parts that are of type image_url
+              if (contentPart.type === "image_url" && contentPart.image_url?.url) {
+                const base64Image = await fetchRotateAndConvertToBase64(contentPart.image_url.url)
+                if (base64Image) {
+                  // Explicitly cast the modified part to the correct type
+                  return {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/jpeg;base64,${base64Image}`,
+                      detail: "high" as const // Explicitly set the detail level to 'low'
+                    }
+                  } as OpenAI.Chat.ChatCompletionContentPartImage // Explicit type casting
+                }
+              }
+              return contentPart // Return unmodified if not an image_url type or if rotation/conversion fails
+            }
+          )
+        )
 
-      // Explicitly cast the entire message to ChatCompletionMessageParam
-      return {
-        ...message,
-        content: processedContent,
-      } as OpenAI.Chat.ChatCompletionMessageParam;
-    }
-    return message; // Return unmodified if the message does not need processing
-  }));
+        // Explicitly cast the entire message to ChatCompletionMessageParam
+        return {
+          ...message,
+          content: processedContent
+        } as OpenAI.Chat.ChatCompletionMessageParam
+      }
+      return message // Return unmodified if the message does not need processing
+    })
+  )
 
-  return processedMessages;
+  return processedMessages
 }
 
 async function processOpenAiVisionChatStream(
@@ -185,18 +194,17 @@ async function processOpenAiVisionChatStream(
   let isBadFoodLogRequest = false
   const loggingTasks: Promise<any>[] = []
 
-  let model = "gpt-4-vision-preview"
+  let model = "gpt-4-turbo"
   const currentDateTime = new Date()
 
   const stream = processStreamedLoggedFoodItemsWithImages(user, {
     messages,
     temperature: 0.01,
-    model: model
+    model: model,
+    response_format: { type: "json_object" }
   })
 
   for await (const chunk of stream) {
-    // console.log(chunk);
-
     if (chunk.hasOwnProperty("full_single_food_database_search_name")) {
       const elapsedTime = new Date().getTime() - currentDateTime.getTime()
       // It's a single food item
@@ -259,12 +267,23 @@ export async function logFoodItemStreamWithImages(
     }
   ]
 
-  let { foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, messages, user, consumedOn)
+  let { foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(
+    user_message,
+    messages,
+    user,
+    consumedOn
+  )
+  console.log("foodItemsToLog", foodItemsToLog)
 
   if (isBadFoodLogRequest || foodItemsToLog.length === 0) {
-    const rotatedMessages = await createMessagesWithRotatedImages(messages);
+    const rotatedMessages = await createMessagesWithRotatedImages(messages)
 
-    ({ foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(user_message, rotatedMessages, user, consumedOn))
+    ;({ foodItemsToLog, isBadFoodLogRequest } = await processOpenAiVisionChatStream(
+      user_message,
+      rotatedMessages,
+      user,
+      consumedOn
+    ))
   }
   return { foodItemsToLog, isBadFoodLogRequest }
 }
@@ -298,7 +317,7 @@ async function testChatCompletionJsonStream() {
 
 async function testVisionFoodLoggingStream() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-  const message = await getUserMessageById(1326)
+  const message = await getUserMessageById(2648)
 
   await logFoodItemStreamWithImages(user, message!)
 }

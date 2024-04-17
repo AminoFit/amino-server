@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Dialog } from "@headlessui/react"
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
+import { sendGAEvent } from '@next/third-parties/google'
 
 // const navigation = [
 //   // { name: "Product", href: "/" },
@@ -11,7 +12,12 @@ import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"
 
 export default function MarketingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
+  const trackAppLinkClick = () => {
+    sendGAEvent({
+      event: 'conversion',
+      value: 'app_store_link_click',
+    });
+  };
   return (
     <header className="bg-white">
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
@@ -35,12 +41,16 @@ export default function MarketingNav() {
               {item.name}
             </a>
           ))} */}
-          <button
+          <a
             type="button"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://apps.apple.com/us/app/amino-fitness/id6472242486"
             className="rounded-md bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center align-middle"
+            onClick={trackAppLinkClick}
           >
             <AppleLogo /> Download App
-          </button>
+          </a>
         </div>
       </nav>
       <Dialog as="div" className="lg:hidden" open={mobileMenuOpen} onClose={setMobileMenuOpen}>
