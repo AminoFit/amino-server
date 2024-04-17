@@ -19,27 +19,27 @@ const features = [
   {
     name: 'AI-Powered Logging',
     description:
-      `Stop worrying about searching lists or calculating your portions. Amino's AI can handle inputs such as 'half an avocado' or 'one cup of fat free milk' and will find the correct nutritional information for you and estimate your portion size.`,
+      `Stop searching endless lists of foods. Amino handles inputs such as 'half an avocado' or 'one cup of fat free milk' and will find the correct nutritional info.`,
     icon: SparklesOutlineIcon,
-  },
-  {
-    name: 'Voice Input',
-    description:
-      'Log your meals hands-free using just your voice. Speak naturally, and let our AI take care of the rest.',
-    icon: MicrophoneOutlineIcon,
   },
   {
     name: 'Photo Input',
     description:
-      'Snap a photo of your meal, and our AI will analyze it to log nutritional information automatically.',
+      'Tired of typing? Simply snap a photo of your meal and our AI will analyze it to log nutritional information automatically.',
     icon: PhotoOutlineIcon,
+  },
+  {
+    name: 'Voice Input',
+    description:
+      'Photo not practical? Just say what you ate and Amino will handle the rest.',
+    icon: MicrophoneOutlineIcon,
   },
   {
     name: 'Text Input',
     description:
-      'Prefer typing? Enter details about your meals directly through a simple text interface that’s easy and quick.',
+      'Alternatively just enter a description of your meal such as "two an apples" or "one venti latte from starbucks".',
     icon: ChatBubbleOutlineIcon,
-  },
+  }
 ];
 
 function FeaturesSection() {
@@ -47,7 +47,7 @@ function FeaturesSection() {
     <section className="bg-white py-12">
       <div className="mx-auto max-w-4xl px-6 text-center">
         <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-          Easiest way to log food
+          Amino is the easiest way to log food
         </h2>
         <dl className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature) => (
@@ -96,37 +96,38 @@ const faqs = [
 
 function FAQSection() {
   return (<section className="bg-gray-50 py-12">
-  <div className="mx-auto max-w-4xl px-6 text-center">
-    <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-      Frequently Asked Questions
-    </h2>
-    <dl className="mt-10 space-y-6 divide-y divide-gray-200">
-      {faqs.map((faq) => (
-        <Disclosure as="div" key={faq.question} className="pt-6">
-          {({ open }) => (
-            <>
-              <dt>
-                <Disclosure.Button className="flex w-full items-start justify-between text-left text-gray-900">
-                  <span className="text-base font-semibold leading-7">{faq.question}</span>
-                  <span className="ml-6 flex h-7 items-center">
-                    <ChevronRightIcon className={`h-5 w-5 transform transition-transform duration-200 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
-                  </span>
-                </Disclosure.Button>
-              </dt>
-              <Disclosure.Panel as="dd" className="mt-2 pr-12 text-left transition-opacity duration-500 ease-in-out">
-                <p className={`text-base leading-7 text-gray-500 transition-opacity duration-700 ease-in-out ${open ? 'opacity-100' : 'opacity-0'}`}>
-                  {faq.answer}
-                </p>
-              </Disclosure.Panel>
-            </>
-          )}
-        </Disclosure>
-      ))}
-    </dl>
+    <div className="mx-auto max-w-4xl px-6 text-center">
+      <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+        Frequently Asked Questions
+      </h2>
+      <dl className="mt-10 space-y-6 divide-y divide-gray-200">
+        {faqs.map((faq) => (
+          <Disclosure as="div" key={faq.question} defaultOpen={true} className="pt-6">
+            {({ open }) => (
+              <>
+                <dt>
+                  <Disclosure.Button className="flex w-full items-start justify-between text-left text-gray-900">
+                    <span className="text-base font-semibold leading-7">{faq.question}</span>
+                    <span className="ml-6 flex h-7 items-center">
+                      <ChevronRightIcon className={`h-5 w-5 transform transition-transform duration-200 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
+                    </span>
+                  </Disclosure.Button>
+                </dt>
+                <Disclosure.Panel as="dd" className="mt-2 pr-12 text-left transition-opacity duration-500 ease-in-out">
+                  <p className={`text-base leading-7 text-gray-500 transition-opacity duration-700 ease-in-out ${open ? 'opacity-100' : 'opacity-0'}`}>
+                    {faq.answer}
+                  </p>
+                </Disclosure.Panel>
+              </>
+            )}
+          </Disclosure>
+        ))}
+      </dl>
 
-  </div>
-</section>)
+    </div>
+  </section>)
 }
+
 
 
 export default async function Example() {
@@ -151,11 +152,10 @@ export default async function Example() {
                 </a>
               </div>
               <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                Track your diet with confidence
+                Food logging doesn&apos;t have to be complicated
               </h1>
               <p className="mt-6 text-lg leading-8 text-gray-600">
-                Quick and easy food logging with simple text input. Refine the results to match your meal, and track
-                your progress over time.
+                Amino&apos;AI makes food logging a breeze by allowing you to snap a picture or just tell it what you ate. That&apos;s it. Track your daily intake and get a better understanding of your diet.
               </p>
               <div className="mt-10 flex items-center gap-x-6">
                 <button
