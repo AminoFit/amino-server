@@ -72,7 +72,7 @@ const faqs = [
     question: "What is Amino?",
     answer: (
       <span>
-        Amino is an AI-powered food-logging app that allows you to log your food intake using text, voice, or a picture. Unlike other apps, you don't need to search many lists or spend hours trying to figure out how to calculate your portion size.
+        Amino is an AI-powered food-logging app that allows you to log your food intake using text, voice, or a picture. Unlike other apps, you don&apos;t need to search many lists or spend hours trying to figure out how to calculate your portion size.
       </span>
     ),
   },
@@ -88,7 +88,7 @@ const faqs = [
     question: "How can we provide feedback?",
     answer: (
       <span>
-        We'd love to hear your feedback! You can reach out to us at <a href="mailto:info@amino.fit" className="underline hover:text-blue-600 text-blue-500">info@amino.fit</a> or submit feedback on our <a href="https://aminofit.featurebase.app" className="underline hover:text-blue-600 text-blue-500">Featurebase</a>.
+        We&apos;d love to hear your feedback! You can reach out to us at <a href="mailto:info@amino.fit" className="underline hover:text-blue-600 text-blue-500">info@amino.fit</a> or submit feedback on our <a href="https://aminofit.featurebase.app" className="underline hover:text-blue-600 text-blue-500">Featurebase</a>.
       </span>
     ),
   }
