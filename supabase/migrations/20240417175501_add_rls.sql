@@ -66,12 +66,25 @@ to public
 with check ((auth.uid() = "userId"));
 
 
+create policy "Update user message image"
+on "public"."UserMessageImages"
+as permissive
+for update
+to public
+using ((auth.uid() = "userId"));
+
+
+create policy "UserCanEditUploadedImages"
+on "public"."UserMessageImages"
+as permissive
+for all
+to public
+using ((auth.uid() = "userId"));
+
+
 create policy "Enable read access for all users"
 on "public"."foodEmbeddingCache"
 as permissive
 for select
 to public
 using (true);
-
-
-
