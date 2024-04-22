@@ -33,7 +33,7 @@ export async function* FireworksChatCompletionStream(user: Tables<"User">, optio
     model = "accounts/fireworks/models/llama-v3-70b-instruct",
     prompt,
     temperature = 0,
-    max_tokens = 2048,
+    max_tokens = 4096,
     stop,
     response_format = "text",
     systemPrompt = "You are a helpful assistant that only replies in valid JSON.",
@@ -82,13 +82,19 @@ export async function* FireworksChatCompletionStream(user: Tables<"User">, optio
   let totalResponse = ""
   for await (const chunk of stream) {
     if (chunk?.choices[0]?.delta?.content) {
-      const content = chunk.choices[0].delta.content
-      yield content
-      totalResponse += content
+      const content = chunk.choices[0].delta.content;
+      let index = 0;
+      while (index < content.length) {
+        const part = content.slice(index, index + 4);
+        yield part;
+        totalResponse += part;
+        index += 4;
+      }
     }
   }
+  
 
-  console.log("completed response", totalResponse)
+//   console.log("completed response", totalResponse)
   // Calculate token count and log usage
   const completionTimeMs = performance.now() - startTime
   const resultTokens = encode(totalResponse).length

@@ -1,4 +1,4 @@
-export const foodItemPrompts = {
+export const logFoodItemPrompts = {
     "llama3-70b":{
         systemPrompt: "You are a helpful food logging assistant that only replies in valid JSON.",
         prompt: `<instructions>
