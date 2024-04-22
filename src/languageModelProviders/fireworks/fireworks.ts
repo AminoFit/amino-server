@@ -16,7 +16,7 @@ export interface FireworksAPIOptions {
 
 export async function* fireworksChatCompletionStream(
   {
-    model = "accounts/fireworks/models/mixtral-8x7b-instruct",
+    model = "accounts/fireworks/models/llama-v3-70b-instruct",
     systemPrompt = "You are a helpful assistant.",
     prompt,
     stop = "",
@@ -302,9 +302,12 @@ async function testFireworks() {
   const stream = fireworksChatCompletionStream({ 
     // model: "accounts/fireworks/models/mixtral-8x7b-instruct-hf",
     prompt: test_prompt, systemPrompt: "You are a helpful assistant that only replies with valid JSON." }, user)
-
+let i = 0
   for await (const chunk of stream) {
+
     process.stdout.write(chunk.toString())
+    // console.log(i, chunk.toString())
+    // i++
     // if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
     //   process.stdout.write(chunk.choices[0].delta.content);
     // }

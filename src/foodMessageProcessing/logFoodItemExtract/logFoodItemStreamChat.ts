@@ -115,6 +115,35 @@ async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, opti
   }
 }
 
+async function* processStreamedLoggedFoodItemsLlama(user: Tables<"User">, options: ChatCompletionStreamOptions) {
+  //   console.log("calling mixtral with options", options)
+  // Call ChatCompletionJsonStream to get the stream
+  const stream = await fireworksChatCompletionStream(
+    {
+      model: "accounts/fireworks/models/mixtral-8x7b-instruct",
+      systemPrompt: "You are a helpful assistant that only replies with valid JSON.",
+      prompt: options.prompt
+    },
+    user
+  )
+
+  let buffer = "" // Buffer to accumulate chunks of data
+  let lastProcessedIndex = -1 // Track the last processed index
+
+  for await (const chunk of stream) {
+    // console.log(chunk)
+    process.stdout.write(chunk.toString())
+    buffer += chunk // Append the new chunk to the buffer
+    const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
+
+    if (jsonObj && endIndex !== lastProcessedIndex) {
+      // console.log(jsonObj); // Output the new JSON object
+      lastProcessedIndex = endIndex // Update the last processed index
+      yield jsonObj // Yield the new JSON object
+    }
+  }
+}
+
 function extractLatestValidJSON(inputString: string) {
   let braceCount = 0
   let endIndex = -1
