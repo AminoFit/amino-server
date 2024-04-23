@@ -4,6 +4,7 @@ import { Expo } from "expo-server-sdk"
 const expo = new Expo()
 
 export async function GET(request: Request) {
+  console.log("Running push notifications cron job")
   const supabase = createAdminSupabase()
   // const { data, error } = await supabase
   //   .from("User")
