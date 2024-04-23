@@ -168,6 +168,35 @@ export type Database = {
         }
         Relationships: []
       }
+      ExpoPushTokens: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+          userId: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          key: string
+          userId: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          key?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ExpoPushTokens_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       foodEmbeddingCache: {
         Row: {
           adaEmbedding: string | null
@@ -823,6 +852,9 @@ export type Database = {
           manualMacroGoals: boolean
           phone: string | null
           proteinGoal: number | null
+          pushNotificationPreference:
+            | Database["public"]["Enums"]["PushNotificationFrequency"]
+            | null
           sendCheckins: boolean
           sentContact: boolean
           setupCompleted: boolean
@@ -849,6 +881,9 @@ export type Database = {
           manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
+          pushNotificationPreference?:
+            | Database["public"]["Enums"]["PushNotificationFrequency"]
+            | null
           sendCheckins?: boolean
           sentContact?: boolean
           setupCompleted?: boolean
@@ -875,6 +910,9 @@ export type Database = {
           manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
+          pushNotificationPreference?:
+            | Database["public"]["Enums"]["PushNotificationFrequency"]
+            | null
           sendCheckins?: boolean
           sentContact?: boolean
           setupCompleted?: boolean
@@ -1134,6 +1172,18 @@ export type Database = {
           cosineSimilarity: number
         }[]
       }
+      hnswhandler: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
       search_usda_database: {
         Args: {
           embedding_id: number
@@ -1146,6 +1196,42 @@ export type Database = {
           brandOwner: string
           cosineSimilarity: number
         }[]
+      }
+      vector_avg: {
+        Args: {
+          "": number[]
+        }
+        Returns: string
+      }
+      vector_dims: {
+        Args: {
+          "": string
+        }
+        Returns: number
+      }
+      vector_norm: {
+        Args: {
+          "": string
+        }
+        Returns: number
+      }
+      vector_out: {
+        Args: {
+          "": string
+        }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: {
+          "": string
+        }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: {
+          "": unknown[]
+        }
+        Returns: number
       }
     }
     Enums: {
@@ -1177,6 +1263,13 @@ export type Database = {
         | "SHOW_FOOD_LOG"
         | "LOG_EXERCISE"
         | "UPDATE_USER_INFO"
+      PushNotificationFrequency:
+        | "ThreeTimesDaily"
+        | "TwiceDaily"
+        | "Daily"
+        | "EveryOtherDay"
+        | "Weekly"
+        | "Never"
       Role: "Assistant" | "User" | "System" | "Function"
       UnitPreference: "IMPERIAL" | "METRIC"
     }
@@ -1326,7 +1419,7 @@ export type Database = {
         Args: {
           name: string
         }
-        Returns: string[]
+        Returns: unknown
       }
       get_size_by_bucket: {
         Args: Record<PropertyKey, never>
@@ -1365,11 +1458,9 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
-
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
@@ -1382,10 +1473,10 @@ export type Tables<
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] &
+        Database["public"]["Views"])
+    ? (Database["public"]["Tables"] &
+        Database["public"]["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1394,7 +1485,7 @@ export type Tables<
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+    | keyof Database["public"]["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
@@ -1405,8 +1496,8 @@ export type TablesInsert<
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1415,7 +1506,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+    | keyof Database["public"]["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
@@ -1426,8 +1517,8 @@ export type TablesUpdate<
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1436,13 +1527,14 @@ export type TablesUpdate<
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
+    | keyof Database["public"]["Enums"]
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
+    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
     : never
+
