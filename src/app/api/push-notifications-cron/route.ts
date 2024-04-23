@@ -1,6 +1,8 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Expo } from "expo-server-sdk"
 
+export const dynamic = 'force-dynamic';
+
 const expo = new Expo()
 
 export async function GET(request: Request) {
