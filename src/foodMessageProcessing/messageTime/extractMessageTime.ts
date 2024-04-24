@@ -212,7 +212,7 @@ export async function getMessageTimeChat(
     .replace("CURRENT_DATE_TIME", formattedDateTime)
     .replace("RELATIVE_DAYS_TEXT", relativeDaysText())
 
-  console.log(requestPrompt)
+  // console.log(requestPrompt)
 
   // const stream = processMessageTimeExtractStreamOpenAi(user, {
   //   prompt: requestPrompt,
