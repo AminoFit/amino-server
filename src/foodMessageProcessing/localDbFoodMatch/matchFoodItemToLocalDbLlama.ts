@@ -1,11 +1,13 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { claudeChatCompletion } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
+import { FireworksChatCompletion, FireworksChatCompletionStream } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import Anthropic from "@anthropic-ai/sdk"
 import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
 import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
 import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 import { extractAndParseLastJSON } from "../common/extractJSON"
+import { re } from "mathjs"
+import OpenAI from "openai"
 
 /**
  * Discriminative Food Item Matcher
@@ -23,7 +25,7 @@ import { extractAndParseLastJSON } from "../common/extractJSON"
  * - If no match is found internally, an external database search is triggered.
  */
 
-const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You always finish with an output in perfect JSON.`
+const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You only output in perfect JSON.`
 
 const matchUserRequestPrompt = `You are a food matching expert. Your task is to accurately match the user's logged food to entries in a database.
 
@@ -127,14 +129,16 @@ export async function findBestFoodMatchtoLocalDbClaude(
   const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
-  let model = "claude-3-haiku"
+  let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
   let max_tokens = 400
   let temperature = 0
   let prompt = matchUserRequestPrompt
     .replace("LOGGED_FOOD_NAME", foodToMatch)
     .replace("DATABASE_SEARCH_RESULTS", databaseOptionsString)
 
-  let messages: Anthropic.Messages.MessageParam[] = [
+  console.log("prompt", prompt)
+
+  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "user", content: prompt },
     {
       role: "assistant",
@@ -144,37 +148,33 @@ export async function findBestFoodMatchtoLocalDbClaude(
 
   try {
     const timerStart = Date.now()
-    const response = await claudeChatCompletion(
+    const response = await FireworksChatCompletion(user,
       {
         system: matchSystemPrompt,
         messages,
         model,
         temperature,
-        max_tokens,
-        provider: "anthropic"
-      },
-      user
+        max_tokens
+    }
     )
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
+    console.log("response", response)
 
     let database_match: DatabaseMatch | null = null
 
     try {
       database_match = remapIds(extractAndParseLastJSON(`{`+response) as DatabaseMatch, idMapping)
     } catch (err) {
-      console.error("Failed to parse JSON response. Retrying with claude-3-sonnet model.")
-      model = "claude-3-sonnet"
-      const retryResponse = await claudeChatCompletion(
+      console.error("Failed to parse JSON response. Retrying with higher temperature.")
+      const retryResponse = await FireworksChatCompletion(user,
         {
           system: matchSystemPrompt,
           messages,
           model,
-          temperature,
-          max_tokens,
-          provider: "anthropic"
-        },
-        user
+          temperature: 0.1,
+          max_tokens
+      }
       )
       database_match = remapIds(extractAndParseLastJSON(`{`+retryResponse) as DatabaseMatch, idMapping)
     }

@@ -70,6 +70,22 @@ Your task is to analyze a sentence provided by a user (contained wtihin the inpu
       }
     </output>
   </example>
+  <example>
+    <input>"200g of Annie Chun's Organic Pork & Vegetable Potstickers"</input>
+    <output>
+      {
+        "food_items": [
+          {
+            "full_single_food_database_search_name": "Organic Pork & Vegetable Potstickers",
+            "full_single_item_user_message_including_serving_or_quantity": "200g of Organic Pork & Vegetable Potstickers",
+            "branded": true,
+            "brand": "Annie Chun"
+          }
+        ],
+        "contains_valid_food_items": true
+      }
+    </output>
+  </example>
 </examples>
 
 
