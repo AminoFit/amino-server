@@ -25,7 +25,7 @@ function dedupeResults(results: FoodItemIdAndEmbedding[]): FoodItemIdAndEmbeddin
 
 export async function getBestFoodEmbeddingMatches(
   foodEmbeddingId: number,
-  messageEmbeddingId: number
+  messageEmbeddingId?: number
 ): Promise<FoodItemIdAndEmbedding[]> {
   const supabase = createAdminSupabase()
 
@@ -59,13 +59,13 @@ export async function getBestFoodEmbeddingMatches(
             }))
           : []
       ),
-    supabase
+      messageEmbeddingId ? supabase
       .rpc("get_cosine_results", {
         amount_of_results: 5,
         p_embedding_cache_id: messageEmbeddingId
       })
-      .then((result) => result.data || []),
-    supabase
+      .then((result) => result.data || []) : [],
+      messageEmbeddingId ? supabase
       .rpc("search_usda_database", {
         embedding_id: messageEmbeddingId,
         limit_amount: 5
@@ -82,7 +82,7 @@ export async function getBestFoodEmbeddingMatches(
               externalId: item.fdcId.toString()
             }))
           : []
-      )
+      ) : []
   ])
 
   // console.log("results for FoodDbEmbedding")

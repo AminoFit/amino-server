@@ -25,7 +25,7 @@ import OpenAI from "openai"
  * - If no match is found internally, an external database search is triggered.
  */
 
-const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You only output in perfect JSON.`
+const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You only output in perfect JSON and nothing else.`
 
 const matchUserRequestPrompt = `You are a food matching expert. Your task is to accurately match the user's logged food to entries in a database.
 
@@ -46,7 +46,7 @@ Find the exact match for the user's logged food in the database search results:
 3a. If a partial match is found, set extra_item_name to the unmatched food component.
 4. If no good matches exist due to nutritional differences (e.g., "milk" vs "milk powder"), set is_correct_match to false.
 
-Output the result in this JSON format, with each field looking like this:
+ONLY output JSON with each field looking like this:
 
 "reasoning" (string): Provide a brief explanation of what the item the user wants and if potential matches are exact in terms of item and nutrition (e.g. be sure we respect things like fat, caffeine etc content)
 "exact_food_match_id" (number | null): The id of the best matching food item from the database. If no good match is found, set this to null.
@@ -64,9 +64,9 @@ Output the result in this JSON format, with each field looking like this:
 6. If user had specified 'greek yogurt' we must never match with 'honey greek yogurt' since it contains extra ingredients than what user wanted.
 </examples>
 
-<format>
+<output_format>
 { "reasoning": "string", "exact_food_match_id": "number | null", "alternative_match_id": "number | null", "is_correct_match": boolean,  "extra_item_name": "string | null" }
-</format>`
+</output_format>`
 
 type DatabaseItem = {
   id: number
@@ -81,47 +81,76 @@ type ConversionResult = {
 
 const convertToDatabaseOptions = (foodItems: FoodItemIdAndEmbedding[]): ConversionResult => {
   const databaseOptions: DatabaseItem[] = foodItems.map((item, index) => ({
-    id: index + 1,
+    id: index + 1,  // Maintain this for internal reference
     name: item.name,
     brand: item.brand
-  }))
+  }));
 
-  const idMapping: Record<number, number> = foodItems.reduce((acc, item, index) => {
+  const idMapping: Record<string, number> = {}; // Change to string to accommodate compound keys
+
+  foodItems.forEach((item, index) => {
     if (item.id !== undefined) {
-      acc[item.id] = index + 1
+      idMapping[item.id.toString()] = index + 1;
+    } else if (item.externalId !== undefined && item.foodInfoSource !== undefined) {
+      // Use a compound key of source and externalId
+      const compoundKey = `${item.foodInfoSource}:${item.externalId}`;
+      idMapping[compoundKey] = index + 1;
+      // console.log(`item has no id, using externalId from ${item.foodInfoSource}`, item);
+    } else {
+      // console.log("item has no id or external ID", item);
     }
-    return acc
-  }, {} as Record<number, number>)
+  });
 
-  const databaseOptionsString = databaseOptions.map((item) => JSON.stringify(item)).join("\n")
+  const databaseOptionsString = databaseOptions.map(item => JSON.stringify(item)).join("\n");
 
-  return { databaseOptionsString, idMapping }
+  return { databaseOptionsString, idMapping };
+};
+
+function parseIfNumeric(id: string): number | string {
+  return /^[0-9]+$/.test(id) ? parseInt(id) : id;
 }
 
-const remapIds = (match: DatabaseMatch, mapping: Record<number, number>): DatabaseMatch => {
-  const remappedMatch = { ...match }
+const remapIds = (match: DatabaseMatch, mapping: Record<string, number>): DatabaseMatch => {
+  const remappedMatch = { ...match };
 
+  // Find the original ID for the best match using the helper to determine if it should be an int
   const originalIdForBestMatch = Object.keys(mapping).find(
-    (key) => mapping[parseInt(key)] === match.exact_food_match_id
-  )
+    (key) => mapping[key] === match.exact_food_match_id
+  );
+
+  // Find the original ID for the alternative match using the helper to determine if it should be an int
   const originalIdForAlternativeMatch = Object.keys(mapping).find(
-    (key) => mapping[parseInt(key)] === match.alternative_match_id
-  )
+    (key) => mapping[key] === match.alternative_match_id
+  );
 
-  remappedMatch.exact_food_match_id = originalIdForBestMatch ? parseInt(originalIdForBestMatch) : null
-  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseInt(originalIdForAlternativeMatch) : null
+  // Cast numeric string to integer if appropriate, otherwise leave as string
+  remappedMatch.exact_food_match_id = originalIdForBestMatch ? parseIfNumeric(originalIdForBestMatch) : null;
+  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseIfNumeric(originalIdForAlternativeMatch) : null;
 
-  return remappedMatch
-}
+  return remappedMatch;
+};
 
 interface DatabaseMatch {
   is_correct_match: boolean
-  exact_food_match_id?: number | null
-  alternative_match_id?: number | null
+  exact_food_match_id?: number | string | null
+  alternative_match_id?: number | string | null
   extra_item_name?: string | null
 }
 
-export async function findBestFoodMatchtoLocalDbClaude(
+function findMatchingItem(databaseOptions: FoodItemIdAndEmbedding[], matchId: string | number | null | undefined): FoodItemIdAndEmbedding | null {
+  if (matchId === null) return null;
+
+  let source: string | null = null;
+  let externalId: string | null = null;
+  if (typeof matchId === 'string' && matchId.includes(':')) {
+    [source, externalId] = matchId.split(':');
+    return databaseOptions.find(item => item.foodInfoSource === source && item.externalId === externalId) || null;
+  } else {
+    return databaseOptions.find(item => item.id === matchId) || null;
+  }
+}
+
+export async function findBestFoodMatchtoLocalDbLlama(
   database_options: FoodItemIdAndEmbedding[],
   user_request: FoodItemToLog,
   user: Tables<"User">
@@ -130,20 +159,19 @@ export async function findBestFoodMatchtoLocalDbClaude(
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
   let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
-  let max_tokens = 400
+  let max_tokens = 425
   let temperature = 0
   let prompt = matchUserRequestPrompt
     .replace("LOGGED_FOOD_NAME", foodToMatch)
     .replace("DATABASE_SEARCH_RESULTS", databaseOptionsString)
 
-  console.log("prompt", prompt)
-
   let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: matchSystemPrompt },
     { role: "user", content: prompt },
-    {
-      role: "assistant",
-      content: `{`
-    }
+    // {
+    //   role: "assistant",
+    //   content: `{`
+    // }
   ]
 
   try {
@@ -159,12 +187,11 @@ export async function findBestFoodMatchtoLocalDbClaude(
     )
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
-    console.log("response", response)
-
+    // console.log('response from llama:', response)
     let database_match: DatabaseMatch | null = null
 
     try {
-      database_match = remapIds(extractAndParseLastJSON(`{`+response) as DatabaseMatch, idMapping)
+      database_match = remapIds(extractAndParseLastJSON(response) as DatabaseMatch, idMapping)
     } catch (err) {
       console.error("Failed to parse JSON response. Retrying with higher temperature.")
       const retryResponse = await FireworksChatCompletion(user,
@@ -176,20 +203,16 @@ export async function findBestFoodMatchtoLocalDbClaude(
           max_tokens
       }
       )
-      database_match = remapIds(extractAndParseLastJSON(`{`+retryResponse) as DatabaseMatch, idMapping)
+      database_match = remapIds(extractAndParseLastJSON(retryResponse) as DatabaseMatch, idMapping)
     }
 
     if (database_match === null || !database_match.is_correct_match || !database_match.exact_food_match_id) {
       return [null, null]
     } else {
-      return [
-        database_match.exact_food_match_id
-          ? database_options.find((item) => item.id === database_match!.exact_food_match_id) as FoodItemIdAndEmbedding | null
-          : null,
-        database_match.alternative_match_id
-          ? database_options.find((item) => item.id === database_match!.alternative_match_id) as FoodItemIdAndEmbedding | null
-          : null,
-      ]
+      const match1 = findMatchingItem(database_options, database_match.exact_food_match_id);
+      const match2 = findMatchingItem(database_options, database_match.alternative_match_id);
+    
+      return [match1, match2];
     }
   } catch (err) {
     console.error(err)
@@ -228,7 +251,7 @@ async function testMatching() {
     id: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
     email: ""
   } as Tables<"User">
-  const result = await findBestFoodMatchtoLocalDbClaude(foodItems, sampleUserRequest, user)
+  const result = await findBestFoodMatchtoLocalDbLlama(foodItems, sampleUserRequest, user)
   console.log(result)
 }
 

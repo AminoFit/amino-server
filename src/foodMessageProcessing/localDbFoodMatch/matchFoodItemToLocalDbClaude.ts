@@ -79,45 +79,78 @@ type ConversionResult = {
 
 const convertToDatabaseOptions = (foodItems: FoodItemIdAndEmbedding[]): ConversionResult => {
   const databaseOptions: DatabaseItem[] = foodItems.map((item, index) => ({
-    id: index + 1,
+    id: index + 1,  // Maintain this for internal reference
     name: item.name,
     brand: item.brand
-  }))
+  }));
 
-  const idMapping: Record<number, number> = foodItems.reduce((acc, item, index) => {
+  const idMapping: Record<string, number> = {}; // Change to string to accommodate compound keys
+
+  foodItems.forEach((item, index) => {
     if (item.id !== undefined) {
-      acc[item.id] = index + 1
+      idMapping[item.id.toString()] = index + 1;
+    } else if (item.externalId !== undefined && item.foodInfoSource !== undefined) {
+      // Use a compound key of source and externalId
+      const compoundKey = `${item.foodInfoSource}:${item.externalId}`;
+      idMapping[compoundKey] = index + 1;
+      // console.log(`item has no id, using externalId from ${item.foodInfoSource}`, item);
+    } else {
+      // console.log("item has no id or external ID", item);
     }
-    return acc
-  }, {} as Record<number, number>)
+  });
 
-  const databaseOptionsString = databaseOptions.map((item) => JSON.stringify(item)).join("\n")
+  const databaseOptionsString = databaseOptions.map(item => JSON.stringify(item)).join("\n");
 
-  return { databaseOptionsString, idMapping }
+  return { databaseOptionsString, idMapping };
+};
+
+
+function parseIfNumeric(id: string): number | string {
+  return /^[0-9]+$/.test(id) ? parseInt(id) : id;
 }
 
-const remapIds = (match: DatabaseMatch, mapping: Record<number, number>): DatabaseMatch => {
-  const remappedMatch = { ...match }
 
+const remapIds = (match: DatabaseMatch, mapping: Record<string, number>): DatabaseMatch => {
+  const remappedMatch = { ...match };
+
+  // Find the original ID for the best match using the helper to determine if it should be an int
   const originalIdForBestMatch = Object.keys(mapping).find(
-    (key) => mapping[parseInt(key)] === match.exact_food_match_id
-  )
+    (key) => mapping[key] === match.exact_food_match_id
+  );
+
+  // Find the original ID for the alternative match using the helper to determine if it should be an int
   const originalIdForAlternativeMatch = Object.keys(mapping).find(
-    (key) => mapping[parseInt(key)] === match.alternative_match_id
-  )
+    (key) => mapping[key] === match.alternative_match_id
+  );
 
-  remappedMatch.exact_food_match_id = originalIdForBestMatch ? parseInt(originalIdForBestMatch) : null
-  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseInt(originalIdForAlternativeMatch) : null
+  // Cast numeric string to integer if appropriate, otherwise leave as string
+  remappedMatch.exact_food_match_id = originalIdForBestMatch ? parseIfNumeric(originalIdForBestMatch) : null;
+  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseIfNumeric(originalIdForAlternativeMatch) : null;
 
-  return remappedMatch
-}
+  return remappedMatch;
+};
+
 
 interface DatabaseMatch {
   is_correct_match: boolean
-  exact_food_match_id?: number | null
-  alternative_match_id?: number | null
+  exact_food_match_id?: number | string | null
+  alternative_match_id?: number | string | null
   extra_item_name?: string | null
 }
+
+function findMatchingItem(databaseOptions: FoodItemIdAndEmbedding[], matchId: string | number | null | undefined): FoodItemIdAndEmbedding | null {
+  if (matchId === null) return null;
+
+  let source: string | null = null;
+  let externalId: string | null = null;
+  if (typeof matchId === 'string' && matchId.includes(':')) {
+    [source, externalId] = matchId.split(':');
+    return databaseOptions.find(item => item.foodInfoSource === source && item.externalId === externalId) || null;
+  } else {
+    return databaseOptions.find(item => item.id === matchId) || null;
+  }
+}
+
 
 export async function findBestFoodMatchtoLocalDbClaude(
   database_options: FoodItemIdAndEmbedding[],
@@ -182,14 +215,10 @@ export async function findBestFoodMatchtoLocalDbClaude(
     if (database_match === null || !database_match.is_correct_match || !database_match.exact_food_match_id) {
       return [null, null]
     } else {
-      return [
-        database_match.exact_food_match_id
-          ? database_options.find((item) => item.id === database_match!.exact_food_match_id) as FoodItemIdAndEmbedding | null
-          : null,
-        database_match.alternative_match_id
-          ? database_options.find((item) => item.id === database_match!.alternative_match_id) as FoodItemIdAndEmbedding | null
-          : null,
-      ]
+      const match1 = findMatchingItem(database_options, database_match.exact_food_match_id);
+      const match2 = findMatchingItem(database_options, database_match.alternative_match_id);
+    
+      return [match1, match2];
     }
   } catch (err) {
     console.error(err)

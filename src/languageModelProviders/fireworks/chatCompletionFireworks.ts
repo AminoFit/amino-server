@@ -181,7 +181,8 @@ export async function FireworksChatCompletion(user: Tables<'User'>, options: Cha
     { role: 'system', content: systemPrompt },
     { role: 'user', content: prompt! }
   ];
-  
+
+  // console.log('effectiveMessages:', JSON.stringify(effectiveMessages))
 
   let startTime = performance.now();
 

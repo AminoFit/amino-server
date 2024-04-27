@@ -1,4 +1,8 @@
 export function extractAndParseLastJSON(inputString: string) {
+  // if first character is not a curly brace, add one
+  if (inputString.charAt(0) !== '{') {
+    inputString = '{' + inputString;
+  }
   // Regular expression to find content between triple backticks
   const jsonRegex = /```json\n([\s\S]*?)\n```/g;
   // Regex to find the last JSON object
