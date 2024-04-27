@@ -1,11 +1,13 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { claudeChatCompletion } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
+import { FireworksChatCompletion, FireworksChatCompletionStream } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import Anthropic from "@anthropic-ai/sdk"
 import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
 import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
 import { checkCompliesWithSchema } from "../../languageModelProviders/openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 import { extractAndParseLastJSON } from "../common/extractJSON"
+import { re } from "mathjs"
+import OpenAI from "openai"
 
 /**
  * Discriminative Food Item Matcher
@@ -23,7 +25,7 @@ import { extractAndParseLastJSON } from "../common/extractJSON"
  * - If no match is found internally, an external database search is triggered.
  */
 
-const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You always finish with an output in perfect JSON.`
+const matchSystemPrompt = `You are a helpful food matching assistant that precisely and accurately matches user logged foods to database entries. You only match if the food is clearly the same otherwise you refuse to match and continue searching online. You only output in perfect JSON and nothing else.`
 
 const matchUserRequestPrompt = `You are a food matching expert. Your task is to accurately match the user's logged food to entries in a database.
 
@@ -44,7 +46,7 @@ Find the exact match for the user's logged food in the database search results:
 3a. If a partial match is found, set extra_item_name to the unmatched food component.
 4. If no good matches exist due to nutritional differences (e.g., "milk" vs "milk powder"), set is_correct_match to false.
 
-Output the result in this JSON format, with each field looking like this:
+ONLY output JSON with each field looking like this:
 
 "reasoning" (string): Provide a brief explanation of what the item the user wants and if potential matches are exact in terms of item and nutrition (e.g. be sure we respect things like fat, caffeine etc content)
 "exact_food_match_id" (number | null): The id of the best matching food item from the database. If no good match is found, set this to null.
@@ -62,9 +64,9 @@ Output the result in this JSON format, with each field looking like this:
 6. If user had specified 'greek yogurt' we must never match with 'honey greek yogurt' since it contains extra ingredients than what user wanted.
 </examples>
 
-<format>
+<output_format>
 { "reasoning": "string", "exact_food_match_id": "number | null", "alternative_match_id": "number | null", "is_correct_match": boolean,  "extra_item_name": "string | null" }
-</format>`
+</output_format>`
 
 type DatabaseItem = {
   id: number
@@ -104,11 +106,9 @@ const convertToDatabaseOptions = (foodItems: FoodItemIdAndEmbedding[]): Conversi
   return { databaseOptionsString, idMapping };
 };
 
-
 function parseIfNumeric(id: string): number | string {
   return /^[0-9]+$/.test(id) ? parseInt(id) : id;
 }
-
 
 const remapIds = (match: DatabaseMatch, mapping: Record<string, number>): DatabaseMatch => {
   const remappedMatch = { ...match };
@@ -130,7 +130,6 @@ const remapIds = (match: DatabaseMatch, mapping: Record<string, number>): Databa
   return remappedMatch;
 };
 
-
 interface DatabaseMatch {
   is_correct_match: boolean
   exact_food_match_id?: number | string | null
@@ -151,8 +150,7 @@ function findMatchingItem(databaseOptions: FoodItemIdAndEmbedding[], matchId: st
   }
 }
 
-
-export async function findBestFoodMatchtoLocalDbClaude(
+export async function findBestFoodMatchtoLocalDbLlama(
   database_options: FoodItemIdAndEmbedding[],
   user_request: FoodItemToLog,
   user: Tables<"User">
@@ -160,56 +158,52 @@ export async function findBestFoodMatchtoLocalDbClaude(
   const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
-  let model = "claude-3-haiku"
-  let max_tokens = 400
+  let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
+  let max_tokens = 425
   let temperature = 0
   let prompt = matchUserRequestPrompt
     .replace("LOGGED_FOOD_NAME", foodToMatch)
     .replace("DATABASE_SEARCH_RESULTS", databaseOptionsString)
 
-  let messages: Anthropic.Messages.MessageParam[] = [
+  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: matchSystemPrompt },
     { role: "user", content: prompt },
-    {
-      role: "assistant",
-      content: `{`
-    }
+    // {
+    //   role: "assistant",
+    //   content: `{`
+    // }
   ]
 
   try {
     const timerStart = Date.now()
-    const response = await claudeChatCompletion(
+    const response = await FireworksChatCompletion(user,
       {
         system: matchSystemPrompt,
         messages,
         model,
         temperature,
-        max_tokens,
-        provider: "anthropic"
-      },
-      user
+        max_tokens
+    }
     )
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
-
+    // console.log('response from llama:', response)
     let database_match: DatabaseMatch | null = null
 
     try {
-      database_match = remapIds(extractAndParseLastJSON(`{`+response) as DatabaseMatch, idMapping)
+      database_match = remapIds(extractAndParseLastJSON(response) as DatabaseMatch, idMapping)
     } catch (err) {
-      console.error("Failed to parse JSON response. Retrying with claude-3-sonnet model.")
-      model = "claude-3-sonnet"
-      const retryResponse = await claudeChatCompletion(
+      console.error("Failed to parse JSON response. Retrying with higher temperature.")
+      const retryResponse = await FireworksChatCompletion(user,
         {
           system: matchSystemPrompt,
           messages,
           model,
-          temperature,
-          max_tokens,
-          provider: "anthropic"
-        },
-        user
+          temperature: 0.1,
+          max_tokens
+      }
       )
-      database_match = remapIds(extractAndParseLastJSON(`{`+retryResponse) as DatabaseMatch, idMapping)
+      database_match = remapIds(extractAndParseLastJSON(retryResponse) as DatabaseMatch, idMapping)
     }
 
     if (database_match === null || !database_match.is_correct_match || !database_match.exact_food_match_id) {
@@ -257,7 +251,7 @@ async function testMatching() {
     id: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
     email: ""
   } as Tables<"User">
-  const result = await findBestFoodMatchtoLocalDbClaude(foodItems, sampleUserRequest, user)
+  const result = await findBestFoodMatchtoLocalDbLlama(foodItems, sampleUserRequest, user)
   console.log(result)
 }
 

@@ -90,40 +90,74 @@ type ConversionResult = {
 
 const convertToDatabaseOptions = (foodItems: FoodItemIdAndEmbedding[]): ConversionResult => {
   const databaseOptions: DatabaseItem[] = foodItems.map((item, index) => ({
-    id: index + 1,
+    id: index + 1,  // Maintain this for internal reference
     name: item.name,
     brand: item.brand
   }));
 
-  const idMapping: Record<number, number> = foodItems.reduce((acc, item, index) => {
-    if (item.id !== undefined) {
-      acc[item.id] = index + 1;
-    }
-    return acc;
-  }, {} as Record<number, number>);
+  const idMapping: Record<string, number> = {}; // Change to string to accommodate compound keys
 
-  const databaseOptionsString = databaseOptions.map((item) => JSON.stringify(item)).join("\n");
+  foodItems.forEach((item, index) => {
+    if (item.id !== undefined) {
+      idMapping[item.id.toString()] = index + 1;
+    } else if (item.externalId !== undefined && item.foodInfoSource !== undefined) {
+      // Use a compound key of source and externalId
+      const compoundKey = `${item.foodInfoSource}:${item.externalId}`;
+      idMapping[compoundKey] = index + 1;
+      // console.log(`item has no id, using externalId from ${item.foodInfoSource}`, item);
+    } else {
+      // console.log("item has no id or external ID", item);
+    }
+  });
+
+  const databaseOptionsString = databaseOptions.map(item => JSON.stringify(item)).join("\n");
 
   return { databaseOptionsString, idMapping };
 };
 
-const remapIds = (match: DatabaseMatch, mapping: Record<number, number>): DatabaseMatch => {
+function parseIfNumeric(id: string): number | string {
+  return /^[0-9]+$/.test(id) ? parseInt(id) : id;
+}
+
+const remapIds = (match: DatabaseMatch, mapping: Record<string, number>): DatabaseMatch => {
   const remappedMatch = { ...match };
 
-  const originalIdForBestMatch = Object.keys(mapping).find(key => mapping[parseInt(key)] === match.best_food_match_id);
-  const originalIdForAlternativeMatch = Object.keys(mapping).find(key => mapping[parseInt(key)] === match.alternative_match_id);
+  // Find the original ID for the best match using the helper to determine if it should be an int
+  const originalIdForBestMatch = Object.keys(mapping).find(
+    (key) => mapping[key] === match.best_food_match_id
+  );
 
-  remappedMatch.best_food_match_id = originalIdForBestMatch ? parseInt(originalIdForBestMatch) : null;
-  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseInt(originalIdForAlternativeMatch) : null;
+  // Find the original ID for the alternative match using the helper to determine if it should be an int
+  const originalIdForAlternativeMatch = Object.keys(mapping).find(
+    (key) => mapping[key] === match.alternative_match_id
+  );
+
+  // Cast numeric string to integer if appropriate, otherwise leave as string
+  remappedMatch.best_food_match_id = originalIdForBestMatch ? parseIfNumeric(originalIdForBestMatch) : null;
+  remappedMatch.alternative_match_id = originalIdForAlternativeMatch ? parseIfNumeric(originalIdForAlternativeMatch) : null;
 
   return remappedMatch;
 };
 
 interface DatabaseMatch {
   no_good_matches: boolean;
-  best_food_match_id?: number | null;
-  alternative_match_id?: number | null;
+  best_food_match_id?: number | string | null;
+  alternative_match_id?: number | string | null;
   extra_item_name?: string | null;
+}
+
+
+function findMatchingItem(databaseOptions: FoodItemIdAndEmbedding[], matchId: string | number | null | undefined): FoodItemIdAndEmbedding | null {
+  if (matchId === null) return null;
+
+  let source: string | null = null;
+  let externalId: string | null = null;
+  if (typeof matchId === 'string' && matchId.includes(':')) {
+    [source, externalId] = matchId.split(':');
+    return databaseOptions.find(item => item.foodInfoSource === source && item.externalId === externalId) || null;
+  } else {
+    return databaseOptions.find(item => item.id === matchId) || null;
+  }
 }
 
 
@@ -134,7 +168,7 @@ export async function findBestFoodMatchtoLocalDb(
   ): Promise<[FoodItemIdAndEmbedding | null, FoodItemIdAndEmbedding | null]> {
     const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
-  console.log("databaseOptionsString", databaseOptionsString)
+  // console.log("databaseOptionsString", databaseOptionsString)
   let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8nXQZjeQ"
   let max_tokens = 300
   let temperature = 0
@@ -163,14 +197,14 @@ export async function findBestFoodMatchtoLocalDb(
 
     // console.log(response)
     const database_match = remapIds(extractAndParseLastJSON(response.content!) as DatabaseMatch, idMapping);
-    console.log(database_match)
+    // console.log(database_match)
     if (database_match.no_good_matches || !database_match.best_food_match_id) {
       return [null, null];
     } else {
-      return [
-        database_match.best_food_match_id ? database_options[database_match.best_food_match_id - 1] : null,
-        database_match.alternative_match_id ? database_options[database_match.alternative_match_id - 1] : null
-      ];
+      const match1 = findMatchingItem(database_options, database_match.best_food_match_id);
+      const match2 = findMatchingItem(database_options, database_match.alternative_match_id);
+    
+      return [match1, match2];
     }
 
   } catch (err) {

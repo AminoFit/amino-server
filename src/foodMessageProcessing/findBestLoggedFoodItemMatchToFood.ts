@@ -18,7 +18,7 @@ import { re } from "mathjs"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
 import { getUserByEmail } from "./common/debugHelper"
-import { findBestFoodMatchtoLocalDbClaude } from "./localDbFoodMatch/matchFoodItemToLocalDbClaude"
+import { findBestFoodMatchtoLocalDbLlama } from "./localDbFoodMatch/matchFoodItemToLocalDbLlama"
 
 async function getFoodItemFromDbOrExternal(
   foodItem: FoodItemIdAndEmbedding,
@@ -91,7 +91,7 @@ export async function findBestLoggedFoodItemMatchToFood(
   if (lowQualityMatches.length) {
     const topMatches = lowQualityMatches.slice(0, 20)
     console.log("Trying to find best match in local db")
-    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDbClaude(topMatches, food, user)
+    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDbLlama(topMatches, food, user)
     console.log("localDbMatch", localDbMatch?.name, localDbMatch?.brand)
     console.log("secondBestMatch", secondBestMatch?.name, secondBestMatch?.brand)
     if (localDbMatch) {
