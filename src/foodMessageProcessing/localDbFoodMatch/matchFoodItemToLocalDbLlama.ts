@@ -62,6 +62,77 @@ ONLY output JSON with each field looking like this:
 4. If user had specified 'butter' we could match with say 'unsalted butter' but have 'unsalted butter' as second match (if available).
 5. If user had specified 'unsalted butter' we must never match with 'salted butter' since it is clearly different.
 6. If user had specified 'greek yogurt' we must never match with 'honey greek yogurt' since it contains extra ingredients than what user wanted.
+
+Sample 1:
+Input: "Nutella"
+Database Items:
+{"id":1,"name":"Nutella B-Ready","brand":"Ferrero"}
+{"id":2,"name":"nutella","brand":null}
+{"id":3,"name":"Hazelnut Spread, with Cocoa","brand":"Nutella Ferrero"}
+{"id":4,"name":"FILLED WITH NUTELLA CRISPY WAFER","brand":"Ferrero U.S.A., Incorporated"}
+{"id":5,"name":"Cookies Filled With Hazelnut Spread","brand":"Nutella"}
+{"id":6,"name":"Ferrero, Nutella, Hazelnut Spread With Cocoa Mini Cups","brand":"Ferrero"}
+{"id":7,"name":"Hazelnut Spread With Cocoa Crispy Wafer Filled With Nutella, Hazelnut Spread With Cocoa","brand":"Nutella"}
+{"id":8,"name":"Biscuits Cookies Filled With Nutella Hazelnut Spread","brand":"Nutella"}
+{"id":9,"name":"Hazelnut Spread With Cocoa, Hazelnut Spread","brand":"Nutella"}
+{"id":10,"name":"Hazelnut Spread + Breadsticks","brand":"Nutella & Go!"}
+{"id":11,"name":"Hazelnut Spread With Cocoa, Cocoa","brand":"Nutella"}
+Output:
+{
+  "reasoning": "The user wants Ferrero Nutella, a specific brand and type of hazelnut spread. We only match with the ones that are spreads and not the cookies or breadsticks.",
+  "exact_food_match_id": 3,
+  "alternative_match_id": 11,
+  "is_correct_match": true,
+  "extra_item_name": null
+  }
+Sample 2:
+Input: "Dave's Killer Bread"
+Database Items:
+{"id":1,"name":"Whole Wheat Bread","brand":"Dave's Killer Bread"}
+{"id":2,"name":"Organic Bread, Whole Grains and Seeds","brand":"Dave's Killer Bread"}
+{"id":3,"name":"21 Whole Grain & Seeds","brand":"Dave's Killer Bread"}
+{"id":4,"name":"Killer Classic Organic English Muffin","brand":"Dave's Killer Bread"}
+{"id":5,"name":"Organic Bagels, Plain Awesome","brand":"Dave's Killer Bread"}
+Output:
+{
+  "reasoning": "The user wants Dave's Killer Bread. They haven't specified which type so we can assume the most common one which seems to be the whole bread.",
+  "exact_food_match_id": 1,
+  "alternative_match_id": 2,
+  "is_correct_match": true,
+  "extra_item_name": null
+}
+Sample 3:
+Input: "Optimum Nutrition - Platinum Hydrowhey Protein"
+Database Items:
+{"id":1,"name":"Platinum Hydro Whey - Velocity Vanilla","brand":"Optimum Nutrition"}
+{"id":2,"name":"Platinum Hydro Whey, Turbo Chocolate","brand":"Optimum Nutrition"}
+{"id":3,"name":"Gold Standard Whey Protein","brand":"Optimum Nutrition"}
+{"id":4,"name":"Whey Protein","brand":"ON Optimum Nutrition"}
+{"id":5,"name":"Whey Protein, Vanilla","brand":"Optimum Nutrition"}
+Output:
+{
+  "reasoning": "The user wants Optimum Nutrition - Platinum Hydrowhey Protein. They didn't specify which flavor so we can assume vanilla for now unless they specify later. We can match with chocolate as backup.",
+  "exact_food_match_id": 1,
+  "alternative_match_id": 2,
+  "is_correct_match": true,
+  "extra_item_name": null
+}
+Sample 4:
+Input: "Optimum Nutrition - Platinum Hydrowhey Protein"
+Database Items:
+{"id":1,"name":"Cheesecake Protein Powder","brand":"Optimum Nutrition"}
+{"id":2,"name":"Strawberry Protein Powder","brand":"Optimum Nutrition"}
+{"id":3,"name":"Gold Standard Whey Protein","brand":"Optimum Nutrition"}
+{"id":4,"name":"Whey Protein","brand":"ON Optimum Nutrition"}
+{"id":5,"name":"Whey Protein, Vanilla","brand":"Optimum Nutrition"}
+Output:
+{
+  "reasoning": "The user wants Optimum Nutrition - Platinum Hydrowhey Protein. The 'Hydrowhey' part seems to be important so we should continue searching for more items that have that in their name.",
+  "exact_food_match_id": null,
+  "alternative_match_id": nu,
+  "is_correct_match": false,
+  "extra_item_name": null
+}
 </examples>
 
 <output_format>
@@ -155,7 +226,7 @@ export async function findBestFoodMatchtoLocalDbLlama(
   user_request: FoodItemToLog,
   user: Tables<"User">
 ): Promise<[FoodItemIdAndEmbedding | null, FoodItemIdAndEmbedding | null]> {
-  const foodToMatch = (user_request.brand ? ` - ${user_request.brand}` : "") + user_request.food_database_search_name
+  const foodToMatch = (user_request.brand ? `${user_request.brand} - ` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
   let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
@@ -187,6 +258,7 @@ export async function findBestFoodMatchtoLocalDbLlama(
     )
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
+    console.log('response', response)
     // console.log('response from llama:', response)
     let database_match: DatabaseMatch | null = null
 

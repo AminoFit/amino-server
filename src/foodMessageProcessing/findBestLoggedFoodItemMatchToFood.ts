@@ -20,7 +20,7 @@ import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
 import { getUserByEmail } from "./common/debugHelper"
 import { findBestFoodMatchtoLocalDbLlama } from "./localDbFoodMatch/matchFoodItemToLocalDbLlama"
 
-async function getFoodItemFromDbOrExternal(
+export async function getFoodItemFromDbOrExternal(
   foodItem: FoodItemIdAndEmbedding,
   user: Tables<"User">,
   messageId: number

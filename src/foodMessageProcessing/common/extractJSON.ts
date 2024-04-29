@@ -1,63 +1,113 @@
+import { i } from "mathjs"
+
 export function extractAndParseLastJSON(inputString: string) {
-  // if first character is not a curly brace, add one
-  if (inputString.charAt(0) !== '{') {
-    inputString = '{' + inputString;
-  }
-  // Regular expression to find content between triple backticks
-  const jsonRegex = /```json\n([\s\S]*?)\n```/g;
-  // Regex to find the last JSON object
-  const fallbackJsonRegex = /\{[\s\S]*?\}$/;
-  // Regex to find math expressions
-  const mathExpressionRegex = /(\d+(?:\.\d+)?\s*[*/]\s*\d+(?:\.\d+)?)/g;
+  // Strip non-JSON text and balance brackets before processing
+  inputString = stripAndBalanceBrackets(inputString)
+  console.log("inputString", inputString)
+  // Regular expression to find content between triple backticks labeled as JSON
+  const jsonRegex = /```json\n([\s\S]*?)\n```/g
+  // Fallback regex to capture the last well-formed JSON object
+  const fallbackJsonRegex = /{(?:[^{}]*|{(?:[^{}]*|{(?:[^{}]*|{(?:[^{}]*|{[^{}]*})*})*})*})*}/
+  // const fallbackJsonRegex = /{[\s\S]*}$/;
 
-  let lastMatch;
-  let match;
+  // Regex to find and evaluate math expressions within the JSON string
+  // const mathExpressionRegex = /(\d+(?:\.\d+)?\s*[*/+-]\s*\d+(?:\.\d+)?)/g;
+  const mathExpressionRegex = /\d+(\.\d+)?(?:\s*[*/+-]\s*\d+(\.\d+)?)+/g
 
-  // Use a loop to find the last match with the first pattern
+  let lastMatch, match
+
+  // Iterate to find the last match with the JSON-specific pattern
   while ((match = jsonRegex.exec(inputString)) !== null) {
-    lastMatch = match;
+    lastMatch = match
   }
 
-  // If a match is found with the first pattern, try parsing it
+  // If a match is found, attempt to parse it
   if (lastMatch) {
     try {
-      // Replace math expressions with their evaluated values
-      const jsonString = lastMatch[1].replace(mathExpressionRegex, (match) => {
+      // Replace math expressions within the JSON string and evaluate them
+      const jsonString = lastMatch[1].replace(mathExpressionRegex, (expr) => {
         try {
-          return eval(match);
+          // Evaluate the expression safely
+          return eval(expr)
         } catch (e) {
-          console.error("Error evaluating math expression:", e);
-          return match;
+          console.error("Error evaluating math expression:", e)
+          return expr // Return the original expression if evaluation fails
         }
-      });
-      return JSON.parse(jsonString);
+      })
+      return JSON.parse(jsonString) // Parse the modified JSON string
     } catch (e) {
-      console.error("Error parsing JSON:", e);
-      // If parsing fails, do not return immediately; try the fallback pattern
+      console.error("Error parsing JSON:", e)
+      // If parsing fails, try the fallback regex
     }
   }
 
-  // Fallback: try to find and parse the last JSON object if the first pattern didn't match or failed to parse
-  const fallbackMatch = inputString.match(fallbackJsonRegex);
+  // Fallback: attempt to find and parse the last JSON object
+  const fallbackMatch = inputString.match(fallbackJsonRegex)
+  // console.log("fallbackMatch", fallbackMatch)
   if (fallbackMatch) {
+    // console.log("Fallback match found:", fallbackMatch[0])
     try {
       // Replace math expressions with their evaluated values
-      const jsonString = fallbackMatch[0].replace(mathExpressionRegex, (match) => {
+      const jsonString = fallbackMatch[0].replace(mathExpressionRegex, (expr) => {
         try {
-          return eval(match);
+          return eval(expr)
         } catch (e) {
-          console.error("Error evaluating math expression:", e);
-          return match;
+          console.error("Error evaluating math expression:", e)
+          return expr
         }
-      });
-      return JSON.parse(jsonString);
+      })
+      return JSON.parse(jsonString) // Parse the modified JSON string
     } catch (e) {
-      console.error("Error parsing fallback JSON:", e);
-      return null;
+      console.error("Error parsing fallback JSON:", e)
+      return null
     }
   }
 
-  // If no JSON found or all parsing attempts failed
-  console.warn("No JSON found in the input string");
-  return null;
+  // Log a warning if no JSON is found and return null
+  console.warn("No JSON found in the input string for the user message:", inputString)
+  return null
 }
+
+function stripAndBalanceBrackets(inputString: string) {
+  let depth = 0
+  let filteredString = ""
+
+  for (let i = 0; i < inputString.length; i++) {
+    const char = inputString[i]
+
+    if (char === "{") {
+      if (depth === 0 && filteredString && !filteredString.endsWith("\n")) {
+        filteredString += "\n" // Ensure proper newline separation for JSON blocks
+      }
+      depth++
+    }
+
+    if (depth > 0) {
+      filteredString += char
+    }
+
+    if (char === "}") {
+      depth--
+      if (depth === 0 && i !== inputString.length - 1) {
+        filteredString += "\n" // Append newline after closing a JSON block
+      }
+    }
+  }
+
+  return filteredString
+}
+
+function testExtractJSON() {
+  const inputString = ` {
+  "equation_grams": "20 * 2.03",
+  "serving_name": "half",
+  "amount": 20,
+  "matching_serving_id": 1
+}
+`
+  console.log(inputString.toString())
+  const result = extractAndParseLastJSON(inputString)
+  console.log(result)
+}
+
+// testExtractJSON()

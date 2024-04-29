@@ -100,7 +100,7 @@ async function addFoodItemToDatabase(
   // console.log("Insert FoodItem result data:", newFood)
 
   if (insertError) {
-    console.error("Error inserting food item", insertError)
+    console.error("Error inserting food item to database", insertError)
     throw insertError
   }
 
