@@ -2,32 +2,39 @@ import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { chatCompletion } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import OpenAI from "openai"
 import * as math from "mathjs"
-import { extractAndParseLastJSON } from "./common/extractJSON"
-import { getUserByEmail } from "./common/debugHelper"
+import { extractAndParseLastJSON } from "../common/extractJSON"
+import { getUserByEmail } from "../common/debugHelper"
+import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 
-const serving_assignement_prompt = `User_message:
-"USER_SERVING_INPUT"
+const serving_assignement_prompt = `<user_message>
+USER_SERVING_INPUT
+</user_message>
 
-food_info:
+<food_info>
 FOOD_INFO_DETAILS
+</food_info>
 
-food_serving_info:
+<food_serving_info>
 FOOD_SERVING_DETAILS
+</food_serving_info>
 
-Goal:
-Your task is to calculate the gram amount of a specified serving, using available information.
+<goal>
+Your task is to calculate the gram amount of a specified serving, using available information or general knowledge about food.
+</goal>
 
-Information
-1. If the user's description is vague, estimate as accurately as possible.
+<instructions>
+1. If the user's description is vague, estimate as accurately as possible. If there is no informaiton assume the default serving size.
 2. In cases where the item is described in relative terms like 'large' or 'small', and standard portions exist, apply a suitable multiplier (e.g., 'large' might be 1.1 times the standard).
 3. Only use the serving info if it seems that user is referring to it.
 4. If the user uses common measure units like ml, oz, lb, cup etc please use an appropriate conversion to grams.
 5. Ultimately make sure that the equation_grams results in what would be a reasonable amount in grams for the serving.
 
 Your output should be in JSON format, structured as follows:
+
+reasoning:
+Think about what information can be best used to estimate the gram amount
 
 equation_grams:
 Also known as the User Serving Equation Amount for Grams - This is the calculated gram amount the user consumed. If the calculation is straightforward, a simple number can be used. The result cannot be zero. Make an educated estimate if necessary. MUST ONLY CONTAINS NUMBERS AND NUMERICAL OPERATORS LIKE +-/*
@@ -38,18 +45,118 @@ User serving name of unit short - short description of the serving unit the user
 amount:
 User Serving Amount - The quantity consumed by the user, in terms of user_serving_unit_short.
 
+full_serving_string:
+This is the most common way to describe the serving. E.g. "3 pieces", "50g", "1.5cups", "1 bottle" etc based on what the food is.
+
 matching_serving_id:
 The matching serving id - if there is a serving that matches the user request we can use that.
+<instructions>
 
-You can reason for max 1-2 sentences then output in JSON.
-
-You will output in this perfect JSON format:
+<examples>
+Example 1:
+Input: "3 Mini Chicken & Vegetable Wonton bibigo"
+Food Info: {"name":"Mini Wontons Chicken & Vegetable","brand":"Bibigo","defaultServingWeightGram":140,"kcalPerServing":230,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: [{"id":1,"servingWeightGram":140,"servingName":"pieces","servingAlternateAmount":null,"servingAlternateUnit":null,"defaultServingAmount":13}]
+Output:
 {
+  "reasoning": "The default serving amount is 13 pieces for 140 gram so we can normalize that to get 3 pieces",
+  "equation_grams": "140 / 13 * 3",
+  "amount": 3,
+  "serving_name": "pcs",
+  "full_serving_string": "3 pieces",
+  "matching_serving_id": 1
+}
+
+Example 2:
+Input: "1 tbsp of chocolate hazelnut spread"
+Food Info: {"name":"Hazelnut Chocolate Spread","brand":"Bonne Maman","defaultServingWeightGram":33,"kcalPerServing":180,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: [{"id":1,"servingWeightGram":33,"servingName":"tbsp","servingAlternateAmount":null,"servingAlternateUnit":null,"defaultServingAmount":2}]
+Output:
+{
+  "reasoning": "defaultServingAmount is 2 tbsp for 33 gram so we can normalize that to get 1 tbsp which is what the user requested",
+  "equation_grams": "33 / 2 * 1",
+  "amount": 1,
+  "serving_name": "tbsp",
+  "full_serving_string": "1 tbsp",
+  "matching_serving_id": 1
+}
+Example 3:
+Input: "10 raspberries"
+Food Info: {"name":"Raspberries, Raw","brand":"","defaultServingWeightGram":100,"kcalPerServing":57.3375,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: []
+Output:
+{
+  "reasoning": "The default serving doesn't tell us much about the weight of a single raspberry. However we know that an individual raspberry weighs 3–5 g. We can assume 4g to calculate the total weight of 10 raspberries.",
+  "equation_grams": "10 * 4",
+  "amount": 4,
+  "serving_name": "raspberries",
+  "full_serving_string": "4 raspberries",
+  "matching_serving_id": null
+}
+Example 4:
+Input: 2 salmon avocado sushi
+Food Info: {"name":"salmon avocado sushi","brand":null,"defaultServingWeightGram":210.98,"kcalPerServing":329.12,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info:[{"id":1,"servingWeightGram":210.98,"servingName":"roll","servingAlternateAmount":1,"servingAlternateUnit":"roll","defaultServingAmount":1},{"id":2,"servingWeightGram":26,"servingName":"piece","servingAlternateAmount":1,"servingAlternateUnit":"piece","defaultServingAmount":1},{"id":3,"servingWeightGram":28.3495,"servingName":"wt. oz","servingAlternateAmount":1,"servingAlternateUnit":"wt. oz","defaultServingAmount":1}]
+Output:
+{
+  "reasoning": "The user specified 2 salmon avocado sushi which usually means 2 pieces. We can use that to calculate the total weight of 2 pieces.",
+  "equation_grams": "26 * 2",
+  "amount": 2,
+  "serving_name": "pieces",
+  "full_serving_string": "2 pieces",
+  "matching_serving_id": 2
+}
+Example 5:
+Input: half an avocado
+Food Info: {"name":"Avocado, Raw","brand":"","defaultServingWeightGram":100,"kcalPerServing":160,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: [{"id":1,"servingWeightGram":150,"servingName":"1 fruit","servingAlternateAmount":null,"servingAlternateUnit":null,"defaultServingAmount":1},{"id":2,"servingWeightGram":230,"servingName":"1 cup, mashed or pureed","servingAlternateAmount":0,"servingAlternateUnit":"","defaultServingAmount":1},{"id":3,"servingWeightGram":150,"servingName":"1 cup","servingAlternateAmount":0,"servingAlternateUnit":"","defaultServingAmount":1},{"id":4,"servingWeightGram":15,"servingName":"1 slice","servingAlternateAmount":0,"servingAlternateUnit":"","defaultServingAmount":1}]
+Output:
+{
+  "reasoning": "The user specified half an avocado. We can see that one avocado fruit is 150 grams so we can use that to calculate the total weight of 0.5 avocados.",
+  "equation_grams": "150 / 2",
+  "amount": 0.5,
+  "serving_name": "avocado",
+  "full_serving_string": "0.5 avocado",
+  "matching_serving_id": null
+}
+Example 6:
+Input: one cup of Carbo Gain
+Food Info: {"name":"Carbo Gain","brand":"Now Foods","defaultServingWeightGram":67,"kcalPerServing":250,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: [{"id":1,"servingWeightGram":67,"servingName":"2/3 cup","servingAlternateAmount":null,"servingAlternateUnit":null,"defaultServingAmount":1}]
+Output:
+{
+  "reasoning": "Using the serving information provided, we know that 2/3 cup of Carbo Gain weighs 67 grams. Thus 1 cup is 67/(2/3)",
+  "equation_grams": "67 / (2/3) * 1",
+  "amount": 1,
+  "serving_name": "cup",
+  "full_serving_string": "1 cup",
+  "matching_serving_id": 1
+}
+Example 7:
+Input: one whole Chia Seed Pudding container
+Food Info:{"name":"Chia Seed Pudding","brand":"Juice Press","defaultServingWeightGram":129,"kcalPerServing":220,"defaultServingLiquidMl":null,"isLiquid":false,"weightUnknown":false}
+Serving Info: [{"id":1,"servingWeightGram":129,"servingName":"0.5 container","servingAlternateAmount":0.5,"servingAlternateUnit":"container","defaultServingAmount":1}]
+Output:
+{
+  "reasoning": "The user specified one whole container of Chia Seed Pudding. One serving is likely 0.5 container. According to the food serving info provided, 0.5 of a container weighs 129 grams.",
+  "equation_grams": "129 / 0.5 * 1",
+  "amount": 1,
+  "serving_name": "container",
+  "full_serving_string": "1 container",
+  "matching_serving_id": 1
+}
+</examples>
+
+<output_format>
+{
+  "reasoning": "string:
   "equation_grams": "string",
-  "serving_name": "string",
   "amount": "number,
+  "serving_name": "string",
+  "full_serving_string": "string",
   "matching_serving_id":"number | null"
-}`
+}
+</output_format>`
 
 let systemPrompt = `You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON.`
 interface ConversionResult {
@@ -105,6 +212,7 @@ function convertToServing(
     serving_name: string
     amount: number
     matching_serving_id: number | null
+    full_serving_string: string
   }
 
   const serving_amount_grams = math.evaluate(JSON_result.equation_grams)
@@ -139,7 +247,7 @@ function convertToServing(
     serving_g_or_ml: "g",
     total_serving_g_or_ml: serving_amount_grams,
     serving_id: matchingServingId,
-    full_serving_string: `${JSON_result.amount} ${JSON_result.serving_name}`
+    full_serving_string: `${JSON_result.full_serving_string}`
   }
 
   return food_item_to_log
@@ -153,30 +261,30 @@ async function getResponseWithRetry(
   max_tokens: number,
   user: Tables<"User">
 ) {
-  let response = await chatCompletion(
+  let response = await FireworksChatCompletion(
+    user,
     {
       messages,
       model,
       temperature,
       max_tokens
-    },
-    user
+    }
   )
-  if (!response.content || extractAndParseLastJSON(response.content) === null) {
-    response = await chatCompletion(
+  if (!response || extractAndParseLastJSON(response) === null) {
+    response = await FireworksChatCompletion(
+      user,
       {
         messages,
         model: backup_model,
         temperature,
         max_tokens
-      },
-      user
+      }
     )
   }
   return response
 }
 
-export async function findBestServingMatchChat(
+export async function findBestServingMatchChatLlama(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
@@ -194,22 +302,22 @@ export async function findBestServingMatchChat(
   ]
 
   // throw new Error("stop")
-  let model = "ft:gpt-3.5-turbo-1106:hedge-labs::8oaRSJIo"
-  let backup_model = "gpt-4-0125-preview"
+  let model = "accounts/fireworks/models/llama-v3-70b-instruct"
+  let backup_model = "accounts/fireworks/models/llama-v3-70b-instruct"
   let max_tokens = 1256
   let temperature = 0.0
 
   let response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
 
-  food_item_to_log = convertToServing(response.content!, idMapping, food_item, food_item_to_log)
+  food_item_to_log = convertToServing(response!, idMapping, food_item, food_item_to_log)
 
   if ((food_item_to_log.serving?.total_serving_g_or_ml ?? 0) < 1) {
     temperature = 0.1
     response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
-    food_item_to_log = convertToServing(response.content!, idMapping, food_item, food_item_to_log)
+    food_item_to_log = convertToServing(response!, idMapping, food_item, food_item_to_log)
   }
   if ((food_item_to_log.serving?.total_serving_g_or_ml ?? 0) < 1) {
-    model = "gpt-4-0125-preview"
+    model = "accounts/fireworks/models/llama-v3-70b-instruct"
     response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
   }
   return food_item_to_log
@@ -244,7 +352,7 @@ async function testServingMatchRequest() {
   // const { bgeBaseEmbedding, ...rest } = food_item
   // console.log(rest)
   // console.log(food_item)
-  const serving_result = await findBestServingMatchChat(food_serving_request, food_item, user)
+  const serving_result = await findBestServingMatchChatLlama(food_serving_request, food_item, user)
   console.log(serving_result)
   return
 }

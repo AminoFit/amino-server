@@ -253,10 +253,10 @@ async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
   const messageId = 1200
   const foodToLog = {
-    food_database_search_name: "Full Fat Oatmilk Oatly",
-    full_item_user_message_including_serving: "Full Fat Oatmilk Oatly",
+    food_database_search_name: "Magic spoon peanut butter cereal",
+    full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
     branded: true,
-    brand: "Oatly"
+    brand: "Magic spoon"
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const food_embed_cache = await foodToLogEmbedding(foodToLog)
@@ -302,10 +302,10 @@ async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog)
 async function testAddCustomMadeFood() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const foodToLog = {
-    food_database_search_name: "Classic Chicken Bone Broth",
-    full_item_user_message_including_serving: "Classic Chicken Bone Broth",
+    food_database_search_name: "Magic spoon peanut butter cereal",
+    full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
     branded: true,
-    brand: "Kettle & Fire"
+    brand: "Magic Spoon"
   } as FoodItemToLog
 
   const result = await addCustomMadeFood(user!, foodToLog)
