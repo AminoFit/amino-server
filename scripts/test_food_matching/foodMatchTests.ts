@@ -76,6 +76,10 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
     }
     const cosineMatchResults = await getBestFoodEmbeddingMatches(embedding.embedding_cache_id);
 
+    cosineMatchResults.forEach((result) => {
+      console.log(`${result.name} - ${result.brand}- ${result.cosine_similarity} - ${result.foodInfoSource} - ${result.id ? result.id : "no id"}`)
+    })
+
     const llamaMatchResult = await findBestFoodMatchtoLocalDbLlama(cosineMatchResults, item, user);
     if (llamaMatchResult[0] === null && llamaMatchResult[1] === null) {
       console.log("No valid matches found using Llama");
@@ -122,15 +126,25 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
 
 const testFoodItems = [
   {
-    food_database_search_name: "peanut",
-    full_item_user_message_including_serving: "4 whole peanuts",
-    branded: false,
-    brand: "",
+    food_database_search_name: "Clif Bar - Chocolate Chip Clif Bar",
+    full_item_user_message_including_serving: "Clif Bar Chocolate Chip Clif Bar",
+    branded: true,
+    brand: "Clif Bar",
     serving: {
       serving_g_or_ml: "g",
       total_serving_g_or_ml: 100
     }
   },
+  // {
+  //   food_database_search_name: "peanut",
+  //   full_item_user_message_including_serving: "4 whole peanuts",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
   // {
   //   food_database_search_name: "walnut",
   //   full_item_user_message_including_serving: "20 half walnuts",
