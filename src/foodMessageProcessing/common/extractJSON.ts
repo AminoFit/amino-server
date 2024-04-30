@@ -3,7 +3,6 @@ import { i } from "mathjs"
 export function extractAndParseLastJSON(inputString: string) {
   // Strip non-JSON text and balance brackets before processing
   inputString = stripAndBalanceBrackets(inputString)
-  console.log("inputString", inputString)
   // Regular expression to find content between triple backticks labeled as JSON
   const jsonRegex = /```json\n([\s\S]*?)\n```/g
   // Fallback regex to capture the last well-formed JSON object

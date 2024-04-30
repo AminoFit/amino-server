@@ -258,7 +258,7 @@ export async function findBestFoodMatchtoLocalDbLlama(
     )
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
-    console.log('response', response)
+    // console.log('response', response)
     // console.log('response from llama:', response)
     let database_match: DatabaseMatch | null = null
 

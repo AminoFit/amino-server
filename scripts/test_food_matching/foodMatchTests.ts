@@ -131,376 +131,376 @@ const testFoodItems = [
       total_serving_g_or_ml: 100
     }
   },
-  {
-    food_database_search_name: "walnut",
-    full_item_user_message_including_serving: "20 half walnuts",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "chocolate chip cookie",
-    full_item_user_message_including_serving: "a third of a chocolate chip cookie",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "chicken breast",
-    full_item_user_message_including_serving: "half achicken breast",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "milk",
-    full_item_user_message_including_serving: "2 fl oz of milk",
-    branded: true,
-    brand: "milk",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "metamucil fiber gummies",
-    full_item_user_message_including_serving: "3 metamucil fiber gummies",
-    branded: true,
-    brand: "metamucil",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "snickers",
-    full_item_user_message_including_serving: "one snickers",
-    branded: true,
-    brand: "snickers",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Chia Seed Pudding",
-    full_item_user_message_including_serving: "one serving of Chia Seed Pudding",
-    branded: true,
-    brand: "Juice Press",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "hashbrown",
-    full_item_user_message_including_serving: "12 hashbrown pieces",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Carbo Gain",
-    full_item_user_message_including_serving: "100 cals of Carbo Gain",
-    branded: true,
-    brand: "Carbo Gain",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Platinum Hydrowhey Protein",
-    full_item_user_message_including_serving: "one scoop of Optimum Nutrition Platinum Hydrowhey Protein",
-    branded: true,
-    brand: "Optimum Nutrition",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "mango",
-    full_item_user_message_including_serving: "half a mango",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-    {
-    food_database_search_name: "avocado",
-    full_item_user_message_including_serving: "half an avocado",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Chocolate Elite Core Power Shake",
-    full_item_user_message_including_serving: "Chocolate Elite Core Power Shake",
-    branded: true,
-    brand: "Core Power Fairlife",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Intense Dark 72% Cacao Dark Chocolate",
-    full_item_user_message_including_serving: "Intense Dark 72% Cacao Dark Chocolate",
-    branded: true,
-    brand: "Ghirardelli",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "salmon avocado sushi",
-    full_item_user_message_including_serving: "one roll of salmon avocado sushi",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "skinny dipped dark chocolate almonds",
-    full_item_user_message_including_serving: "one bag of skinny dipped dark chocolate almonds",
-    branded: true,
-    brand: "Skinny Dipped",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "rice cakes",
-    full_item_user_message_including_serving: "240 calories of rice cakes",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Magic spoon peanut butter cereal",
-    full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
-    branded: true,
-    brand: "Magic spoon",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "cinnamon bagel",
-    full_item_user_message_including_serving: "290 cals of cinnamon bagel",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "apple",
-    full_item_user_message_including_serving: "1 apple",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "strawberry",
-    full_item_user_message_including_serving: "5 mediumstrawberries",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "raspberry",
-    full_item_user_message_including_serving: "5 raspberries",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Nutella",
-    full_item_user_message_including_serving: "Nutella 1 tbsp",
-    branded: true,
-    brand: "Ferrero",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Dave's Killer Bread",
-    full_item_user_message_including_serving: "1 slice of Dave's Killer Bread",
-    branded: true,
-    brand: "Dave's Killer Bread",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Hazelnut Chocolate Spread",
-    full_item_user_message_including_serving: "5 oz of Bonne Maman Hazelnut Chocolate Spread",
-    branded: true,
-    brand: "Bonne Maman",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Vanilla Core Power Elite Shake",
-    full_item_user_message_including_serving: "Vanilla Core Power Elite Shake by Fairlife",
-    branded: true,
-    brand: "Core Power Fairlife",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Smooth Peanut Butter",
-    full_item_user_message_including_serving: "Smooth Peanut Butter Amazon 1 tbsp",
-    branded: true,
-    brand: "Amazon Fresh Happy Belly",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Fat free milk (Fairlife)",
-    full_item_user_message_including_serving: "Fairlife Fat Free milk",
-    branded: true,
-    brand: "Fairlife",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Semi skim milk",
-    full_item_user_message_including_serving: "Semi skim milk",
-    branded: true,
-    brand: "Fairlife",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Strawberry poptarts",
-    full_item_user_message_including_serving: "Amazon Strawberry poptarts",
-    branded: true,
-    brand: "Amazon",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Strawberry core power elite shake",
-    full_item_user_message_including_serving: "Strawberry core power elite shake by Fairlife",
-    branded: true,
-    brand: "Fair Life",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Intense Dark 86% Cacao Dark Chocolate",
-    full_item_user_message_including_serving: "Intense Dark 86% Cacao Dark Chocolate by Ghirardelli",
-    branded: true,
-    brand: "Ghirardelli",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Original Oat Milk",
-    full_item_user_message_including_serving: "Oatly Original Oat Milk by Ghirardelli",
-    branded: true,
-    brand: "Oatly",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Energy Caribbean Crush Sports Drink",
-    full_item_user_message_including_serving: "Lucozade Energy Caribbean Crush ",
-    branded: true,
-    brand: "Lucozade",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "beef tenderloin",
-    full_item_user_message_including_serving: "400 cals of beef tenderloin",
-    branded: false,
-    brand: "",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: "Mini Chicken & Vegetable Wonton",
-    full_item_user_message_including_serving: "3 Mini Chicken & Vegetable Wonton bibigo",
-    branded: true,
-    brand: "bibigo",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  },
-  {
-    food_database_search_name: " crackers multigrain",
-    full_item_user_message_including_serving: "crunchmaster crackers multigrain",
-    branded: true,
-    brand: "crunchmaster",
-    serving: {
-      serving_g_or_ml: "g",
-      total_serving_g_or_ml: 100
-    }
-  }
+  // {
+  //   food_database_search_name: "walnut",
+  //   full_item_user_message_including_serving: "20 half walnuts",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "chocolate chip cookie",
+  //   full_item_user_message_including_serving: "a third of a chocolate chip cookie",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "chicken breast",
+  //   full_item_user_message_including_serving: "half achicken breast",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "milk",
+  //   full_item_user_message_including_serving: "2 fl oz of milk",
+  //   branded: true,
+  //   brand: "milk",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "metamucil fiber gummies",
+  //   full_item_user_message_including_serving: "3 metamucil fiber gummies",
+  //   branded: true,
+  //   brand: "metamucil",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "snickers",
+  //   full_item_user_message_including_serving: "one snickers",
+  //   branded: true,
+  //   brand: "snickers",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Chia Seed Pudding",
+  //   full_item_user_message_including_serving: "one serving of Chia Seed Pudding",
+  //   branded: true,
+  //   brand: "Juice Press",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "hashbrown",
+  //   full_item_user_message_including_serving: "12 hashbrown pieces",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Carbo Gain",
+  //   full_item_user_message_including_serving: "100 cals of Carbo Gain",
+  //   branded: true,
+  //   brand: "Carbo Gain",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Platinum Hydrowhey Protein",
+  //   full_item_user_message_including_serving: "one scoop of Optimum Nutrition Platinum Hydrowhey Protein",
+  //   branded: true,
+  //   brand: "Optimum Nutrition",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "mango",
+  //   full_item_user_message_including_serving: "half a mango",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  //   {
+  //   food_database_search_name: "avocado",
+  //   full_item_user_message_including_serving: "half an avocado",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Chocolate Elite Core Power Shake",
+  //   full_item_user_message_including_serving: "Chocolate Elite Core Power Shake",
+  //   branded: true,
+  //   brand: "Core Power Fairlife",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Intense Dark 72% Cacao Dark Chocolate",
+  //   full_item_user_message_including_serving: "Intense Dark 72% Cacao Dark Chocolate",
+  //   branded: true,
+  //   brand: "Ghirardelli",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "salmon avocado sushi",
+  //   full_item_user_message_including_serving: "one roll of salmon avocado sushi",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "skinny dipped dark chocolate almonds",
+  //   full_item_user_message_including_serving: "one bag of skinny dipped dark chocolate almonds",
+  //   branded: true,
+  //   brand: "Skinny Dipped",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "rice cakes",
+  //   full_item_user_message_including_serving: "240 calories of rice cakes",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Magic spoon peanut butter cereal",
+  //   full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
+  //   branded: true,
+  //   brand: "Magic spoon",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "cinnamon bagel",
+  //   full_item_user_message_including_serving: "290 cals of cinnamon bagel",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "apple",
+  //   full_item_user_message_including_serving: "1 apple",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "strawberry",
+  //   full_item_user_message_including_serving: "5 mediumstrawberries",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "raspberry",
+  //   full_item_user_message_including_serving: "5 raspberries",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Nutella",
+  //   full_item_user_message_including_serving: "Nutella 1 tbsp",
+  //   branded: true,
+  //   brand: "Ferrero",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Dave's Killer Bread",
+  //   full_item_user_message_including_serving: "1 slice of Dave's Killer Bread",
+  //   branded: true,
+  //   brand: "Dave's Killer Bread",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Hazelnut Chocolate Spread",
+  //   full_item_user_message_including_serving: "5 oz of Bonne Maman Hazelnut Chocolate Spread",
+  //   branded: true,
+  //   brand: "Bonne Maman",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Vanilla Core Power Elite Shake",
+  //   full_item_user_message_including_serving: "Vanilla Core Power Elite Shake by Fairlife",
+  //   branded: true,
+  //   brand: "Core Power Fairlife",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Smooth Peanut Butter",
+  //   full_item_user_message_including_serving: "Smooth Peanut Butter Amazon 1 tbsp",
+  //   branded: true,
+  //   brand: "Amazon Fresh Happy Belly",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Fat free milk (Fairlife)",
+  //   full_item_user_message_including_serving: "Fairlife Fat Free milk",
+  //   branded: true,
+  //   brand: "Fairlife",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Semi skim milk",
+  //   full_item_user_message_including_serving: "Semi skim milk",
+  //   branded: true,
+  //   brand: "Fairlife",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Strawberry poptarts",
+  //   full_item_user_message_including_serving: "Amazon Strawberry poptarts",
+  //   branded: true,
+  //   brand: "Amazon",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Strawberry core power elite shake",
+  //   full_item_user_message_including_serving: "Strawberry core power elite shake by Fairlife",
+  //   branded: true,
+  //   brand: "Fair Life",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Intense Dark 86% Cacao Dark Chocolate",
+  //   full_item_user_message_including_serving: "Intense Dark 86% Cacao Dark Chocolate by Ghirardelli",
+  //   branded: true,
+  //   brand: "Ghirardelli",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Original Oat Milk",
+  //   full_item_user_message_including_serving: "Oatly Original Oat Milk by Ghirardelli",
+  //   branded: true,
+  //   brand: "Oatly",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Energy Caribbean Crush Sports Drink",
+  //   full_item_user_message_including_serving: "Lucozade Energy Caribbean Crush ",
+  //   branded: true,
+  //   brand: "Lucozade",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "beef tenderloin",
+  //   full_item_user_message_including_serving: "400 cals of beef tenderloin",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Mini Chicken & Vegetable Wonton",
+  //   full_item_user_message_including_serving: "3 Mini Chicken & Vegetable Wonton bibigo",
+  //   branded: true,
+  //   brand: "bibigo",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "crackers multigrain",
+  //   full_item_user_message_including_serving: "crunchmaster crackers multigrain",
+  //   branded: true,
+  //   brand: "crunchmaster",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // }
 ] as FoodItemToLog[]
 
 testMatchingAndServingSize(testFoodItems)

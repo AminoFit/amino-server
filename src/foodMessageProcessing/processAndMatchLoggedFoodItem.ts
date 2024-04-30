@@ -1,6 +1,3 @@
-// OpenAI
-import { findBestServingMatchChat } from "./findBestServingMatchChat"
-
 // Utils
 import { foodToLogEmbedding } from "@/utils/foodEmbedding"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
@@ -22,6 +19,7 @@ import { re } from "mathjs"
 import { GetMessageById } from "@/database/GetMessagesForUser"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
+import { findBestServingMatchChatLlama } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
@@ -54,7 +52,7 @@ export async function ProcessLogFoodItem(
   console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
   try {
-    food = await findBestServingMatchChat(food, bestMatch as FoodItemWithNutrientsAndServing, user)
+    food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
   } catch (err1) {
     throw err1
   }
