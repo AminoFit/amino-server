@@ -95,7 +95,7 @@ export async function classifyFoodItemToCategory(
         model: "claude-3-haiku",
         temperature,
         provider: "bedrock",
-        max_tokens: 1024
+        max_tokens: 1024,
       },
       user
     )
