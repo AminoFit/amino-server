@@ -59,6 +59,13 @@ function containsNoImages(messages: Anthropic.Messages.MessageParam[]): boolean 
     }
   })
 }
+class RateLimitError extends Error {
+  constructor(message: any) {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
 
 export async function* claudeChatCompletionStream(
   {
@@ -110,6 +117,42 @@ export async function* claudeChatCompletionStream(
   }
 }
 
+interface VertexApiError {
+  status: number;
+  error: {
+    error: {
+      code: number;
+      message: string;
+      status: string;
+    };
+  };
+}
+
+interface AnthropicsApiError {
+  code: number;
+  message: string;
+}
+
+interface BedrockApiError {
+  status: number;
+  message: string;
+  errorType: string;
+}
+
+type ApiError = VertexApiError | AnthropicsApiError | BedrockApiError;
+
+function isVertexApiError(error: any): error is VertexApiError {
+  return error.status !== undefined && error.error?.error?.code !== undefined;
+}
+
+function isAnthropicsApiError(error: any): error is AnthropicsApiError {
+  return typeof error.code === 'number' && typeof error.message === 'string';
+}
+
+function isBedrockApiError(error: any): error is BedrockApiError {
+  return error.status !== undefined && typeof error.message === 'string' && typeof error.errorType === 'string';
+}
+
 export async function claudeChatCompletion(
   {
     messages,
@@ -141,7 +184,25 @@ export async function claudeChatCompletion(
           return await anthropicVertexChatCompletion({ ...options, model: mappedModel, messages, max_tokens }, user)
       }
     } catch (error) {
-      console.error(`Error with ${p} chat completion:`, error)
+      console.error(`Error with provider ${p}:`, error);
+
+      if (isVertexApiError(error) && error.error.error.code === 429) {
+        console.warn(`Rate limit exceeded on ${p} (Vertex). Trying next provider.`);
+        continue;
+      }
+
+      if (isAnthropicsApiError(error) && error.code === 429) {
+        console.warn(`Rate limit exceeded on ${p} (Anthropic). Trying next provider.`);
+        continue;
+      }
+
+      if (isBedrockApiError(error) && error.status === 429) {
+        console.warn(`Rate limit exceeded on ${p} (Bedrock). Trying next provider.`);
+        continue;
+      }
+
+      // If it’s not a recognized rate limit error or if it's the last provider
+      throw error;
     }
   }
 
