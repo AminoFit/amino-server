@@ -426,5 +426,5 @@ async function testMoreFoodCompletion() {
   console.log(updateFoodItemWithMissingInfo(food, food_result))
 }
 
-testCompleteMissingFoodInfo()
+// testCompleteMissingFoodInfo()
 // testMoreFoodCompletion()
