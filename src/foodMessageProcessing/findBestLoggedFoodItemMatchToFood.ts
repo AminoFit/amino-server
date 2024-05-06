@@ -47,7 +47,7 @@ export async function getFoodItemFromDbOrExternal(
       if (usdaFoodItems && usdaFoodItems.length > 0) {
         const usdaFoodItem = usdaFoodItems[0]
         let foodEmbedding = await getFoodEmbedding(usdaFoodItem)
-        console.log(JSON.stringify(usdaFoodItem, null, 2))
+        // console.log(JSON.stringify(usdaFoodItem, null, 2))
         // Add the food item to the database
         const newFood = await addFoodItemToDatabase(
           usdaFoodItem as FoodItemWithNutrientsAndServing,
@@ -114,19 +114,19 @@ export async function findBestLoggedFoodItemMatchToFood(
   return [await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId), null]
 }
 
-// async function testGetFoodOrAdd() {
-//   const user = await getUserByEmail("seb.grubb@gmail.com")
-//   let fooditem = {
-//     name: "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
-//     brand: "Ghirardelli",
-//     cosine_similarity: 0.907056764819736,
-//     embedding: null,
-//     foodInfoSource: "USDA",
-//     externalId: "2214660"
-//   } as FoodItemIdAndEmbedding
+async function testGetFoodOrAdd() {
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+  let fooditem = {
+    name: "Peanut Butter Banana With Dark Chocolate Energy Bar, Peanut Butter Banana With Dark Chocolate",
+    brand: "Clif",
+    cosine_similarity: 0.907056764819736,
+    embedding: null,
+    foodInfoSource: "USDA",
+    externalId: "2104488"
+  } as FoodItemIdAndEmbedding
 
-//   let result = await getFoodItemFromDbOrExternal(fooditem, user!, 1)
-//   console.log(result)
-// }
+  let result = await getFoodItemFromDbOrExternal(fooditem, user!, 1)
+  console.log(result)
+}
 
-// 
+// testGetFoodOrAdd()

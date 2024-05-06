@@ -126,15 +126,25 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
 
 const testFoodItems = [
   {
-    food_database_search_name: "eggs whole fried with margarine",
-    full_item_user_message_including_serving: "2 eggs whole fried with margarine",
-    branded: false,
-    brand: "",
+    food_database_search_name: "Clif Bar - Peanut Butter Banana Clif Bar",
+    full_item_user_message_including_serving: "Clif Bar Peanut Butter Banana with Dark Chocolate Flavor Bar",
+    branded: true,
+    brand: "Clif",
     serving: {
       serving_g_or_ml: "g",
       total_serving_g_or_ml: 100
     }
   },
+  // {
+  //   food_database_search_name: "eggs whole fried with margarine",
+  //   full_item_user_message_including_serving: "2 eggs whole fried with margarine",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
   // {
   //   food_database_search_name: "Clif Bar - Chocolate Chip Clif Bar",
   //   full_item_user_message_including_serving: "Clif Bar Chocolate Chip Clif Bar",

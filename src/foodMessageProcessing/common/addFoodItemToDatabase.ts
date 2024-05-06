@@ -50,7 +50,13 @@ export async function addFoodItemToDatabase(
   // If it exists, return the existing food item ID
   if (compareFoodItems(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
     console.log(`Food item ${food.name} already exists in the database`)
-    return existingFoodItem as FoodItemWithNutrientsAndServing
+    const { data: returnFoodItem, error }= await supabase
+    .from("FoodItem")
+    .select("*, Nutrient(*), Serving(*)")
+    .eq("id", existingFoodItem.id)
+    .single()
+    console.log("returnFoodItem", returnFoodItem)
+    return returnFoodItem as FoodItemWithNutrientsAndServing
   }
 
   let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null;
@@ -128,7 +134,7 @@ export async function addFoodItemToDatabase(
   } catch (error) {
     console.error("Error classifying food item", error)
   }
-  // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
+  // Insert the food item
   const { data: newFood, error: insertError } = await supabase
     .from("FoodItem")
     .insert({
@@ -137,15 +143,12 @@ export async function addFoodItemToDatabase(
       bgeBaseEmbedding: embeddingSql,
       foodItemCategoryID,
       foodItemCategoryName
-    })
-    .select(`*, Nutrient(*), Serving(*)`)
-    .single()
-
-  // console.log("Insert FoodItem result data:", newFood)
+    }).select()
+    .single() as { data: Tables<"FoodItem">, error: any }
 
   if (insertError) {
-    console.error("Error inserting food item", insertError)
-    throw insertError
+    console.error("Error inserting food item", insertError);
+    throw insertError;
   }
   // console.log("Insert FoodItem result error:", insertError)
 
@@ -173,8 +176,24 @@ export async function addFoodItemToDatabase(
     )
     if (addServingsError) console.error("Error adding servings", addServingsError)
   }
+  // If insert is successful, query the inserted item including its subtables
+  const { data: newFoodWithServings, error: selectError } = await supabase
+    .from("FoodItem")
+    .select(`*, Nutrient(*), Serving(*)`)
+    .eq("id", newFood.id)
+    .single();
 
-  return newFood as FoodItemWithNutrientsAndServing
+  // const { data: servings, error: selectServingError } = await supabase.from("Serving").select().eq("foodItemId", newFood.id)
+  // console.log("servings:", servings)
+
+  if (selectError) {
+    console.error("Error fetching food item details", selectError);
+    throw selectError;
+  }
+
+  // Optionally handle the Nutrient and Serving insertions here if they are not part of the initial creation
+
+  return newFoodWithServings as FoodItemWithNutrientsAndServing;
 }
 
 

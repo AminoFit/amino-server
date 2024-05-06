@@ -114,35 +114,50 @@ async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> |
 async function testProcessFood() {
 
 
-  const messageId = 1200
+  const messageId = 5643
   const food = {
-    food_database_search_name: "Fat free fairlife milk",
-    full_item_user_message_including_serving: "Fat free fairlife milk 1 cup",
-    branded: true,
-    brand: "Fairlife"
+    food_database_search_name: "eggs fried with margarine",
+    full_item_user_message_including_serving: "2 eggs fried with margarine",
+    branded: false,
+    brand: ""
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
 
   const loggedFoodItem = {
-    id: 1,
-    consumedOn: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 11354,
+    consumedOn: "2024-05-02T20:19:26.414Z",
+    createdAt: "2024-05-02T20:19:27.177Z",
+    updatedAt: "2024-05-02T20:19:37.103Z",
     deletedAt: null,
     embeddingId: null,
-    extendedOpenAiData: food as any,
-    foodItemId: null,
-    grams: 0,
+    extendedOpenAiData: {
+      "brand": "",
+      "branded": false,
+      "serving": {
+        "serving_id": 0,
+        "serving_name": "eggs",
+        "serving_amount": 2,
+        "serving_g_or_ml": "g",
+        "full_serving_string": "2 eggs",
+        "total_serving_g_or_ml": 200
+      },
+      "timeEaten": "2024-05-02T20:19:26.414Z",
+      "second_best_match": null,
+      "food_database_search_name": "eggs fried with margarine",
+      "full_item_user_message_including_serving": "2 eggs fried with margarine"
+    } as any,
+    foodItemId: 3056,
+    grams: 200,
     servingId: null,
-    servingAmount: null,
-    loggedUnit: null,
-    userId: user?.id,
-    messageId: messageId,
-    status: null,
-    isBadFoodItemRequest: null,
+    servingAmount: 2,
+    loggedUnit: 'eggs',
+    userId: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
+    messageId: 5643,
+    status: 'Processed',
+    isBadFoodItemRequest: false,
     local_id: null,
   } as Tables<"LoggedFoodItem">;
-
+  
 
   const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
 }
