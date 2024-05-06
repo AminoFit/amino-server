@@ -112,54 +112,46 @@ async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> |
 }
 
 async function testProcessFood() {
+  const messageId = 6229;
 
-
-  const messageId = 5643
   const food = {
-    food_database_search_name: "eggs fried with margarine",
-    full_item_user_message_including_serving: "2 eggs fried with margarine",
-    branded: false,
-    brand: ""
-  } as FoodItemToLog
-  const user = await getUserByEmail("seb.grubb@gmail.com")
+    food_database_search_name: "Fairlife nutrition plan chocolate nutrition shake",
+    full_item_user_message_including_serving: "one Fairlife nutrition plan chocolate nutrition shake",
+    branded: true,
+    brand: "Fairlife",
+    timeEaten: "2024-05-06T17:26:57.442Z"
+  } as FoodItemToLog;
+
+  const user = await getUserByEmail("seb.grubb@gmail.com");
 
   const loggedFoodItem = {
-    id: 11354,
-    consumedOn: "2024-05-02T20:19:26.414Z",
-    createdAt: "2024-05-02T20:19:27.177Z",
-    updatedAt: "2024-05-02T20:19:37.103Z",
+    id: 12405,
+    consumedOn: "2024-05-06T17:26:57.442Z",
+    createdAt: "2024-05-06T17:26:58.392Z",
+    updatedAt: "2024-05-06T17:26:58.266Z",
     deletedAt: null,
     embeddingId: null,
     extendedOpenAiData: {
-      "brand": "",
-      "branded": false,
-      "serving": {
-        "serving_id": 0,
-        "serving_name": "eggs",
-        "serving_amount": 2,
-        "serving_g_or_ml": "g",
-        "full_serving_string": "2 eggs",
-        "total_serving_g_or_ml": 200
-      },
-      "timeEaten": "2024-05-02T20:19:26.414Z",
-      "second_best_match": null,
-      "food_database_search_name": "eggs fried with margarine",
-      "full_item_user_message_including_serving": "2 eggs fried with margarine"
-    } as any,
-    foodItemId: 3056,
-    grams: 200,
+      "brand": "Fairlife",
+      "branded": true,
+      "timeEaten": "2024-05-06T17:26:57.442Z",
+      "food_database_search_name": "Fairlife nutrition plan chocolate nutrition shake",
+      "full_item_user_message_including_serving": "one Fairlife nutrition plan chocolate nutrition shake"
+    },
+    foodItemId: null,
+    grams: 100,
     servingId: null,
-    servingAmount: 2,
-    loggedUnit: 'eggs',
+    servingAmount: null,
+    loggedUnit: null,
     userId: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
-    messageId: 5643,
-    status: 'Processed',
+    messageId: 6229,
+    status: 'Needs Processing',
     isBadFoodItemRequest: false,
-    local_id: null,
+    local_id: null
   } as Tables<"LoggedFoodItem">;
-  
 
-  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
+  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!);
 }
+
 
 // testProcessFood()
