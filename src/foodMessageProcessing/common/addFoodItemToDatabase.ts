@@ -29,6 +29,18 @@ function compareFoodItems(
   return name1 === name2 && brand1 === brand2
 }
 
+// Function to check if there are missing serving info
+function hasMissingServingInfo(food: FoodItemWithNutrientsAndServing): boolean {
+  return food.Serving?.some(
+    (serving) =>
+      serving.servingWeightGram === null ||
+      serving.servingWeightGram === undefined ||
+      serving.servingWeightGram === 0 ||
+      serving.servingName === null ||
+      serving.servingName === ""
+  ) ?? false;
+}
+
 export async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],
@@ -80,30 +92,9 @@ export async function addFoodItemToDatabase(
 
   let foodClassificationResult = classifyFoodItemToCategory(food, user)
 
-  // If the food item is missing a field, complete it
-  if (!food.defaultServingWeightGram || food.weightUnknown) {
-    console.log("trying to complete missing fields - no weight")
-    food = (await completeMissingFoodInfo(food, user)) || food
-  }
-
-  if (food.isLiquid && !food.defaultServingLiquidMl) {
-    console.log("trying to complete missing fields - liquid")
-    food = (await completeMissingFoodInfo(food, user)) || food
-  }
-
-  // Simplify the check for missing serving information
-  const hasMissingServingInfo =
-    food.Serving?.some(
-      (serving) =>
-        serving.servingWeightGram === null ||
-        serving.servingWeightGram === undefined ||
-        serving.servingWeightGram === 0 ||
-        serving.servingName === null ||
-        serving.servingName === ""
-    ) ?? false // Use nullish coalescing to default to false if food.Serving is undefined
-
-  if (hasMissingServingInfo) {
-    console.log("trying to complete missing fields - missing serving info")
+  // Check for missing fields and complete them if necessary
+  if (!food.defaultServingWeightGram || food.weightUnknown || (food.isLiquid && !food.defaultServingLiquidMl) || hasMissingServingInfo(food)) {
+    console.log("Trying to complete missing fields")
     food = (await completeMissingFoodInfo(food, user)) || food
   }
 

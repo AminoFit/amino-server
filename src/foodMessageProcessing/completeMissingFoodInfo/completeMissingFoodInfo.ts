@@ -146,7 +146,7 @@ export async function completeMissingFoodInfo(
     console.log("could not get missing food info online query", e)
   }
 
-  //   console.log(onlineSearchInfo)
+    console.log('got info online', onlineSearchInfo)
 
   const model = "gpt-4-turbo"
   const temperatures = [0, 0.1] // Initial and retry temperatures
@@ -155,7 +155,7 @@ export async function completeMissingFoodInfo(
   let response
 
   while (retryCount <= maxRetries) {
-    console.log("asking gpt4 for food info summar")
+    console.log("asking gpt4 for food info summary")
     const temperature = temperatures[retryCount] // Use initial or higher temperature based on retryCount
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       {
