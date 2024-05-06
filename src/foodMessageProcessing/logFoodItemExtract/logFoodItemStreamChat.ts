@@ -9,6 +9,7 @@ import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInte
 import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { logFoodItemPrompts } from "./logFoodItemPrompts"
 import { getUserByEmail } from "../common/debugHelper"
+import { claudeChatCompletionStream } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
   // Since serving is no longer available in the output, we need to handle its absence
@@ -76,6 +77,39 @@ async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, opti
       // console.log(jsonObj); // Output the new JSON object
       lastProcessedIndex = endIndex // Update the last processed index
       yield jsonObj // Yield the new JSON object
+    }
+  }
+}
+
+async function* processStreamedLoggedFoodItemsClaude(user: Tables<"User">, options: ChatCompletionStreamOptions) {
+  const stream = claudeChatCompletionStream(
+    {
+      messages: [
+        {
+          role: "user",
+          content: options.prompt
+        },
+        { role: "assistant", content: "{" }
+      ],
+      model: "claude-3-haiku",
+      temperature: 0,
+      max_tokens: 4096,
+      system: logFoodItemPrompts['claude-3-haiku'].systemPrompt
+    },
+    user
+  );
+
+  let buffer = "{" // Buffer to accumulate chunks of data
+  let lastProcessedIndex = -1 // Track the last processed index
+
+  for await (const chunk of stream) {
+    // process.stdout.write(chunk);
+    buffer += chunk; // Append the new chunk to the buffer
+    const { jsonObj, endIndex } = extractLatestValidJSON(buffer);
+
+    if (jsonObj && endIndex !== lastProcessedIndex) {
+      lastProcessedIndex = endIndex; // Update the last processed index
+      yield jsonObj; // Yield the new JSON object
     }
   }
 }
@@ -165,10 +199,19 @@ export async function logFoodItemStream(
 
   console.log("user_message", user_message.content)
 
-  let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
-  const stream = processStreamedLoggedFoodItemsLlama(user, {
-    prompt: logFoodItemPrompts['llama3-70b'].prompt.replace("INPUT_HERE", user_message.content),
-    systemPrompt: logFoodItemPrompts['llama3-70b'].systemPrompt,
+  // llama
+  // let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
+  // const stream = processStreamedLoggedFoodItemsLlama(user, {
+  //   prompt: logFoodItemPrompts['llama3-70b'].prompt.replace("INPUT_HERE", user_message.content),
+  //   systemPrompt: logFoodItemPrompts['llama3-70b'].systemPrompt,
+  //   temperature: 0,
+  //   model: model
+  // })
+  // claude
+  let model = 'claude-3-haiku'
+  const stream = processStreamedLoggedFoodItemsClaude(user, {
+    prompt: logFoodItemPrompts['claude-3-haiku'].prompt.replace("INPUT_HERE", user_message.content),
+    systemPrompt: logFoodItemPrompts['claude-3-haiku'].systemPrompt,
     temperature: 0,
     model: model
   })
@@ -214,7 +257,7 @@ export async function logFoodItemStream(
 async function testChatCompletionJsonStream() {
   const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
-  const userMessage = "one clif oat chocolate chip bar"
+  const userMessage = "one cliff oat chocolate chip bar with starbucks tukrey bacon sandwich with cup of greek yogurt and a banana"
   // Make sure to include all required fields in your insert object
   const insertObject = {
     content: userMessage,
@@ -241,4 +284,5 @@ async function testChatCompletionJsonStream() {
 async function testFoodLoggingStream() {
   // const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
 }
-//  testChatCompletionJsonStream()
+
+// testChatCompletionJsonStream()
