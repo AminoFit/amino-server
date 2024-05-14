@@ -5,7 +5,7 @@ import { LinkIconsOrCreateIfNeeded } from "../foodIconsProcess"
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 import { completeMissingFoodInfo } from "../completeMissingFoodInfo/completeMissingFoodInfo"
-import { classifyFoodItemToCategory } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
+import { classifyFoodItemToCategoryGPT } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
 import { getUserByEmail } from "./debugHelper"
 import { getFoodEmbedding } from "@/utils/foodEmbedding"
 
@@ -94,7 +94,7 @@ export async function addFoodItemToDatabase(
     return existingFoodItemByExternalId
   }
 
-  let foodClassificationResult = classifyFoodItemToCategory(food, user)
+  let foodClassificationResult = classifyFoodItemToCategoryGPT(food, user)
 
   // Check for missing fields and complete them if necessary
   if (
