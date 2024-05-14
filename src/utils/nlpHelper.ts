@@ -1,4 +1,5 @@
 export function toTitleCase(str: string): string {
+  if (!str) return ""; // Return an empty string or handle it as needed
   return str.toLowerCase().replace(/\b\w/g, (char: string) => char.toUpperCase());
 }
 

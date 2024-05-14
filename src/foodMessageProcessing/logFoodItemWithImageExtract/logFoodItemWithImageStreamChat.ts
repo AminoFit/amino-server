@@ -194,7 +194,7 @@ async function processOpenAiVisionChatStream(
   let isBadFoodLogRequest = false
   const loggingTasks: Promise<any>[] = []
 
-  let model = "gpt-4-turbo"
+  let model = "gpt-4o"
   const currentDateTime = new Date()
 
   const stream = processStreamedLoggedFoodItemsWithImages(user, {

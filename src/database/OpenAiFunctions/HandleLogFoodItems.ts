@@ -130,7 +130,7 @@ async function addFoodItemToDatabase(
   return newFood as FoodItemWithNutrientsAndServing
 }
 
-async function findAndAddItemInDatabase(
+async function findAndAddItemInDatabaseDEBUG(
   foodToLog: FoodItemToLog,
   queryEmbeddingCache: FoodEmbeddingCache,
   user: Tables<"User">,
@@ -290,7 +290,7 @@ async function findAndAddItemInDatabase(
     //console.dir(highestSimilarityItem, { depth: null });
 
     if (highestSimilarityItem) {
-      //console.log("Highest similarity item:", highestSimilarityItem!.foodName)
+      console.log("Highest similarity item:", highestSimilarityItem!.foodName)
       //console.dir(highestSimilarityItem, { depth: null })
       // Ensure we have the full food item info
       highestSimilarityItem.foodItem = await getCompleteFoodInfo(highestSimilarityItem)
@@ -381,7 +381,7 @@ async function testFoodSearch() {
     activityLevel: null
   } as Tables<"User">
   //console.dir(queryEmbedding, { depth: null })
-  let result = await findAndAddItemInDatabase(foodItem, queryEmbedding, user, 1)
+  let result = await findAndAddItemInDatabaseDEBUG(foodItem, queryEmbedding, user, 1)
   console.dir(result, { depth: null })
 }
 

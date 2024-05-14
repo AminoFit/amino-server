@@ -5,7 +5,7 @@ import { LinkIconsOrCreateIfNeeded } from "../foodIconsProcess"
 import { Tables } from "types/supabase"
 import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
 import { completeMissingFoodInfo } from "../completeMissingFoodInfo/completeMissingFoodInfo"
-import { classifyFoodItemToCategory } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
+import { classifyFoodItemToCategoryGPT } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
 import { getUserByEmail } from "./debugHelper"
 import { getFoodEmbedding } from "@/utils/foodEmbedding"
 
@@ -29,6 +29,20 @@ function compareFoodItems(
   return name1 === name2 && brand1 === brand2
 }
 
+// Function to check if there are missing serving info
+function hasMissingServingInfo(food: FoodItemWithNutrientsAndServing): boolean {
+  return (
+    food.Serving?.some(
+      (serving) =>
+        serving.servingWeightGram === null ||
+        serving.servingWeightGram === undefined ||
+        serving.servingWeightGram === 0 ||
+        serving.servingName === null ||
+        serving.servingName === ""
+    ) ?? false
+  )
+}
+
 export async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],
@@ -50,10 +64,16 @@ export async function addFoodItemToDatabase(
   // If it exists, return the existing food item ID
   if (compareFoodItems(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
     console.log(`Food item ${food.name} already exists in the database`)
-    return existingFoodItem as FoodItemWithNutrientsAndServing
+    const { data: returnFoodItem, error } = await supabase
+      .from("FoodItem")
+      .select("*, Nutrient(*), Serving(*)")
+      .eq("id", existingFoodItem.id)
+      .single()
+    console.log("returnFoodItem", returnFoodItem)
+    return returnFoodItem as FoodItemWithNutrientsAndServing
   }
 
-  let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null;
+  let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null
 
   if (food.externalId && food.foodInfoSource) {
     const { data, error: errorByExternalId } = (await supabase
@@ -62,42 +82,28 @@ export async function addFoodItemToDatabase(
       .eq("externalId", food.externalId)
       .eq("foodInfoSource", food.foodInfoSource)
       .limit(1)
-      .single()) as { data: FoodItemWithNutrientsAndServing; error: any };
-  
-    existingFoodItemByExternalId = data;
+      .single()) as { data: FoodItemWithNutrientsAndServing; error: any }
+
+    existingFoodItemByExternalId = data
   }
-  
+
   if (existingFoodItemByExternalId) {
-    console.log(`Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`);
-    return existingFoodItemByExternalId;
+    console.log(
+      `Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`
+    )
+    return existingFoodItemByExternalId
   }
 
-  let foodClassificationResult = classifyFoodItemToCategory(food, user)
+  let foodClassificationResult = classifyFoodItemToCategoryGPT(food, user)
 
-  // If the food item is missing a field, complete it
-  if (!food.defaultServingWeightGram || food.weightUnknown) {
-    console.log("trying to complete missing fields - no weight")
-    food = (await completeMissingFoodInfo(food, user)) || food
-  }
-
-  if (food.isLiquid && !food.defaultServingLiquidMl) {
-    console.log("trying to complete missing fields - liquid")
-    food = (await completeMissingFoodInfo(food, user)) || food
-  }
-
-  // Simplify the check for missing serving information
-  const hasMissingServingInfo =
-    food.Serving?.some(
-      (serving) =>
-        serving.servingWeightGram === null ||
-        serving.servingWeightGram === undefined ||
-        serving.servingWeightGram === 0 ||
-        serving.servingName === null ||
-        serving.servingName === ""
-    ) ?? false // Use nullish coalescing to default to false if food.Serving is undefined
-
-  if (hasMissingServingInfo) {
-    console.log("trying to complete missing fields - missing serving info")
+  // Check for missing fields and complete them if necessary
+  if (
+    !food.defaultServingWeightGram ||
+    food.weightUnknown ||
+    (food.isLiquid && !food.defaultServingLiquidMl) ||
+    hasMissingServingInfo(food)
+  ) {
+    console.log("Trying to complete missing fields")
     food = (await completeMissingFoodInfo(food, user)) || food
   }
 
@@ -128,8 +134,8 @@ export async function addFoodItemToDatabase(
   } catch (error) {
     console.error("Error classifying food item", error)
   }
-  // CHRIS: Not sure this will work with the subtables. Might need to make multiple queries
-  const { data: newFood, error: insertError } = await supabase
+  // Insert the food item
+  const { data: newFood, error: insertError } = (await supabase
     .from("FoodItem")
     .insert({
       ...foodWithoutId,
@@ -138,10 +144,8 @@ export async function addFoodItemToDatabase(
       foodItemCategoryID,
       foodItemCategoryName
     })
-    .select(`*, Nutrient(*), Serving(*)`)
-    .single()
-
-  // console.log("Insert FoodItem result data:", newFood)
+    .select()
+    .single()) as { data: Tables<"FoodItem">; error: any }
 
   if (insertError) {
     console.error("Error inserting food item", insertError)
@@ -161,104 +165,123 @@ export async function addFoodItemToDatabase(
     )
 
     if (addNutrientsError) console.error("Error adding nutrients", addNutrientsError)
-    const { error: addServingsError } = await supabase.from("Serving").insert(
-      food.Serving.map((serving: any) => ({
-        foodItemId: newFood.id,
-        defaultServingAmount: serving.defaultServingAmount,
-        servingWeightGram: serving.servingWeightGram,
-        servingAlternateAmount: serving.servingAlternateAmount,
-        servingAlternateUnit: serving.servingAlternateUnit,
-        servingName: serving.servingName
-      }))
-    )
-    if (addServingsError) console.error("Error adding servings", addServingsError)
+    const servingsToInsert = food.Serving.map((serving: any) => ({
+      foodItemId: newFood.id,
+      defaultServingAmount: serving.defaultServingAmount !== "" ? serving.defaultServingAmount : null,
+      servingWeightGram: serving.servingWeightGram,
+      servingAlternateAmount: serving.servingAlternateAmount !== "" ? serving.servingAlternateAmount : null,
+      servingAlternateUnit: serving.servingAlternateUnit !== "" ? serving.servingAlternateUnit : null,
+      servingName: serving.servingName
+    }))
+
+    const { error: addServingsError } = await supabase.from("Serving").insert(servingsToInsert)
+
+    if (addServingsError) {
+      console.error("Error adding servings (addFoodItemToDatabase)", addServingsError)
+      console.log("Item to insert", servingsToInsert)
+    }
+  }
+  // If insert is successful, query the inserted item including its subtables
+  const { data: newFoodWithServings, error: selectError } = await supabase
+    .from("FoodItem")
+    .select(`*, Nutrient(*), Serving(*)`)
+    .eq("id", newFood.id)
+    .single()
+
+  // const { data: servings, error: selectServingError } = await supabase.from("Serving").select().eq("foodItemId", newFood.id)
+  // console.log("servings:", servings)
+
+  if (selectError) {
+    console.error("Error fetching food item details", selectError)
+    throw selectError
   }
 
-  return newFood as FoodItemWithNutrientsAndServing
-}
+  // Optionally handle the Nutrient and Serving insertions here if they are not part of the initial creation
 
+  return newFoodWithServings as FoodItemWithNutrientsAndServing
+}
 
 async function testAddToDatabase() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
   const food = {
-    "id": 0,
-    "createdAtDateTime": "2024-04-01T20:11:15.552Z",
-    "knownAs": [],
-    "description": null,
-    "lastUpdated": "2024-04-01T20:11:15.552Z",
-    "verified": true,
-    "userId": null,
-    "foodInfoSource": "USDA",
-    "messageId": null,
-    "name": "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
-    "brand": "Ghirardelli",
-    "weightUnknown": false,
-    "defaultServingWeightGram": 32,
-    "defaultServingLiquidMl": null,
-    "isLiquid": false,
+    id: 0,
+    createdAtDateTime: "2024-04-01T20:11:15.552Z",
+    knownAs: [],
+    description: null,
+    lastUpdated: "2024-04-01T20:11:15.552Z",
+    verified: true,
+    userId: null,
+    foodInfoSource: "USDA",
+    messageId: null,
+    name: "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
+    brand: "Ghirardelli",
+    weightUnknown: false,
+    defaultServingWeightGram: 32,
+    defaultServingLiquidMl: null,
+    isLiquid: false,
     foodItemCategoryID: null,
     foodItemCategoryName: null,
-    "Serving": [
+    Serving: [
       {
-        "id": 0,
+        id: 0,
         foodItemId: 0,
-        "defaultServingAmount": null,
-        "servingWeightGram": 32,
-        "servingAlternateAmount": null,
-        "servingAlternateUnit": null,
-        "servingName": "3 squares"
+        defaultServingAmount: null,
+        servingWeightGram: 32,
+        servingAlternateAmount: null,
+        servingAlternateUnit: null,
+        servingName: "3 squares"
       }
     ],
-    "UPC": 747599414275,
-    "externalId": "2214660",
-    "Nutrient": [
+    UPC: 747599414275,
+    externalId: "2214660",
+    Nutrient: [
       {
-        "id": 0,
-        "foodItemId": 0,
-        "nutrientName": "cholesterol",
-        "nutrientUnit": "mg",
-        "nutrientAmountPerDefaultServing": 0
+        id: 0,
+        foodItemId: 0,
+        nutrientName: "cholesterol",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 0
       },
       {
         id: 0,
         foodItemId: 0,
-        "nutrientName": "sodium",
-        "nutrientUnit": "mg",
-        "nutrientAmountPerDefaultServing": 0
+        nutrientName: "sodium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 0
       },
       {
         id: 0,
         foodItemId: 0,
-        "nutrientName": "calcium",
-        "nutrientUnit": "mg",
-        "nutrientAmountPerDefaultServing": 19.8
+        nutrientName: "calcium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 19.8
       },
       {
         id: 0,
         foodItemId: 0,
-        "nutrientName": "iron",
-        "nutrientUnit": "mg",
-        "nutrientAmountPerDefaultServing": 1.2
+        nutrientName: "iron",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 1.2
       },
       {
         id: 0,
         foodItemId: 0,
-        "nutrientName": "potassium",
-        "nutrientUnit": "mg",
-        "nutrientAmountPerDefaultServing": 200
+        nutrientName: "potassium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: 200
       }
     ],
-    "kcalPerServing": 170,
-    "proteinPerServing": 2,
-    "totalFatPerServing": 15,
-    "carbPerServing": 14,
-    "fiberPerServing": 3.01,
-    "sugarPerServing": 8,
-    "satFatPerServing": 9,
-    "transFatPerServing": 0,
-    "addedSugarPerServing": 8,
-    "adaEmbedding": null,
-    "bgeBaseEmbedding": null
+    kcalPerServing: 170,
+    proteinPerServing: 2,
+    totalFatPerServing: 15,
+    carbPerServing: 14,
+    fiberPerServing: 3.01,
+    sugarPerServing: 8,
+    satFatPerServing: 9,
+    transFatPerServing: 0,
+    addedSugarPerServing: 8,
+    adaEmbedding: null,
+    bgeBaseEmbedding: null
   } as FoodItemWithNutrientsAndServing
 
   let result = await addFoodItemToDatabase(food, await getFoodEmbedding(food), 1, user!)

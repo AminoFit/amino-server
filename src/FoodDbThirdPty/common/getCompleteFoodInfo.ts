@@ -6,6 +6,7 @@ import { getNutritionixFoodInfo } from "../nutritionix/getCombinedNutritionixFoo
 export async function getCompleteFoodInfo(
   foodItem: foodSearchResultsWithSimilarityAndEmbedding
 ): Promise<FoodItemWithNutrientsAndServing | undefined> {
+
   if (foodItem.foodItem === undefined) {
     switch (foodItem.foodSource) {
       case "USDA":
@@ -52,7 +53,14 @@ async function testGetCompleteFoodInfo() {
     externalId: undefined,
     foodBrand: undefined
   }
-  console.log(await getCompleteFoodInfo(nutritionix_english_muffin))
+
+  const nutritionix_roast: foodSearchResultsWithSimilarityAndEmbedding = {
+    foodBgeBaseEmbedding: [-0.025500452, -0.05125706, 0.013045359, -0.034442104, 0.048705615],
+    "similarityToQuery": 1,
+    "foodSource": "NUTRITIONIX",
+    "foodName": "roast"
+  }
+  console.log(await getCompleteFoodInfo(nutritionix_roast))
 }
 
-//testGetCompleteFoodInfo()
+// testGetCompleteFoodInfo()

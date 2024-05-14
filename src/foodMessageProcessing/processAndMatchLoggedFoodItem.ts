@@ -112,39 +112,46 @@ async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> |
 }
 
 async function testProcessFood() {
+  const messageId = 6229;
 
-
-  const messageId = 1200
   const food = {
-    food_database_search_name: "Fat free fairlife milk",
-    full_item_user_message_including_serving: "Fat free fairlife milk 1 cup",
+    food_database_search_name: "Fairlife nutrition plan chocolate nutrition shake",
+    full_item_user_message_including_serving: "one Fairlife nutrition plan chocolate nutrition shake",
     branded: true,
-    brand: "Fairlife"
-  } as FoodItemToLog
-  const user = await getUserByEmail("seb.grubb@gmail.com")
+    brand: "Fairlife",
+    timeEaten: "2024-05-06T17:26:57.442Z"
+  } as FoodItemToLog;
+
+  const user = await getUserByEmail("seb.grubb@gmail.com");
 
   const loggedFoodItem = {
-    id: 1,
-    consumedOn: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 12405,
+    consumedOn: "2024-05-06T17:26:57.442Z",
+    createdAt: "2024-05-06T17:26:58.392Z",
+    updatedAt: "2024-05-06T17:26:58.266Z",
     deletedAt: null,
     embeddingId: null,
-    extendedOpenAiData: food as any,
+    extendedOpenAiData: {
+      "brand": "Fairlife",
+      "branded": true,
+      "timeEaten": "2024-05-06T17:26:57.442Z",
+      "food_database_search_name": "Fairlife nutrition plan chocolate nutrition shake",
+      "full_item_user_message_including_serving": "one Fairlife nutrition plan chocolate nutrition shake"
+    },
     foodItemId: null,
-    grams: 0,
+    grams: 100,
     servingId: null,
     servingAmount: null,
     loggedUnit: null,
-    userId: user?.id,
-    messageId: messageId,
-    status: null,
-    isBadFoodItemRequest: null,
-    local_id: null,
+    userId: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
+    messageId: 6229,
+    status: 'Needs Processing',
+    isBadFoodItemRequest: false,
+    local_id: null
   } as Tables<"LoggedFoodItem">;
 
-
-  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
+  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!);
 }
+
 
 // testProcessFood()

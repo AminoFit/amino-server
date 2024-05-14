@@ -519,6 +519,124 @@ Item to match: FOOD_ITEM_TO_CLASSIFY
 List of categories:
 LIST_OF_CATEGORIES`
   },
+  "gpt-4o": {systemPrompt: "You are a helpful assistant that only replies in valid JSON.",
+	prompt: `<item_to_match>
+FOOD_ITEM_TO_CLASSIFY
+</item_to_match>
+
+<instructions>
+1. Look at item_to_match and think carefully about what it is (include that in reasoning) and what ingredients it usually has if a processed food.
+
+2. Look at the list_of_categories comprehensively.
+
+3. Choose 3 possible candidates for the item to match to assing topThreeOptions. Just use the IDs of the categories.
+
+4. Review all 3 candidates.
+
+5. Select one that is most similar to the item. Choose other categories when there is not a good match. E.g. matching juice to a soup would not be a good idea since they are clearly different.
+
+6. Output only in JSON according to the provided template.
+</instructions>
+
+<json_output_template>
+{
+"reasoning":"string",
+"topThreeOptions":"string[]",
+"reasoningForBestOption":"string",
+"ID":"string",
+"subcategoryName":"string"
+}
+</json_output_template>
+
+<output_explanation>
+subcategoryName is the name of the subcategory (after the identifier) that the item belongs to e.g B-6-2	Danishes it would be "Danishes"
+</output_explanation>
+
+<examples>
+<example>
+Input: "Peanut Butter"
+Output:
+{
+	"reasoning": "Peanut butter is typically a spread made primarily from ground dry roasted peanuts, often with added ingredients such as salt, sweeteners or emulsifiers. Peanut butter is a processed nut product known for its use as a spread on bread, toast, and used in several recipes including peanut butter cookies and peanut butter jelly sandwiches.",
+	"topThreeOptions": ["C-2-2", "J-2-5", "D-5-3"],
+	"reasoningForBestOption": "The best match for 'Peanut Butter' is found under the category 'J. Condiments & Sauces', specifically in the subcategory 'Peanut Butter'. This category is most appropriate as it directly mentions peanut butter, matching both the principal ingredient and its common use as a spread.",
+	"ID": "J-2-5",
+	"subcategoryName": "Peanut Butter"
+}
+</example>
+<example>
+Input: "Kettle and Fire Chicken Bone Broth"
+Output:
+{
+"reasoning": "Kettle and Fire Chicken Bone Broth is a packaged liquid broth primarily made from chicken bones, vegetables, and herbs, simmered to extract nutrients and flavor. It's a prepared, nutrient-rich food item commonly used for sipping or as a base for soups and sauces. Given this description, the suitable category needs to relate to prepared liquid foods, specifically those that are broth-based.",
+"topThreeOptions": ["K-1-13", "H-2-3", "K-2-1"],
+"reasoningForBestOption": "Category 'K-1-13 Soups, Stews and Broths' directly corresponds to the type of product which is Kettle and Fire Chicken Bone Broth as it is essentially a type of broth, which is explicitly mentioned in the category name. This makes it the best fit compared to other categories that do not specifically denote broths or are too generic.",
+"ID": "K-1-13",
+"subcategoryName": "Soups, Stews and Broths"
+}
+</example>
+<example>
+Input: "Beef Noodle Soup"
+Output:
+{
+	"reasoning":"Beef noodle soup is a dish typically composed of broth, beef, noodles, and often vegetables and spices. It's a prepared, hearty dish popular in various cuisines. Among the categories listed, we should focus on prepared dishes, especially those that include noodles and potentially other mixed dishes with meat.",
+	"topThreeOptions":["K-1-11", "K-1-13", "K-2-1"],
+	"reasoningForBestOption":"The best match for beef noodle soup within the given categories is 'Noodle based dishes' because this category directly mentions noodles as a primary component, which aligns closely with beef noodle soup that essentially consists of noodles and beef as main ingredients.",
+	"ID":"K-1-11",
+	"subcategoryName":"Noodle based dishes"
+}
+</example>
+<example>
+Input: "Sliced Ham"
+Output:
+{
+	"reasoning": "Sliced ham is a type of cured meat which comes under the category of processed meat products. It's usually preserved by curing, salting, or smoking, and is commonly used in various dishes or consumed directly as part of meals.",
+	"topThreeOptions": ["D-2-2", "D-2-3", "D-2-O"],
+	"reasoningForBestOption": "Among the options, 'Bacon' and 'Sausages' are specific types of cured meats with distinct characteristics or preparation methods, which differ from sliced ham. 'Bacon' is typically made from pork belly or back cuts that are cured and smoked, whereas 'Sausages' can be a blend of different meats and seasonings, often encased in a skin. 'Other cured meats' is the most suitable category as it can include varieties of sliced ham that do not specifically fall into more narrowly defined cured meat subcategories.",
+	"ID": "D-2-O",
+	"subcategoryName": "Other cured meats"
+}
+</example>
+<example>
+Input: "Honey Graham Catalina Crunch"
+Output:
+{
+{
+	"reasoning": "The 'Honey Graham Catalina Crunch' appears to be a processed food item, most likely a type of cereal or granola given its name. It suggests the presence of honey and graham as primary flavor components, possibly with a crunchy texture characteristic of dry breakfast cereals or granola. Since it is not explicitly a dairy, nut, meat, fruit, vegetable, or strictly a dessert, we focus on categories related to cereals or similar grain-based processed products.",
+	"topThreeOptions": ["B-3-2", "B-2-2", "G-2-1"],
+	"reasoningForBestOption": "Among the options, 'B-3-2: Ready-to-Eat Cereal (Low Sugar)' is the best match for 'Honey Graham Catalina Crunch' because it describes a kind of breakfast cereal that is ready-to-eat and aligns with the potential product nature suggested by the name. The 'low sugar' category is a better fit considering modern dietary preferences and the positioning of a product like 'Catalina Crunch', which often markets healthier variations of classic flavors.",
+	"ID": "B-3-2",
+	"subcategoryName": "Ready-to-Eat Cereal (Low Sugar)"
+}
+</example>
+<example>
+Input: "Hazelnut Butter"
+Output:
+{
+	"reasoning": "Hazelnut butter is a spread made primarily from ground hazelnuts. It may contain additional ingredients such as salt, sweeteners, and emulsifiers. Commonly used as a spread on breads, crackers, and in various recipes, hazelnut butter falls under the category of processed nut products.",
+	"topThreeOptions": ["D-5-3", "J-2-5", "J-2-6"],
+	"reasoningForBestOption": "Among the listed options, 'J-2-6: Almond butter' provides the closest category match for hazelnut butter. Both hazelnut and almond butter are types of nut butter, implying similar processing techniques and uses despite the difference in the specific nut used. The subcategory explicitly mentions a type of nut butter, making it a suitable match.",
+	"ID": "J-2-6",
+	"subcategoryName": "Other Nut Butters"
+}
+</example>
+<example>
+Input: "Rice With Black Beans by Goya"
+Output:
+{
+	"reasoning": "'Rice With Black Beans' from Goya is likely a quick and easy side dish that combines rice and black beans with various seasonings and ingredients like olive oil, cooking wine, and spices. This dish is pre-prepared in the sense that it uses canned beans and is designed for convenience, suggesting a match in categories related to prepared dishes or mixed dishes, especially those involving rice.",
+	"topThreeOptions": ["B-4-1", "K-1-14", "K-2-4"],
+	"reasoningForBestOption": "'K-2-4 Vegetarian Mixed Dishes' is an optimal category because it encompasses dishes that are plant-based and include mixtures of various foods, which is aligned with the nature of a rice and bean dish. This category would be suitable given the combination of ingredients and the dish being a quick, nutritious meal option that fits with vegetarian options.",
+	"ID": "K-2-4",
+	"subcategoryName": "Vegetarian Mixed Dishes"
+}
+</example>
+</examples>
+
+<list_of_categories>
+LIST_OF_CATEGORIES
+</list_of_categories>`
+  },
   "claude-3-haiku": {
     systemPrompt: "You are a helpful assistant that only replies in valid JSON.",
     prompt: `<item_to_match>

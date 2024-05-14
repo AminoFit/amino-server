@@ -5,8 +5,9 @@ import Anthropic from "@anthropic-ai/sdk"
 import { Tables } from "types/supabase-generated.types"
 import { getUserByEmail } from "../common/debugHelper"
 import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
-import { mean, std, quantileSeq } from 'mathjs';
+import { mean, std, quantileSeq, re } from 'mathjs';
 import OpenAI from "openai"
+import { chatCompletion } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 
 interface FoodClassifyResult {
   reasoning: string
@@ -58,6 +59,54 @@ export async function classifyFoodItemToCategoryLlama(
   }
 }
 
+export async function classifyFoodItemToCategoryGPT(
+  foodItem: FoodItemWithNutrientsAndServing,
+  user: Tables<"User">
+): Promise<{ foodItemCategoryID: string; foodItemCategoryName: string; foodItemId: number }> {
+  const foodItemName = foodItem.brand ? `${foodItem.name} by ${foodItem.brand}` : foodItem.name;
+  const temperature = 0.5;
+
+  const prompt = food_classify_prompt_by_model['gpt-4o'].prompt
+    .replace("FOOD_ITEM_TO_CLASSIFY", foodItemName)
+    .replace("LIST_OF_CATEGORIES", foodItemCategoriesList);
+
+  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content: "Please classify the following food item."
+    },
+    {
+      role: "user",
+      content: prompt
+    }
+  ];
+
+  try {
+    const response = await chatCompletion({
+      messages,
+      model: "gpt-4o",
+      temperature,
+      max_tokens: 1024,
+      response_format: "json_object"
+    }, user);
+
+    const result: FoodClassifyResult = JSON.parse(response.content!); // Parse response here
+    if (result && result.ID && result.subcategoryName) {
+      return {
+        foodItemCategoryID: result.ID,
+        foodItemCategoryName: result.subcategoryName,
+        foodItemId: foodItem.id
+      };
+    } else {
+      throw new Error("GPT-4o classification failed");
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Unable to classify food item with GPT-4o: ${errorMessage}`);
+    }
+}
+
+
 export async function classifyFoodItemToCategory(
   foodItem: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
@@ -95,7 +144,7 @@ export async function classifyFoodItemToCategory(
         model: "claude-3-haiku",
         temperature,
         provider: "bedrock",
-        max_tokens: 1024,
+        max_tokens: 2048,
       },
       user
     )
@@ -149,7 +198,8 @@ async function benchmarkClassification() {
   for (const foodItem of foodItems) {
     const startTime = performance.now();
     try {
-      await classifyFoodItemToCategory(foodItem as any, user!);
+      const result = await classifyFoodItemToCategory(foodItem as any, user!);
+      console.log(`Classification result for ${foodItem.name}: ${result.foodItemCategoryName}`);
     } catch (error) {
       console.error("Error during classification:", error);
       continue; // Skip on error

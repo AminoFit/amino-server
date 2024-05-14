@@ -77,7 +77,7 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
     const cosineMatchResults = await getBestFoodEmbeddingMatches(embedding.embedding_cache_id);
 
     cosineMatchResults.forEach((result) => {
-      console.log(`${result.name} - ${result.brand}- ${result.cosine_similarity} - ${result.foodInfoSource} - ${result.id ? result.id : "no id"}`)
+      console.log(`${result.name} - ${result.brand}- ${result.cosine_similarity} - ${result.foodInfoSource}:${result.externalId} - ${result.id ? result.id : "no id"}`)
     })
 
     const llamaMatchResult = await findBestFoodMatchtoLocalDbLlama(cosineMatchResults, item, user);
@@ -85,7 +85,7 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
       console.log("No valid matches found using Llama");
       continue;
     }
-    const foodItemLlama = await getFoodItemFromDbOrExternal(llamaMatchResult[0]!, user, 1);
+    const foodItemLlama = await getFoodItemFromDbOrExternal(llamaMatchResult[0]!, user, 1, item);
     
     const llamaMatchStart = performance.now();
     const servingMatchResultLlama = await findBestServingMatchChatLlama(item, foodItemLlama, user);
@@ -126,15 +126,35 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
 
 const testFoodItems = [
   {
-    food_database_search_name: "Clif Bar - Chocolate Chip Clif Bar",
-    full_item_user_message_including_serving: "Clif Bar Chocolate Chip Clif Bar",
+    food_database_search_name: "Clif Bar - Peanut Butter Banana Clif Bar",
+    full_item_user_message_including_serving: "Clif Bar Peanut Butter Banana with Dark Chocolate Flavor Bar",
     branded: true,
-    brand: "Clif Bar",
+    brand: "Clif",
     serving: {
       serving_g_or_ml: "g",
       total_serving_g_or_ml: 100
     }
   },
+  // {
+  //   food_database_search_name: "eggs whole fried with margarine",
+  //   full_item_user_message_including_serving: "2 eggs whole fried with margarine",
+  //   branded: false,
+  //   brand: "",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
+  // {
+  //   food_database_search_name: "Clif Bar - Chocolate Chip Clif Bar",
+  //   full_item_user_message_including_serving: "Clif Bar Chocolate Chip Clif Bar",
+  //   branded: true,
+  //   brand: "Clif Bar",
+  //   serving: {
+  //     serving_g_or_ml: "g",
+  //     total_serving_g_or_ml: 100
+  //   }
+  // },
   // {
   //   food_database_search_name: "peanut",
   //   full_item_user_message_including_serving: "4 whole peanuts",

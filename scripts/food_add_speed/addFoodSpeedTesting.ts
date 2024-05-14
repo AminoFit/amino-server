@@ -12,7 +12,7 @@ async function addFoodSpeedTesting() {
     foodInfoSource: "USDA",
     externalId: "175219"
   }
-  getFoodItemFromDbOrExternal(food, user!, 1)
+  // getFoodItemFromDbOrExternal(food, user!, 1)
 }
 
 // addFoodSpeedTesting()

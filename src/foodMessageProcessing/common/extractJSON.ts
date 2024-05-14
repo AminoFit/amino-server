@@ -1,16 +1,14 @@
 import { i } from "mathjs"
 
-export function extractAndParseLastJSON(inputString: string) {
+export function extractAndParseLastJSON(inputString: string, evalMath: boolean = true) {
   // Strip non-JSON text and balance brackets before processing
   inputString = stripAndBalanceBrackets(inputString)
   // Regular expression to find content between triple backticks labeled as JSON
   const jsonRegex = /```json\n([\s\S]*?)\n```/g
   // Fallback regex to capture the last well-formed JSON object
   const fallbackJsonRegex = /{(?:[^{}]*|{(?:[^{}]*|{(?:[^{}]*|{(?:[^{}]*|{[^{}]*})*})*})*})*}/
-  // const fallbackJsonRegex = /{[\s\S]*}$/;
 
   // Regex to find and evaluate math expressions within the JSON string
-  // const mathExpressionRegex = /(\d+(?:\.\d+)?\s*[*/+-]\s*\d+(?:\.\d+)?)/g;
   const mathExpressionRegex = /\d+(\.\d+)?(?:\s*[*/+-]\s*\d+(\.\d+)?)+/g
 
   let lastMatch, match
@@ -20,19 +18,23 @@ export function extractAndParseLastJSON(inputString: string) {
     lastMatch = match
   }
 
+  // Utility function to evaluate math expressions if evalMath is true
+  const replaceMathExpressions = (str: string) => {
+    return evalMath ? str.replace(mathExpressionRegex, (expr) => {
+      try {
+        return eval(expr)
+      } catch (e) {
+        console.error("Error evaluating math expression:", e)
+        return expr // Return the original expression if evaluation fails
+      }
+    }) : str
+  }
+
   // If a match is found, attempt to parse it
   if (lastMatch) {
     try {
       // Replace math expressions within the JSON string and evaluate them
-      const jsonString = lastMatch[1].replace(mathExpressionRegex, (expr) => {
-        try {
-          // Evaluate the expression safely
-          return eval(expr)
-        } catch (e) {
-          console.error("Error evaluating math expression:", e)
-          return expr // Return the original expression if evaluation fails
-        }
-      })
+      const jsonString = replaceMathExpressions(lastMatch[1])
       return JSON.parse(jsonString) // Parse the modified JSON string
     } catch (e) {
       console.error("Error parsing JSON:", e)
@@ -42,19 +44,10 @@ export function extractAndParseLastJSON(inputString: string) {
 
   // Fallback: attempt to find and parse the last JSON object
   const fallbackMatch = inputString.match(fallbackJsonRegex)
-  // console.log("fallbackMatch", fallbackMatch)
   if (fallbackMatch) {
-    // console.log("Fallback match found:", fallbackMatch[0])
     try {
       // Replace math expressions with their evaluated values
-      const jsonString = fallbackMatch[0].replace(mathExpressionRegex, (expr) => {
-        try {
-          return eval(expr)
-        } catch (e) {
-          console.error("Error evaluating math expression:", e)
-          return expr
-        }
-      })
+      const jsonString = replaceMathExpressions(fallbackMatch[0])
       return JSON.parse(jsonString) // Parse the modified JSON string
     } catch (e) {
       console.error("Error parsing fallback JSON:", e)
