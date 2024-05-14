@@ -85,7 +85,7 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
       console.log("No valid matches found using Llama");
       continue;
     }
-    const foodItemLlama = await getFoodItemFromDbOrExternal(llamaMatchResult[0]!, user, 1);
+    const foodItemLlama = await getFoodItemFromDbOrExternal(llamaMatchResult[0]!, user, 1, item);
     
     const llamaMatchStart = performance.now();
     const servingMatchResultLlama = await findBestServingMatchChatLlama(item, foodItemLlama, user);

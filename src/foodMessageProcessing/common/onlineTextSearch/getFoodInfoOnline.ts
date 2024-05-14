@@ -142,7 +142,7 @@ async function fetchAndConvertUrlToText(url: string) {
 }
 
 // Main function to get food information
-async function searchGoogleForFoodInfo(foodName: string, numResults = 2) {
+export async function searchGoogleForFoodInfo(foodName: string, numResults = 2) {
   console.log("searching for", foodName);
   const urls = await getSearchResults(foodName, numResults);
   

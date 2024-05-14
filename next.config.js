@@ -24,6 +24,19 @@ const nextConfig = {
   //     }
   //   ]
   // }
-}
 
-module.exports = nextConfig
+  webpack: (config, { isServer }) => {
+    // Create alias for the `html-to-text` module
+    config.resolve.alias['html-to-text'] = require.resolve('html-to-text');
+
+    // Exclude `html-to-text` from being processed by Webpack
+    config.externals = config.externals || [];
+    if (!isServer) {
+      config.externals.push('html-to-text');
+    }
+
+    return config;
+  },
+};
+
+module.exports = nextConfig;
