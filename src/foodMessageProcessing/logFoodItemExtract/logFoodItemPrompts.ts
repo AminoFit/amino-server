@@ -169,7 +169,7 @@ Beginning of JSON output:
 `
     },
     "claude-3-haiku": {
-      systemPrompt: "You are a helpful assistant that only replies in valid JSON.",
+      systemPrompt: "You are a helpful assistant that only replies in english and valid JSON.",
       prompt: `<input_to_process>
 INPUT_HERE
 </input_to_process>
@@ -190,6 +190,8 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should be distinct from all other items and should not overlap or have any duplicates (e.g. if user logged waffle with syrup we would have one entry we "single waffle" and the other "syrup 1 serving" and not "syrup with waffle" and another entry for "syrup".)
 
 7. When in doubt include words in the message as the brand to help with matching e.g. "why lemon bar" would be item: "lemon bar" and brand:"why".
+
+8. For prompts not in english translate to english in order to get a valid output.
 </instructions>
 
 <examples>

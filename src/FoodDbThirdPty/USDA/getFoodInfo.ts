@@ -55,6 +55,7 @@ function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]): UsdaFo
       // Add other nutrients and their units here
     }
 
+
     Object.entries(foodItem.labelNutrients as LabelNutrients).forEach(([name, nutrient]) => {
       foodInfo[name] = {
         amount: nutrient.value,
@@ -195,7 +196,7 @@ export async function getUsdaFoodsInfo(params: UsdaFoodsParams): Promise<FoodIte
   try {
     const response = await axios.get(API_URL, { params: requestParams })
 
-    console.log(JSON.stringify(response.data))
+    // console.log(JSON.stringify(response.data))
 
     // do not await this
     recordQuery("usda", API_URL)
@@ -206,7 +207,6 @@ export async function getUsdaFoodsInfo(params: UsdaFoodsParams): Promise<FoodIte
       )
     }
     const foodItemsMapped = foodItems.map(mapUsdaFoodItemToFoodItem)
-
     return foodItemsMapped.length > 0 ? foodItemsMapped : null
   } catch (error) {
     if (error instanceof Error) {
@@ -243,6 +243,6 @@ function dummyTest() {
 
 // food for 172963, 168460, 2175192
 async function runTests() {
-  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2214660"] }), { depth: null })
+  console.dir(await getUsdaFoodsInfo({ fdcIds: ["1187619"] }), { depth: null })
 }
 // runTests()

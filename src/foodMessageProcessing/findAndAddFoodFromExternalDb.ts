@@ -17,6 +17,8 @@ import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
 import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS, COSINE_THRESHOLD } from "./common/foodProcessingConstants"
 import { printSearchResults } from "./common/processFoodItemsUtils"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { searchGoogleForFoodInfo } from "./common/onlineTextSearch/getFoodInfoOnline"
+import { getFullFoodInformationOnline } from "./getFullFoodInformationOnline/getFullFoodInformationOnline"
 
 export async function findAndAddFoodItemInExternalDatabase(
   foodToLog: FoodItemToLog,
@@ -184,23 +186,25 @@ export async function findAndAddFoodItemInExternalDatabase(
 
     // If we have an item check is we are missing a field
     if (highestSimilarityItem) {
-      //console.log("Highest similarity item:", highestSimilarityItem!.foodName)
-      //console.dir(highestSimilarityItem, { depth: null })
       // Ensure we have the full food item info
-      highestSimilarityItem.foodItem = await getCompleteFoodInfo(highestSimilarityItem)
+      try {
+        highestSimilarityItem.foodItem = await getCompleteFoodInfo(highestSimilarityItem)
 
-      //console.log("highestSimilarityItem.food", highestSimilarityItem.foodItem)
+        //console.log("highestSimilarityItem.food", highestSimilarityItem.foodItem)
 
-      let foodItemToSave: FoodItemWithNutrientsAndServing =
-        highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
+        let foodItemToSave: FoodItemWithNutrientsAndServing =
+          highestSimilarityItem.foodItem! as FoodItemWithNutrientsAndServing
 
-      const newFood = await addFoodItemToDatabase(
-        foodItemToSave,
-        highestSimilarityItem.foodBgeBaseEmbedding,
-        messageId,
-        user
-      )
-      return newFood
+        const newFood = await addFoodItemToDatabase(
+          foodItemToSave,
+          highestSimilarityItem.foodBgeBaseEmbedding,
+          messageId,
+          user
+        )
+        return newFood
+      } catch (error) {
+        console.error("Error getting complete food info, continuing to search using fallback:", error)
+      }
     }
 
     // If we didn't find a match we then rely on GPT-4
@@ -209,20 +213,36 @@ export async function findAndAddFoodItemInExternalDatabase(
     // Fetch complete food info for the top 3 items
     const top3PopulatedFoodItems = await Promise.all(
       foodInfoResponses.slice(0, 3).map(async (item) => {
-        item.foodItem = await getCompleteFoodInfo(item)
-        return item
+        try {
+          item.foodItem = await getCompleteFoodInfo(item)
+          return item
+        } catch (error) {
+          console.error("Error getting complete food info, continuing to search using fallback:", error)
+          return item
+        }
       })
     )
 
     // Construct the request string
-    const foodItemRequestString = constructFoodItemRequestString(foodToLog, top3PopulatedFoodItems)
-    console.log("foodItemRequestString:\n", foodItemRequestString)
-    const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user, foodToLog.branded ? `${foodToLog.food_database_search_name} - ${foodToLog.brand}` : foodToLog.food_database_search_name)
-    console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
 
-    let food: FoodInfo = foodItemInfo
-    console.log("food req string:\n", foodItemRequestString)
-    const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
+    // const foodItemRequestString = constructFoodItemRequestString(foodToLog, top3PopulatedFoodItems)
+    // const foodToSearchString = foodToLog.food_database_search_name + ( foodToLog.brand ? ` by ${foodToLog.brand}` : "")
+    // const onlineResults = await searchGoogleForFoodInfo(foodToSearchString, 3)
+    // console.log("foodItemRequestString:\n", foodItemRequestString)
+    // const { foodItemInfo, model } = await foodItemCompletion(
+    //   foodItemRequestString + "\n\n" + onlineResults,
+    //   user,
+    //   foodToLog.branded
+    //     ? `${foodToLog.food_database_search_name} by ${foodToLog.brand}`
+    //     : foodToLog.food_database_search_name
+    // )
+    // console.log("Time taken for foodItemCompletion:", Date.now() - foodItemCompletionStartTime, "ms")
+
+    // let food: FoodInfo = foodItemInfo
+    // console.log("food req string:\n", foodItemRequestString)
+    // const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
+    
+    const llmFoodItemToSave = (await getFullFoodInformationOnline(foodToLog, "", user))!
     const newFood = await addFoodItemToDatabase(
       llmFoodItemToSave,
       await getFoodEmbedding(llmFoodItemToSave),
@@ -252,16 +272,28 @@ async function getUserByEmail(email: string) {
 async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
   const messageId = 1200
-  const foodToLog = {
+  const foodToLog_magicSpoon = {
     food_database_search_name: "Magic spoon peanut butter cereal",
     full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
     branded: true,
     brand: "Magic spoon"
   } as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
-  const food_embed_cache = await foodToLogEmbedding(foodToLog)
 
-  const result = await findAndAddFoodItemInExternalDatabase(foodToLog!, food_embed_cache, user!, messageId)
+  const pbfit = {
+    food_database_search_name: "PBFit",
+    full_item_user_message_including_serving: "70 cals of PBFit",
+    brand: "",
+    branded: false,
+    timeEaten: "2023-04-01T20:11:15.552Z",
+    serving: {
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 100
+    }
+  } as FoodItemToLog
+  const food_embed_cache = await foodToLogEmbedding(pbfit)
+
+  const result = await findAndAddFoodItemInExternalDatabase(pbfit!, food_embed_cache, user!, messageId)
   console.log("result", result)
 }
 
@@ -285,17 +317,18 @@ async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog)
     "isLiquid": false,
   }
   `
-  const { foodItemInfo, model } = await foodItemCompletion(foodItemRequestString, user, foodToLog.branded ? `${foodToLog.food_database_search_name} - ${foodToLog.brand}` : foodToLog.food_database_search_name)
+  const { foodItemInfo, model } = await foodItemCompletion(
+    foodItemRequestString,
+    user,
+    foodToLog.branded
+      ? `${foodToLog.food_database_search_name} - ${foodToLog.brand}`
+      : foodToLog.food_database_search_name
+  )
 
   let food: FoodInfo = foodItemInfo
   console.log("food req string:\n", foodItemRequestString)
   const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
-  const newFood = await addFoodItemToDatabase(
-    llmFoodItemToSave,
-    await getFoodEmbedding(llmFoodItemToSave),
-    1861,
-    user
-  )
+  const newFood = await addFoodItemToDatabase(llmFoodItemToSave, await getFoodEmbedding(llmFoodItemToSave), 1861, user)
   return newFood
 }
 
