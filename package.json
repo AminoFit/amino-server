@@ -80,7 +80,6 @@
     "sqlutils": "^1.5.3",
     "supabase": "^1.145.4",
     "swr": "^2.2.5",
-    "tiktoken": "^1.0.15",
     "twilio": "^4.23.0",
     "typescript": "^5.3.3",
     "underscore": "^1.13.6",
