@@ -20,6 +20,21 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { searchGoogleForFoodInfo } from "./common/onlineTextSearch/getFoodInfoOnline"
 import { getFullFoodInformationOnline } from "./getFullFoodInformationOnline/getFullFoodInformationOnline"
 
+async function addFoodFromOnlineInfo(
+  foodToLog: FoodItemToLog,
+  user: Tables<"User">,
+  messageId: number
+): Promise<FoodItemWithNutrientsAndServing> {
+  const llmFoodItemToSave = (await getFullFoodInformationOnline(foodToLog, "", user))!;
+  const newFood = await addFoodItemToDatabase(
+    llmFoodItemToSave,
+    await getFoodEmbedding(llmFoodItemToSave),
+    messageId,
+    user
+  );
+  return newFood;
+}
+
 export async function findAndAddFoodItemInExternalDatabase(
   foodToLog: FoodItemToLog,
   queryEmbeddingCache: FoodEmbeddingCache,
@@ -64,6 +79,7 @@ export async function findAndAddFoodItemInExternalDatabase(
       return null
     }
 
+    // deprecated since we are using it during initial search
     const getUsdaFoodInfo = async () => {
       const startTime = Date.now()
       try {
@@ -123,9 +139,9 @@ export async function findAndAddFoodItemInExternalDatabase(
     }
 
     // Dispatch all API calls simultaneously
-    const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
+    const [nxFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
       getNxFoodInfo(),
-      getUsdaFoodInfo(),
+      // getUsdaFoodInfo(),
       getFsFoodInfo()
     ])
 
@@ -133,9 +149,9 @@ export async function findAndAddFoodItemInExternalDatabase(
       foodInfoResponses.push(...nxFoodInfoResponse)
     }
 
-    if (usdaFoodInfoResponse != null) {
-      foodInfoResponses.push(...usdaFoodInfoResponse)
-    }
+    // if (usdaFoodInfoResponse != null) {
+    //   foodInfoResponses.push(...usdaFoodInfoResponse)
+    // }
 
     if (fatSecretInfoResponse != null) {
       foodInfoResponses.push(...fatSecretInfoResponse)
@@ -143,9 +159,11 @@ export async function findAndAddFoodItemInExternalDatabase(
 
     // Check if the consolidated array is empty
     if (foodInfoResponses.length === 0) {
-      console.error("All food sources returned no results.")
+      console.log("All food sources returned no results. Searchin online for the food")
       // You can throw an error or return a default value here
-      throw new Error("No food information found.")
+      //DO FALLBACK HERE
+      const result = await addFoodFromOnlineInfo(foodToLog, user, messageId)
+      return result
     }
     // Find the item with the highest similarity score
     let highestSimilarityItem: foodSearchResultsWithSimilarityAndEmbedding | null = foodInfoResponses.reduce(
@@ -241,14 +259,8 @@ export async function findAndAddFoodItemInExternalDatabase(
     // let food: FoodInfo = foodItemInfo
     // console.log("food req string:\n", foodItemRequestString)
     // const llmFoodItemToSave = mapOpenAiFoodInfoToFoodItem(food, model) as FoodItemWithNutrientsAndServing
-    
-    const llmFoodItemToSave = (await getFullFoodInformationOnline(foodToLog, "", user))!
-    const newFood = await addFoodItemToDatabase(
-      llmFoodItemToSave,
-      await getFoodEmbedding(llmFoodItemToSave),
-      messageId,
-      user
-    )
+  
+    const newFood = addFoodFromOnlineInfo(foodToLog, user, messageId)
 
     return newFood
   } catch (err) {

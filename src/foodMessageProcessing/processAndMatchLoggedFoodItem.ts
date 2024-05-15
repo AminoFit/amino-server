@@ -28,7 +28,7 @@ export async function ProcessLogFoodItem(
   user: Tables<"User">
 ): Promise<string> {
   // const supabase = createServerActionClient<Database>({ cookies })
-
+  try {
   const message = await GetMessageById(messageId)
 
   const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
@@ -54,7 +54,9 @@ export async function ProcessLogFoodItem(
   try {
     food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
   } catch (err1) {
-    throw err1
+    console.log("Error processing food item:", err1)
+    await updateLoggedFoodItemWithData(loggedFoodItem.id, {status: "Matching Failed"})
+    return "Sorry, I could not log your food items. Please try again later."
   }
 
   let extendedFoodData = { ...food, second_best_match: secondBestMatch }
@@ -86,6 +88,11 @@ export async function ProcessLogFoodItem(
 
   await LinkIconsOrCreateIfNeeded(bestMatch.id)
   return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
+} catch (error) {
+  console.log("Error processing food item:", error)
+  await updateLoggedFoodItemWithData(loggedFoodItem.id, {status: "Matching Failed"})
+  return "Sorry, I could not log your food items. Please try again later."
+}
 }
 
 async function testFoodMatching() {

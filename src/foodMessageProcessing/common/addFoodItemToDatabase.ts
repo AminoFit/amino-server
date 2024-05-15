@@ -148,7 +148,7 @@ export async function addFoodItemToDatabase(
     .single()) as { data: Tables<"FoodItem">; error: any }
 
   if (insertError) {
-    console.error("Error inserting food item", insertError)
+    console.error("(addFoodItemToDatabase) Error inserting food item", insertError)
     throw insertError
   }
   // console.log("Insert FoodItem result error:", insertError)

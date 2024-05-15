@@ -92,5 +92,6 @@ async function processLoggedFoodItems(itemIds?: number[]) {
     rl.close()
   }
 
-const fooditemids = [12548,12805,11964] //12463
+const fooditemids = [13187, 10205, 9837, 8458, 8253, 8167, 7878, 7264, 7136, 6481, 6200, 5558, 5545,5459]
+//TODO: fix item 4888 and remove unknown items from database
 processLoggedFoodItems()
