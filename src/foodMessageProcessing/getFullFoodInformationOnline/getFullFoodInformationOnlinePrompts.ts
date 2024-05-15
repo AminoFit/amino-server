@@ -18,8 +18,18 @@ serving_default_size_g: "3*28.3495" (3 oz in grams)
 
 4. If provided info does not match food_name feel free to ignore it.
 
+5. Use the reasoning field to explain why you are choosing certain values and how you are calculating them as well as to do a quick sanity check on the nutritional values to be sure they aren't too high or low and conform to expected calorie density.
+5a. It is possible the food_name is not a valid item with nutritional value. In this case output "isValidFoodItem": false. Some items may not be considered food in the classic way but still have nutritional value so we can consider them as valid.
+
 IMPORTANT:
 Output ONLY info for food_name and not any other food. online_food_information may not always contain relevant info and should be used only if the info is useful.
+Also remember that:
+- fat is about 9 cals/gram
+- carbs are about 4 cals/gram
+- protein is about 4 cals/gram
+- alcohol is about 7 cals/gram
+So you can use that to make sure values are correct.
+Also in general most foods calorific density are at most 9 cals/gram so you can use that to make sure values are correct.
 </instructions>
 
 <online_food_information>
@@ -28,6 +38,8 @@ ONLINE_FOOD_INFORMATION
 
 <json_output_template>
 {
+"reasoning":"string",
+"isValidFoodItem": "boolean",
 "name": "string",
 "brand": "string",
 "description": "string",

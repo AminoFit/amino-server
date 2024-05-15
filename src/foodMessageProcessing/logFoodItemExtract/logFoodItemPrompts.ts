@@ -191,9 +191,7 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
 
 7. When in doubt include words in the message as the brand to help with matching e.g. "why lemon bar" would be item: "lemon bar" and brand:"why".
 
-8. For prompts not in english translate to english in order to get a valid output.
-</instructions>
-
+8. For prompts not in english translate to english in order to get a valid output. You can keep the original name in parentheses.</instructions>
 <examples>
   <example>
     <input>"I like dancing"</input>
@@ -295,6 +293,27 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
             "full_single_item_user_message_including_serving_or_quantity": "1 medium Starbuck fat free latte",
             "branded": true,
             "brand": "Starbucks"
+          }
+        ],
+        "contains_valid_food_items": true
+      }
+    </output>
+  </example>
+  <example>
+    <input>"deux pommes et une tranche de pain"</input>
+    <output>
+      {
+        "food_items": [{
+            "full_single_food_database_search_name": "apple (pomme)",
+            "full_single_item_user_message_including_serving_or_quantity": "two apples (deux pommes)",
+            "branded": false,
+            "brand": ""
+          },
+          {
+            "full_single_food_database_search_name": "bread (pain)",
+            "full_single_item_user_message_including_serving_or_quantity": "slice of bread (une tranche de pain)",
+            "branded": false,
+            "brand": ""
           }
         ],
         "contains_valid_food_items": true

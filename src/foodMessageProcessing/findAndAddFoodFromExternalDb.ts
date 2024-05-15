@@ -123,9 +123,9 @@ export async function findAndAddFoodItemInExternalDatabase(
     }
 
     // Dispatch all API calls simultaneously
-    const [nxFoodInfoResponse, usdaFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
+    const [nxFoodInfoResponse, fatSecretInfoResponse] = await Promise.all([
       getNxFoodInfo(),
-      getUsdaFoodInfo(),
+      // getUsdaFoodInfo(),
       getFsFoodInfo()
     ])
 
@@ -133,9 +133,9 @@ export async function findAndAddFoodItemInExternalDatabase(
       foodInfoResponses.push(...nxFoodInfoResponse)
     }
 
-    if (usdaFoodInfoResponse != null) {
-      foodInfoResponses.push(...usdaFoodInfoResponse)
-    }
+    // if (usdaFoodInfoResponse != null) {
+    //   foodInfoResponses.push(...usdaFoodInfoResponse)
+    // }
 
     if (fatSecretInfoResponse != null) {
       foodInfoResponses.push(...fatSecretInfoResponse)
