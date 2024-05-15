@@ -21,6 +21,11 @@ function mapToFoodItemWithNutrientsAndServing(data: any): FoodItemWithNutrientsA
     }
   }
 
+    // Check if the food item is valid
+    if (!data.isValidFoodItem) {
+      throw new Error(`Invalid food item: ${data.reasoning}`);
+    }
+
   // Convert primary fields
   const foodItem: FoodItemWithNutrientsAndServing = {
     id: data.id || 0, // Set default if id is not provided
@@ -222,7 +227,30 @@ async function testGetFullFoodInformationOnline() {
     }
   } as FoodItemToLog
 
-  const result = await getFullFoodInformationOnline(stacker, "", user!)
+  const weetbix = {
+    food_database_search_name: "Weetbix",
+    full_item_user_message_including_serving: "Weetbix",
+    brand: "Weetbix",
+    branded: true,
+    timeEaten: "2023-04-01T20:11:15.552Z",
+    serving: {
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 100
+    }
+  } as FoodItemToLog
+
+  const nuttyPuddingByBryanJohnson = {
+    food_database_search_name: "Nutty Pudding by Bryan Johnson",
+    full_item_user_message_including_serving: "Nutty Pudding by Bryan Johnson",
+    brand: "Blueprint Bryan Johnson",
+    branded: true,
+    timeEaten: "2023-04-01T20:11:15.552Z",
+    serving: {
+      serving_g_or_ml: "g",
+      total_serving_g_or_ml: 100
+    }
+  } as FoodItemToLog
+   const result = await getFullFoodInformationOnline(nuttyPuddingByBryanJohnson, "", user!)
   // const newFood = await addFoodItemToDatabase(
   //   result!,
   //   await getFoodEmbedding(result!),

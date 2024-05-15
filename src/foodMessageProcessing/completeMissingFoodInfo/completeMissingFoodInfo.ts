@@ -141,12 +141,15 @@ export async function completeMissingFoodInfo(
   let onlineSearchInfo = ""
 
   try {
-    onlineSearchInfo = (await searchGoogleForFoodInfo(foodInfo.brand ? `${foodInfo.name} by ${foodInfo.brand}` : foodInfo.name, 4))!
+    onlineSearchInfo = (await searchGoogleForFoodInfo(
+      foodInfo.brand ? `${foodInfo.name} by ${foodInfo.brand}` : foodInfo.name,
+      4
+    ))!
   } catch (e) {
     console.log("could not get missing food info online query", e)
   }
 
-    console.log('(completeMissingFoodInfo) got info online with length:', onlineSearchInfo.length)
+  console.log("(completeMissingFoodInfo) got info online with length:", onlineSearchInfo.length)
 
   const model = "gpt-4o"
   const temperatures = [0, 0.1] // Initial and retry temperatures
@@ -213,7 +216,7 @@ export async function completeMissingFoodInfoLlama(
   const prompt = missingFoodInfoPromptsByModel["llama3-70b"].prompt
     .replace("EXTRA_ONLINE_INFO", onlineSearchInfo)
     .replace("FOOD_INFO_HERE", JSON.stringify(simplifyFoodInfo(foodInfo)))
-  console.log('prompt', prompt)
+  console.log("prompt", prompt)
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
       role: "system",
