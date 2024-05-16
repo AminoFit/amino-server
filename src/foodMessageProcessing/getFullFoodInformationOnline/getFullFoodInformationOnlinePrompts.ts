@@ -39,6 +39,11 @@ Also in general most foods calorific density are at most 9 cals/gram so you can 
 ONLINE_FOOD_INFORMATION
 </online_food_information>
 
+<extra_output_instructions>
+description: must be one or two sentences about the food item and its main ingredients along with nutritional highlights.
+brand: leave blank ("") for non-branded items.
+</extra_output_instructions>
+
 <json_output_template>
 {
 "reasoning":"string",
