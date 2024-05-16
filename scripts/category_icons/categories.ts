@@ -27,7 +27,7 @@ export const categories = [
   {
     category: "A-1-6",
     categoryName: "Powdered Milks",
-    iconDescription: "A container of powder."
+    iconDescription: "A container of powdered milk."
   },
   {
     category: "A-1-7",
@@ -51,7 +51,7 @@ export const categories = [
   },
   {
     category: "A-2-3",
-    categoryName: "Cottage/Ricotta Cheese",
+    categoryName: "Cottage or Ricotta Cheese",
     iconDescription: "A bowl filled with cheese."
   },
   {
@@ -1117,7 +1117,7 @@ export const categories = [
   },
   {
     category: "G-3-2",
-    categoryName: "Sweet Pies (e.g. apple/fruit pie or crumble)",
+    categoryName: "Sweet Pies (e.g. apple or fruit pie or crumble)",
     iconDescription: "A slice of pie."
   },
   {
@@ -1187,7 +1187,7 @@ export const categories = [
   },
   {
     category: "H-1-4",
-    categoryName: "Flavored/Enhanced Water",
+    categoryName: "Flavored or Enhanced Water",
     iconDescription: "A bottle of flavored water."
   },
   {
@@ -1752,7 +1752,7 @@ export const categories = [
   },
   {
     category: "L-1-2",
-    categoryName: "Combinations (fruits/vegetables, or with grains)",
+    categoryName: "Combinations (fruits or vegetables, or with grains)",
     iconDescription: "A jar of puree."
   },
   {
