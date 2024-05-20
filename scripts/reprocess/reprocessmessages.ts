@@ -94,4 +94,4 @@ async function resendRecentReceivedMessages(messageIds?: number[]) {
   }
 }
 
-resendRecentReceivedMessages([8135])
+resendRecentReceivedMessages()

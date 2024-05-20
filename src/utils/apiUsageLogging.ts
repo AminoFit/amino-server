@@ -3,29 +3,26 @@ import { createAdminSupabase } from "./supabase/serverAdmin"
 export async function checkRateLimit(apiName: string, maxCount: number, timeFrame: number): Promise<boolean> {
   // Chris TODO
 
-  // let currentTime = new Date()
-  // let pastTime = new Date(currentTime.getTime() - timeFrame)
+  let currentTime = new Date()
+  let pastTime = new Date(currentTime.getTime() - timeFrame)
 
-  // const supabase = createAdminSupabase()
+  const supabase = createAdminSupabase()
 
-  // const groupedRecords = await prism.apiCalls.groupBy({
-  //   by: ["apiName"],
-  //   where: {
-  //     apiName: apiName,
-  //     timestamp: {
-  //       gte: pastTime,
-  //       lt: currentTime
-  //     }
-  //   },
-  //   _sum: {
-  //     count: true
-  //   }
-  // })
+  const { data, error } = await supabase
+    .from('ApiCalls')
+    .select('count')
+    .eq('apiName', apiName)
+    .gte('timestamp', pastTime.toISOString())
+    .lt('timestamp', currentTime.toISOString())
 
-  // let total = groupedRecords[0]?._sum?.count || 0
+  if (error) {
+    console.error('Error fetching API calls:', error)
+    return false
+  }
 
-  // return total < maxCount
-  return true
+  let total = data?.reduce((sum, record) => sum + record.count, 0) || 0
+
+  return total < maxCount
 }
 
 export async function recordQuery(apiName: string, queryType: string) {
@@ -35,25 +32,25 @@ export async function recordQuery(apiName: string, queryType: string) {
   const supabase = createAdminSupabase()
 
   const { data, error } = await supabase
-    .from("api_calls")
+    .from("ApiCalls")
     .select("*")
     .eq("apiName", apiName)
     .eq("queryType", queryType)
-    .eq("timestamp", bucketStartTime)
+    .eq("timestamp", bucketStartTime.toISOString())
     .single()
 
   if (data) {
     await supabase
-      .from("api_calls")
+      .from("ApiCalls")
       .update({
         count: data.count + 1
       })
       .eq("id", data.id)
   } else {
-    await supabase.from("api_calls").insert({
+    await supabase.from("ApiCalls").insert({
       apiName,
       queryType,
-      timestamp: bucketStartTime,
+      timestamp: bucketStartTime.toISOString(),
       count: 1
     })
   }
