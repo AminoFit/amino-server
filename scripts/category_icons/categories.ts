@@ -52,12 +52,12 @@ export const categories = [
   {
     category: "A-2-3",
     categoryName: "Cottage or Ricotta Cheese",
-    iconDescription: "A bowl filled with cheese."
+    iconDescription: "A bowl filled with cottage cheese."
   },
   {
     category: "A-2-O",
     categoryName: "Other Cheese",
-    iconDescription: "A variety of cheese."
+    iconDescription: "A variety of cheese on a plate."
   },
   {
     category: "A-3-1",

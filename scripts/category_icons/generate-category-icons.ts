@@ -19,10 +19,27 @@ const Authorization =
 async function main() {
   const dirPath = path.join(__dirname, "assets/foodicons")
   createDirectoryIfNotExists(dirPath).catch(console.error)
-  await generateIndex(32)
+  for (let i = 0; i < categories.length; i++) {
+    await generateIndex(i)
+  }
+}
+
+async function hasExistingImages(index: number) {
+  const category = categories[index]
+  const dirPath = path.join("./assets/foodicons/" + category.category + "/")
+  try {
+    await fs.access(dirPath)
+    const files = await fs.readdir(dirPath)
+    return files.length > 0
+  } catch (error) {
+    return false
+  }
 }
 
 async function generateIndex(index: number) {
+  if (await hasExistingImages(index)) {
+    return
+  }
   const category = categories[index]
   if (category) {
     console.log(`Category ID: ${category.category}`)
@@ -119,7 +136,7 @@ async function upscaleImage(messageId: string, button: "U1" | "U2" | "U3" | "U4"
 
 async function waitOnImage(messageId: string, name: string, id: string) {
   const startTime = Date.now()
-  const timeout = 2 * 60 * 1000
+  const timeout = 4 * 60 * 1000
 
   while (true) {
     await new Promise((r) => setTimeout(r, 2000))
@@ -192,6 +209,9 @@ async function processImageWithClipDropAndSave(filepath: string) {
   // Delete the original image file here
   await fs.unlink(filepath)
   console.log("Original image deleted")
+
+  // Rename the file without no_bg
+  await fs.rename(outputPath, filepath)
 
   return outputPath
 }
