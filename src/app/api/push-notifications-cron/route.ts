@@ -51,11 +51,7 @@ export async function GET(request: Request) {
 
     const isLunchOrDinnerTime = userHour === 13 || userHour === 20
 
-    if (user.pushNotificationPreference === "Daily" && isLunchOrDinnerTime) {
-      appendPushNotification(toSend, user.ExpoPushTokens)
-    } else if (user.pushNotificationPreference === "EveryOtherDay" && userHour === 20 && userTime.getDate() % 2 === 0) {
-      appendPushNotification(toSend, user.ExpoPushTokens)
-    } else if (user.pushNotificationPreference === "Weekly" && userHour === 20 && userTime.getDay() === 0) {
+    if (true) {
       appendPushNotification(toSend, user.ExpoPushTokens)
     }
   }
