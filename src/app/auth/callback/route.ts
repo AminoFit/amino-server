@@ -1,36 +1,38 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { NextRequest, NextResponse } from "next/server"
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import { type CookieOptions, createServerClient } from '@supabase/ssr'
 
-export const dynamic = "force-dynamic"
-
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const code = searchParams.get("code")
-  const next = searchParams.get("next") ?? "/"
-
-  console.log("in callback route")
-  console.log("code", code)
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  // if "next" is in param, use it as the redirect URL
+  const next = searchParams.get('next') ?? '/'
 
   if (code) {
     const cookieStore = cookies()
-    console.log("cookieStore", cookieStore)
-    const supabase = createRouteHandlerClient(
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: () => cookieStore
-      },
-      {
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: CookieOptions) {
+            cookieStore.delete({ name, ...options })
+          },
+        },
       }
     )
-    console.log("About to check code")
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(new URL(`/${next.slice(1)}`, req.url))
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
   // return the user to an error page with instructions
-  return NextResponse.redirect(new URL("/auth/auth-code-error", req.url))
+  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 }
