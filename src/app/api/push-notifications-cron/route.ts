@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
     const isLunchOrDinnerTime = userHour === 13 || userHour === 20
 
-    if (true) {
+    if (isLunchOrDinnerTime) {
       appendPushNotification(toSend, user.ExpoPushTokens)
     }
   }
