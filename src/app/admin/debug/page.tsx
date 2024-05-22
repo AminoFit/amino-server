@@ -1,12 +1,17 @@
-// src/app/dashboard/page.tsx
+import { redirect } from 'next/navigation'
 
-"use client";
+import { createClient } from '@/utils/supabase/server'
 
+export default async function PrivatePage() {
+  const supabase = createClient()
 
-const DashboardPage = () => {
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data?.user) {
+    redirect('/login')
+  }
 
-
-  return <div>Welcome to the dashboard.</div>;
-};
-
-export default DashboardPage;
+  return <>
+  <p>Hello {data.user.email}</p>
+  <p>User ID: {data.user.id}</p>
+  </>
+}
