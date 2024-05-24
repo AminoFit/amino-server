@@ -1,6 +1,6 @@
 "use client"
 
-import { createClientSupabase } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 import { CopyButton } from "./CopyButton"
 import { NextRequest } from "next/server"
 import { useEffect, useState } from "react"
@@ -11,7 +11,7 @@ const RESULTS_PER_PAGE = 40
 export default function BadIconsPage() {
   const [foodItemCount, setFoodItemCount] = useState<number>(0)
   const [currentPage, setPage] = useState<number>(1)
-  const supabase = createClientSupabase()
+  const supabase = createClient()
 
   useEffect(() => {
     async function fetchData() {
@@ -43,7 +43,7 @@ export default function BadIconsPage() {
 
 function BadIconTable({ currentPage }: { currentPage: number }) {
   const [foods, setFoods] = useState<any>([])
-  const supabase = createClientSupabase()
+  const supabase = createClient()
 
   useEffect(() => {
     async function fetchData() {
