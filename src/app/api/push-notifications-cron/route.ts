@@ -9,40 +9,36 @@ const expo = new Expo()
 export async function GET(request: Request) {
   console.log("Running push notifications cron job")
   const supabase = createAdminSupabase()
+  const { data, error } = await supabase.from("ExpoPushTokens").select("*, User(tzIdentifier)")
   // const { data, error } = await supabase
   //   .from("User")
-  //   .select("id, tzIdentifier, pushNotificationPreference, ExpoPushTokens(*)")
-  //   .in('pushNotificationPreference', ['Daily'])
-  const { data, error } = await supabase
-    .from("User")
-    .select(
-      `    id,
-    tzIdentifier,
-    pushNotificationPreference,
-    ExpoPushTokens(*),
-    LoggedFoodItem(
-      id,
-      consumedOn,
-      createdAt
-    )
-  `
-    )
-    .in("pushNotificationPreference", ["Daily", "EveryOtherDay", "Weekly"])
-    // .eq("User.LoggedFoodItem.deletedAt", null) // Assuming you want to ignore deleted items
-    .order("createdAt", { foreignTable: "LoggedFoodItem", ascending: false })
-    .limit(1, { foreignTable: "LoggedFoodItem" })
+  //   .select(
+  //     `    id,
+  //   tzIdentifier,
+  //   ExpoPushTokens(*),
+  //   LoggedFoodItem(
+  //     id,
+  //     consumedOn,
+  //     createdAt
+  //   )
+  // `
+  //   )
+  //   .limit(1, { foreignTable: "LoggedFoodItem" })
 
   if (error) {
     console.error(error)
     return Response.json({ status: 500, body: "Error fetching users:" + error.message })
   }
 
-  console.log("Users:", data)
+  console.log("Push tokens:", data)
 
   const toSend: Array<{ to: string; title: string; body: string }> = []
 
-  for (const user of data) {
-    const userTimeZone = user.tzIdentifier
+  for (const pushToken of data) {
+    if (!pushToken) {
+      continue
+    }
+    const userTimeZone = pushToken.User?.tzIdentifier
 
     const currentTime = new Date()
     const userTime = new Date(currentTime.toLocaleString("en-US", { timeZone: userTimeZone }))
@@ -53,7 +49,7 @@ export async function GET(request: Request) {
 
     // if (isLunchOrDinnerTime) {
     if (true) {
-      appendPushNotification(toSend, user.ExpoPushTokens)
+      appendPushNotification(toSend, [pushToken])
     }
   }
 

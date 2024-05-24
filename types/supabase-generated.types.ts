@@ -852,9 +852,6 @@ export type Database = {
           manualMacroGoals: boolean
           phone: string | null
           proteinGoal: number | null
-          pushNotificationPreference:
-            | Database["public"]["Enums"]["PushNotificationFrequency"]
-            | null
           sendCheckins: boolean
           sentContact: boolean
           setupCompleted: boolean
@@ -881,9 +878,6 @@ export type Database = {
           manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
-          pushNotificationPreference?:
-            | Database["public"]["Enums"]["PushNotificationFrequency"]
-            | null
           sendCheckins?: boolean
           sentContact?: boolean
           setupCompleted?: boolean
@@ -910,9 +904,6 @@ export type Database = {
           manualMacroGoals?: boolean
           phone?: string | null
           proteinGoal?: number | null
-          pushNotificationPreference?:
-            | Database["public"]["Enums"]["PushNotificationFrequency"]
-            | null
           sendCheckins?: boolean
           sentContact?: boolean
           setupCompleted?: boolean
@@ -1263,13 +1254,6 @@ export type Database = {
         | "SHOW_FOOD_LOG"
         | "LOG_EXERCISE"
         | "UPDATE_USER_INFO"
-      PushNotificationFrequency:
-        | "ThreeTimesDaily"
-        | "TwiceDaily"
-        | "Daily"
-        | "EveryOtherDay"
-        | "Weekly"
-        | "Never"
       Role: "Assistant" | "User" | "System" | "Function"
       UnitPreference: "IMPERIAL" | "METRIC"
     }
