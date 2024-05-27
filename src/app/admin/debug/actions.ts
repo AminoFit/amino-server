@@ -37,8 +37,12 @@ export async function fetchMessages(
 
   const { data: userData, error: userError } = await anonSupabase.auth.getUser();
 
-  if (userError || !userData) {
-    return { error: "Unauthorized", status: 401 };
+  if (userError) {
+    return { error: "Unauthorized" + JSON.stringify(userError), status: 401 };
+  }
+
+  if (!userData) {
+    return { error: "Unauthorized" + JSON.stringify(userData), status: 401 };
   }
 
   const currentUserId = userData.user.id;
