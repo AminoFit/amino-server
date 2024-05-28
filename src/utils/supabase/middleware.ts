@@ -7,6 +7,8 @@ export async function updateSession(request: NextRequest) {
       headers: request.headers,
     },
   })
+  // console.log("request", request)
+  // console.log("request.headers", request.headers)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,23 +35,23 @@ export async function updateSession(request: NextRequest) {
             ...options,
           })
         },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
+        // remove(name: string, options: CookieOptions) {
+        //   request.cookies.set({
+        //     name,
+        //     value: '',
+        //     ...options,
+        //   })
+        //   response = NextResponse.next({
+        //     request: {
+        //       headers: request.headers,
+        //     },
+        //   })
+        //   response.cookies.set({
+        //     name,
+        //     value: '',
+        //     ...options,
+        //   })
+        // },
       },
     }
   )

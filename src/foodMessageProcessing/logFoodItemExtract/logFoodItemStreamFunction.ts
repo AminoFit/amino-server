@@ -160,9 +160,9 @@ export async function logFoodItemFunctionStream(
     return foodItemsToLog
   } catch (error) {
     if (error instanceof Error) {
-      console.log("Error:", error.message)
+      console.log("Error logfoodstreamfunction:", error.message)
     } else {
-      console.log("Error:", error)
+      console.log("Error logfoodstreamfunction:", error)
     }
     return []
   }

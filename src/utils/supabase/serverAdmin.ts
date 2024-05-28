@@ -1,5 +1,5 @@
 //src/utils/supabase/serverAdmin.ts
-"use sever"
+// "use server"
 import { createClient } from "@supabase/supabase-js"
 import { Database } from "types/supabase-generated.types"
 

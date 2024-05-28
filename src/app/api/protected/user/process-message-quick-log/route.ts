@@ -13,7 +13,7 @@ export async function POST(
   console.log("QUICK LOG MESSAGE PROCESS POST request")
 
   const requestBody = await request.json()
-  console.log("Request body: ", requestBody)
+  // console.log("Request body: ", requestBody)
   const { messageId } = requestBody
   const consumedOn = requestBody.consumedOn || new Date().toISOString()
   const isMessageBeingEdited = requestBody.isMessageBeingEdited || false

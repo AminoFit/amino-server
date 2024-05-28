@@ -1,11 +1,13 @@
 import { createClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
+import { headers } from 'next/headers'
 import { Tables } from "types/supabase"
 
 export async function GetAminoUserOnRequest() {
   const cookieStore = cookies()
 
   const token = cookieStore.get("sb-localhost-auth-token")
+  const headerslist = headers()
 
   if (!token) {
     return {
@@ -21,6 +23,8 @@ export async function GetAminoUserOnRequest() {
 
   // Use the token to retrieve the user session
   const { data, error } = await supabaseAdmin.auth.getUser(token.value)
+  console.log("token", token)
+  console.log("token.value", token.value)
 
   if (error) {
     return {
