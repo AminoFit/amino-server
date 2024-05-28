@@ -5,21 +5,23 @@ import { useState, useEffect } from "react"
 import { fetchMessages } from "./actions"
 import { MessageType, LoggedFoodItemWithDetailsType } from "./actions"
 import {
-    PhotoIcon as PhotoOutlineIcon,
-    MicrophoneIcon as MicrophoneOutlineIcon,
-    TrashIcon as TrashOutlineIcon
+  PhotoIcon as PhotoOutlineIcon,
+  MicrophoneIcon as MicrophoneOutlineIcon,
+  TrashIcon as TrashOutlineIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
 
-const ITEMS_PER_PAGE = 10;
-const MAX_VISIBLE_PAGES = 10;
+const ITEMS_PER_PAGE = 10
+const MAX_VISIBLE_PAGES = 10
 
 const MessagesOverview = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<MessageType[]>([])
-  const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<Record<string, LoggedFoodItemWithDetailsType[]>>({})
+  const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<
+    Record<string, LoggedFoodItemWithDetailsType[]>
+  >({})
   const [currentPage, setCurrentPage] = useState(1)
   const [totalMessages, setTotalMessages] = useState(0)
 
@@ -29,44 +31,44 @@ const MessagesOverview = () => {
   const [messageStatus, setMessageStatus] = useState("all")
 
   const handleApply = (e: any) => {
-    e.preventDefault();
-    setCurrentPage(1);  // Reset to first page on filter apply
-    fetchData();
-  };
+    e.preventDefault()
+    setCurrentPage(1) // Reset to first page on filter apply
+    fetchData()
+  }
 
   const handleClear = () => {
-    setShowDeleted("all");
-    setUserId("");
-    setHasImage("all");
-    setMessageStatus("all");
-    setCurrentPage(1);  // Reset to first page on filter clear
-    fetchData();
-  };
+    setShowDeleted("all")
+    setUserId("")
+    setHasImage("all")
+    setMessageStatus("all")
+    setCurrentPage(1) // Reset to first page on filter clear
+    fetchData()
+  }
 
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    console.log("Fetching messages for page", currentPage);
+    setLoading(true)
+    setError(null)
+    console.log("Fetching messages for page", currentPage)
     const response = await fetchMessages(currentPage, ITEMS_PER_PAGE, showDeleted, userId, hasImage, messageStatus)
     if (response.error) {
-      setError(response.error);
-      setLoading(false);
-      return;
+      setError(response.error)
+      setLoading(false)
+      return
     }
     if (!response.messages || !response.loggedFoodItemsByMessage) {
-      setError("Invalid response");
-      setLoading(false);
-      return;
+      setError("Invalid response")
+      setLoading(false)
+      return
     }
     setMessages(response.messages)
     setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
     setTotalMessages(response.totalMessages || 0)
     setLoading(false)
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-  }, [currentPage]);
+    fetchData()
+  }, [currentPage])
 
   return (
     <div className="flex">
@@ -187,27 +189,28 @@ const MessagesOverview = () => {
                   </div>
                   <div className="mt-4">
                     {loggedFoodItemsByMessage[message.id!]?.map((loggedFoodItem) => {
+                      const grams = loggedFoodItem.grams || 0 // Default to 0 if grams is undefined
                       const calories = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.kcalPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const carbs = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.carbPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const protein = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.proteinPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const fat = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.totalFatPerServing || 0)
                           ).toFixed(0)
                         : ""
@@ -225,12 +228,14 @@ const MessagesOverview = () => {
                           <div className="flex-grow text-sm break-words">
                             {loggedFoodItem.FoodItem?.name || "Unknown"}
                             {loggedFoodItem.FoodItem?.brand && ` (${loggedFoodItem.FoodItem.brand})`} -
-                            {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({loggedFoodItem.grams}g)
+                            {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({grams}g)
                           </div>
                           <div className="flex-none text-sm">
                             <textarea
                               defaultValue={
-                                loggedFoodItem.extendedOpenAiData ? JSON.stringify(loggedFoodItem.extendedOpenAiData) : ""
+                                loggedFoodItem.extendedOpenAiData
+                                  ? JSON.stringify(loggedFoodItem.extendedOpenAiData)
+                                  : ""
                               }
                               className="w-full p-1 text-xs border rounded-md resize"
                             />
