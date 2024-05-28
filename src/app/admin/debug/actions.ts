@@ -47,7 +47,7 @@ export async function fetchMessages(
 
   const currentUserId = userData.user.id;
   if (!allowedUserIds.includes(currentUserId)) {
-    return { error: "Forbidden", status: 403 };
+    return { error: `Forbidden for user ${currentUserId}`, status: 403 };
   }
 
   const from = (page - 1) * itemsPerPage;
