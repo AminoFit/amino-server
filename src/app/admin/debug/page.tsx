@@ -1,9 +1,9 @@
 // src/app/admin/debug/page.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { fetchMessages } from "./actions"
-import { MessageType, LoggedFoodItemWithDetailsType } from "./actions"
+import { MessageWithSignedUrls, LoggedFoodItemWithDetailsType } from "./actions"
 import {
   PhotoIcon as PhotoOutlineIcon,
   MicrophoneIcon as MicrophoneOutlineIcon,
@@ -11,6 +11,10 @@ import {
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+
+
 
 const ITEMS_PER_PAGE = 10
 const MAX_VISIBLE_PAGES = 10
@@ -18,7 +22,7 @@ const MAX_VISIBLE_PAGES = 10
 const MessagesOverview = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [messages, setMessages] = useState<MessageType[]>([])
+  const [messages, setMessages] = useState<MessageWithSignedUrls[]>([])
   const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<
     Record<string, LoggedFoodItemWithDetailsType[]>
   >({})
@@ -178,8 +182,50 @@ const MessagesOverview = () => {
                   <div className="flex space-x-4 items-center">
                     <div className="flex space-x-2 w-10">
                       {message.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
-                      {message.hasimages && <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />}
-                      {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
+                      {message.hasimages && (
+                        message.imageUrls.length === 1 ? (
+                          <a href={message.imageUrls[0]} target="_blank" rel="noopener noreferrer">
+                            <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
+                          </a>
+                        ) : (
+                          <Menu as="div" className="relative inline-block text-left">
+                            <MenuButton className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-2 py-1 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">
+                              <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
+                              <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-1" />
+                            </MenuButton>
+                            <Transition
+                              as={Fragment}
+                              enter="transition ease-out duration-100"
+                              enterFrom="transform opacity-0 scale-95"
+                              enterTo="transform opacity-100 scale-100"
+                              leave="transition ease-in duration-75"
+                              leaveFrom="transform opacity-100 scale-100"
+                              leaveTo="transform opacity-0 scale-95"
+                            >
+                              <MenuItems className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                {message.imageUrls.map((url, index) => (
+                                  <MenuItem key={index}>
+                                    {({ active }) => (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={classNames(
+                                          active ? 'bg-gray-100' : '',
+                                          'block px-4 py-2 text-sm text-gray-700'
+                                        )}
+                                      >
+                                        Image {index + 1}
+                                      </a>
+                                    )}
+                                  </MenuItem>
+                                ))}
+                              </MenuItems>
+                            </Transition>
+                          </Menu>
+                        )
+                      )}
+                                            {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
                     </div>
                     <div className="flex-none w-40 text-sm">{new Date(message.createdAt!).toLocaleString()}</div>
                     <div className="flex-none w-40 text-sm">
