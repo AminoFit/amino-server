@@ -10,7 +10,7 @@ export type MessageType = Partial<Tables<"Message">>;
 export type FoodItemType = Tables<"FoodItem">;
 
 // Define a custom type for the nested logged food item with food item details
-export interface LoggedFoodItemWithDetailsType extends Tables<"LoggedFoodItem"> {
+export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
   FoodItem: FoodItemType | null;
 }
 
@@ -20,6 +20,7 @@ export interface MessageWithSignedUrls extends MessageType {
 }
 
 const allowedUserIds = [
+  "a1ca16b9-333f-40bd-8f43-88977cc9a371",
   "2cf908ed-90a2-4ecd-a5f3-14b3a28fb05b",
   "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
   "0e99c4d8-0c40-4399-8565-8379ebfffc49"
@@ -121,6 +122,8 @@ export async function fetchMessages(
     }
   }
 
+  const messageIds = messages.map(message => message.id).filter(id => id !== undefined);
+
   const { data: loggedFoodItems, error: loggedFoodItemsError } = await supabase
     .from("LoggedFoodItem")
     .select(`
@@ -138,7 +141,9 @@ export async function fetchMessages(
         kcalPerServing,
         defaultServingWeightGram
       )
-    `) as { data: LoggedFoodItemWithDetailsType[], error: any };
+    `)
+    .in("messageId", messageIds) as { data: LoggedFoodItemWithDetailsType[], error: any };
+
 
   if (loggedFoodItemsError) {
     return { error: loggedFoodItemsError.message, status: 500 };
