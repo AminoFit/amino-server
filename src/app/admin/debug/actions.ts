@@ -22,6 +22,7 @@ export interface MessageWithSignedUrls extends MessageType {
 const allowedUserIds = [
   "2cf908ed-90a2-4ecd-a5f3-14b3a28fb05b",
   "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
+  "0e99c4d8-0c40-4399-8565-8379ebfffc49"
 ];
 
 export async function fetchMessages(
