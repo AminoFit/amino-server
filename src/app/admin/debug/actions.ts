@@ -163,6 +163,7 @@ export async function fetchMessages(
     loggedUnit,
     messageId,
     FoodItem (
+      id,
       name,
       brand,
       kcalPerServing,

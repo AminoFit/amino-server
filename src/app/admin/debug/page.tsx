@@ -296,7 +296,11 @@ const MessagesOverview = () => {
                             {calories} kcal
                             {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
                           </div>
-                          <div className="flex-none text-right text-gray-400 text-sm">ID: {loggedFoodItem.id}</div>
+                          <div className="flex-none text-right text-gray-400 flex flex-col items-end">
+     
+                      <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
+                      <span>ID: {loggedFoodItem.id}</span>
+                    </div>
                         </div>
                       )
                     })}
