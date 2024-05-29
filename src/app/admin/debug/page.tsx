@@ -1,4 +1,3 @@
-// src/app/admin/debug/page.tsx
 "use client"
 
 import { useState, useEffect, Fragment } from "react"
@@ -11,10 +10,8 @@ import {
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-
-
+import { ChevronDownIcon } from "@heroicons/react/20/solid"
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
 
 const ITEMS_PER_PAGE = 10
 const MAX_VISIBLE_PAGES = 10
@@ -182,8 +179,8 @@ const MessagesOverview = () => {
                   <div className="flex space-x-4 items-center">
                     <div className="flex space-x-2 w-10">
                       {message.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
-                      {message.hasimages && (
-                        message.imageUrls.length === 1 ? (
+                      {message.hasimages &&
+                        (message.imageUrls.length <= 1 ? (
                           <a href={message.imageUrls[0]} target="_blank" rel="noopener noreferrer">
                             <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
                           </a>
@@ -211,8 +208,8 @@ const MessagesOverview = () => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={classNames(
-                                          active ? 'bg-gray-100' : '',
-                                          'block px-4 py-2 text-sm text-gray-700'
+                                          active ? "bg-gray-100" : "",
+                                          "block px-4 py-2 text-sm text-gray-700"
                                         )}
                                       >
                                         Image {index + 1}
@@ -223,15 +220,21 @@ const MessagesOverview = () => {
                               </MenuItems>
                             </Transition>
                           </Menu>
-                        )
-                      )}
-                                            {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
+                        ))}
+                      {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
                     </div>
                     <div className="flex-none w-40 text-sm">{new Date(message.createdAt!).toLocaleString()}</div>
                     <div className="flex-none w-40 text-sm">
                       {message.consumedOn ? new Date(message.consumedOn).toLocaleString() : "N/A"}
                     </div>
                     <div className="flex-grow max-w-xl break-words">{message.content}</div>
+                    <div className="flex-grow"></div>
+                    <div className="flex-none text-right text-gray-400 flex flex-col items-end">
+                      <button onClick={() => setUserId(message.userId!)} className="text-blue-500 underline mb-1">
+                        User: {message.userId?.slice(0, 5)}
+                      </button>
+                      <span>ID: {message.id}</span>
+                    </div>
                   </div>
                   <div className="mt-4">
                     {loggedFoodItemsByMessage[message.id!]?.map((loggedFoodItem) => {
@@ -290,6 +293,7 @@ const MessagesOverview = () => {
                             {calories} kcal
                             {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
                           </div>
+                          <div className="flex-none text-right text-gray-400 text-sm">ID: {loggedFoodItem.id}</div>
                         </div>
                       )
                     })}

@@ -12,6 +12,7 @@ export type FoodItemType = Tables<"FoodItem">
 // Define a custom type for the nested logged food item with food item details
 export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
   FoodItem: FoodItemType | null
+  pathToImage?: string | null
 }
 
 // Define a custom type for Message with signed image URLs
@@ -23,7 +24,8 @@ const allowedUserIds = [
   "a1ca16b9-333f-40bd-8f43-88977cc9a371",
   "2cf908ed-90a2-4ecd-a5f3-14b3a28fb05b",
   "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
-  "0e99c4d8-0c40-4399-8565-8379ebfffc49"
+  "0e99c4d8-0c40-4399-8565-8379ebfffc49",
+  "3fea3294-9dcf-4acf-954b-6648028825ea"
 ]
 
 export async function fetchMessages(
@@ -147,7 +149,10 @@ export async function fetchMessages(
         name,
         brand,
         kcalPerServing,
-        defaultServingWeightGram
+        defaultServingWeightGram,
+        totalFatPerServing,
+        carbPerServing,
+        proteinPerServing
       )
     `
     )
@@ -157,14 +162,65 @@ export async function fetchMessages(
     return { error: loggedFoodItemsError.message, status: 500 }
   }
 
-  const loggedFoodItemsByMessage = loggedFoodItems.reduce<Record<string, any[]>>((acc, item) => {
-    const key = item.messageId ?? "null"
-    if (!acc[key]) {
-      acc[key] = []
-    }
-    acc[key].push(item)
-    return acc
-  }, {})
+// Map to store the top image path for each FoodItem
+const foodItemIds = loggedFoodItems.map(item => item.FoodItem?.id).filter(id => id !== undefined);
 
-  return { messages: messagesWithSignedUrls, loggedFoodItemsByMessage, totalMessages }
+// First, fetch the IDs with the correct order from the 'FoodImage' table.
+const { data: orderedImageIds, error: orderError } = await supabase
+  .from('FoodImage')
+  .select('id')
+  .order('downvotes', { ascending: true })
+  .limit(1); // Adjust the limit as needed
+
+if (orderError) {
+  return { error: orderError.message, status: 500 }
+}
+
+// Extract the IDs for use in the main query
+const imageIds = orderedImageIds.map(img => img.id);
+
+// Now, use these IDs to filter the 'FoodItemImages' table.
+const { data: foodImages, error: foodImagesError } = await supabase
+  .from('FoodItemImages')
+  .select(`
+    foodItemId,
+    FoodImage (
+      pathToImage,
+      downvotes
+    )
+  `)
+  .in('foodImageId', imageIds);
+
+if (foodImagesError) {
+  return { error: foodImagesError.message, status: 500 }
+}
+
+// Process images and map the top image path to corresponding FoodItem
+const foodItemImagesMap: Record<string, string | null> = {};
+for (const image of foodImages) {
+  const { foodItemId, FoodImage } = image;
+  if (foodItemId && FoodImage && FoodImage) {
+    foodItemImagesMap[foodItemId] = FoodImage.pathToImage;
+  }
+}
+
+// Attach the top image path to the corresponding logged food item
+const loggedFoodItemsWithTopImage = loggedFoodItems.map(item => {
+  const foodItemId = item.FoodItem?.id;
+  if (foodItemId) {
+    item.pathToImage = foodItemImagesMap[foodItemId] || null;
+  }
+  return item;
+});
+
+const loggedFoodItemsByMessage = loggedFoodItemsWithTopImage.reduce<Record<string, any[]>>((acc, item) => {
+  const key = item.messageId ?? "null";
+  if (!acc[key]) {
+    acc[key] = [];
+  }
+  acc[key].push(item);
+  return acc;
+}, {});
+
+return { messages: messagesWithSignedUrls, loggedFoodItemsByMessage, totalMessages }
 }
