@@ -5,9 +5,26 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import { createClient } from "@/utils/supabase/server"
 
+export interface FoodItemImagesType extends Tables<"FoodItemImages"> {
+  FoodImage: Tables<"FoodImage"> | null
+}
+// Include the modified FoodItemImagesType in the FoodItemType definition
+export interface FoodItemType extends Tables<"FoodItem"> {
+  FoodItemImages: FoodItemImagesType[]
+}
 // Define types for the tables
 export type MessageType = Partial<Tables<"Message">>
-export type FoodItemType = Tables<"FoodItem">
+
+// Define a custom type for the nested logged food item with food item details
+export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
+  FoodItem: FoodItemType | null
+  pathToImage?: string | null
+}
+
+// Define a custom type for Message with signed image URLs
+export interface MessageWithSignedUrls extends MessageType {
+  imageUrls: string[]
+}
 
 // Define a custom type for the nested logged food item with food item details
 export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
@@ -137,24 +154,27 @@ export async function fetchMessages(
     .from("LoggedFoodItem")
     .select(
       `
-      id,
-      consumedOn,
-      deletedAt,
-      grams,
-      servingAmount,
-      extendedOpenAiData,
-      loggedUnit,
-      messageId,
-      FoodItem (
-        name,
-        brand,
-        kcalPerServing,
-        defaultServingWeightGram,
-        totalFatPerServing,
-        carbPerServing,
-        proteinPerServing
-      )
-    `
+    id,
+    consumedOn,
+    deletedAt,
+    grams,
+    servingAmount,
+    extendedOpenAiData,
+    loggedUnit,
+    messageId,
+    FoodItem (
+      name,
+      brand,
+      kcalPerServing,
+      defaultServingWeightGram,
+      totalFatPerServing,
+      carbPerServing,
+      proteinPerServing,
+      FoodItemImages(
+          *, FoodImage(id, pathToImage, downvotes)
+        )
+    )
+  `
     )
     .in("messageId", messageIds)) as { data: LoggedFoodItemWithDetailsType[]; error: any }
 
@@ -162,65 +182,46 @@ export async function fetchMessages(
     return { error: loggedFoodItemsError.message, status: 500 }
   }
 
-// Map to store the top image path for each FoodItem
-const foodItemIds = loggedFoodItems.map(item => item.FoodItem?.id).filter(id => id !== undefined);
+  // Enhance the food items with the pathToImage
+  // Sorting and selecting the best image URL
+  loggedFoodItems.forEach((item) => {
+    if (item.FoodItem && item.FoodItem.FoodItemImages.length > 0) {
+      // Filter out any images where FoodImage is null before sorting
+      const validImages = item.FoodItem.FoodItemImages.filter((img) => img.FoodImage !== null)
 
-// First, fetch the IDs with the correct order from the 'FoodImage' table.
-const { data: orderedImageIds, error: orderError } = await supabase
-  .from('FoodImage')
-  .select('id')
-  .order('downvotes', { ascending: true })
-  .limit(1); // Adjust the limit as needed
+      if (validImages.length > 0) {
+        validImages.sort((a, b) => {
+          const downvotesA = a.FoodImage!.downvotes // Using non-null assertion since we filtered out nulls
+          const downvotesB = b.FoodImage!.downvotes
+          if (downvotesA === downvotesB) {
+            return b.FoodImage!.id - a.FoodImage!.id // Higher id is preferred if downvotes are equal
+          }
+          return downvotesA - downvotesB
+        })
+        item.pathToImage = validImages[0].FoodImage!.pathToImage // Using non-null assertion
+      } else {
+        item.pathToImage = null
+      }
+    } else {
+      item.pathToImage = null
+    }
+  })
 
-if (orderError) {
-  return { error: orderError.message, status: 500 }
-}
+  // Transform loggedFoodItems into a Record structure indexed by messageId
+  const loggedFoodItemsByMessage: Record<string, LoggedFoodItemWithDetailsType[]> = {}
+  loggedFoodItems.forEach((item) => {
+    const { messageId } = item
+    if (messageId) {
+      if (!loggedFoodItemsByMessage[messageId]) {
+        loggedFoodItemsByMessage[messageId] = []
+      }
+      loggedFoodItemsByMessage[messageId].push(item)
+    }
+  })
 
-// Extract the IDs for use in the main query
-const imageIds = orderedImageIds.map(img => img.id);
-
-// Now, use these IDs to filter the 'FoodItemImages' table.
-const { data: foodImages, error: foodImagesError } = await supabase
-  .from('FoodItemImages')
-  .select(`
-    foodItemId,
-    FoodImage (
-      pathToImage,
-      downvotes
-    )
-  `)
-  .in('foodImageId', imageIds);
-
-if (foodImagesError) {
-  return { error: foodImagesError.message, status: 500 }
-}
-
-// Process images and map the top image path to corresponding FoodItem
-const foodItemImagesMap: Record<string, string | null> = {};
-for (const image of foodImages) {
-  const { foodItemId, FoodImage } = image;
-  if (foodItemId && FoodImage && FoodImage) {
-    foodItemImagesMap[foodItemId] = FoodImage.pathToImage;
+  return {
+    messages: messagesWithSignedUrls,
+    loggedFoodItemsByMessage, // This is now a Record as expected by your component state
+    totalMessages
   }
-}
-
-// Attach the top image path to the corresponding logged food item
-const loggedFoodItemsWithTopImage = loggedFoodItems.map(item => {
-  const foodItemId = item.FoodItem?.id;
-  if (foodItemId) {
-    item.pathToImage = foodItemImagesMap[foodItemId] || null;
-  }
-  return item;
-});
-
-const loggedFoodItemsByMessage = loggedFoodItemsWithTopImage.reduce<Record<string, any[]>>((acc, item) => {
-  const key = item.messageId ?? "null";
-  if (!acc[key]) {
-    acc[key] = [];
-  }
-  acc[key].push(item);
-  return acc;
-}, {});
-
-return { messages: messagesWithSignedUrls, loggedFoodItemsByMessage, totalMessages }
 }

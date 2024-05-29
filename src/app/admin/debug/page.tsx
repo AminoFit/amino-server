@@ -271,6 +271,9 @@ const MessagesOverview = () => {
                             loggedFoodItem.deletedAt ? "bg-rose-100" : "bg-zinc-50"
                           }`}
                         >
+                          {loggedFoodItem.pathToImage && (
+        <img src={loggedFoodItem.pathToImage} alt="Food Item Image" className="h-8 w-8 object-cover rounded-full" />
+      )}
                           <div className="w-6">
                             {loggedFoodItem.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
                           </div>
