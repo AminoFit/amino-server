@@ -12,6 +12,7 @@ import { exit } from "process"
 import { fetchRotateAndConvertToBase64 } from "../common/imageTools/rotateImageFromUrl"
 import { re } from "mathjs"
 import { ChatCompletionCreateParams } from "openai/resources"
+import { fetchAndDecodeBarcode } from "./utils/barcodeExtract"
 
 const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
 
@@ -30,6 +31,8 @@ Your task is to identify based on pictures provided and the user INPUT_TO_PROCES
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
+7. If the images contain a barcode you can use the upc field to store the barcode number. Otherwise this field doesn;t need to be included.
+
 Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
 
 INPUT_TO_PROCESS:
@@ -42,7 +45,8 @@ Expected JSON Output:
       "full_single_food_database_search_name": "string",
       "full_single_item_user_message_including_serving_or_quantity": "string",
       "branded": "boolean",
-      "brand": "string"
+      "brand": "string",
+      "upc"?: "number"
     }
   ],
   "contains_valid_food_items": "boolean"
@@ -213,7 +217,8 @@ async function processOpenAiVisionChatStream(
         full_item_user_message_including_serving: chunk.full_single_item_user_message_including_serving_or_quantity,
         branded: chunk.branded,
         brand: chunk.brand || "",
-        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString()
+        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString(),
+        upc: chunk.upc
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
@@ -239,10 +244,21 @@ export async function logFoodItemStreamWithImages(
   consumedOn: Date = new Date()
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const user_images = (await getUserImagesByMessageId(user_message.id)) as Tables<"UserMessageImages">[]
-  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content)
   const user_images_with_signed_urls = await generateSignedUrls(user_images)
 
   console.log("user_images_with_signed_urls", user_images_with_signed_urls)
+  const barcodeDescriptions = await Promise.all(user_images_with_signed_urls.map(async (image, index) => {
+    if (image && image.signedImageUrl) {
+      const barcode = await fetchAndDecodeBarcode(image.signedImageUrl);
+      return barcode ? `Image ${index + 1} contains the barcode ${barcode}` : "";
+    }
+    return "";
+  }));
+
+  const barcodeText = barcodeDescriptions.filter(text => text).join(", ");
+
+  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content) + (barcodeText ? `\n\n${barcodeText}` : "");
+
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
@@ -317,7 +333,7 @@ async function testChatCompletionJsonStream() {
 
 async function testVisionFoodLoggingStream() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-  const message = await getUserMessageById(2648)
+  const message = await getUserMessageById(10808)
 
   await logFoodItemStreamWithImages(user, message!)
 }
