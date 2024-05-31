@@ -1,7 +1,7 @@
 // src/FoodDbThirdPty/common/getFoodItemExternalByUPC.ts
 import { getFatSecretFoodByUPC } from '../fatsecret/getFatSecretFoodByUPC';
 import { FoodItemWithNutrientsAndServing } from '../../app/dashboard/utils/FoodHelper';
-import { searchUsdaByUPC } from '../USDA/searchUsdabyUPC';
+import { searchUsdaByUPC } from '../USDA/searchUsdaByUPC';
 import { getNxFoodByUPC } from '../nutritionix/getNxFoodByUPC';
 
 /**
