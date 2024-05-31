@@ -20,6 +20,7 @@ import { GetMessageById } from "@/database/GetMessagesForUser"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
 import { findBestServingMatchChatLlama } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
+import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
@@ -29,70 +30,75 @@ export async function ProcessLogFoodItem(
 ): Promise<string> {
   // const supabase = createServerActionClient<Database>({ cookies })
   try {
-  const message = await GetMessageById(messageId)
+    const message = await GetMessageById(messageId)
 
-  const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
-  console.log(`getting embedding for food ${food.full_item_user_message_including_serving}`)
-  const userQueryVectorCache = await foodToLogEmbedding(food)
+    const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
+    console.log(`getting embedding for food ${food.full_item_user_message_including_serving}`)
+    const userQueryVectorCache = await foodToLogEmbedding(food)
 
-  let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20)
+    let bestMatch: FoodItemWithNutrientsAndServing | null = null
+    let secondBestMatch: number | null = null
 
-  // cosineSearchResults.map((result, index) => {
-  //   console.log(`${index} - ${result.cosine_similarity.toFixed(3)} - ${result.name} - ${result.brand} - id:${result.id} - externalId:${result.externalId} - source:${result.foodInfoSource}`)
-  // })
+    if (food.upc && food.upc !== 0) {
+      bestMatch = await findFoodByUPC(food.upc, messageId, user)
+    }
 
-  const [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
-    cosineSearchResults,
-    food,
-    userQueryVectorCache,
-    user,
-    messageId
-  )
+    if (!bestMatch) {
+      let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20);
 
-  console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
+      [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
+        cosineSearchResults,
+        food,
+        userQueryVectorCache,
+        user,
+        messageId
+      )
+    }
 
-  try {
-    food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
-  } catch (err1) {
-    console.log("Error processing food item:", err1)
-    await updateLoggedFoodItemWithData(loggedFoodItem.id, {status: "Matching Failed"})
+    console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
+
+    try {
+      food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
+    } catch (err1) {
+      console.log("Error processing food item:", err1)
+      await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
+      return "Sorry, I could not log your food items. Please try again later."
+    }
+
+    let extendedFoodData = { ...food, second_best_match: secondBestMatch }
+
+    const data = {
+      foodItemId: bestMatch.id,
+      servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
+      servingAmount: food.serving!.serving_amount,
+      loggedUnit: food.serving!.serving_name,
+      grams: food.serving!.total_serving_g_or_ml,
+      userId: user.id,
+      extendedOpenAiData: extendedFoodData as any,
+      //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+      messageId,
+      status: "Processed"
+    }
+
+    const updatedLoggedFoodItem = await updateLoggedFoodItemWithData(loggedFoodItem.id, data)
+    if (!updatedLoggedFoodItem) {
+      console.log("Could not log food item")
+      return "Sorry, I could not log your food items. Please try again later."
+    }
+
+    UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
+
+    console.log("About to queue icon generation")
+    console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
+    console.log("bestMatch.name", bestMatch.name)
+
+    await LinkIconsOrCreateIfNeeded(bestMatch.id)
+    return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
+  } catch (error) {
+    console.log("Error processing food item:", error)
+    await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."
   }
-
-  let extendedFoodData = { ...food, second_best_match: secondBestMatch }
-
-  const data = {
-    foodItemId: bestMatch.id,
-    servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
-    servingAmount: food.serving!.serving_amount,
-    loggedUnit: food.serving!.serving_name,
-    grams: food.serving!.total_serving_g_or_ml,
-    userId: user.id,
-    extendedOpenAiData: extendedFoodData as any,
-    //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
-    messageId,
-    status: "Processed"
-  }
-
-  const updatedLoggedFoodItem = await updateLoggedFoodItemWithData(loggedFoodItem.id, data)
-  if (!updatedLoggedFoodItem) {
-    console.log("Could not log food item")
-    return "Sorry, I could not log your food items. Please try again later."
-  }
-
-  UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
-
-  console.log("About to queue icon generation")
-  console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
-  console.log("bestMatch.name", bestMatch.name)
-
-  await LinkIconsOrCreateIfNeeded(bestMatch.id)
-  return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
-} catch (error) {
-  console.log("Error processing food item:", error)
-  await updateLoggedFoodItemWithData(loggedFoodItem.id, {status: "Matching Failed"})
-  return "Sorry, I could not log your food items. Please try again later."
-}
 }
 
 async function testFoodMatching() {
@@ -119,7 +125,7 @@ async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> |
 }
 
 async function testProcessFood() {
-  const messageId = 6229;
+  const messageId = 6229
 
   const food = {
     food_database_search_name: "Fairlife nutrition plan chocolate nutrition shake",
@@ -127,9 +133,9 @@ async function testProcessFood() {
     branded: true,
     brand: "Fairlife",
     timeEaten: "2024-05-06T17:26:57.442Z"
-  } as FoodItemToLog;
+  } as FoodItemToLog
 
-  const user = await getUserByEmail("seb.grubb@gmail.com");
+  const user = await getUserByEmail("seb.grubb@gmail.com")
 
   const loggedFoodItem = {
     id: 12405,
@@ -139,11 +145,11 @@ async function testProcessFood() {
     deletedAt: null,
     embeddingId: null,
     extendedOpenAiData: {
-      "brand": "Fairlife",
-      "branded": true,
-      "timeEaten": "2024-05-06T17:26:57.442Z",
-      "food_database_search_name": "Fairlife nutrition plan chocolate nutrition shake",
-      "full_item_user_message_including_serving": "one Fairlife nutrition plan chocolate nutrition shake"
+      brand: "Fairlife",
+      branded: true,
+      timeEaten: "2024-05-06T17:26:57.442Z",
+      food_database_search_name: "Fairlife nutrition plan chocolate nutrition shake",
+      full_item_user_message_including_serving: "one Fairlife nutrition plan chocolate nutrition shake"
     },
     foodItemId: null,
     grams: 100,
@@ -152,13 +158,12 @@ async function testProcessFood() {
     loggedUnit: null,
     userId: "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
     messageId: 6229,
-    status: 'Needs Processing',
+    status: "Needs Processing",
     isBadFoodItemRequest: false,
     local_id: null
-  } as Tables<"LoggedFoodItem">;
+  } as Tables<"LoggedFoodItem">
 
-  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!);
+  const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
 }
-
 
 // testProcessFood()
