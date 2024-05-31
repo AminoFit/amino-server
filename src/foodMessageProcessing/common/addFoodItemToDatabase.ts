@@ -43,6 +43,97 @@ function hasMissingServingInfo(food: FoodItemWithNutrientsAndServing): boolean {
   )
 }
 
+function deepCompare(obj1: any, obj2: any, ignoreKeys: string[] = ['id']): boolean {
+  // If objects are not the same type, return false
+  if (typeof obj1 !== typeof obj2) {
+      return false;
+  }
+  // If both are null or undefined, return true
+  if (obj1 === null && obj2 === null) {
+      return true;
+  }
+  // Compare primitives directly
+  if (typeof obj1 !== 'object' || typeof obj2 !== 'object') {
+      return obj1 === obj2;
+  }
+  // Compare arrays recursively
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+      if (obj1.length !== obj2.length) {
+          return false;
+      }
+      for (let i = 0; i < obj1.length; i++) {
+          if (!deepCompare(obj1[i], obj2[i], ignoreKeys)) {
+              return false;
+          }
+      }
+      return true;
+  }
+  // Compare objects recursively
+  const keys1 = Object.keys(obj1).filter(key => !ignoreKeys.includes(key));
+  const keys2 = Object.keys(obj2).filter(key => !ignoreKeys.includes(key));
+  if (keys1.length !== keys2.length) {
+      return false;
+  }
+  for (let key of keys1) {
+      if (!keys2.includes(key) || !deepCompare(obj1[key], obj2[key], ignoreKeys)) {
+          return false;
+      }
+  }
+  return true;
+}
+
+function getFieldsToUpdate<T>(existingObject: Partial<T>, newObject: Partial<T>): Partial<T> {
+  const fieldsToUpdate: Partial<T> = {};
+
+  for (const key in newObject) {
+    if (newObject.hasOwnProperty(key)) {
+      const newValue = newObject[key as keyof T];
+      const existingValue = existingObject[key as keyof T];
+
+      if (newValue !== null && newValue !== existingValue) {
+        fieldsToUpdate[key as keyof T] = newValue;
+      }
+    }
+  }
+
+  return fieldsToUpdate;
+}
+
+async function compareAndUpdateFoodItem(
+  existingFoodItem: FoodItemWithNutrientsAndServing,
+  newFoodItem: FoodItemWithNutrientsAndServing
+): Promise<FoodItemWithNutrientsAndServing> {
+  const supabase = createAdminSupabase();
+
+  const { Serving: ___, Nutrient: ____, ...strippedExistingFoodItem } = existingFoodItem;
+  const { Serving: _, Nutrient: __, ...strippedNewFoodItem } = newFoodItem;
+
+  if (deepCompare(strippedExistingFoodItem, strippedNewFoodItem)) {
+    return existingFoodItem;
+  }
+
+  const fieldsToUpdate = getFieldsToUpdate(strippedExistingFoodItem, strippedNewFoodItem);
+  
+
+  if (Object.keys(fieldsToUpdate).length > 0) {
+    const { data: updatedFoodItem, error } = await supabase
+      .from("FoodItem")
+      .update(fieldsToUpdate)
+      .eq("id", existingFoodItem.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating food item", error);
+      throw error;
+    }
+
+    return { ...updatedFoodItem, Serving: existingFoodItem.Serving, Nutrient: existingFoodItem.Nutrient } as FoodItemWithNutrientsAndServing;
+  }
+
+  return existingFoodItem;
+}
+
 export async function addFoodItemToDatabase(
   food: FoodItemWithNutrientsAndServing,
   bgeBaseEmbedding: number[],

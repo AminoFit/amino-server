@@ -55,7 +55,7 @@ export async function getFsAccessToken(): Promise<string> {
       password: clientSecret
     },
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    data: "grant_type=client_credentials&scope=premier"
+    data: "grant_type=client_credentials&scope=premier barcode"
   }
 
   try {

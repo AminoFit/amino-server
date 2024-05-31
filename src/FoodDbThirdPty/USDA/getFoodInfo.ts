@@ -5,7 +5,7 @@ import { mapUsdaFoodItemToFoodItem, FoodItemWithServings } from "./usdaInterface
 import { toTitleCase } from "../../utils/nlpHelper"
 import { UsdaPortion } from "./usdaInterfaceHelper"
 
-const foodAttributesToQuery = [
+export const foodAttributesToQuery = [
   "Energy",
   "Protein",
   "Total lipid (fat)",
@@ -26,7 +26,7 @@ const foodAttributesToQuery = [
   "Calcium, Ca"
 ]
 
-function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]): UsdaFoodItem {
+export function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]): UsdaFoodItem {
   const foodInfo: {
     [key: string]: { amount: number | null; unit: string | null }
   } = {}
@@ -243,6 +243,6 @@ function dummyTest() {
 
 // food for 172963, 168460, 2175192
 async function runTests() {
-  console.dir(await getUsdaFoodsInfo({ fdcIds: ["1187619"] }), { depth: null })
+  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2663962"] }), { depth: null })
 }
 // runTests()

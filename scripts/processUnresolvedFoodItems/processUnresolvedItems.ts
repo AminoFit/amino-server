@@ -62,14 +62,8 @@ async function processLoggedFoodItems(itemIds?: number[]) {
         console.error(`Error parsing extended OpenAI data for logged food item: ${loggedFoodItem.id}`, error)
         continue
       }
-  
-      const foodItemToLog: FoodItemToLog = {
-        timeEaten: loggedFoodItem.consumedOn,
-        food_database_search_name: extendedData.food_database_search_name,
-        full_item_user_message_including_serving: extendedData.full_item_user_message_including_serving,
-        branded: extendedData.branded,
-        brand: extendedData.brand
-      }
+
+      const foodItemToLog = loggedFoodItem?.extendedOpenAiData?.valueOf() as FoodItemToLog
   
       const user = await getUserById(loggedFoodItem.userId)
       if (!user) {

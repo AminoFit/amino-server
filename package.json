@@ -58,6 +58,7 @@
     "expo-server-sdk": "^3.9.0",
     "formik": "^2.4.5",
     "gpt-tokenizer": "^2.1.2",
+    "gtin-validator": "^1.0.0",
     "html-to-text": "^9.0.5",
     "ioredis": "^5.3.2",
     "jose": "^5.2.2",
