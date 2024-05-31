@@ -33,7 +33,7 @@ export async function getNxFoodByUPC(upc: string): Promise<NxFoodItemResponse[] 
 
 // Example usage:
 
-// getFoodInfoFromUPC('811620021425').then(foodInfo => {
+// getNxFoodByUPC('089094033484').then(foodInfo => {
 //   if (foodInfo) {
 //     console.log('Food Info:', foodInfo);
 //   } else {

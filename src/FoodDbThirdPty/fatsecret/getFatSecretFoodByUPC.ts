@@ -38,7 +38,7 @@ export async function getFatSecretFoodByUPC(upc: string): Promise<FoodItemWithSe
         const foodId = response.data.food_id.value;
         return convertFsToFoodItem(await getFatSecretFoodById(Number(foodId)), Number(upc));
     } catch (error) {
-        console.error('Error fetching data from FatSecret API:', error);
+        console.error('Error fetching data from FatSecret API for UPC:', error);
         throw error;
     }
 };
