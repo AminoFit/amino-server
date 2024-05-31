@@ -12,7 +12,7 @@ export interface NxFoodItemResponse extends Omit<Tables<"FoodItem">, "Serving" |
   embedding?: number[]
 }
 
-type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse
+export type CombinedResponse = BrandedFoodResponse | NxNonBrandedResponse
 
 export function isNutritionixBrandedItem(obj: any): obj is NutritionixBrandedItem {
   return "nix_item_id" in obj
@@ -44,7 +44,7 @@ function deduplicateServings(servings: NxFoodServing[]): NxFoodServing[] {
   return Array.from(servingMap.values())
 }
 
-export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodItemResponse[] {
+export function mapFoodResponseToFoodItem(response: CombinedResponse, upc?: number): NxFoodItemResponse[] {
   console.log("nxresponse", response.foods[0].brand_name ? `${response.foods[0].food_name} - ${response.foods[0].brand_name}` : response.foods[0].food_name)
   return response.foods.map((food) => {
     let default_serving_name = `${food.serving_qty} ${food.serving_unit}`
@@ -112,7 +112,7 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse): NxFoodIte
     return {...{
       id: 0,
       createdAtDateTime: new Date().toISOString(),
-      UPC: food.upc ? Number(food.upc) : null,
+      UPC: food.upc ? Number(food.upc) : upc ? upc : null,
       externalId: food.nix_item_id,
       name: food.food_name,
       brand: food.brand_name,

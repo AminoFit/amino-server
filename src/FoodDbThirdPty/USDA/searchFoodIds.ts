@@ -265,23 +265,23 @@ export async function searchFoodIds(
   }
 }
 
-/*
+
 async function runTests() {
-  await searchFoodIds({
-    query: "Triple Zero Strawberry Yogurt",
-    brand_name: "Oikos",
-    branded: true
-  })
-    .then((response) => {
-      console.log(response)
-    })
-    .catch((error) => {
-      console.error(`Error: ${error}`)
-    })
+  // await searchFoodIds({
+  //   query: "Triple Zero Strawberry Yogurt",
+  //   brand_name: "Oikos",
+  //   branded: true
+  // })
+  //   .then((response) => {
+  //     console.log(response)
+  //   })
+  //   .catch((error) => {
+  //     console.error(`Error: ${error}`)
+  //   })
 
   await searchFoodIds({
-    query: "Apple",
-    branded: false
+    query: "811620021425",
+    branded: true
   })
     .then((response) => {
       console.log(response)
@@ -291,5 +291,5 @@ async function runTests() {
     })
     
 }
-*/
-// runTests()
+
+runTests()

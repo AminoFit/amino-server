@@ -62,14 +62,8 @@ async function processLoggedFoodItems(itemIds?: number[]) {
         console.error(`Error parsing extended OpenAI data for logged food item: ${loggedFoodItem.id}`, error)
         continue
       }
-  
-      const foodItemToLog: FoodItemToLog = {
-        timeEaten: loggedFoodItem.consumedOn,
-        food_database_search_name: extendedData.food_database_search_name,
-        full_item_user_message_including_serving: extendedData.full_item_user_message_including_serving,
-        branded: extendedData.branded,
-        brand: extendedData.brand
-      }
+
+      const foodItemToLog = loggedFoodItem?.extendedOpenAiData?.valueOf() as FoodItemToLog
   
       const user = await getUserById(loggedFoodItem.userId)
       if (!user) {
@@ -92,6 +86,6 @@ async function processLoggedFoodItems(itemIds?: number[]) {
     rl.close()
   }
 
-const fooditemids = [13187, 10205, 9837, 8458, 8253, 8167, 7878, 7264, 7136, 6481, 6200, 5558, 5545,5459]
+const fooditemids = [20969]
 //TODO: fix item 4888 and remove unknown items from database
 processLoggedFoodItems()

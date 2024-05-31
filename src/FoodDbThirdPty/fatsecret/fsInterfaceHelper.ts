@@ -96,7 +96,7 @@ function mapNutrients(serving: FsServing, unitConversionFactor: number): FoodNut
 
 
 
-export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServings {
+export function convertFsToFoodItem(fsFoodItem: FsFoodInfo, upc?: number): FoodItemWithServings {
   const deduplicatedServings = deduplicateServings(fsFoodItem.servings.serving)
 
 
@@ -138,7 +138,7 @@ export function convertFsToFoodItem(fsFoodItem: FsFoodInfo): FoodItemWithServing
       id: 0,
       createdAtDateTime: new Date().toISOString(),
       externalId: fsFoodItem.food_id,
-      UPC: null,
+      UPC: upc ? upc : null,
       knownAs: [],
       description: null,
       lastUpdated: new Date().toISOString(),
