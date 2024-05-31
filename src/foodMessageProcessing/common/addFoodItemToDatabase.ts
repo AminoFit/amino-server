@@ -9,7 +9,7 @@ import { classifyFoodItemToCategoryGPT } from "../classifyFoodItemInCategory/cla
 import { getUserByEmail } from "./debugHelper"
 import { getFoodEmbedding } from "@/utils/foodEmbedding"
 
-function compareFoodItems(
+function compareFoodItemsByName(
   item1: FoodItemWithNutrientsAndServing | null,
   item2: FoodItemWithNutrientsAndServing | null
 ): boolean {
@@ -82,7 +82,11 @@ function deepCompare(obj1: any, obj2: any, ignoreKeys: string[] = ['id']): boole
   return true;
 }
 
-function getFieldsToUpdate<T>(existingObject: Partial<T>, newObject: Partial<T>): Partial<T> {
+function getFieldsToUpdate<T>(
+  existingObject: Partial<T>,
+  newObject: Partial<T>,
+  fieldsToIgnore: (keyof T)[] = []
+): Partial<T> {
   const fieldsToUpdate: Partial<T> = {};
 
   for (const key in newObject) {
@@ -90,7 +94,11 @@ function getFieldsToUpdate<T>(existingObject: Partial<T>, newObject: Partial<T>)
       const newValue = newObject[key as keyof T];
       const existingValue = existingObject[key as keyof T];
 
-      if (newValue !== null && newValue !== existingValue) {
+      if (
+        newValue !== null &&
+        newValue !== existingValue &&
+        !fieldsToIgnore.includes(key as keyof T)
+      ) {
         fieldsToUpdate[key as keyof T] = newValue;
       }
     }
@@ -108,30 +116,35 @@ async function compareAndUpdateFoodItem(
   const { Serving: ___, Nutrient: ____, ...strippedExistingFoodItem } = existingFoodItem;
   const { Serving: _, Nutrient: __, ...strippedNewFoodItem } = newFoodItem;
 
-  if (deepCompare(strippedExistingFoodItem, strippedNewFoodItem)) {
-    return existingFoodItem;
+  const fieldsToUpdate = getFieldsToUpdate(
+    strippedExistingFoodItem,
+    strippedNewFoodItem,
+    ["id", "createdAtDateTime", "lastUpdated", "knownAs"]
+  );
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return newFoodItem;
+  } else {
+    console.log("fieldsToUpdate", fieldsToUpdate);
   }
 
-  const fieldsToUpdate = getFieldsToUpdate(strippedExistingFoodItem, strippedNewFoodItem);
-  
+  const { data: updatedFoodItem, error } = await supabase
+    .from("FoodItem")
+    .update(fieldsToUpdate)
+    .eq("id", existingFoodItem.id)
+    .select()
+    .single();
 
-  if (Object.keys(fieldsToUpdate).length > 0) {
-    const { data: updatedFoodItem, error } = await supabase
-      .from("FoodItem")
-      .update(fieldsToUpdate)
-      .eq("id", existingFoodItem.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error updating food item", error);
-      throw error;
-    }
-
-    return { ...updatedFoodItem, Serving: existingFoodItem.Serving, Nutrient: existingFoodItem.Nutrient } as FoodItemWithNutrientsAndServing;
+  if (error) {
+    console.error("Error updating food item", error);
+    throw error;
   }
 
-  return existingFoodItem;
+  return {
+    ...updatedFoodItem,
+    Serving: existingFoodItem.Serving,
+    Nutrient: existingFoodItem.Nutrient
+  } as FoodItemWithNutrientsAndServing;
 }
 
 export async function addFoodItemToDatabase(
@@ -153,15 +166,9 @@ export async function addFoodItemToDatabase(
     .single()) as { data: FoodItemWithNutrientsAndServing; error: any }
 
   // If it exists, return the existing food item ID
-  if (compareFoodItems(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
+  if (compareFoodItemsByName(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
     console.log(`Food item ${food.name} already exists in the database`)
-    const { data: returnFoodItem, error } = await supabase
-      .from("FoodItem")
-      .select("*, Nutrient(*), Serving(*)")
-      .eq("id", existingFoodItem.id)
-      .single()
-    console.log("returnFoodItem", returnFoodItem)
-    return returnFoodItem as FoodItemWithNutrientsAndServing
+    return compareAndUpdateFoodItem(existingFoodItem as FoodItemWithNutrientsAndServing, food as FoodItemWithNutrientsAndServing)
   }
 
   let existingFoodItemByExternalId: FoodItemWithNutrientsAndServing | null = null
@@ -182,7 +189,7 @@ export async function addFoodItemToDatabase(
     console.log(
       `Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`
     )
-    return existingFoodItemByExternalId
+    return compareAndUpdateFoodItem(existingFoodItemByExternalId, food)
   }
 
   let foodClassificationResult = classifyFoodItemToCategoryGPT(food, user)
@@ -323,7 +330,7 @@ async function testAddToDatabase() {
         servingName: "3 squares"
       }
     ],
-    UPC: 747599414275,
+    UPC: 747599414190,
     externalId: "2214660",
     Nutrient: [
       {
