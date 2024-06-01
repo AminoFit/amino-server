@@ -8,23 +8,14 @@ import { createClient } from "@/utils/supabase/server"
 export interface FoodItemImagesType extends Tables<"FoodItemImages"> {
   FoodImage: Tables<"FoodImage"> | null
 }
+
 // Include the modified FoodItemImagesType in the FoodItemType definition
 export interface FoodItemType extends Tables<"FoodItem"> {
   FoodItemImages: FoodItemImagesType[]
 }
+
 // Define types for the tables
 export type MessageType = Partial<Tables<"Message">>
-
-// Define a custom type for the nested logged food item with food item details
-export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
-  FoodItem: FoodItemType | null
-  pathToImage?: string | null
-}
-
-// Define a custom type for Message with signed image URLs
-export interface MessageWithSignedUrls extends MessageType {
-  imageUrls: string[]
-}
 
 // Define a custom type for the nested logged food item with food item details
 export interface LoggedFoodItemWithDetailsType extends Partial<Tables<"LoggedFoodItem">> {
@@ -67,9 +58,6 @@ export async function fetchMessages(
   }
 
   const currentUserId = userData.user.id
-  if (!allowedUserIds.includes(currentUserId)) {
-    return { error: `Forbidden for user ${currentUserId}`, status: 403 }
-  }
 
   const from = (page - 1) * itemsPerPage
   const to = from + itemsPerPage - 1
@@ -97,7 +85,9 @@ export async function fetchMessages(
     query = showDeleted === "deleted" ? query.not("deletedAt", "is", null) : query.is("deletedAt", null)
   }
 
-  if (userId) {
+  if (!allowedUserIds.includes(currentUserId)) {
+    query = query.eq("userId", currentUserId)
+  } else if (userId) {
     query = query.eq("userId", userId)
   }
 
