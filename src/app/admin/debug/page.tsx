@@ -13,12 +13,15 @@ import Pagination from "@/components/pagination/pagination"
 import { ChevronDownIcon } from "@heroicons/react/20/solid"
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
 
+import { useRouter } from "next/router"
+
 const ITEMS_PER_PAGE = 10
 const MAX_VISIBLE_PAGES = 10
 
 const MessagesOverview = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [unauthorized, setUnauthorized] = useState(false)
   const [messages, setMessages] = useState<MessageWithSignedUrls[]>([])
   const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<
     Record<string, LoggedFoodItemWithDetailsType[]>
@@ -30,6 +33,8 @@ const MessagesOverview = () => {
   const [userId, setUserId] = useState("")
   const [hasImage, setHasImage] = useState("all")
   const [messageStatus, setMessageStatus] = useState("all")
+
+  const router = useRouter()
 
   const handleApply = (e: any) => {
     e.preventDefault()
@@ -52,7 +57,11 @@ const MessagesOverview = () => {
     console.log("Fetching messages for page", currentPage)
     const response = await fetchMessages(currentPage, ITEMS_PER_PAGE, showDeleted, userId, hasImage, messageStatus)
     if (response.error) {
-      setError(response.error)
+      if (response.error.includes("Unauthorized")) {
+        setUnauthorized(true)
+      } else {
+        setError(response.error)
+      }
       setLoading(false)
       return
     }
@@ -70,7 +79,35 @@ const MessagesOverview = () => {
   useEffect(() => {
     fetchData()
   }, [currentPage])
+  if (unauthorized) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-base font-semibold leading-6 text-gray-900">
+              You must log in first to view contents of this page
+            </h3>
 
+            <div className="mt-2 sm:flex sm:items-start sm:justify-between">
+              <div className="max-w-xl text-sm text-gray-500">
+                <p>Please log in to access this page.</p>
+              </div>
+
+              <div className="mt-5 sm:ml-6 sm:mt-0 sm:flex sm:flex-shrink-0 sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                >
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex">
       <aside className="w-64 p-4 border-r border-gray-200">
@@ -272,8 +309,12 @@ const MessagesOverview = () => {
                           }`}
                         >
                           {loggedFoodItem.pathToImage && (
-        <img src={loggedFoodItem.pathToImage} alt="Food Item Image" className="h-8 w-8 object-cover rounded-full" />
-      )}
+                            <img
+                              src={loggedFoodItem.pathToImage}
+                              alt="Food Item Image"
+                              className="h-8 w-8 object-cover rounded-full"
+                            />
+                          )}
                           <div className="w-6">
                             {loggedFoodItem.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
                           </div>
@@ -297,10 +338,9 @@ const MessagesOverview = () => {
                             {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
                           </div>
                           <div className="flex-none text-right text-gray-400 flex flex-col items-end">
-     
-                      <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
-                      <span>ID: {loggedFoodItem.id}</span>
-                    </div>
+                            <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
+                            <span>ID: {loggedFoodItem.id}</span>
+                          </div>
                         </div>
                       )
                     })}
