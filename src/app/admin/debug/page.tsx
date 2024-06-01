@@ -13,7 +13,7 @@ import Pagination from "@/components/pagination/pagination"
 import { ChevronDownIcon } from "@heroicons/react/20/solid"
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
 
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 
 const ITEMS_PER_PAGE = 10
 const MAX_VISIBLE_PAGES = 10
