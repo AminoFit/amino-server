@@ -15,4 +15,5 @@ export interface FoodItemToLog {
   brand?: string; 
   serving?: LoggedFoodServing; 
   database_id?: number;
+  upc?: number;
 }

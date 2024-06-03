@@ -1,25 +1,31 @@
-// src/app/admin/debug/page.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { fetchMessages } from "./actions"
-import { MessageType, LoggedFoodItemWithDetailsType } from "./actions"
+import { MessageWithSignedUrls, LoggedFoodItemWithDetailsType } from "./actions"
 import {
-    PhotoIcon as PhotoOutlineIcon,
-    MicrophoneIcon as MicrophoneOutlineIcon,
-    TrashIcon as TrashOutlineIcon
+  PhotoIcon as PhotoOutlineIcon,
+  MicrophoneIcon as MicrophoneOutlineIcon,
+  TrashIcon as TrashOutlineIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
+import { ChevronDownIcon } from "@heroicons/react/20/solid"
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
 
-const ITEMS_PER_PAGE = 10;
-const MAX_VISIBLE_PAGES = 10;
+import { useRouter } from "next/navigation"
+
+const ITEMS_PER_PAGE = 10
+const MAX_VISIBLE_PAGES = 10
 
 const MessagesOverview = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [messages, setMessages] = useState<MessageType[]>([])
-  const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<Record<string, LoggedFoodItemWithDetailsType[]>>({})
+  const [unauthorized, setUnauthorized] = useState(false)
+  const [messages, setMessages] = useState<MessageWithSignedUrls[]>([])
+  const [loggedFoodItemsByMessage, setLoggedFoodItemsByMessage] = useState<
+    Record<string, LoggedFoodItemWithDetailsType[]>
+  >({})
   const [currentPage, setCurrentPage] = useState(1)
   const [totalMessages, setTotalMessages] = useState(0)
 
@@ -28,46 +34,80 @@ const MessagesOverview = () => {
   const [hasImage, setHasImage] = useState("all")
   const [messageStatus, setMessageStatus] = useState("all")
 
+  const router = useRouter()
+
   const handleApply = (e: any) => {
-    e.preventDefault();
-    setCurrentPage(1);  // Reset to first page on filter apply
-    fetchData();
-  };
+    e.preventDefault()
+    setCurrentPage(1) // Reset to first page on filter apply
+    fetchData()
+  }
 
   const handleClear = () => {
-    setShowDeleted("all");
-    setUserId("");
-    setHasImage("all");
-    setMessageStatus("all");
-    setCurrentPage(1);  // Reset to first page on filter clear
-    fetchData();
-  };
+    setShowDeleted("all")
+    setUserId("")
+    setHasImage("all")
+    setMessageStatus("all")
+    setCurrentPage(1) // Reset to first page on filter clear
+    fetchData()
+  }
 
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    console.log("Fetching messages for page", currentPage);
+    setLoading(true)
+    setError(null)
+    console.log("Fetching messages for page", currentPage)
     const response = await fetchMessages(currentPage, ITEMS_PER_PAGE, showDeleted, userId, hasImage, messageStatus)
     if (response.error) {
-      setError(response.error);
-      setLoading(false);
-      return;
+      if (response.error.includes("Unauthorized")) {
+        setUnauthorized(true)
+      } else {
+        setError(response.error)
+      }
+      setLoading(false)
+      return
     }
     if (!response.messages || !response.loggedFoodItemsByMessage) {
-      setError("Invalid response");
-      setLoading(false);
-      return;
+      setError("Invalid response")
+      setLoading(false)
+      return
     }
     setMessages(response.messages)
     setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
     setTotalMessages(response.totalMessages || 0)
     setLoading(false)
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-  }, [currentPage]);
+    fetchData()
+  }, [currentPage])
+  if (unauthorized) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-base font-semibold leading-6 text-gray-900">
+              You must log in first to view contents of this page
+            </h3>
 
+            <div className="mt-2 sm:flex sm:items-start sm:justify-between">
+              <div className="max-w-xl text-sm text-gray-500">
+                <p>Please log in to access this page.</p>
+              </div>
+
+              <div className="mt-5 sm:ml-6 sm:mt-0 sm:flex sm:flex-shrink-0 sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                >
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex">
       <aside className="w-64 p-4 border-r border-gray-200">
@@ -176,7 +216,48 @@ const MessagesOverview = () => {
                   <div className="flex space-x-4 items-center">
                     <div className="flex space-x-2 w-10">
                       {message.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
-                      {message.hasimages && <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />}
+                      {message.hasimages &&
+                        (message.imageUrls.length <= 1 ? (
+                          <a href={message.imageUrls[0]} target="_blank" rel="noopener noreferrer">
+                            <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
+                          </a>
+                        ) : (
+                          <Menu as="div" className="relative inline-block text-left">
+                            <MenuButton className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-2 py-1 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">
+                              <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
+                              <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-1" />
+                            </MenuButton>
+                            <Transition
+                              as={Fragment}
+                              enter="transition ease-out duration-100"
+                              enterFrom="transform opacity-0 scale-95"
+                              enterTo="transform opacity-100 scale-100"
+                              leave="transition ease-in duration-75"
+                              leaveFrom="transform opacity-100 scale-100"
+                              leaveTo="transform opacity-0 scale-95"
+                            >
+                              <MenuItems className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                {message.imageUrls.map((url, index) => (
+                                  <MenuItem key={index}>
+                                    {({ active }) => (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={classNames(
+                                          active ? "bg-gray-100" : "",
+                                          "block px-4 py-2 text-sm text-gray-700"
+                                        )}
+                                      >
+                                        Image {index + 1}
+                                      </a>
+                                    )}
+                                  </MenuItem>
+                                ))}
+                              </MenuItems>
+                            </Transition>
+                          </Menu>
+                        ))}
                       {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
                     </div>
                     <div className="flex-none w-40 text-sm">{new Date(message.createdAt!).toLocaleString()}</div>
@@ -184,30 +265,38 @@ const MessagesOverview = () => {
                       {message.consumedOn ? new Date(message.consumedOn).toLocaleString() : "N/A"}
                     </div>
                     <div className="flex-grow max-w-xl break-words">{message.content}</div>
+                    <div className="flex-grow"></div>
+                    <div className="flex-none text-right text-gray-400 flex flex-col items-end">
+                      <button onClick={() => setUserId(message.userId!)} className="text-blue-500 underline mb-1">
+                        User: {message.userId?.slice(0, 5)}
+                      </button>
+                      <span>ID: {message.id}</span>
+                    </div>
                   </div>
                   <div className="mt-4">
                     {loggedFoodItemsByMessage[message.id!]?.map((loggedFoodItem) => {
+                      const grams = loggedFoodItem.grams || 0 // Default to 0 if grams is undefined
                       const calories = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.kcalPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const carbs = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.carbPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const protein = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.proteinPerServing || 0)
                           ).toFixed(0)
                         : ""
                       const fat = loggedFoodItem.FoodItem
                         ? (
-                            (loggedFoodItem.grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
+                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
                             (loggedFoodItem.FoodItem?.totalFatPerServing || 0)
                           ).toFixed(0)
                         : ""
@@ -219,18 +308,27 @@ const MessagesOverview = () => {
                             loggedFoodItem.deletedAt ? "bg-rose-100" : "bg-zinc-50"
                           }`}
                         >
+                          {loggedFoodItem.pathToImage && (
+                            <img
+                              src={loggedFoodItem.pathToImage}
+                              alt="Food Item Image"
+                              className="h-8 w-8 object-cover rounded-full"
+                            />
+                          )}
                           <div className="w-6">
                             {loggedFoodItem.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
                           </div>
                           <div className="flex-grow text-sm break-words">
                             {loggedFoodItem.FoodItem?.name || "Unknown"}
                             {loggedFoodItem.FoodItem?.brand && ` (${loggedFoodItem.FoodItem.brand})`} -
-                            {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({loggedFoodItem.grams}g)
+                            {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({grams}g)
                           </div>
                           <div className="flex-none text-sm">
                             <textarea
                               defaultValue={
-                                loggedFoodItem.extendedOpenAiData ? JSON.stringify(loggedFoodItem.extendedOpenAiData) : ""
+                                loggedFoodItem.extendedOpenAiData
+                                  ? JSON.stringify(loggedFoodItem.extendedOpenAiData)
+                                  : ""
                               }
                               className="w-full p-1 text-xs border rounded-md resize"
                             />
@@ -238,6 +336,10 @@ const MessagesOverview = () => {
                           <div className="flex-none text-sm">
                             {calories} kcal
                             {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
+                          </div>
+                          <div className="flex-none text-right text-gray-400 flex flex-col items-end">
+                            <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
+                            <span>ID: {loggedFoodItem.id}</span>
                           </div>
                         </div>
                       )

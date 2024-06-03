@@ -3,14 +3,16 @@ import { NextResponse } from 'next/server'
 import { type CookieOptions, createServerClient } from '@supabase/ssr'
 
 export async function GET(request: Request) {
-  console.log("auth callback")
   const { searchParams, origin } = new URL(request.url)
+  console.log(`auth callback with code ${searchParams.get('code')}`)
   const code = searchParams.get('code')
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
+    console.log("auth callback with code")
     const cookieStore = cookies()
+    console.log("cookieStore", cookieStore)
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
