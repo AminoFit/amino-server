@@ -349,25 +349,33 @@ const Header: React.FC = () => {
   return (
     <div className="bg-[#E0E9EC] p-4 rounded-b-xl">
       <div className="flex items-center space-x-4">
-        <button className="bg-black text-white w-8 h-8 rounded-full flex items-center justify-center">&lsaquo;</button>
+        <button className="bg-black text-3xl font-light text-white w-8 h-8 rounded-full flex flex-row justify-center items-center">
+          &lsaquo;
+        </button>
         <div className="flex items-center space-x-2 grow">
           <h1 className="text-2xl font-semibold">Feb</h1>
           <button className="text-gray-600">&#9662;</button>
         </div>
-        <button className="bg-gray-200 text-gray-600 text-sm">Today</button>
+        <button className="bg-[#D5DDE0] text-gray-600 text-sm px-2 py-1 rounded-md">Today</button>
         <button className="bg-black text-white w-8 h-8 rounded-full flex items-center justify-center">&rsaquo;</button>
       </div>
       <div className="flex items-center justify-between mt-4 text-center">
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-          <div key={index} className="text-center">
-            <div className="text-sm text-gray-500">{day}</div>
-            <div
+          <div
+            key={index}
+            className={`flex flex-col text-center pt-2 ${
+              index === 1 ? "bg-black text-white" : "bg-transparent"
+            } rounded-full flex items-center justify-center mt-2`}
+          >
+            <div className={`text-sm pb-1 ${index === 1 ? "text-white" : "text-gray-500"}`}>{day}</div>
+            {/* <div
               className={`w-8 h-8 mx-auto ${
                 index === 1 ? "bg-black text-white" : "bg-transparent border-2 border-gray-300"
               } rounded-full flex items-center justify-center mt-2`}
             >
-              {index + 1}
-            </div>
+              <RadialProgress text={(index + 1).toString()} />
+            </div> */}
+            <RadialProgress text={(index + 1).toString()} amount={(index + 1) * 10} selected={index === 1} />
           </div>
         ))}
       </div>
@@ -375,15 +383,51 @@ const Header: React.FC = () => {
   )
 }
 
-function FooterNav() {
+const RadialProgress = ({ text, amount, selected }: { text: string; amount: number; selected: boolean }) => {
+  const thresholdAmount = Math.min(100, Math.max(0, amount))
   return (
-    <header className="bg-white shadow">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-semibold leading-6 text-gray-900">Nav Bar</h1>
-      </div>
-    </header>
+    <div className="relative w-10 h-10">
+      <svg className="w-full h-full" viewBox="0 0 100 100">
+        {/* <!-- Background circle --> */}
+        <circle
+          className="text-gray-400 stroke-current"
+          stroke-width="10"
+          cx="50"
+          cy="50"
+          r="37"
+          fill="transparent"
+        ></circle>
+        {/* <!-- Progress circle --> */}
+        <circle
+          className="text-[#ADDC49] progress-ring__circle stroke-current"
+          stroke-width="10"
+          stroke-linecap="round"
+          cx="50"
+          cy="50"
+          r="37"
+          fill="transparent"
+          transform="rotate(-90 50 50)"
+          stroke-dasharray="251.2"
+          stroke-dashoffset={"calc(251.2 - (251.2 * " + thresholdAmount + ") / 100)"}
+        ></circle>
+
+        {/* <!-- Center text --> */}
+        <text
+          x="50"
+          y="50"
+          font-family="Verdana"
+          font-size="30"
+          text-anchor="middle"
+          alignment-baseline="middle"
+          fill={selected ? "white" : "gray"}
+        >
+          {text}
+        </text>
+      </svg>
+    </div>
   )
 }
+
 export default function FoodLog() {
   return (
     <div className="h-screen">
@@ -391,11 +435,21 @@ export default function FoodLog() {
         <header className="sticky top-0 z-10">
           <Header />
         </header>
-        <main className="flex-grow overflow-y-auto p-2 bg-gray-100">
+        <main className="flex-grow overflow-y-auto p-2 ">
           <FoodLogList />
+          <Footer />
         </main>
-        <footer className="bg-gray-800 text-white p-4 text-center sticky bottom-0 z-10">Footer</footer>
       </div>
+    </div>
+  )
+}
+
+export function Footer() {
+  return (
+    <div className="bg-lime-500 font-light text-black m-1 text-center sticky bottom-0 z-10 rounded-full flex flex-row justify-between items-center">
+      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">C</div>
+      <div>Log Food...</div>
+      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">M</div>
     </div>
   )
 }
@@ -429,7 +483,7 @@ export function FoodLogList() {
               </div>
 
               {message.loggedFoodItems.map((foodItem) => (
-                <div key={foodItem.id} className="flex flex-col rounded-lg bg-blue-100 p-2 space-y-1">
+                <div key={foodItem.id} className="flex flex-col rounded-lg bg-[#EDF5F8] p-2 space-y-1">
                   {/* ICON AND FOOD NAME */}
                   <div className="flex flex-row space-x-2">
                     {/* ICON */}
@@ -447,21 +501,21 @@ export function FoodLogList() {
                   </div>
                   {/* NUTRITION INFO */}
                   <div className="flex flex-row justify-between">
-                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 rounded-l-md bg-gray-100 w-full">
-                      <div className="text-sm font-semibold text-blue-500">{foodItem.kcalPerServing}</div>
-                      <div className="text-xs text-gray-500">calories</div>
+                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 rounded-l-md bg-white w-full">
+                      <div className="text-sm font-thin text-blue-500">{foodItem.kcalPerServing}</div>
+                      <div className="text-xs font-thin text-blue-500">calories</div>
                     </div>
-                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 bg-gray-100 w-full">
-                      <div className="text-sm font-semibold text-pink-500">{foodItem.proteinPerServing}</div>
-                      <div className="text-xs text-gray-500">protein</div>
+                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 bg-white w-full">
+                      <div className="text-sm font-thin text-pink-500">{foodItem.proteinPerServing}g</div>
+                      <div className="text-xs font-thin text-pink-500">protein</div>
                     </div>
-                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 bg-gray-100 w-full">
-                      <div className="text-sm font-semibold text-orange-500">{foodItem.carbPerServing}</div>
-                      <div className="text-xs text-gray-500">carb</div>
+                    <div className="flex flex-col text-center border-[1px] border-r-[0px] border-slate-300 bg-white w-full">
+                      <div className="text-sm font-thin text-orange-500">{foodItem.carbPerServing}g</div>
+                      <div className="text-xs font-thin text-orange-500">carb</div>
                     </div>
-                    <div className="flex flex-col text-center border-[1px] border-slate-300 rounded-r-md bg-gray-100 w-full">
-                      <div className="text-sm font-semibold text-purple-500">{foodItem.totalFatPerServing}</div>
-                      <div className="text-xs text-gray-500">fat</div>
+                    <div className="flex flex-col text-center border-[1px] border-slate-300 rounded-r-md bg-white w-full">
+                      <div className="text-sm font-thin text-purple-500">{foodItem.totalFatPerServing}g</div>
+                      <div className="text-xs font-thin text-purple-500">fat</div>
                     </div>
                   </div>
                   {/* <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500">
