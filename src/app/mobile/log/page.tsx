@@ -458,7 +458,7 @@ export function FoodLogList() {
     <div>
       <ul role="list" className="divide-y divide-gray-100">
         {messages.map((message) => (
-          <div className="py-4 rounded-lg flex space-x-4 px-2">
+          <div className="py-4 rounded-lg flex space-x-4 px-2" key={message.id}>
             {/* LEFT - DOT WITH TAIL */}
             <div className="rounded-lg flex flex-col justify-between items-center">
               <div className="w-4 h-4 border-2 border-black rounded-full bg-white" />
