@@ -437,23 +437,27 @@ export default function FoodLog() {
         </header>
         <main className="flex-grow overflow-y-auto p-2 ">
           <FoodLogList />
-          <Footer />
+          <AddFoodButton />
         </main>
       </div>
     </div>
   )
 }
 
-export function Footer() {
+function AddFoodButton() {
   return (
     <div className="bg-lime-500 font-light text-black m-1 text-center sticky bottom-0 z-10 rounded-full flex flex-row justify-between items-center">
-      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">C</div>
+      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">
+        C
+      </div>
       <div>Log Food...</div>
-      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">M</div>
+      <div className="flex flex-row w-12 h-12 m-1 justify-center items-center rounded-full bg-black text-lime-500">
+        M
+      </div>
     </div>
   )
 }
-export function FoodLogList() {
+function FoodLogList() {
   return (
     <div>
       <ul role="list" className="divide-y divide-gray-100">
