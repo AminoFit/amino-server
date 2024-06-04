@@ -14,11 +14,13 @@ function isNumberValidGTIN(number: number): boolean {
 
   // Determine the necessary padding to fit a GTIN format
   if (barcode.length > 14) {
-    throw new Error("The number is too long to be a valid GTIN")
+    console.log("The number is too long to be a valid GTIN")
+    return false
   }
 
   if (barcode.length < 8) {
-    throw new Error("The number is too short to be a valid GTIN")
+    console.log("The number is too short to be a valid GTIN")
+    return false
   }
 
   // Pad the string to the nearest valid GTIN length (8, 12, 13, or 14 digits)
