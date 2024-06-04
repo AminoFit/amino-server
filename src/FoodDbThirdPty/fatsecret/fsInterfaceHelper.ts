@@ -76,8 +76,18 @@ function mapNutrients(serving: FsServing, unitConversionFactor: number): FoodNut
   }
 
   const nutrientsToMap = [
+    { name: "calcium", unit: "mg" },
     { name: "cholesterol", unit: "mg" },
+    { name: "fiber", unit: "g" },
+    { name: "iron", unit: "mg" },
+    { name: "monounsaturated_fat", unit: "g" },
+    { name: "polyunsaturated_fat", unit: "g" },
     { name: "potassium", unit: "mg" },
+    { name: "saturated_fat", unit: "g" },
+    { name: "sodium", unit: "mg" },
+    { name: "sugar", unit: "g" },
+    { name: "trans_fat", unit: "g" },
+    { name: "added_sugars", unit: "g" },
     { name: "vitamin_a", unit: "µg" },
     { name: "vitamin_c", unit: "mg" },
     { name: "vitamin_d", unit: "µg" }
