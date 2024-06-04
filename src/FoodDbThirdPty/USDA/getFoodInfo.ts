@@ -5,34 +5,72 @@ import { mapUsdaFoodItemToFoodItem, FoodItemWithServings } from "./usdaInterface
 import { toTitleCase } from "../../utils/nlpHelper"
 import { UsdaPortion } from "./usdaInterfaceHelper"
 
-export const foodAttributesToQuery = [
-  "Energy",
-  "Protein",
-  "Total lipid (fat)",
-  "Carbohydrate, by difference",
-  "Energy (Atwater General Factors)",
-  "Sugars, total including NLEA",
-  "Sugars, Total",
-  "Fiber, total dietary",
-  "Carbohydrate, by summation",
-  "Total fat (NLEA)",
-  "Fatty acids, total saturated",
-  "Fatty acids, total monounsaturated",
-  "Fatty acids, total trans",
-  "Sugars, added",
-  "Cholesterol",
-  "Potassium, K",
-  "Sodium, Na",
-  "Calcium, Ca"
+interface FoodAttribute {
+  id: number
+  name: string
+  usdaUnit: string
+  targetUnit: string
+  conversionFactor: number
+}
+
+export const foodAttributesToQuery: FoodAttribute[] = [
+  { id: 2048, name: "Energy", usdaUnit: "kcal", targetUnit: "kcal", conversionFactor: 1 },
+  { id: 1004, name: "Total lipid (fat)", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1258, name: "Fatty acids, total saturated", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1257, name: "Fatty acids, total trans", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1268, name: "Fatty acids, total monounsaturated", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1293, name: "Fatty acids, total polyunsaturated", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1005, name: "Carbohydrate, by difference", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1080, name: "Fiber, total dietary", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 2000, name: "Sugars, total including NLEA", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1235, name: "Sugars, added", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1003, name: "Protein", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 },
+  { id: 1051, name: "Water", usdaUnit: "g", targetUnit: "ml", conversionFactor: 1 },
+  { id: 1104, name: "Vitamin A, IU", usdaUnit: "IU", targetUnit: "mcg", conversionFactor: 0.3 },
+  { id: 1162, name: "Vitamin C, total ascorbic acid", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  {
+    id: 1110,
+    name: "Vitamin D (D2 + D3), International Units",
+    usdaUnit: "IU",
+    targetUnit: "mcg",
+    conversionFactor: 0.025
+  },
+  { id: 1124, name: "Vitamin E, IU", usdaUnit: "IU", targetUnit: "mg", conversionFactor: 0.67 },
+  { id: 1185, name: "Vitamin K (phylloquinone)", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1165, name: "Thiamin", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1166, name: "Riboflavin", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1167, name: "Niacin", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1170, name: "Pantothenic acid", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1175, name: "Vitamin B-6", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1176, name: "Biotin", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1190, name: "Folate, DFE", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1178, name: "Vitamin B-12", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1087, name: "Calcium, Ca", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1089, name: "Iron, Fe", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1090, name: "Magnesium, Mg", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1091, name: "Phosphorus, P", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1092, name: "Potassium, K", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1093, name: "Sodium, Na", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1095, name: "Zinc, Zn", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1098, name: "Copper, Cu", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1101, name: "Manganese, Mn", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1103, name: "Selenium, Se", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1100, name: "Iodine, I", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1 },
+  { id: 1253, name: "Cholesterol", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1057, name: "Caffeine", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1 },
+  { id: 1018, name: "Alcohol, ethyl", usdaUnit: "g", targetUnit: "g", conversionFactor: 1 }
 ]
 
-export function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]): UsdaFoodItem {
+export function extractFoodInfo(foodItem: any, foodAttributesToQuery: FoodAttribute[]): UsdaFoodItem {
   const foodInfo: {
     [key: string]: { amount: number | null; unit: string | null }
   } = {}
   const portions: UsdaPortion[] = []
 
-  foodAttributesToQuery.forEach((name) => {
+  // Extract names from foodAttributesToQuery
+  const attributeNames = foodAttributesToQuery.map((attr) => attr.name)
+
+  attributeNames.forEach((name) => {
     foodInfo[name] = { amount: null, unit: null }
   })
 
@@ -45,16 +83,31 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]):
   if (foodItem.labelNutrients) {
     // Mapping of nutrients to their units
     const nutrientUnits: { [key: string]: string } = {
+      fat: "g",
+      saturatedFat: "g",
+      transFat: "g",
       cholesterol: "mg",
       sodium: "mg",
       potassium: "mg",
       calcium: "mg",
       iron: "mg",
       vitaminD: "mcg",
-      calories: "kcal"
-      // Add other nutrients and their units here
+      calories: "kcal",
+      carbohydrates: "g",
+      fiber: "g",
+      sugars: "g",
+      protein: "g",
+      vitaminA: "IU",
+      vitaminC: "mg",
+      vitaminB6: "mg",
+      vitaminB12: "mcg",
+      thiamin: "mg",
+      riboflavin: "mg",
+      niacin: "mg",
+      phosphorus: "mg",
+      magnesium: "mg",
+      polyunsaturatedFat: "g"
     }
-
 
     Object.entries(foodItem.labelNutrients as LabelNutrients).forEach(([name, nutrient]) => {
       foodInfo[name] = {
@@ -75,11 +128,15 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: string[]):
         }
       }
     }
-  } else {
+  }
+
+  // if foodNutrients exists, use it to calculate the nutrients
+  if (foodItem.foodNutrients) {
     foodItem.foodNutrients.forEach((foodNutrient: any) => {
-      if (foodAttributesToQuery.includes(foodNutrient.nutrient.name)) {
+      if (foodAttributesToQuery.some(attr => attr.name === foodNutrient.nutrient.name)) {
         // Only include the nutrient if it's not "Energy" or if it's "Energy" with unit "kcal"
         if (foodNutrient.nutrient.name !== "Energy" || foodNutrient.nutrient.unitName === "kcal") {
+          console.log("adding nutrient", foodNutrient.nutrient.name, "to foodInfo")
           foodInfo[foodNutrient.nutrient.name] = {
             amount: foodNutrient.amount,
             unit: foodNutrient.nutrient.unitName
@@ -196,7 +253,7 @@ export async function getUsdaFoodsInfo(params: UsdaFoodsParams): Promise<FoodIte
   try {
     const response = await axios.get(API_URL, { params: requestParams })
 
-    // console.log(JSON.stringify(response.data))
+    console.log(JSON.stringify(response.data))
 
     // do not await this
     recordQuery("usda", API_URL)
@@ -243,6 +300,7 @@ function dummyTest() {
 
 // food for 172963, 168460, 2175192
 async function runTests() {
-  console.dir(await getUsdaFoodsInfo({ fdcIds: ["2663962"] }), { depth: null })
+  // console.dir(await getUsdaFoodsInfo({ fdcIds: ["2663962"] }), { depth: null })
+  console.dir(await getUsdaFoodsInfo({ fdcIds: ["1093433"] }), { depth: null })
 }
-// runTests()
+runTests()

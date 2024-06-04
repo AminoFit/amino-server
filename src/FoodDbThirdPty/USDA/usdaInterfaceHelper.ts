@@ -37,6 +37,7 @@ export interface UsdaFoodItem {
 }
 
 export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemWithServings {
+  console.log("usdaFoodItem", usdaFoodItem)
   const nutrientNameToFoodItemKey: {
     [key: string]: keyof FoodItemWithServings
   } = {
