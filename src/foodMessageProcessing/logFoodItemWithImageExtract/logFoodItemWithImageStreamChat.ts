@@ -247,18 +247,28 @@ export async function logFoodItemStreamWithImages(
   const user_images_with_signed_urls = await generateSignedUrls(user_images)
 
   console.log("user_images_with_signed_urls", user_images_with_signed_urls)
-  const barcodeDescriptions = await Promise.all(user_images_with_signed_urls.map(async (image, index) => {
-    if (image && image.signedImageUrl) {
-      const barcode = await fetchAndDecodeBarcode(image.signedImageUrl);
-      return barcode ? `Image ${index + 1} contains the barcode ${barcode}` : "";
-    }
-    return "";
-  }));
+  const barcodeDescriptions = await Promise.all(
+    user_images_with_signed_urls.map(async (image, index) => {
+      if (image && image.signedImageUrl) {
+        const barcodeResults = await fetchAndDecodeBarcode(image.signedImageUrl)
+        // barcodeResults will be an array, even if only one barcode is found
 
-  const barcodeText = barcodeDescriptions.filter(text => text).join(", ");
+        if (barcodeResults.length > 0) {
+          return barcodeResults
+            .map(
+              (result) =>
+                `Image ${index + 1} contains the barcode ${result.barcode} (${result.type}) in ${result.quadrant}`
+            )
+            .join("\n") // Join multiple barcodes in the same image with a newline
+        }
+      }
+      return ""
+    })
+  )
 
-  const prompt = food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content) + (barcodeText ? `\n\n${barcodeText}` : "");
-
+  const barcodeText = barcodeDescriptions.filter((text) => text).join(", ")
+  const prompt =
+    food_logging_prompt.replace("USER_INPUT_CONTENT", user_message.content) + (barcodeText ? `\n\n${barcodeText}` : "")
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
