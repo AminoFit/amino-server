@@ -21,6 +21,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
 import { findBestServingMatchChatLlama } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
+import { calculateNutrientData } from "./common/calculateNutrientData"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
@@ -60,12 +61,13 @@ export async function ProcessLogFoodItem(
     try {
       food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
-      console.log("Error processing food item:", err1)
+      console.log("Error processing food item for serving:", err1)
       await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
       return "Sorry, I could not log your food items. Please try again later."
     }
 
     let extendedFoodData = { ...food, second_best_match: secondBestMatch }
+    const nutrientData = calculateNutrientData(food, bestMatch as FoodItemWithNutrientsAndServing);
 
     const data = {
       foodItemId: bestMatch.id,
@@ -75,7 +77,7 @@ export async function ProcessLogFoodItem(
       grams: food.serving!.total_serving_g_or_ml,
       userId: user.id,
       extendedOpenAiData: extendedFoodData as any,
-      //consumedOn: food.timeEaten ? new Date(food.timeEaten) : new Date(),
+      ...nutrientData,
       messageId,
       status: "Processed"
     }
@@ -95,7 +97,7 @@ export async function ProcessLogFoodItem(
     await LinkIconsOrCreateIfNeeded(bestMatch.id)
     return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
   } catch (error) {
-    console.log("Error processing food item:", error)
+    console.log("Error processing food item for matching:", error)
     await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."
   }
@@ -125,7 +127,7 @@ async function getLoggedFoodItem(id: number): Promise<Tables<"LoggedFoodItem"> |
 }
 
 async function testProcessFood() {
-  const messageId = 6229
+  const messageId = 1
 
   const food = {
     food_database_search_name: "Fairlife nutrition plan chocolate nutrition shake",

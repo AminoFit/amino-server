@@ -80,19 +80,106 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse, upc?: numb
       food.serving_weight_grams = 10
     }
 
-    // Extract trans fat from full_nutrients array
-    const transFatNutrient = food.full_nutrients.find((nutrient) => nutrient.attr_id === 605)
-    const transFat = transFatNutrient ? transFatNutrient.value : null
-
-    // Extract added sugar from full_nutrients array
-    const addedSugarNutrient = food.full_nutrients.find((nutrient) => nutrient.attr_id === 539)
-    const addedSugar = addedSugarNutrient ? addedSugarNutrient.value : null
+    const nutrientMap = new Map<number, number>()
+    food.full_nutrients.forEach((nutrient) => {
+      nutrientMap.set(nutrient.attr_id, nutrient.value)
+    })
 
     const nutrients = [
+      {
+        nutrientName: "Added Sugars",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: nutrientMap.get(539) || -1
+      },
+      {
+        nutrientName: "Alcohol",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: nutrientMap.get(221) || -1
+      },
+      {
+        nutrientName: "Caffeine",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(262) || -1
+      },
+      {
+        nutrientName: "Calcium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(301) || -1
+      },
       {
         nutrientName: "Cholesterol",
         nutrientUnit: "mg",
         nutrientAmountPerDefaultServing: food.nf_cholesterol || -1
+      },
+      {
+        nutrientName: "Copper",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(312) || -1
+      },
+      {
+        nutrientName: "Dietary Fiber",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: food.nf_dietary_fiber || -1
+      },
+      {
+        nutrientName: "Iodine",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(325) || -1
+      },
+      {
+        nutrientName: "Iron",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(303) || -1
+      },
+      {
+        nutrientName: "Magnesium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(304) || -1
+      },
+      {
+        nutrientName: "Manganese",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(315) || -1
+      },
+      {
+        nutrientName: "Monounsaturated Fat",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: nutrientMap.get(645) || -1
+      },
+      {
+        nutrientName: "Omega-3 Fatty Acids",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(851) || -1
+      },
+      {
+        nutrientName: "Omega-6 Fatty Acids",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(853) || -1
+      },
+      {
+        nutrientName: "Phosphorus",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(305) || -1
+      },
+      {
+        nutrientName: "Polyunsaturated Fat",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: nutrientMap.get(646) || -1
+      },
+      {
+        nutrientName: "Potassium",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: food.nf_potassium || -1
+      },
+      {
+        nutrientName: "Saturated Fat",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: food.nf_saturated_fat || -1
+      },
+      {
+        nutrientName: "Selenium",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(317) || -1
       },
       {
         nutrientName: "Sodium",
@@ -100,14 +187,94 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse, upc?: numb
         nutrientAmountPerDefaultServing: food.nf_sodium || -1
       },
       {
-        nutrientName: "Potassium",
+        nutrientName: "Sugars",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: food.nf_sugars || -1
+      },
+      {
+        nutrientName: "Trans Fat",
+        nutrientUnit: "g",
+        nutrientAmountPerDefaultServing: nutrientMap.get(605) || -1
+      },
+      {
+        nutrientName: "Vitamin A",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(318) || -1
+      },
+      {
+        nutrientName: "Vitamin B12",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(418) || -1
+      },
+      {
+        nutrientName: "Vitamin B1 (Thiamin)",
         nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: food.nf_potassium || -1
+        nutrientAmountPerDefaultServing: nutrientMap.get(404) || -1
+      },
+      {
+        nutrientName: "Vitamin B2 (Riboflavin)",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(405) || -1
+      },
+      {
+        nutrientName: "Vitamin B3 (Niacin)",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(406) || -1
+      },
+      {
+        nutrientName: "Vitamin B5 (Pantothenic Acid)",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(410) || -1
+      },
+      {
+        nutrientName: "Vitamin B6",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(415) || -1
+      },
+      {
+        nutrientName: "Vitamin B7 (Biotin)",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(417) || -1
+      },
+      {
+        nutrientName: "Vitamin B9 (Folate)",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(431) || -1
+      },
+      {
+        nutrientName: "Vitamin C",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(401) || -1
+      },
+      {
+        nutrientName: "Vitamin D",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(328) || -1
+      },
+      {
+        nutrientName: "Vitamin E",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(323) || -1
+      },
+      {
+        nutrientName: "Vitamin K",
+        nutrientUnit: "mcg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(430) || -1
+      },
+      {
+        nutrientName: "Water",
+        nutrientUnit: "ml",
+        nutrientAmountPerDefaultServing: nutrientMap.get(255) || -1
+      },
+      {
+        nutrientName: "Zinc",
+        nutrientUnit: "mg",
+        nutrientAmountPerDefaultServing: nutrientMap.get(309) || -1
       }
     ].filter(
       (nutrient) =>
         nutrient.nutrientAmountPerDefaultServing != undefined && nutrient.nutrientAmountPerDefaultServing != -1
-    )
+    );
 
     return {...{
       id: 0,
@@ -125,11 +292,11 @@ export function mapFoodResponseToFoodItem(response: CombinedResponse, upc?: numb
       kcalPerServing: Number(food.nf_calories) || 0,
       totalFatPerServing: Number(food.nf_total_fat) || 0,
       satFatPerServing: food.nf_saturated_fat,
-      transFatPerServing: transFat,
+      transFatPerServing: nutrientMap.get(605) || null,
       carbPerServing: food.nf_total_carbohydrate || 0,
       fiberPerServing: food.nf_dietary_fiber,
       sugarPerServing: food.nf_sugars,
-      addedSugarPerServing: addedSugar,
+      addedSugarPerServing: nutrientMap.get(539) || null,
       proteinPerServing: food.nf_protein || 0,
       lastUpdated: new Date().toISOString(),
       verified: true,
@@ -180,14 +347,15 @@ function testMapping() {
   const fairlifeMilk2 = JSON.parse(
     `{"foods":[{"food_name":"2% Reduced Ultra-Filtered Milk","brand_name":"Fairlife","serving_qty":1,"serving_unit":"cup","serving_weight_grams":null,"nf_metric_qty":240,"nf_metric_uom":"ml","nf_calories":120,"nf_total_fat":4.5,"nf_saturated_fat":3,"nf_cholesterol":20,"nf_sodium":120,"nf_total_carbohydrate":6,"nf_dietary_fiber":0,"nf_sugars":6,"nf_protein":13,"nf_potassium":400,"nf_p":null,"full_nutrients":[{"attr_id":203,"value":13},{"attr_id":204,"value":4.5},{"attr_id":205,"value":6},{"attr_id":208,"value":120},{"attr_id":269,"value":6},{"attr_id":291,"value":0},{"attr_id":301,"value":380},{"attr_id":303,"value":0},{"attr_id":306,"value":400},{"attr_id":307,"value":120},{"attr_id":324,"value":200},{"attr_id":328,"value":5},{"attr_id":539,"value":0},{"attr_id":601,"value":20},{"attr_id":605,"value":0},{"attr_id":606,"value":3}],"nix_brand_name":"Fairlife","nix_brand_id":"546a0a092bc0b27b2a676b70","nix_item_name":"2% Reduced Ultra-Filtered Milk","nix_item_id":"5ffefe660027528b35b714bc","metadata":{},"source":8,"ndb_no":null,"tags":null,"alt_measures":null,"lat":null,"lng":null,"photo":{"thumb":"https://nutritionix-api.s3.amazonaws.com/5ffefe6915a83c3c4f88047a.jpeg","highres":null,"is_user_uploaded":false},"note":null,"class_code":null,"brick_code":null,"tag_id":null,"updated_at":"2021-01-13T14:06:34+00:00","nf_ingredient_statement":null}]}`
   )
-  console.dir(fairlifeMilk, { depth: null })
+  // console.dir(fairlifeMilk, { depth: null })
   console.dir(mapFoodResponseToFoodItem(fairlifeMilk), { depth: null })
-  console.dir(fairlifeMilk2, { depth: null })
+  // console.dir(fairlifeMilk2, { depth: null })
   console.dir(mapFoodResponseToFoodItem(fairlifeMilk2), { depth: null })
+  console.dir(mapFoodResponseToFoodItem(longFoodResponse), { depth: null })
   //console.dir(mapFoodResponseToFoodItem(longFoodResponse), { depth: null })
 }
 
-//testMapping()
+// testMapping()
 
 
 // const foodItem = JSON.parse(`{"foods":[{"food_name":"Beer, Hazy Juicy Pale Ale, Moon Haze","brand_name":"Blue Moon","serving_qty":12,"serving_unit":"fl oz","serving_weight_grams":null,"nf_metric_qty":355,"nf_metric_uom":"ml","nf_calories":180,"nf_total_fat":0,"nf_saturated_fat":null,"nf_cholesterol":null,"nf_sodium":null,"nf_total_carbohydrate":15.100000381469727,"nf_dietary_fiber":null,"nf_sugars":null,"nf_protein":2.299999952316284,"nf_potassium":null,"nf_p":null,"full_nutrients":[{"attr_id":203,"value":2.3},{"attr_id":204,"value":0},{"attr_id":205,"value":15.1},{"attr_id":208,"value":180}],"nix_brand_name":"Blue Moon","nix_brand_id":"53f21a9a6d6d4bf86c32acf1","nix_item_name":"Beer, Hazy Juicy Pale Ale, Moon Haze","nix_item_id":"62f3908b0082cc0006d94eea","metadata":{},"source":8,"ndb_no":null,"tags":null,"alt_measures":null,"lat":null,"lng":null,"photo":{"thumb":"https://assets.syndigo.com/e13e5852-9de2-4085-9b6e-65e3b1bd452e","highres":null,"is_user_uploaded":false},"note":null,"class_code":null,"brick_code":null,"tag_id":null,"updated_at":"2023-03-01T04:00:29+00:00","nf_ingredient_statement":"Water, Barley Malt, Wheat, Oats, Yeast, Hops, Dried Whole Oranges."}]}`)

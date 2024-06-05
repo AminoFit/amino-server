@@ -36,7 +36,9 @@ export async function getFatSecretFoodByUPC(upc: string): Promise<FoodItemWithSe
     try {
         const response = await axios.post(url, null, { params, headers });
         const foodId = response.data.food_id.value;
-        return convertFsToFoodItem(await getFatSecretFoodById(Number(foodId)), Number(upc));
+        const fsResult = await getFatSecretFoodById(Number(foodId))
+        console.log("fsResult", JSON.stringify(fsResult))
+        return convertFsToFoodItem(fsResult, Number(upc));
     } catch (error) {
         console.error('Error fetching data from FatSecret API for UPC:', error);
         throw error;
@@ -45,7 +47,7 @@ export async function getFatSecretFoodByUPC(upc: string): Promise<FoodItemWithSe
 
 // Example test to get food information by UPC
 const testGetFatSecretFoodByUPC = async () => {
-    const upc = "811620021425"; // Test UPC code provided
+    const upc = "722252660770"; // Test UPC code provided
     try {
         const foodItem = await getFatSecretFoodByUPC(upc);
         console.log("Food Item with Servings:", foodItem);
