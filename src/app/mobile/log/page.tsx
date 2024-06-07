@@ -430,15 +430,17 @@ const RadialProgress = ({ text, amount, selected }: { text: string; amount: numb
 
 export default function FoodLog() {
   return (
-    <div className="h-screen">
-      <div className="flex flex-col h-screen">
-        <header className="sticky top-0 z-10">
-          <Header />
-        </header>
-        <main className="flex-grow overflow-y-auto p-2 ">
-          <FoodLogList />
-          <AddFoodButton />
-        </main>
+    <div className="h-screen mx-auto max-w-7xl sm:px-6 lg:px-8">
+      <div className="h-screen mx-auto max-w-xl">
+        <div className="flex flex-col h-screen">
+          <header className="sticky top-0 z-10">
+            <Header />
+          </header>
+          <main className="flex-grow overflow-y-auto p-2 ">
+            <FoodLogList />
+            <AddFoodButton />
+          </main>
+        </div>
       </div>
     </div>
   )

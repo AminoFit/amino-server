@@ -12,7 +12,7 @@
   }
   ```
 */
-export default function Example() {
+export default function MobileLogin() {
   return (
     <>
       {/*
@@ -23,22 +23,26 @@ export default function Example() {
         <body class="h-full">
         ```
       */}
-      <div className="flex min-h-full flex-1">
-        <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
-          <div className="mx-auto w-full max-w-sm lg:w-96">
+      <div className="flex min-h-full bg-black items-middle">
+        <div className="flex flex-1 flex-col justify-center">
+          {/* TOP LOGO */}
+          <div className="flex py-12 items-center justify-center space-x-3 content-center">
+            <div className="flex justify-center">
+              <AminoLogo size={40} />
+            </div>
+            <div className="text-white text-center text-3xl font-bold">Amino</div>
+          </div>
+
+          {/* FORM */}
+          <div className="p-4 ">
             <div>
-              <img
-                className="h-10 w-auto"
-                src="https://tailwindui.com/img/logos/mark.svg?color=lime&shade=500"
-                alt="Your Company"
-              />
-              <h2 className="mt-8 text-2xl font-bold leading-9 tracking-tight text-gray-900">
+              <h2 className="text-2xl leading-9 tracking-tight text-gray-100 text-center">
                 Sign in to your Amino account
               </h2>
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                Not a member?{' '}
+              <p className="mt-2 text-sm leading-6 text-gray-400 text-center">
+                Not a member?{" "}
                 <a href="#" className="font-semibold text-lime-500 hover:text-lime-400">
-                  Start a 14 day free trial
+                  Sign Up Now for Free
                 </a>
               </p>
             </div>
@@ -47,7 +51,7 @@ export default function Example() {
               <div>
                 <form action="#" method="POST" className="space-y-6">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
+                    <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-400">
                       Email address
                     </label>
                     <div className="mt-2">
@@ -57,13 +61,13 @@ export default function Example() {
                         type="email"
                         autoComplete="email"
                         required
-                        className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-lime-500 sm:text-sm sm:leading-6"
+                        className="block w-full rounded-md border-0 p-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-lime-500 sm:text-sm sm:leading-6"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
+                    <label htmlFor="password" className="block text-sm leading-6 text-gray-400">
                       Password
                     </label>
                     <div className="mt-2">
@@ -73,7 +77,7 @@ export default function Example() {
                         type="password"
                         autoComplete="current-password"
                         required
-                        className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-lime-500 sm:text-sm sm:leading-6"
+                        className="block w-full rounded-md border-0 p-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-lime-500 sm:text-sm sm:leading-6"
                       />
                     </div>
                   </div>
@@ -86,7 +90,7 @@ export default function Example() {
                         type="checkbox"
                         className="h-4 w-4 rounded border-gray-300 text-lime-500 focus:ring-lime-500"
                       />
-                      <label htmlFor="remember-me" className="ml-3 block text-sm leading-6 text-gray-700">
+                      <label htmlFor="remember-me" className="ml-3 block text-sm leading-6 text-gray-400">
                         Remember me
                       </label>
                     </div>
@@ -101,7 +105,7 @@ export default function Example() {
                   <div>
                     <button
                       type="submit"
-                      className="flex w-full justify-center rounded-md bg-lime-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-lime-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-500"
+                      className="flex w-full justify-center rounded-md bg-lime-500 px-3 py-1.5 text-sm font-semibold leading-6 text-black shadow-sm hover:bg-lime-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-500"
                     >
                       Sign in
                     </button>
@@ -112,10 +116,10 @@ export default function Example() {
               <div className="mt-10">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div className="w-full border-t border-gray-200" />
+                    <div className="w-full border-t border-gray-700" />
                   </div>
                   <div className="relative flex justify-center text-sm font-medium leading-6">
-                    <span className="bg-white px-6 text-gray-900">Or continue with</span>
+                    <span className="bg-black px-6 text-gray-500">Or continue with</span>
                   </div>
                 </div>
 
@@ -174,3 +178,14 @@ export default function Example() {
     </>
   )
 }
+
+const AminoLogo = ({ size }: { size: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} fill="none" viewBox="0 0 108 108">
+    <rect width={108} height={108} fill="#B0EB5F" rx={20} />
+    <path
+      fill="#151718"
+      d="M80 67.25H67.235l-12.386-22.5-13.27 23.375 7.33-3.25h5.94v2.375L35.64 78H23l31.85-54L80 67.25Z"
+    />
+    <path fill="#151718" d="M58.135 60.375 54.85 54.5l-3.412 5.875h6.698Z" />
+  </svg>
+)
