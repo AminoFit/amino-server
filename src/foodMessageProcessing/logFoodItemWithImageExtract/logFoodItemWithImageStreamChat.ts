@@ -4,14 +4,12 @@ import {
   OpenAiVisionChatStream,
   ChatCompletionVisionStreamOptions
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
-import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
+import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import OpenAI from "openai"
 import { getUserByEmail, getUserMessageById } from "../common/debugHelper"
 import { exit } from "process"
+import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { fetchRotateAndConvertToBase64 } from "../common/imageTools/rotateImageFromUrl"
-import { re } from "mathjs"
-import { ChatCompletionCreateParams } from "openai/resources"
 import { fetchAndDecodeBarcode } from "./utils/barcodeExtract"
 
 const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
@@ -259,8 +257,8 @@ async function processOpenAiVisionChatStream(
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
-      // const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
-      // loggingTasks.push(loggingTask)
+      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
+      loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log("valid items?", chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
@@ -385,7 +383,7 @@ async function testVisionFoodLoggingStream() {
   await logFoodItemStreamWithImages(user, message!)
 }
 
-testVisionFoodLoggingStream().then(() => {
-  console.log("Test complete")
-  exit()
-})
+// testVisionFoodLoggingStream().then(() => {
+//   console.log("Test complete")
+//   exit()
+// })
