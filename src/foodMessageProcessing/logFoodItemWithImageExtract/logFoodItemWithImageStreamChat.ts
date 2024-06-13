@@ -31,7 +31,10 @@ Your task is to identify based on pictures provided and the user INPUT_TO_PROCES
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
-7. If the images contain a barcode you can use the upc field to store the barcode number. Otherwise this field doesn;t need to be included.
+7. If the images contain a barcode you can use the upc field to store the barcode number. Otherwise this field doesn't need to be included.
+
+8. If nutritional information is available, include it in the nutritional_information field. Do not include fields you don't know or are null.
+8a. If a calculation is required you can use an equation string instead of a number. An equation string can only contain + - * / and numbers.
 
 Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
 
@@ -46,7 +49,40 @@ Expected JSON Output:
       "full_single_item_user_message_including_serving_or_quantity": "string",
       "branded": "boolean",
       "brand": "string",
-      "upc"?: "number"
+      "upc"?: "number",
+      "nutritional_information": {
+        "kcal"?: "number | string",
+        "totalFatG"?: "number | string",
+        "satFatG"?: "number | string",
+        "transFatG"?: "number | string",
+        "carbG"?: "number | string",
+        "fiberG"?: "number | string",
+        "sugarG"?: "number | string",
+        "proteinG"?: "number | string",
+        "waterMl"?: "number | string",
+        "vitaminAMcg"?: "number | string",
+        "vitaminCMg"?: "number | string",
+        "vitaminDMcg"?: "number | string",
+        "vitaminEMg"?: "number | string",
+        "vitaminKMcg"?: "number | string",
+        "vitaminB1Mg"?: "number | string",
+        "vitaminB2Mg"?: "number | string",
+        "vitaminB3Mg"?: "number | string",
+        "vitaminB5Mg"?: "number | string",
+        "vitaminB6Mg"?: "number | string",
+        "vitaminB7Mcg"?: "number | string",
+        "vitaminB9Mcg"?: "number | string",
+        "vitaminB12Mcg"?: "number | string",
+        "calciumMg"?: "number | string",
+        "ironMg"?: "number | string",
+        "magnesiumMg"?: "number | string",
+        "phosphorusMg"?: "number | string",
+        "potassiumMg"?: "number | string",
+        "sodiumMg"?: "number | string",
+        "cholesterolMg"?: "number | string",
+        "caffeineMg"?: "number | string",
+        "alcoholG"?: "number | string"
+      }
     }
   ],
   "contains_valid_food_items": "boolean"
@@ -69,7 +105,7 @@ async function* processStreamedLoggedFoodItemsWithImages(
       return // Exit the generator when no more data is available
     }
     buffer += chunk // Append the new chunk to the buffer
-    // process.stdout.write(chunk)
+    process.stdout.write(chunk)
     const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
 
     if (jsonObj && endIndex !== lastProcessedIndex) {
@@ -203,7 +239,7 @@ async function processOpenAiVisionChatStream(
 
   const stream = processStreamedLoggedFoodItemsWithImages(user, {
     messages,
-    temperature: 0.01,
+    temperature: 0.00,
     model: model,
     response_format: { type: "json_object" }
   })
@@ -218,12 +254,13 @@ async function processOpenAiVisionChatStream(
         branded: chunk.branded,
         brand: chunk.brand || "",
         timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString(),
-        upc: chunk.upc
+        upc: chunk.upc,
+        nutritional_information: chunk.nutritional_information
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
-      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
-      loggingTasks.push(loggingTask)
+      // const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
+      // loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log("valid items?", chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
@@ -343,12 +380,12 @@ async function testChatCompletionJsonStream() {
 
 async function testVisionFoodLoggingStream() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-  const message = await getUserMessageById(10808)
+  const message = await getUserMessageById(12050)
 
   await logFoodItemStreamWithImages(user, message!)
 }
 
-// testVisionFoodLoggingStream().then(() => {
-//   console.log("Test complete")
-//   exit()
-// })
+testVisionFoodLoggingStream().then(() => {
+  console.log("Test complete")
+  exit()
+})
