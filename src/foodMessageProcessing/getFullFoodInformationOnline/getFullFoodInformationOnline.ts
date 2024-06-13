@@ -103,6 +103,8 @@ export async function getFullFoodInformationOnline(
 
   while (retryCount <= maxRetries) {
     console.log("asking gpt4 for food info summary (fullinfo)")
+    console.log("onlineSearchInfo", onlineSearchInfo)
+    console.log("extraInfo", extraInfo)
     const temperature = temperatures[retryCount] // Use initial or higher temperature based on retryCount
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       {
@@ -250,7 +252,9 @@ async function testGetFullFoodInformationOnline() {
       total_serving_g_or_ml: 100
     }
   } as FoodItemToLog
-   const result = await getFullFoodInformationOnline(nuttyPuddingByBryanJohnson, "", user!)
+
+  const tabatchnik_strawberry = {"brand":"Tabatchnick","branded":true,"serving":{"serving_id":0,"serving_name":"oz","serving_amount":4.5,"serving_g_or_ml":"g","full_serving_string":"4.5 oz","total_serving_g_or_ml":127.57275},"timeEaten":"2024-06-04T21:50:53.098Z","second_best_match":null,"food_database_search_name":"Tabatchnick Strawberry Surge Strawberry Fruit Cup","full_item_user_message_including_serving":"4.5 oz (128g) of Tabatchnick Strawberry Surge Strawberry Fruit Cup"} as FoodItemToLog
+   const result = await getFullFoodInformationOnline(tabatchnik_strawberry, "", user!)
   // const newFood = await addFoodItemToDatabase(
   //   result!,
   //   await getFoodEmbedding(result!),

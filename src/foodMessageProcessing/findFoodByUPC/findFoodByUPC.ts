@@ -70,12 +70,12 @@ export async function findFoodByUPC(
 }
 
 
-// async function testFindFoodByUPC() {
-//   const upc = 99482412302
-//   const messageId = 1
-//   const user = await getUserByEmail ("seb.grubb@gmail.com")
-//   const result = await findFoodByUPC(upc, messageId, user!)
-//   console.log(result)
-// }
+async function testFindFoodByUPC() {
+  const upc = 811620021982
+  const messageId = 1
+  const user = await getUserByEmail ("seb.grubb@gmail.com")
+  const result = await findFoodByUPC(upc, messageId, user!)
+  console.log(result)
+}
 
 // testFindFoodByUPC()
