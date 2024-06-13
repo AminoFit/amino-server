@@ -10,28 +10,24 @@ const nextConfig = {
       },
     ],
   },
-  // async headers() {
-  //   return [
-  //     {
-  //       // matching all API routes
-  //       source: "/api/:path*",
-  //       headers: [
-  //         { key: "Access-Control-Allow-Credentials", value: "true" },
-  //         { key: "Access-Control-Allow-Origin", value: "*" }, // replace this your actual origin
-  //         { key: "Access-Control-Allow-Methods", value: "GET,DELETE,PATCH,POST,PUT" },
-  //         { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" },
-  //       ]
-  //     }
-  //   ]
-  // }
-
+  experimental: {
+    serverComponentsExternalPackages: ['@zxing/library'],
+  },
   webpack: (config, { isServer }) => {
-    // Create alias for the `html-to-text` module
+    // Create alias for the `html-to-text` module if needed
     config.resolve.alias['html-to-text'] = require.resolve('html-to-text');
 
-    // Exclude `html-to-text` from being processed by Webpack
-    config.externals = config.externals || [];
+    // Handle the issue with ES module exports
+    config.module.rules.push({
+      test: /\.m?js/,
+      resolve: {
+        fullySpecified: false, // disable the behavior
+      },
+    });
+
+    // Simplify externals configuration if not necessary
     if (!isServer) {
+      config.externals = config.externals || [];
       config.externals.push('html-to-text');
     }
 
