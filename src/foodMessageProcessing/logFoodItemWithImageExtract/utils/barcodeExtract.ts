@@ -204,11 +204,11 @@ type PatchSizeOption = "x-small" | "small" | "medium" | "large" | "x-large"
 type Decoder = "quagga" | "zxing"
 type DecoderOption = { decoder: Decoder, options: PatchSizeOption[] | null }
 
-// Function to fetch image from a URL and decode the barcode
 export async function fetchAndDecodeBarcode(
   url: string,
   decoderOptions: DecoderOption[] = [{ decoder: "quagga", options: ["x-small"] }, {decoder: "zxing", options: null}],
-  maxDimension: number = 1024
+  maxDimension: number = 1024,
+  includeRotation: boolean = true
 ): Promise<{ barcode: string; quadrant: string; type: string }[]> {
   const startTime = Date.now();
   console.log(`[${new Date().toISOString()}] Start fetching and decoding barcode for URL: ${url}`);
@@ -277,19 +277,20 @@ export async function fetchAndDecodeBarcode(
 
     // Downsample each quadrant and the rotated quadrants in parallel
     const downsampleStartTime = Date.now();
-    const [downsampledQuadrants, downsampledRotatedQuadrants] = await Promise.all([
-      Promise.all(
-        quadrants.map(async (quadrant) => {
-          return await downsampleImage(quadrant, maxDimension);
-        })
-      ),
-      Promise.all(
+    const downsampledQuadrants = await Promise.all(
+      quadrants.map(async (quadrant) => {
+        return await downsampleImage(quadrant, maxDimension);
+      })
+    );
+    let downsampledRotatedQuadrants: Buffer[] = [];
+    if (includeRotation) {
+      downsampledRotatedQuadrants = await Promise.all(
         quadrants.map(async (quadrant) => {
           const rotatedQuadrant = await sharp(quadrant).rotate(90).toBuffer();
           return await downsampleImage(rotatedQuadrant, maxDimension);
         })
-      )
-    ]);
+      );
+    }
     const downsampleEndTime = Date.now();
     // console.log(
     //   `[${new Date().toISOString()}] Downsampling of quadrants and rotated quadrants completed in ${
@@ -298,10 +299,11 @@ export async function fetchAndDecodeBarcode(
     // );
 
     // Downsample the whole image and the rotated whole image
-    const [downsampledImageBuffer, downsampledRotatedImageBuffer] = await Promise.all([
-      downsampleImage(imageBuffer, maxDimension),
-      downsampleImage(await sharp(imageBuffer).rotate(90).toBuffer(), maxDimension)
-    ]);
+    const downsampledImageBuffer = await downsampleImage(imageBuffer, maxDimension);
+    let downsampledRotatedImageBuffer: Buffer | null = null;
+    if (includeRotation) {
+      downsampledRotatedImageBuffer = await downsampleImage(await sharp(imageBuffer).rotate(90).toBuffer(), maxDimension);
+    }
 
     // Prepare decoding tasks based on decoder options
     let decodingTasks: Promise<void>[] = [];
@@ -311,7 +313,9 @@ export async function fetchAndDecodeBarcode(
       decodingTasks.push(decodeAndStore(downsampledImageBuffer, "Whole Image", decoderOption));
 
       // Decode the whole rotated image
-      decodingTasks.push(decodeAndStore(downsampledRotatedImageBuffer, "Whole Rotated Image", decoderOption));
+      if (includeRotation && downsampledRotatedImageBuffer) {
+        decodingTasks.push(decodeAndStore(downsampledRotatedImageBuffer, "Whole Rotated Image", decoderOption));
+      }
 
       // Decode the quadrants
       downsampledQuadrants.forEach((quadrant, index) => {
@@ -325,15 +329,17 @@ export async function fetchAndDecodeBarcode(
       });
 
       // Decode the rotated quadrants
-      downsampledRotatedQuadrants.forEach((quadrant, index) => {
-        decodingTasks.push(
-          decodeAndStore(
-            quadrant,
-            `Rotated Quadrant ${Math.floor(index / gridSize) + 1}-${(index % gridSize) + 1}`,
-            decoderOption
-          )
-        );
-      });
+      if (includeRotation) {
+        downsampledRotatedQuadrants.forEach((quadrant, index) => {
+          decodingTasks.push(
+            decodeAndStore(
+              quadrant,
+              `Rotated Quadrant ${Math.floor(index / gridSize) + 1}-${(index % gridSize) + 1}`,
+              decoderOption
+            )
+          );
+        });
+      }
     }
 
     // Run all decoding tasks in parallel
@@ -373,6 +379,7 @@ export async function fetchAndDecodeBarcode(
     return [];
   }
 }
+
 
 
 async function testFetchAndDecodeBarcode() {
