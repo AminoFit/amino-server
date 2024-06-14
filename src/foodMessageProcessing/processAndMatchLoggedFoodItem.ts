@@ -41,6 +41,7 @@ export async function ProcessLogFoodItem(
     let secondBestMatch: number | null = null
 
     if (food.upc && food.upc !== 0) {
+      console.log("getting best match for food with upc: ", food.upc)
       bestMatch = await findFoodByUPC(food.upc, messageId, user)
     }
 
