@@ -14,8 +14,12 @@ import { fetchAndDecodeBarcode } from "./utils/barcodeExtract"
 
 const image_system_prompt = `You are a nutrition logging assistant that accurately uses user images and text to generate a structured JSON ouput. You can only output in JSON.`
 
-const food_logging_prompt = `
-Your task is to identify based on pictures provided and the user INPUT_TO_PROCESS text what a user ate along with good portion estimates.
+const food_logging_prompt = `<input_to_process>
+"USER_INPUT_CONTENT"
+</input_to_process>
+
+<instruction>
+Identify based on pictures provided and the user text inside the <input_to_process> tag what they ate along with good portion estimates of the food.
 
 1. Identify Distinct Food Items: Look at both the images and the user input and determine for each unique food item what it is. Sometimes the user is trying to add detail to the picture and sometimes trying to say they had something in addition.
 
@@ -31,15 +35,37 @@ Your task is to identify based on pictures provided and the user INPUT_TO_PROCES
 
 7. If the images contain a barcode you can use the upc field to store the barcode number. Otherwise this field doesn't need to be included.
 
-8. If nutritional information is available, include it in the nutritional_information field. Do not include fields you don't know or are null.
+8. If nutritional information is available, include it in the nutritional_information field. DO NOT include fields you don't know the exact value of or are null.
 8a. If a calculation is required you can use an equation string instead of a number. An equation string can only contain + - * / and numbers.
+</instruction>
 
-Output Format: Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Avoid including any additional information or commentary outside of this JSON structure.
+<output_format>
+Your output should only be in JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4.
+You must omit a field if it is null or unknown to save time and characters.
+</output_format>
 
-INPUT_TO_PROCESS:
-"USER_INPUT_CONTENT"
+<example>
+sample_user_photo: photo showing a snickers bar with the label saying 250 calories and 52.7g 
+sample_user_text: "i had two of these"
+sample_ouptput:
+{
+  "food_items": [
+    {
+      "full_single_food_database_search_name": "Snickers Bar Chocolate",
+      "full_single_item_user_message_including_serving_or_quantity": "Two Snickers Single Bar Chocolate Candy (250 cals per bar and 52.7g per bar)",
+      "branded": true,
+      "brand": "Snickers",
+      "nutritional_information": {
+        "kcal": "250 * 2",
+      }
+    }
+  ],
+  "contains_valid_food_items": true
+}
+note: as you can see we only include optional fields when we can know or calculate their exact values
+</example>
 
-Expected JSON Output:
+<json_output_format>
 {
   "food_items": [
     {
@@ -48,7 +74,7 @@ Expected JSON Output:
       "branded": "boolean",
       "brand": "string",
       "upc"?: "number",
-      "nutritional_information": {
+      "nutritional_information"?: {
         "kcal"?: "number | string",
         "totalFatG"?: "number | string",
         "satFatG"?: "number | string",
@@ -85,8 +111,7 @@ Expected JSON Output:
   ],
   "contains_valid_food_items": "boolean"
 }
-
-You can only output JSON. Beginning of JSON output: 
+</json_output_format>
 `
 
 async function* processStreamedLoggedFoodItemsWithImages(
