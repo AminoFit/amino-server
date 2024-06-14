@@ -142,6 +142,7 @@ async function compareAndUpdateFoodItem(
 
   return {
     ...updatedFoodItem,
+    id: existingFoodItem.id,
     Serving: existingFoodItem.Serving,
     Nutrient: existingFoodItem.Nutrient
   } as FoodItemWithNutrientsAndServing;
@@ -189,7 +190,8 @@ export async function addFoodItemToDatabase(
     console.log(
       `Food item with externalId ${food.externalId} and foodInfoSource ${food.foodInfoSource} already exists in the database`
     )
-    return compareAndUpdateFoodItem(existingFoodItemByExternalId, food)
+    const updatedFoodItem = await compareAndUpdateFoodItem(existingFoodItemByExternalId, food)
+    return existingFoodItemByExternalId
   }
 
   let foodClassificationResult = classifyFoodItemToCategoryGPT(food, user)
