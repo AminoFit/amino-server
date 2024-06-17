@@ -1,6 +1,7 @@
 // Utils
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { isServerTimeData } from "./common/processFoodItemsUtils"
+import { convertNutritionalInfoStrings } from "@/utils/helper/convertFoodItemToLog" // Import the conversion utility
 // Database
 import UpdateMessage from "@/database/UpdateMessage"
 
@@ -8,7 +9,6 @@ import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { processFoodItemQueue } from "@/app/api/queues/process-food-item/process-food-item"
 import { getUserByEmail, getUserMessageById } from "./common/debugHelper"
-import { get, select } from "underscore"
 
 export async function AddLoggedFoodItemToQueue(
   user: Tables<"User">,
@@ -32,6 +32,10 @@ export async function AddLoggedFoodItemToQueue(
     ? new Date(serverTimeData.current_timestamp).toISOString()
     : new Date().toISOString()
   console.log("serverTimeData", serverTimeData)
+
+  // Convert nutritional information strings to numbers
+  const convertedFoodItemToLog = convertNutritionalInfoStrings(food_item_to_log)
+
   // Create all the pending food items
   let insertResult = await supabase
     .from("LoggedFoodItem")
@@ -39,15 +43,17 @@ export async function AddLoggedFoodItemToQueue(
       userId: user.id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      consumedOn: food_item_to_log.timeEaten
-        ? new Date(food_item_to_log.timeEaten).toISOString()
+      consumedOn: convertedFoodItemToLog.timeEaten
+        ? new Date(convertedFoodItemToLog.timeEaten).toISOString()
         : new Date().toISOString(),
       messageId: user_message.id,
       status: "Needs Processing",
-      extendedOpenAiData: food_item_to_log as any
+      extendedOpenAiData: convertedFoodItemToLog as any,
+      ...convertedFoodItemToLog.nutritional_information
     })
     .select()
     .single()
+  
   const error = insertResult.error
   if (error) {
     console.error("Foods need processing error", error)
@@ -79,6 +85,14 @@ async function testAddToQueue(){
     serving: {
       serving_g_or_ml: "g",
       total_serving_g_or_ml: 182
+    },
+    nutritional_information: {
+      kcal: "52*10",
+      totalFatG: "0.2",
+      carbG: "14",
+      fiberG: "2.4",
+      sugarG: "10.4",
+      proteinG: "0.3"
     }
   } as FoodItemToLog
   await AddLoggedFoodItemToQueue(user, user_message, food_item_to_log, 0)
