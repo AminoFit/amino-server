@@ -164,7 +164,7 @@ async function testProcessFood() {
     status: "Needs Processing",
     isBadFoodItemRequest: false,
     local_id: null
-  } as Tables<"LoggedFoodItem">
+  } as Partial<Tables<"LoggedFoodItem">> as Tables<"LoggedFoodItem">
 
   const result = await ProcessLogFoodItem(loggedFoodItem!, food, messageId, user!)
 }

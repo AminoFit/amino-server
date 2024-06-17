@@ -435,61 +435,187 @@ export type Database = {
       }
       LoggedFoodItem: {
         Row: {
+          addedSugarG: number | null
+          alcoholG: number | null
+          caffeineMg: number | null
+          calciumMg: number | null
+          carbG: number | null
+          cholesterolMg: number | null
           consumedOn: string
+          copperMg: number | null
           createdAt: string
           deletedAt: string | null
           embeddingId: number | null
           extendedOpenAiData: Json | null
+          fiberG: number | null
           foodItemId: number | null
           grams: number
           id: number
+          iodineMcg: number | null
+          ironMg: number | null
           isBadFoodItemRequest: boolean | null
+          kcal: number | null
           local_id: string | null
           loggedUnit: string | null
+          magnesiumMg: number | null
+          manganeseMg: number | null
           messageId: number | null
+          monounsatFatG: number | null
+          omega3Mg: number | null
+          omega6Mg: number | null
+          phosphorusMg: number | null
+          polyunsatFatG: number | null
+          potassiumMg: number | null
+          proteinG: number | null
+          satFatG: number | null
+          seleniumMcg: number | null
           servingAmount: number | null
           servingId: number | null
+          sodiumMg: number | null
           status: string | null
+          sugarG: number | null
+          totalFatG: number | null
+          transFatG: number | null
+          unsatFatG: number | null
           updatedAt: string
           userId: string
+          vitaminAMcg: number | null
+          vitaminB12Mcg: number | null
+          vitaminB1Mg: number | null
+          vitaminB2Mg: number | null
+          vitaminB3Mg: number | null
+          vitaminB5Mg: number | null
+          vitaminB6Mg: number | null
+          vitaminB7Mcg: number | null
+          vitaminB9Mcg: number | null
+          vitaminCMg: number | null
+          vitaminDMcg: number | null
+          vitaminEMg: number | null
+          vitaminKMcg: number | null
+          waterMl: number | null
+          zincMg: number | null
         }
         Insert: {
+          addedSugarG?: number | null
+          alcoholG?: number | null
+          caffeineMg?: number | null
+          calciumMg?: number | null
+          carbG?: number | null
+          cholesterolMg?: number | null
           consumedOn?: string
+          copperMg?: number | null
           createdAt?: string
           deletedAt?: string | null
           embeddingId?: number | null
           extendedOpenAiData?: Json | null
+          fiberG?: number | null
           foodItemId?: number | null
           grams?: number
           id?: number
+          iodineMcg?: number | null
+          ironMg?: number | null
           isBadFoodItemRequest?: boolean | null
+          kcal?: number | null
           local_id?: string | null
           loggedUnit?: string | null
+          magnesiumMg?: number | null
+          manganeseMg?: number | null
           messageId?: number | null
+          monounsatFatG?: number | null
+          omega3Mg?: number | null
+          omega6Mg?: number | null
+          phosphorusMg?: number | null
+          polyunsatFatG?: number | null
+          potassiumMg?: number | null
+          proteinG?: number | null
+          satFatG?: number | null
+          seleniumMcg?: number | null
           servingAmount?: number | null
           servingId?: number | null
+          sodiumMg?: number | null
           status?: string | null
+          sugarG?: number | null
+          totalFatG?: number | null
+          transFatG?: number | null
+          unsatFatG?: number | null
           updatedAt?: string
           userId: string
+          vitaminAMcg?: number | null
+          vitaminB12Mcg?: number | null
+          vitaminB1Mg?: number | null
+          vitaminB2Mg?: number | null
+          vitaminB3Mg?: number | null
+          vitaminB5Mg?: number | null
+          vitaminB6Mg?: number | null
+          vitaminB7Mcg?: number | null
+          vitaminB9Mcg?: number | null
+          vitaminCMg?: number | null
+          vitaminDMcg?: number | null
+          vitaminEMg?: number | null
+          vitaminKMcg?: number | null
+          waterMl?: number | null
+          zincMg?: number | null
         }
         Update: {
+          addedSugarG?: number | null
+          alcoholG?: number | null
+          caffeineMg?: number | null
+          calciumMg?: number | null
+          carbG?: number | null
+          cholesterolMg?: number | null
           consumedOn?: string
+          copperMg?: number | null
           createdAt?: string
           deletedAt?: string | null
           embeddingId?: number | null
           extendedOpenAiData?: Json | null
+          fiberG?: number | null
           foodItemId?: number | null
           grams?: number
           id?: number
+          iodineMcg?: number | null
+          ironMg?: number | null
           isBadFoodItemRequest?: boolean | null
+          kcal?: number | null
           local_id?: string | null
           loggedUnit?: string | null
+          magnesiumMg?: number | null
+          manganeseMg?: number | null
           messageId?: number | null
+          monounsatFatG?: number | null
+          omega3Mg?: number | null
+          omega6Mg?: number | null
+          phosphorusMg?: number | null
+          polyunsatFatG?: number | null
+          potassiumMg?: number | null
+          proteinG?: number | null
+          satFatG?: number | null
+          seleniumMcg?: number | null
           servingAmount?: number | null
           servingId?: number | null
+          sodiumMg?: number | null
           status?: string | null
+          sugarG?: number | null
+          totalFatG?: number | null
+          transFatG?: number | null
+          unsatFatG?: number | null
           updatedAt?: string
           userId?: string
+          vitaminAMcg?: number | null
+          vitaminB12Mcg?: number | null
+          vitaminB1Mg?: number | null
+          vitaminB2Mg?: number | null
+          vitaminB3Mg?: number | null
+          vitaminB5Mg?: number | null
+          vitaminB6Mg?: number | null
+          vitaminB7Mcg?: number | null
+          vitaminB9Mcg?: number | null
+          vitaminCMg?: number | null
+          vitaminDMcg?: number | null
+          vitaminEMg?: number | null
+          vitaminKMcg?: number | null
+          waterMl?: number | null
+          zincMg?: number | null
         }
         Relationships: [
           {
@@ -1163,18 +1289,6 @@ export type Database = {
           cosineSimilarity: number
         }[]
       }
-      hnswhandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
       search_usda_database: {
         Args: {
           embedding_id: number
@@ -1187,42 +1301,6 @@ export type Database = {
           brandOwner: string
           cosineSimilarity: number
         }[]
-      }
-      vector_avg: {
-        Args: {
-          "": number[]
-        }
-        Returns: string
-      }
-      vector_dims: {
-        Args: {
-          "": string
-        }
-        Returns: number
-      }
-      vector_norm: {
-        Args: {
-          "": string
-        }
-        Returns: number
-      }
-      vector_out: {
-        Args: {
-          "": string
-        }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: {
-          "": string
-        }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: {
-          "": unknown[]
-        }
-        Returns: number
       }
     }
     Enums: {
@@ -1373,6 +1451,101 @@ export type Database = {
           },
         ]
       }
+      s3_multipart_uploads: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          in_progress_size: number
+          key: string
+          owner_id: string | null
+          upload_signature: string
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id: string
+          in_progress_size?: number
+          key: string
+          owner_id?: string | null
+          upload_signature: string
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          in_progress_size?: number
+          key?: string
+          owner_id?: string | null
+          upload_signature?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads_parts: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          etag: string
+          id: string
+          key: string
+          owner_id: string | null
+          part_number: number
+          size: number
+          upload_id: string
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          etag: string
+          id?: string
+          key: string
+          owner_id?: string | null
+          part_number: number
+          size?: number
+          upload_id: string
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          etag?: string
+          id?: string
+          key?: string
+          owner_id?: string | null
+          part_number?: number
+          size?: number
+          upload_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "s3_multipart_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1403,13 +1576,44 @@ export type Database = {
         Args: {
           name: string
         }
-        Returns: unknown
+        Returns: string[]
       }
       get_size_by_bucket: {
         Args: Record<PropertyKey, never>
         Returns: {
           size: number
           bucket_id: string
+        }[]
+      }
+      list_multipart_uploads_with_delimiter: {
+        Args: {
+          bucket_id: string
+          prefix_param: string
+          delimiter_param: string
+          max_keys?: number
+          next_key_token?: string
+          next_upload_token?: string
+        }
+        Returns: {
+          key: string
+          id: string
+          created_at: string
+        }[]
+      }
+      list_objects_with_delimiter: {
+        Args: {
+          bucket_id: string
+          prefix_param: string
+          delimiter_param: string
+          max_keys?: number
+          start_after?: string
+          next_token?: string
+        }
+        Returns: {
+          name: string
+          id: string
+          metadata: Json
+          updated_at: string
         }[]
       }
       search: {
@@ -1442,9 +1646,11 @@ export type Database = {
   }
 }
 
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
@@ -1457,10 +1663,10 @@ export type Tables<
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] &
-        Database["public"]["Views"])
-    ? (Database["public"]["Tables"] &
-        Database["public"]["Views"])[PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1469,7 +1675,7 @@ export type Tables<
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
+    | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
@@ -1480,8 +1686,8 @@ export type TablesInsert<
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1490,7 +1696,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
+    | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
@@ -1501,8 +1707,8 @@ export type TablesUpdate<
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1511,14 +1717,13 @@ export type TablesUpdate<
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof Database["public"]["Enums"]
+    | keyof PublicSchema["Enums"]
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
-    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
-
