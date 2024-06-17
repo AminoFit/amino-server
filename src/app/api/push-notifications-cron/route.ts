@@ -9,25 +9,26 @@ const expo = new Expo()
 export async function GET(request: Request) {
   console.log("Running push notifications cron job")
   const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("ExpoPushTokens").select("*, User(tzIdentifier)")
-  // const { data, error } = await supabase
-  //   .from("User")
-  //   .select(
-  //     `    id,
-  //   tzIdentifier,
-  //   ExpoPushTokens(*),
-  //   LoggedFoodItem(
-  //     id,
-  //     consumedOn,
-  //     createdAt
-  //   )
-  // `
-  //   )
-  //   .limit(1, { foreignTable: "LoggedFoodItem" })
+  const { data, error } = await supabase
+    .from("ExpoPushTokens")
+    .select(
+      `
+      *,
+      User (tzIdentifier),
+      LoggedFoodItem (
+        createdAt
+      )
+    `
+    )
+    .order("createdAt", { ascending: false, foreignTable: "LoggedFoodItem" })
+    .limit(1, { foreignTable: "LoggedFoodItem" })
 
   if (error) {
     console.error(error)
-    return Response.json({ status: 500, body: "Error fetching users:" + error.message })
+    return new Response(JSON.stringify({ status: 500, body: "Error fetching users: " + error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    })
   }
 
   console.log("Push tokens:", data)
@@ -38,17 +39,21 @@ export async function GET(request: Request) {
     if (!pushToken) {
       continue
     }
-    const userTimeZone = pushToken.User?.tzIdentifier
 
+    const userTimeZone = pushToken.User?.tzIdentifier
     const currentTime = new Date()
     const userTime = new Date(currentTime.toLocaleString("en-US", { timeZone: userTimeZone }))
-
     const userHour = userTime.getHours()
-
     const isLunchOrDinnerTime = userHour === 13 || userHour === 20
 
-    if (isLunchOrDinnerTime) {
-      appendPushNotification(toSend, [pushToken])
+    // Get the time since the last logged food item
+    if (pushToken.LoggedFoodItem.length >= 1) {
+      const lastLoggedTime = new Date(pushToken.LoggedFoodItem[0].createdAt || 0)
+      const timeSinceLastLogged = (currentTime.getTime() - lastLoggedTime.getTime()) / (1000 * 60 * 60) // in hours
+
+      if (isLunchOrDinnerTime && timeSinceLastLogged >= 2) {
+        appendPushNotification(toSend, [pushToken])
+      }
     }
   }
 
@@ -58,7 +63,10 @@ export async function GET(request: Request) {
     console.error(`Error sending push notification: ${error}`)
   }
 
-  return Response.json({ status: 200, body: "Push notifications sent successfully" })
+  return new Response(JSON.stringify({ status: 200, body: "Push notifications sent successfully" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  })
 }
 
 async function appendPushNotification(
