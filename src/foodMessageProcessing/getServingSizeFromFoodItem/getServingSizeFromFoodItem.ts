@@ -261,25 +261,19 @@ async function getResponseWithRetry(
   max_tokens: number,
   user: Tables<"User">
 ) {
-  let response = await FireworksChatCompletion(
-    user,
-    {
+  let response = await FireworksChatCompletion(user, {
+    messages,
+    model,
+    temperature,
+    max_tokens
+  })
+  if (!response || extractAndParseLastJSON(response) === null) {
+    response = await FireworksChatCompletion(user, {
       messages,
-      model,
+      model: backup_model,
       temperature,
       max_tokens
-    }
-  )
-  if (!response || extractAndParseLastJSON(response) === null) {
-    response = await FireworksChatCompletion(
-      user,
-      {
-        messages,
-        model: backup_model,
-        temperature,
-        max_tokens
-      }
-    )
+    })
   }
   return response
 }
@@ -291,8 +285,11 @@ export async function findBestServingMatchChatLlama(
 ): Promise<FoodItemToLog> {
   const { simplifiedData, idMapping } = convertToDatabaseOptions(food_item)
 
+  const user_serving_input = food_item_to_log.full_item_user_message_including_serving +
+  (food_item_to_log.nutritional_information?.kcal ? ` with target calories ${food_item_to_log.nutritional_information.kcal}` : '');
+
   let serving_prompt = serving_assignement_prompt
-    .replace("USER_SERVING_INPUT", food_item_to_log.full_item_user_message_including_serving)
+    .replace("USER_SERVING_INPUT", user_serving_input)
     .replace("FOOD_INFO_DETAILS", JSON.stringify(simplifiedData.food_info))
     .replace("FOOD_SERVING_DETAILS", JSON.stringify(simplifiedData.food_serving_info))
 
@@ -339,12 +336,23 @@ async function testServingMatchRequest() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
   const food_serving_request = {
-    brand: "Aplenty",
+    brand: "Coca-Cola",
     branded: true,
-    food_database_search_name: "chicken dumplings",
-    full_item_user_message_including_serving: "3 chicken dumplings by aplenty"
-  }
-  const food_item = (await getFoodItem(557)) as FoodItemWithNutrientsAndServing
+    serving: {
+      serving_id: 0,
+      serving_name: "can",
+      serving_amount: 1,
+      serving_g_or_ml: "g",
+      full_serving_string: "1 can",
+      total_serving_g_or_ml: 355
+    },
+    timeEaten: "2024-06-17T19:33:17.174Z",
+    second_best_match: null,
+    nutritional_information: { kcal: 160, carbG: 43, sugarG: 43, proteinG: 0, sodiumMg: 35, totalFatG: 0 },
+    food_database_search_name: "Coca-Cola Classic",
+    full_item_user_message_including_serving: "One can of Coca-Cola Classic (355ml, 160 calories)"
+  } as FoodItemToLog
+  const food_item = (await getFoodItem(700)) as FoodItemWithNutrientsAndServing
 
   // console.log(food_item)
 

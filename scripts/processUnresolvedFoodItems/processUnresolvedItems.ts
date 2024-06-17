@@ -88,4 +88,4 @@ async function processLoggedFoodItems(itemIds?: number[]) {
 
 const fooditemids = [22765,22663]
 //TODO: fix item 4888 and remove unknown items from database
-processLoggedFoodItems()
+processLoggedFoodItems([30790])
