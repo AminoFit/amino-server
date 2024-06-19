@@ -304,10 +304,13 @@ async function testAddFoodFromExternal() {
       total_serving_g_or_ml: 100
     }
   } as FoodItemToLog
-  const food_embed_cache = await foodToLogEmbedding(kindBarBfast)
 
-  const result = await findAndAddFoodItemInExternalDatabase(kindBarBfast!, food_embed_cache, user!, messageId)
-  console.log("result", result)
+  const zero_percent_curd = {"brand":"","branded":false,"timeEaten":"2024-06-19T19:26:14.460Z","food_database_search_name":"fat free curd","full_item_user_message_including_serving":"0% curd fat free"} as FoodItemToLog
+  const food_embed_cache = await foodToLogEmbedding(zero_percent_curd)
+
+  // const result = await findAndAddFoodItemInExternalDatabase(zero_percent_curd!, food_embed_cache, user!, messageId)
+  const newFood = await addFoodFromOnlineInfo(zero_percent_curd!, user!, messageId)
+  console.log("result", newFood)
 }
 
 async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog) {

@@ -123,7 +123,7 @@ async function compareAndUpdateFoodItem(
   );
 
   if (Object.keys(fieldsToUpdate).length === 0) {
-    return newFoodItem;
+    return {...newFoodItem, id: existingFoodItem.id, Serving: existingFoodItem.Serving, Nutrient: existingFoodItem.Nutrient}
   } else {
     console.log("fieldsToUpdate", fieldsToUpdate);
   }
@@ -168,7 +168,7 @@ export async function addFoodItemToDatabase(
 
   // If it exists, return the existing food item ID
   if (compareFoodItemsByName(food, existingFoodItem as FoodItemWithNutrientsAndServing)) {
-    console.log(`Food item ${food.name} already exists in the database`)
+    console.log(`Food item ${food.name} already exists in the database - will return the existing food item ID: ${existingFoodItem.id}`)
     return compareAndUpdateFoodItem(existingFoodItem as FoodItemWithNutrientsAndServing, food as FoodItemWithNutrientsAndServing)
   }
 

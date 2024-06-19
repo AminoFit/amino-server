@@ -253,8 +253,11 @@ async function testGetFullFoodInformationOnline() {
     }
   } as FoodItemToLog
 
+  const zero_percent_curd = {"brand":"","branded":false,"timeEaten":"2024-06-19T19:26:14.460Z","food_database_search_name":"fat free curd","full_item_user_message_including_serving":"0% curd fat free"} as FoodItemToLog
+
+
   const tabatchnik_strawberry = {"brand":"Tabatchnick","branded":true,"serving":{"serving_id":0,"serving_name":"oz","serving_amount":4.5,"serving_g_or_ml":"g","full_serving_string":"4.5 oz","total_serving_g_or_ml":127.57275},"timeEaten":"2024-06-04T21:50:53.098Z","second_best_match":null,"food_database_search_name":"Tabatchnick Strawberry Surge Strawberry Fruit Cup","full_item_user_message_including_serving":"4.5 oz (128g) of Tabatchnick Strawberry Surge Strawberry Fruit Cup"} as FoodItemToLog
-   const result = await getFullFoodInformationOnline(tabatchnik_strawberry, "", user!)
+   const result = await getFullFoodInformationOnline(zero_percent_curd, "", user!)
   // const newFood = await addFoodItemToDatabase(
   //   result!,
   //   await getFoodEmbedding(result!),
