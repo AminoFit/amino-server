@@ -8,29 +8,34 @@ export function convertNutritionalInfoStrings(foodItem: FoodItemToLog): FoodItem
 
   const nutritionalInfo = foodItem.nutritional_information;
 
-  const evaluateString = (value: string): number | null => {
+  const evaluateString = (value: string): number | undefined => {
     try {
+      // Evaluate the string expression
       const evaluatedValue = evaluate(value);
       if (typeof evaluatedValue === 'number' && !isNaN(evaluatedValue)) {
         return evaluatedValue;
       }
     } catch (error) {
       // If evaluation fails or returns a non-number, return null
-      return null;
+      return undefined;
     }
-    return null;
+    return undefined;
   };
 
-  const convertToNumber = (value: number | string | undefined): number | null | undefined => {
+  const convertToNumber = (value: number | string | undefined): number | null => {
     if (typeof value === 'string') {
       const evaluatedValue = evaluateString(value);
-      return evaluatedValue !== null ? evaluatedValue : null;
+      return evaluatedValue !== undefined ? evaluatedValue : null; // Return null if undefined
     }
-    return value;
+    return value !== undefined ? value : null; // Return null if undefined
   };
+  
 
-  const convertedNutritionalInfo: { [key: string]: number | null | undefined } = {};
+  const convertedNutritionalInfo: {
+    [key: string]: number | null;
+  } = {};
 
+  // Loop through each key-value pair and convert
   for (const [key, value] of Object.entries(nutritionalInfo)) {
     convertedNutritionalInfo[key] = convertToNumber(value);
   }

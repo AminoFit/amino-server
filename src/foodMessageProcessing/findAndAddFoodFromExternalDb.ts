@@ -283,13 +283,14 @@ async function getUserByEmail(email: string) {
 
 async function testAddFoodFromExternal() {
   // const logged_food_item = await getLoggedFoodItem(2218)
-  const messageId = 1200
+  const messageId = 16184
   const foodToLog_magicSpoon = {
     food_database_search_name: "Magic spoon peanut butter cereal",
     full_item_user_message_including_serving: "Magic spoon peanut butter cereal",
     branded: true,
     brand: "Magic spoon"
   } as FoodItemToLog
+  const kindBarBfast = {"brand":"KIND","branded":true,"serving":{"serving_id":19679,"serving_name":"bar","serving_amount":1,"serving_g_or_ml":"g","full_serving_string":"1 bar","total_serving_g_or_ml":52},"timeEaten":"2024-06-17T18:44:15.942Z","second_best_match":9920,"food_database_search_name":"KIND Breakfast Peanut Butter Bar","full_item_user_message_including_serving":"One KIND Breakfast Peanut Butter Bar"} as FoodItemToLog
   const user = await getUserByEmail("seb.grubb@gmail.com")
 
   const pbfit = {
@@ -303,10 +304,13 @@ async function testAddFoodFromExternal() {
       total_serving_g_or_ml: 100
     }
   } as FoodItemToLog
-  const food_embed_cache = await foodToLogEmbedding(pbfit)
 
-  const result = await findAndAddFoodItemInExternalDatabase(pbfit!, food_embed_cache, user!, messageId)
-  console.log("result", result)
+  const zero_percent_curd = {"brand":"","branded":false,"timeEaten":"2024-06-19T19:26:14.460Z","food_database_search_name":"fat free curd","full_item_user_message_including_serving":"0% curd fat free"} as FoodItemToLog
+  const food_embed_cache = await foodToLogEmbedding(zero_percent_curd)
+
+  // const result = await findAndAddFoodItemInExternalDatabase(zero_percent_curd!, food_embed_cache, user!, messageId)
+  const newFood = await addFoodFromOnlineInfo(zero_percent_curd!, user!, messageId)
+  console.log("result", newFood)
 }
 
 async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog) {

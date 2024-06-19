@@ -38,21 +38,21 @@ export async function AddLoggedFoodItemToQueue(
 
   // Create all the pending food items
   let insertResult = await supabase
-    .from("LoggedFoodItem")
-    .insert({
-      userId: user.id,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      consumedOn: convertedFoodItemToLog.timeEaten
-        ? new Date(convertedFoodItemToLog.timeEaten).toISOString()
-        : new Date().toISOString(),
-      messageId: user_message.id,
-      status: "Needs Processing",
-      extendedOpenAiData: convertedFoodItemToLog as any,
-      ...convertedFoodItemToLog.nutritional_information
-    })
-    .select()
-    .single()
+  .from("LoggedFoodItem")
+  .insert({
+    userId: user.id,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    consumedOn: convertedFoodItemToLog.timeEaten
+      ? new Date(convertedFoodItemToLog.timeEaten).toISOString()
+      : new Date().toISOString(),
+    messageId: user_message.id,
+    status: "Needs Processing",
+    extendedOpenAiData: convertedFoodItemToLog as any,
+    ...convertedFoodItemToLog.nutritional_information as any, 
+  })
+  .select()
+  .single();
   
   const error = insertResult.error
   if (error) {
