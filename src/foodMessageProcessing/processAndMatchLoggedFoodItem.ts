@@ -25,7 +25,7 @@ import { calculateNutrientData } from "./common/calculateNutrientData"
 
 export async function ProcessLogFoodItem(
   loggedFoodItem: Tables<"LoggedFoodItem">,
-  food: FoodItemToLog,
+  loggedFoodItemInfo: FoodItemToLog,
   messageId: number,
   user: Tables<"User">
 ): Promise<string> {
@@ -34,15 +34,15 @@ export async function ProcessLogFoodItem(
     const message = await GetMessageById(messageId)
 
     const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
-    console.log(`getting embedding for food ${food.full_item_user_message_including_serving}`)
-    const userQueryVectorCache = await foodToLogEmbedding(food)
+    console.log(`getting embedding for food ${loggedFoodItemInfo.full_item_user_message_including_serving}`)
+    const userQueryVectorCache = await foodToLogEmbedding(loggedFoodItemInfo)
 
     let bestMatch: FoodItemWithNutrientsAndServing | null = null
     let secondBestMatch: number | null = null
 
-    if (food.upc && food.upc !== 0) {
-      console.log("getting best match for food with upc: ", food.upc)
-      bestMatch = await findFoodByUPC(food.upc, messageId, user)
+    if (loggedFoodItemInfo.upc && loggedFoodItemInfo.upc !== 0) {
+      console.log("getting best match for food with upc: ", loggedFoodItemInfo.upc)
+      bestMatch = await findFoodByUPC(loggedFoodItemInfo.upc, messageId, user)
     }
 
     if (!bestMatch) {
@@ -50,7 +50,7 @@ export async function ProcessLogFoodItem(
 
       [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
         cosineSearchResults,
-        food,
+        loggedFoodItemInfo,
         userQueryVectorCache,
         user,
         messageId
@@ -60,22 +60,32 @@ export async function ProcessLogFoodItem(
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {
-      food = await findBestServingMatchChatLlama(food, bestMatch as FoodItemWithNutrientsAndServing, user)
+      loggedFoodItemInfo = await findBestServingMatchChatLlama(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
       console.log("Error processing food item for serving:", err1)
       await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
       return "Sorry, I could not log your food items. Please try again later."
     }
 
-    let extendedFoodData = { ...food, second_best_match: secondBestMatch }
-    const nutrientData = calculateNutrientData(food, bestMatch as FoodItemWithNutrientsAndServing);
+    let extendedFoodData = { ...loggedFoodItemInfo, second_best_match: secondBestMatch }
+    
+    // Check if the loggedFoodItem already has kcal, protein, fat, and carb values
+    const hasExistingNutrients = loggedFoodItem.kcal != null && 
+                                 loggedFoodItem.proteinG != null && 
+                                 loggedFoodItem.totalFatG != null && 
+                                 loggedFoodItem.carbG != null;
+
+    let nutrientData = {};
+    if (!hasExistingNutrients) {
+      nutrientData = calculateNutrientData(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing);
+    }
 
     const data = {
       foodItemId: bestMatch.id,
-      servingId: food.serving!.serving_id ? food.serving!.serving_id : null,
-      servingAmount: food.serving!.serving_amount,
-      loggedUnit: food.serving!.serving_name,
-      grams: food.serving!.total_serving_g_or_ml,
+      servingId: loggedFoodItemInfo.serving!.serving_id ? loggedFoodItemInfo.serving!.serving_id : null,
+      servingAmount: loggedFoodItemInfo.serving!.serving_amount,
+      loggedUnit: loggedFoodItemInfo.serving!.serving_name,
+      grams: loggedFoodItemInfo.serving!.total_serving_g_or_ml,
       userId: user.id,
       extendedOpenAiData: extendedFoodData as any,
       ...nutrientData,

@@ -196,8 +196,8 @@ export async function findBestFoodMatchtoLocalDbClaude(
     try {
       database_match = remapIds(extractAndParseLastJSON(`{`+response) as DatabaseMatch, idMapping)
     } catch (err) {
-      console.error("Failed to parse JSON response. Retrying with claude-3-sonnet model.")
-      model = "claude-3-sonnet"
+      console.error("Failed to parse JSON response. Retrying with claude-3-5-sonnet model.")
+      model = "claude-3-5-sonnet"
       const retryResponse = await claudeChatCompletion(
         {
           system: matchSystemPrompt,
