@@ -26,17 +26,20 @@ const anthropicBedrockClient = new AnthropicBedrock({
 
 const modelMappings: Record<string, Record<string, string>> = {
   anthropic: {
+    "claude-3.5-sonnet": "claude-3-5-sonnet-20240620",
     "claude-3-opus": "claude-3-opus-20240229",
     "claude-3-sonnet": "claude-3-sonnet-20240229",
     "claude-3-haiku": "claude-3-haiku-20240307"
   },
   bedrock: {
-    "claude-3-opus": "", // Placeholder for future mapping
+    "claude-3.5-sonnet": "",
+    "claude-3-opus": "anthropic.claude-3-opus-20240229-v1:0",
     "claude-3-sonnet": "anthropic.claude-3-sonnet-20240229-v1:0",
     "claude-3-haiku": "anthropic.claude-3-haiku-20240307-v1:0"
   },
   vertex: {
-    "claude-3-opus": "", // Placeholder for future mapping
+    "claude-3.5-sonnet": "",
+    "claude-3-opus": "claude-3-opus@20240229",
     "claude-3-sonnet": "claude-3-sonnet@20240229",
     "claude-3-haiku": "claude-3-haiku@20240307"
   }
@@ -731,3 +734,44 @@ async function test2() {
 }
 
 // test2()
+async function testClaude35() {
+  const user = await getUserByEmail("seb.grubb@gmail.com")
+
+  const messages = [
+    {
+      role: "user",
+      content: "Please provide a brief comparison of quantum computing and classical computing in terms of their fundamental principles and potential applications."
+    }
+  ] as Anthropic.Messages.MessageParam[]
+
+  const systemPrompt = "You are a knowledgeable assistant specializing in computer science and emerging technologies."
+
+  const providers = ["anthropic"] as const
+  const models = ["claude-3-sonnet", "claude-3.5-sonnet"] as const
+
+  for (const provider of providers) {
+    for (const model of models) {
+      try {
+        console.log(`Testing ${model} with ${provider}:`)
+        const result = await claudeChatCompletion(
+          {
+            messages,
+            system: systemPrompt,
+            model: model,
+            provider: provider,
+            max_tokens: 1024,
+            temperature: 0.7
+          },
+          user!
+        )
+        console.log(result)
+        console.log("\n---\n")
+      } catch (error) {
+        console.error(`Error with ${model} on ${provider}:`, error)
+      }
+    }
+  }
+}
+
+// Run the test
+testClaude35()
