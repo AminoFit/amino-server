@@ -4,6 +4,7 @@ import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { calculateNutrientData } from "@/foodMessageProcessing/common/calculateNutrientData"
 import { createClient } from "@supabase/supabase-js"
 import { Tables } from "types/supabase"
+import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       .from("LoggedFoodItem")
       .select("*")
       .eq("id", loggedFoodItemId)
-      .single()
+      .single() as { data: Tables<"LoggedFoodItem">; error: any }
 
     if (loggedFoodItemError || !loggedFoodItem) {
       return new NextResponse("Failed to fetch logged food item", { status: 404 })
@@ -44,8 +45,8 @@ export async function POST(request: NextRequest) {
         .from("FoodItem")
         .select("*, Nutrient(*), Serving(*)")
         .eq("id", loggedFoodItem.foodItemId)
-        .single()
-
+        .single() as { data: FoodItemWithNutrientsAndServing; error: any }
+ 
       if (foodItemError || !foodItem) {
         return new NextResponse("Failed to fetch food item", { status: 404 })
       }
