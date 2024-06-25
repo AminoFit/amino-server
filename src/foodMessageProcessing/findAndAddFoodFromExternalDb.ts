@@ -306,11 +306,12 @@ async function testAddFoodFromExternal() {
   } as FoodItemToLog
 
   const zero_percent_curd = {"brand":"","branded":false,"timeEaten":"2024-06-19T19:26:14.460Z","food_database_search_name":"fat free curd","full_item_user_message_including_serving":"0% curd fat free"} as FoodItemToLog
-  const food_embed_cache = await foodToLogEmbedding(zero_percent_curd)
+  const celsius_tropical = {"brand":"Celsius","branded":true,"serving":{"serving_id":22016,"serving_name":"bottle","serving_amount":1,"serving_g_or_ml":"g","full_serving_string":"1 bottle","total_serving_g_or_ml":240},"timeEaten":"2024-06-24T20:28:27.828Z","second_best_match":null,"food_database_search_name":"Celsius energy drink (tropical vibe)","full_item_user_message_including_serving":"Celsius energy drink (tropical vibe)"} as FoodItemToLog
+  const food_embed_cache = await foodToLogEmbedding(celsius_tropical)
 
-  // const result = await findAndAddFoodItemInExternalDatabase(zero_percent_curd!, food_embed_cache, user!, messageId)
-  const newFood = await addFoodFromOnlineInfo(zero_percent_curd!, user!, messageId)
-  console.log("result", newFood)
+  const result = await findAndAddFoodItemInExternalDatabase(celsius_tropical!, food_embed_cache, user!, messageId)
+  // const newFood = await addFoodFromOnlineInfo(celsius_tropical!, user!, messageId)
+  console.log("result", result)
 }
 
 async function addCustomMadeFood(user: Tables<"User">, foodToLog: FoodItemToLog) {
