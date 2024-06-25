@@ -77,7 +77,7 @@ export async function ProcessLogFoodItem(
 
     let nutrientData = {};
     if (!hasExistingNutrients) {
-      nutrientData = calculateNutrientData(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing);
+      nutrientData = calculateNutrientData(loggedFoodItemInfo.serving!.total_serving_g_or_ml, bestMatch as FoodItemWithNutrientsAndServing);
     }
 
     const data = {

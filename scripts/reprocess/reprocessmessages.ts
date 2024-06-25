@@ -86,7 +86,7 @@ async function resendRecentReceivedMessages(messageIds?: number[]) {
     }
 
     const consumedOn = message.consumedOn || new Date().toISOString()
-    const isMessageBeingEdited = false
+    const isMessageBeingEdited = true
 
     const responseMessage = await GenerateResponseForQuickLog(aminoUser, message.id, consumedOn, isMessageBeingEdited)
 
@@ -94,4 +94,4 @@ async function resendRecentReceivedMessages(messageIds?: number[]) {
   }
 }
 
-resendRecentReceivedMessages([14975])
+resendRecentReceivedMessages([18888])
