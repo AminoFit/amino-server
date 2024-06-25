@@ -58,23 +58,23 @@ function getMappedNutrientField(nutrientName: string): string | null {
   return null
 }
 
-export function calculateNutrientData(food: FoodItemToLog, bestMatch: FoodItemWithNutrientsAndServing): any {
-  const servingSize = food.serving!.total_serving_g_or_ml
-  const defaultServingWeightGram = bestMatch.defaultServingWeightGram ?? 100 // Use 100 as a fallback if defaultServingWeightGram is null
+export function calculateNutrientData(foodWeightG: number, foodItemInfo: FoodItemWithNutrientsAndServing): any {
+  const servingSize = foodWeightG
+  const defaultServingWeightGram = foodItemInfo.defaultServingWeightGram ?? 100 // Use 100 as a fallback if defaultServingWeightGram is null
 
   const macros = {
-    kcal: (bestMatch.kcalPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    totalFatG: (bestMatch.totalFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    satFatG: (bestMatch.satFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    transFatG: (bestMatch.transFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    carbG: (bestMatch.carbPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    sugarG: (bestMatch.sugarPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    addedSugarG: (bestMatch.addedSugarPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    proteinG: (bestMatch.proteinPerServing ?? 0) * (servingSize / defaultServingWeightGram),
-    fiberG: (bestMatch.fiberPerServing ?? 0) * (servingSize / defaultServingWeightGram)
+    kcal: (foodItemInfo.kcalPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    totalFatG: (foodItemInfo.totalFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    satFatG: (foodItemInfo.satFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    transFatG: (foodItemInfo.transFatPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    carbG: (foodItemInfo.carbPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    sugarG: (foodItemInfo.sugarPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    addedSugarG: (foodItemInfo.addedSugarPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    proteinG: (foodItemInfo.proteinPerServing ?? 0) * (servingSize / defaultServingWeightGram),
+    fiberG: (foodItemInfo.fiberPerServing ?? 0) * (servingSize / defaultServingWeightGram)
   }
 
-  const micronutrients = bestMatch.Nutrient.reduce((acc: { [key: string]: number }, nutrient) => {
+  const micronutrients = foodItemInfo.Nutrient.reduce((acc: { [key: string]: number }, nutrient) => {
     const field = getMappedNutrientField(nutrient.nutrientName)
     if (field) {
       acc[field] = nutrient.nutrientAmountPerDefaultServing * (servingSize / defaultServingWeightGram)

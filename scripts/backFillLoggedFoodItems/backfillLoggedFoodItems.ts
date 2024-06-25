@@ -36,7 +36,7 @@ async function processBatch(
             } as LoggedFoodServing
         };
 
-        const updatedNutrients = calculateNutrientData(foodItemToLog, matchingFoodItem);
+        const updatedNutrients = calculateNutrientData(foodItemToLog.serving!.total_serving_g_or_ml, matchingFoodItem);
 
         const { error: updateError } = await supabase
             .from("LoggedFoodItem")
