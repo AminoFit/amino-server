@@ -7,7 +7,6 @@ import { Tables } from "types/supabase"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 120
 
 // Initialize Supabase client
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
