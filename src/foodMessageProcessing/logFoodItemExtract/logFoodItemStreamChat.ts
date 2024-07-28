@@ -188,14 +188,17 @@ export async function logFoodItemStream(
   const loggingTasks: Promise<any>[] = []
   const currentDateTime = new Date()
 
-  // let model = "gpt-3.5-turbo-0125"
+  // Change the model to GPT-4o mini
+  let model = "gpt-4o-mini"
 
-  // const stream = processStreamedLoggedFoodItems(user, {
-  //   prompt: logFoodItemPrompts['gpt-3.5-turbo-0125'].prompt.replace("INPUT_HERE", user_message.content),
-  //   systemPrompt: logFoodItemPrompts['gpt-3.5-turbo-0125'].systemPrompt,
-  //   temperature: 0.1,
-  //   model: model
-  // })
+  // Use the OpenAI stream processing function
+  const stream = processStreamedLoggedFoodItems(user, {
+    prompt: logFoodItemPrompts['gpt-4o-mini'].prompt.replace("INPUT_HERE", user_message.content),
+    systemPrompt: logFoodItemPrompts['gpt-4o-mini'].systemPrompt,
+    temperature: 0,
+    model: model
+  })
+
 
   console.log("user_message", user_message.content)
 
@@ -208,15 +211,14 @@ export async function logFoodItemStream(
   //   model: model
   // })
   // claude
-  let model = 'claude-3-haiku'
-  const stream = processStreamedLoggedFoodItemsClaude(user, {
-    prompt: logFoodItemPrompts['claude-3-haiku'].prompt.replace("INPUT_HERE", user_message.content),
-    systemPrompt: logFoodItemPrompts['claude-3-haiku'].systemPrompt,
-    temperature: 0,
-    model: model
-  })
+  // let model = 'claude-3-haiku'
+  // const stream = processStreamedLoggedFoodItemsClaude(user, {
+  //   prompt: logFoodItemPrompts['claude-3-haiku'].prompt.replace("INPUT_HERE", user_message.content),
+  //   systemPrompt: logFoodItemPrompts['claude-3-haiku'].systemPrompt,
+  //   temperature: 0,
+  //   model: model
+  // })
 
-  // let i = 0;
 
   for await (const chunk of stream) {
     // console.log("chunk #", i, chunk)
