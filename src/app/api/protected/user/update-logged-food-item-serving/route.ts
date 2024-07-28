@@ -4,12 +4,26 @@ import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { calculateNutrientData } from "@/foodMessageProcessing/common/calculateNutrientData"
 import { createClient } from "@supabase/supabase-js"
 import { Tables } from "types/supabase"
+import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 120
 
 // Initialize Supabase client
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+// Define nutrient fields
+const nutrientFields = [
+    "addedSugarG", "alcoholG", "caffeineMg", "calciumMg", "carbG", "cholesterolMg", 
+    "copperMg", "fiberG", "iodineMcg", "ironMg", "kcal", "magnesiumMg", "manganeseMg", 
+    "monounsatFatG", "omega3Mg", "omega6Mg", "phosphorusMg", "polyunsatFatG", "potassiumMg", 
+    "proteinG", "satFatG", "seleniumMcg", "sodiumMg", "sugarG", "totalFatG", "transFatG", 
+    "unsatFatG", "vitaminAMcg", "vitaminB12Mcg", "vitaminB1Mg", "vitaminB2Mg", "vitaminB3Mg", 
+    "vitaminB5Mg", "vitaminB6Mg", "vitaminB7Mcg", "vitaminB9Mcg", "vitaminCMg", "vitaminDMcg", 
+    "vitaminEMg", "vitaminKMcg", "waterMl", "zincMg"
+  ];
+
+type NutrientFields = typeof nutrientFields[number];
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +44,7 @@ export async function POST(request: NextRequest) {
       .from("LoggedFoodItem")
       .select("*")
       .eq("id", loggedFoodItemId)
-      .single()
+      .single() as { data: Tables<"LoggedFoodItem">; error: any }
 
     if (loggedFoodItemError || !loggedFoodItem) {
       return new NextResponse("Failed to fetch logged food item", { status: 404 })
@@ -44,8 +58,8 @@ export async function POST(request: NextRequest) {
         .from("FoodItem")
         .select("*, Nutrient(*), Serving(*)")
         .eq("id", loggedFoodItem.foodItemId)
-        .single()
-
+        .single() as { data: FoodItemWithNutrientsAndServing; error: any }
+ 
       if (foodItemError || !foodItem) {
         return new NextResponse("Failed to fetch food item", { status: 404 })
       }
@@ -54,12 +68,12 @@ export async function POST(request: NextRequest) {
     } else {
       // If we don't have a foodItemId, scale the previous nutrients
       const scaleFactor = updateData.grams / loggedFoodItem.grams
-      newNutrients = Object.entries(loggedFoodItem).reduce((acc, [key, value]) => {
-        if (typeof value === "number" && key !== "id" && key !== "grams") {
-          acc[key] = value * scaleFactor
+      newNutrients = nutrientFields.reduce((acc, field) => {
+        if (field in loggedFoodItem && typeof loggedFoodItem[field as keyof Tables<"LoggedFoodItem">] === "number") {
+          acc[field] = (loggedFoodItem[field as keyof Tables<"LoggedFoodItem">] as number) * scaleFactor
         }
         return acc
-      }, {} as Record<string, number>)
+      }, {} as Record<NutrientFields, number>)
     }
 
     // 5. Update the logged food item
