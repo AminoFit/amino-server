@@ -48,7 +48,7 @@ export async function checkAndUpdateUserIsSubscribed(userId: string): Promise<bo
   } else {
     // SubscriptionExpiryDate is null, offer a free trial
     const freeTrialExpiryDate = new Date();
-    freeTrialExpiryDate.setDate(currentDateUTC.getDate() + 28);
+    freeTrialExpiryDate.setDate(currentDateUTC.getDate() + 1);
 
     const { error: updateError } = await supabaseAdmin
       .from("User")
