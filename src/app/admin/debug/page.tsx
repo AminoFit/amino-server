@@ -1,3 +1,4 @@
+// src/app/admin/debug/page.tsx
 "use client"
 
 import { useState, useEffect, Fragment } from "react"
@@ -6,12 +7,15 @@ import { MessageWithSignedUrls, LoggedFoodItemWithDetailsType } from "./actions"
 import {
   PhotoIcon as PhotoOutlineIcon,
   MicrophoneIcon as MicrophoneOutlineIcon,
-  TrashIcon as TrashOutlineIcon
+  TrashIcon as TrashOutlineIcon,
+  ChevronRightIcon,
+  ChevronDownIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
-import { ChevronDownIcon } from "@heroicons/react/20/solid"
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
+// Remove unused imports
+// import { ChevronDownIcon } from "@heroicons/react/20/solid"
+// import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
 
 import { useRouter } from "next/navigation"
 
@@ -34,7 +38,16 @@ const MessagesOverview = () => {
   const [hasImage, setHasImage] = useState("all")
   const [messageStatus, setMessageStatus] = useState("all")
 
+  const [expandedFoodItems, setExpandedFoodItems] = useState<Record<number, boolean>>({})
+
   const router = useRouter()
+
+  const toggleExpand = (itemId: number) => {
+    setExpandedFoodItems((prevState) => ({
+      ...prevState,
+      [itemId]: !prevState[itemId]
+    }))
+  }
 
   const handleApply = (e: any) => {
     e.preventDefault()
@@ -78,7 +91,8 @@ const MessagesOverview = () => {
 
   useEffect(() => {
     fetchData()
-  }, [currentPage])
+  }, [currentPage]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (unauthorized) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -173,10 +187,10 @@ const MessagesOverview = () => {
               className="block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             >
               <option value="all">All</option>
-              <option value="received">Received</option>
-              <option value="failed">Failed</option>
-              <option value="processing">Processing</option>
-              <option value="resolved">Resolved</option>
+              <option value="RECEIVED">Received</option>
+              <option value="FAILED">Failed</option>
+              <option value="PROCESSING">Processing</option>
+              <option value="RESOLVED">Resolved</option>
             </select>
           </div>
 
@@ -217,46 +231,17 @@ const MessagesOverview = () => {
                     <div className="flex space-x-2 w-10">
                       {message.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
                       {message.hasimages &&
+                        message.imageUrls.length > 0 &&
                         (message.imageUrls.length <= 1 ? (
                           <a href={message.imageUrls[0]} target="_blank" rel="noopener noreferrer">
                             <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
                           </a>
                         ) : (
-                          <Menu as="div" className="relative inline-block text-left">
-                            <MenuButton className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-2 py-1 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">
+                          <div className="relative inline-block text-left">
+                            <a href={message.imageUrls[0]} target="_blank" rel="noopener noreferrer">
                               <PhotoOutlineIcon className="h-5 w-5 text-gray-500" />
-                              <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-1" />
-                            </MenuButton>
-                            <Transition
-                              as={Fragment}
-                              enter="transition ease-out duration-100"
-                              enterFrom="transform opacity-0 scale-95"
-                              enterTo="transform opacity-100 scale-100"
-                              leave="transition ease-in duration-75"
-                              leaveFrom="transform opacity-100 scale-100"
-                              leaveTo="transform opacity-0 scale-95"
-                            >
-                              <MenuItems className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                {message.imageUrls.map((url, index) => (
-                                  <MenuItem key={index}>
-                                    {({ active }) => (
-                                      <a
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={classNames(
-                                          active ? "bg-gray-100" : "",
-                                          "block px-4 py-2 text-sm text-gray-700"
-                                        )}
-                                      >
-                                        Image {index + 1}
-                                      </a>
-                                    )}
-                                  </MenuItem>
-                                ))}
-                              </MenuItems>
-                            </Transition>
-                          </Menu>
+                            </a>
+                          </div>
                         ))}
                       {message.isAudio && <MicrophoneOutlineIcon className="h-5 w-5 text-gray-500" />}
                     </div>
@@ -276,71 +261,115 @@ const MessagesOverview = () => {
                   <div className="mt-4">
                     {loggedFoodItemsByMessage[message.id!]?.map((loggedFoodItem) => {
                       const grams = loggedFoodItem.grams || 0 // Default to 0 if grams is undefined
-                      const calories = loggedFoodItem.FoodItem
-                        ? (
-                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
-                            (loggedFoodItem.FoodItem?.kcalPerServing || 0)
-                          ).toFixed(0)
-                        : ""
-                      const carbs = loggedFoodItem.FoodItem
-                        ? (
-                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
-                            (loggedFoodItem.FoodItem?.carbPerServing || 0)
-                          ).toFixed(0)
-                        : ""
-                      const protein = loggedFoodItem.FoodItem
-                        ? (
-                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
-                            (loggedFoodItem.FoodItem?.proteinPerServing || 0)
-                          ).toFixed(0)
-                        : ""
-                      const fat = loggedFoodItem.FoodItem
-                        ? (
-                            (grams / (loggedFoodItem.FoodItem?.defaultServingWeightGram || 1)) *
-                            (loggedFoodItem.FoodItem?.totalFatPerServing || 0)
-                          ).toFixed(0)
-                        : ""
+                      // Use the calories and nutrient values directly from loggedFoodItem
+                      const calories = loggedFoodItem.kcal?.toFixed(0) || ""
+                      const carbs = loggedFoodItem.carbG?.toFixed(1) || ""
+                      const protein = loggedFoodItem.proteinG?.toFixed(1) || ""
+                      const fat = loggedFoodItem.totalFatG?.toFixed(1) || ""
+                      const isExpanded = expandedFoodItems[loggedFoodItem.id!] || false
 
                       return (
-                        <div
-                          key={loggedFoodItem.id}
-                          className={`flex items-center space-x-2 py-1 px-4 border border-gray-300 rounded-md mb-1 ${
-                            loggedFoodItem.deletedAt ? "bg-rose-100" : "bg-zinc-50"
-                          }`}
-                        >
-                          {loggedFoodItem.pathToImage && (
-                            <img
-                              src={loggedFoodItem.pathToImage}
-                              alt="Food Item Image"
-                              className="h-8 w-8 object-cover rounded-full"
-                            />
+                        <div key={loggedFoodItem.id} className="border border-gray-300 rounded-md mb-1">
+                          {/* Food Item Row */}
+                          <div
+                            className={`flex items-center space-x-2 py-1 px-4 ${
+                              loggedFoodItem.deletedAt ? "bg-rose-100" : "bg-zinc-50"
+                            }`}
+                          >
+                            {loggedFoodItem.pathToImage && (
+                              <img
+                                src={loggedFoodItem.pathToImage}
+                                alt="Food Item"
+                                className="h-8 w-8 object-cover rounded-full"
+                              />
+                            )}
+                            <div className="w-6">
+                              {loggedFoodItem.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
+                            </div>
+                            <div className="flex-grow text-sm break-words">
+                              {loggedFoodItem.FoodItem?.name || "Unknown"}
+                              {loggedFoodItem.FoodItem?.brand && ` (${loggedFoodItem.FoodItem.brand})`} -{" "}
+                              {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({grams}g)
+                            </div>
+                            <div className="flex-none text-sm">
+                              {calories} kcal
+                              {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
+                            </div>
+                            <div className="flex-none text-right text-gray-400 flex flex-col items-end">
+                              <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
+                              <span>ID: {loggedFoodItem.id}</span>
+                            </div>
+                            {/* Arrow Icon */}
+                            <div className="flex-none">
+                              <button onClick={() => toggleExpand(loggedFoodItem.id!)} className="focus:outline-none">
+                                {isExpanded ? (
+                                  <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                                ) : (
+                                  <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          {/* Expanded Nutritional Info */}
+                          {isExpanded && (
+                            <div className="px-6 py-4 bg-gray-50">
+                              {/* Nutritional Information */}
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <strong>Calories:</strong> {loggedFoodItem.kcal?.toFixed(1) || "N/A"} kcal
+                                </div>
+                                <div>
+                                  <strong>Total Fat:</strong> {loggedFoodItem.totalFatG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Saturated Fat:</strong> {loggedFoodItem.satFatG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Trans Fat:</strong> {loggedFoodItem.transFatG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Cholesterol:</strong> {loggedFoodItem.cholesterolMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Sodium:</strong> {loggedFoodItem.sodiumMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Total Carbohydrate:</strong> {loggedFoodItem.carbG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Dietary Fiber:</strong> {loggedFoodItem.fiberG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Total Sugars:</strong> {loggedFoodItem.sugarG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Added Sugars:</strong> {loggedFoodItem.addedSugarG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Protein:</strong> {loggedFoodItem.proteinG?.toFixed(1) || "N/A"} g
+                                </div>
+                                <div>
+                                  <strong>Vitamin D:</strong> {loggedFoodItem.vitaminDMcg?.toFixed(1) || "N/A"} µg
+                                </div>
+                                <div>
+                                  <strong>Calcium:</strong> {loggedFoodItem.calciumMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Iron:</strong> {loggedFoodItem.ironMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Potassium:</strong> {loggedFoodItem.potassiumMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Caffeine:</strong> {loggedFoodItem.caffeineMg?.toFixed(1) || "N/A"} mg
+                                </div>
+                                <div>
+                                  <strong>Water:</strong> {loggedFoodItem.waterMl?.toFixed(1) || "N/A"} ml
+                                </div>
+                                {/* Add more nutrients as needed */}
+                              </div>
+                            </div>
                           )}
-                          <div className="w-6">
-                            {loggedFoodItem.deletedAt && <TrashOutlineIcon className="h-5 w-5 text-red-500" />}
-                          </div>
-                          <div className="flex-grow text-sm break-words">
-                            {loggedFoodItem.FoodItem?.name || "Unknown"}
-                            {loggedFoodItem.FoodItem?.brand && ` (${loggedFoodItem.FoodItem.brand})`} -
-                            {loggedFoodItem.servingAmount || 1} {loggedFoodItem.loggedUnit} ({grams}g)
-                          </div>
-                          <div className="flex-none text-sm">
-                            <textarea
-                              defaultValue={
-                                loggedFoodItem.extendedOpenAiData
-                                  ? JSON.stringify(loggedFoodItem.extendedOpenAiData)
-                                  : ""
-                              }
-                              className="w-full p-1 text-xs border rounded-md resize"
-                            />
-                          </div>
-                          <div className="flex-none text-sm">
-                            {calories} kcal
-                            {calories && `, ${carbs}g Carbs, ${protein}g Protein, ${fat}g Fat`}
-                          </div>
-                          <div className="flex-none text-right text-gray-400 flex flex-col items-end">
-                            <span>FoodItem: {loggedFoodItem.FoodItem?.id}</span>
-                            <span>ID: {loggedFoodItem.id}</span>
-                          </div>
                         </div>
                       )
                     })}
