@@ -140,10 +140,9 @@ export async function fetchMessages(
 
   const messageIds = messages.map((message) => message.id).filter((id) => id !== undefined)
 
-  const { data: loggedFoodItems, error: loggedFoodItemsError } = (await supabase
-    .from("LoggedFoodItem")
-    .select(
-      `
+  const { data: loggedFoodItems, error: loggedFoodItemsError } = await supabase
+  .from("LoggedFoodItem")
+  .select(`
     id,
     consumedOn,
     deletedAt,
@@ -152,6 +151,48 @@ export async function fetchMessages(
     extendedOpenAiData,
     loggedUnit,
     messageId,
+    addedSugarG,
+    alcoholG,
+    caffeineMg,
+    calciumMg,
+    carbG,
+    cholesterolMg,
+    copperMg,
+    fiberG,
+    iodineMcg,
+    ironMg,
+    kcal,
+    magnesiumMg,
+    manganeseMg,
+    monounsatFatG,
+    omega3Mg,
+    omega6Mg,
+    phosphorusMg,
+    polyunsatFatG,
+    potassiumMg,
+    proteinG,
+    satFatG,
+    seleniumMcg,
+    sodiumMg,
+    sugarG,
+    totalFatG,
+    transFatG,
+    unsatFatG,
+    vitaminAMcg,
+    vitaminB12Mcg,
+    vitaminB1Mg,
+    vitaminB2Mg,
+    vitaminB3Mg,
+    vitaminB5Mg,
+    vitaminB6Mg,
+    vitaminB7Mcg,
+    vitaminB9Mcg,
+    vitaminCMg,
+    vitaminDMcg,
+    vitaminEMg,
+    vitaminKMcg,
+    waterMl,
+    zincMg,
     FoodItem (
       id,
       name,
@@ -162,12 +203,11 @@ export async function fetchMessages(
       carbPerServing,
       proteinPerServing,
       FoodItemImages(
-          *, FoodImage(id, pathToImage, downvotes)
-        )
+        *, FoodImage(id, pathToImage, downvotes)
+      )
     )
-  `
-    )
-    .in("messageId", messageIds)) as { data: LoggedFoodItemWithDetailsType[]; error: any }
+  `)
+  .in("messageId", messageIds) as { data: LoggedFoodItemWithDetailsType[]; error: any }
 
   if (loggedFoodItemsError) {
     return { error: loggedFoodItemsError.message, status: 500 }
