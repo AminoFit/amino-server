@@ -68,71 +68,90 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
 
   //console.log("portions:", JSON.stringify(usdaFoodItem.portions, null, 2))
 
-  const foodItem: FoodItemWithServings = {...{
-    id: 0,
-    createdAtDateTime: new Date().toISOString(),
-    knownAs: [],
-    description: null,
-    lastUpdated: new Date().toISOString(),
-    verified: true,
-    userId: null,
-    foodInfoSource: "USDA",
-    messageId: null,
-    name: toTitleCase(usdaFoodItem.itemName),
-    brand: toTitleCase(usdaFoodItem.brandName || ""),
-    weightUnknown: false,
-    defaultServingWeightGram:
-      usdaFoodItem.default_serving.default_serving_unit === "g"
-        ? usdaFoodItem.default_serving.default_serving_amount
-        : null,
-    defaultServingLiquidMl:
-      usdaFoodItem.default_serving.default_serving_unit === "ml"
-        ? usdaFoodItem.default_serving.default_serving_amount
-        : null,
-    isLiquid: usdaFoodItem.default_serving.default_serving_unit === "ml",
-    Serving: usdaFoodItem.portions.map((portion) => {
-      let defaultServingAmount = null
-      let servingWeightGram = null
-      let servingAlternateAmount = null
-      let servingAlternateUnit = null
+  const foodItem: FoodItemWithServings = {
+    ...{
+      id: 0,
+      createdAtDateTime: new Date().toISOString(),
+      knownAs: [],
+      description: null,
+      lastUpdated: new Date().toISOString(),
+      verified: true,
+      userId: null,
+      foodInfoSource: "USDA",
+      messageId: null,
+      name: toTitleCase(usdaFoodItem.itemName),
+      brand: toTitleCase(usdaFoodItem.brandName || ""),
+      weightUnknown: false,
+      defaultServingWeightGram:
+        usdaFoodItem.default_serving.default_serving_unit === "g"
+          ? usdaFoodItem.default_serving.default_serving_amount
+          : null,
+      defaultServingLiquidMl:
+        usdaFoodItem.default_serving.default_serving_unit === "ml"
+          ? usdaFoodItem.default_serving.default_serving_amount
+          : null,
+      isLiquid: usdaFoodItem.default_serving.default_serving_unit === "ml",
+      Serving: usdaFoodItem.portions.map((portion) => {
+        let defaultServingAmount = null
+        let servingWeightGram = null
+        let servingAlternateAmount = null
+        let servingAlternateUnit = null
 
-      // Prioritize gramWeight if available
-      if (portion.gramWeight) {
-        servingWeightGram = portion.gramWeight
-      } else {
-        servingWeightGram = portion.servingSizeUnit === "g" ? portion.servingSize : null
-        servingAlternateAmount = portion.servingSizeUnit !== "g" ? portion.servingSize : null
-        servingAlternateUnit = portion.servingSizeUnit !== "g" ? portion.servingSizeUnit : null
+        // Prioritize gramWeight if available
+        if (portion.gramWeight) {
+          servingWeightGram = portion.gramWeight
+        } else {
+          servingWeightGram = portion.servingSizeUnit === "g" ? portion.servingSize : null
+          servingAlternateAmount = portion.servingSizeUnit !== "g" ? portion.servingSize : null
+          servingAlternateUnit = portion.servingSizeUnit !== "g" ? portion.servingSizeUnit : null
+        }
+
+        const servingName =
+          portion.householdServingFullText ||
+          (portion.name ? portion.name : `${servingAlternateAmount || ""} ${servingAlternateUnit || ""}`.trim())
+
+        return {
+          defaultServingAmount,
+          servingWeightGram,
+          servingAlternateAmount,
+          servingAlternateUnit,
+          servingName
+        }
+      }),
+
+      UPC: usdaFoodItem.upc ? Number(usdaFoodItem.upc) : null,
+      externalId: usdaFoodItem.fdcId.toString(),
+      Nutrient: [],
+      kcalPerServing: 0,
+      proteinPerServing: 0,
+      totalFatPerServing: 0,
+      carbPerServing: 0,
+      fiberPerServing: null,
+      sugarPerServing: null,
+      satFatPerServing: null,
+      transFatPerServing: null,
+      addedSugarPerServing: null,
+      adaEmbedding: null,
+      bgeBaseEmbedding: null
+    },
+    ...({} as Partial<FoodItemWithServings>)
+  } as FoodItemWithServings
+
+  console.log("usdaFoodItem", usdaFoodItem.foodInfo)
+
+  // calculate kcalPerServing if not present
+  if (!usdaFoodItem.foodInfo.calories) {
+    // if we have fat, carbohydrates, and protein, calculate calories
+    if (usdaFoodItem.foodInfo.fat || usdaFoodItem.foodInfo.carbohydrates || usdaFoodItem.foodInfo.protein) {
+      usdaFoodItem.foodInfo.calories = {
+        amount:
+        (usdaFoodItem.foodInfo.fat?.amount || 0) * 9 +
+        (usdaFoodItem.foodInfo.carbohydrates?.amount || 0) * 4 +
+        (usdaFoodItem.foodInfo.protein?.amount || 0) * 4,
+      unit: "kcal"
       }
-
-      const servingName =
-        portion.householdServingFullText ||
-        (portion.name ? portion.name : `${servingAlternateAmount || ""} ${servingAlternateUnit || ""}`.trim())
-
-      return {
-        defaultServingAmount,
-        servingWeightGram,
-        servingAlternateAmount,
-        servingAlternateUnit,
-        servingName
-      }
-    }),
-
-    UPC: usdaFoodItem.upc ? Number(usdaFoodItem.upc) : null,
-    externalId: usdaFoodItem.fdcId.toString(),
-    Nutrient: [],
-    kcalPerServing: 0,
-    proteinPerServing: 0,
-    totalFatPerServing: 0,
-    carbPerServing: 0,
-    fiberPerServing: null,
-    sugarPerServing: null,
-    satFatPerServing: null,
-    transFatPerServing: null,
-    addedSugarPerServing: null,
-    adaEmbedding: null,
-    bgeBaseEmbedding: null,
-  }, ...({} as Partial<FoodItemWithServings>)} as FoodItemWithServings
+    }
+  }
 
   for (const [nutrientName, nutrientInfo] of Object.entries(usdaFoodItem.foodInfo)) {
     const foodItemKey = nutrientNameToFoodItemKey[nutrientName]

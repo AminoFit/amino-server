@@ -50,20 +50,30 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Failed to fetch logged food item", { status: 404 })
     }
 
-    // 4. Calculate new nutrients
-    let newNutrients
-    if (loggedFoodItem.foodItemId) {
-      // If we have a foodItemId, fetch the food item info with nutrients and servings
-      const { data: foodItem, error: foodItemError } = await supabase
+    // 4. Determine if foodItemId has changed
+    const newFoodItemId = updateData.foodItemId || loggedFoodItem.foodItemId
+
+    // 5. Fetch the FoodItem data
+    let foodItem: FoodItemWithNutrientsAndServing | null = null
+
+    if (newFoodItemId) {
+      const { data: fetchedFoodItem, error: foodItemError } = await supabase
         .from("FoodItem")
         .select("*, Nutrient(*), Serving(*)")
-        .eq("id", loggedFoodItem.foodItemId)
+        .eq("id", newFoodItemId)
         .single() as { data: FoodItemWithNutrientsAndServing; error: any }
- 
-      if (foodItemError || !foodItem) {
+
+      if (foodItemError || !fetchedFoodItem) {
         return new NextResponse("Failed to fetch food item", { status: 404 })
       }
 
+      foodItem = fetchedFoodItem
+    }
+
+    // 6. Calculate new nutrients
+    let newNutrients: Partial<Record<NutrientFields, number>> = {}
+
+    if (foodItem) {
       newNutrients = calculateNutrientData(updateData.grams, foodItem)
     } else {
       // If we don't have a foodItemId, scale the previous nutrients
@@ -76,10 +86,17 @@ export async function POST(request: NextRequest) {
       }, {} as Record<NutrientFields, number>)
     }
 
-    // 5. Update the logged food item
+    // 7. Prepare update data
+    const updatedFields = {
+      ...updateData,
+      ...newNutrients,
+      foodItemId: newFoodItemId,
+    }
+
+    // 8. Update the logged food item
     const { data: updatedLoggedFoodItem, error: updateError } = await supabase
       .from("LoggedFoodItem")
-      .update({ ...updateData, ...newNutrients })
+      .update(updatedFields)
       .eq("id", loggedFoodItemId)
       .select()
       .single()
@@ -90,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(updatedLoggedFoodItem)
   } catch (error) {
-    console.error("Error in update-logged-food-item:", error)
+    console.error("Error in update-logged-food-item-serving:", error)
     return new NextResponse("Internal server error", { status: 500 })
   }
 }
