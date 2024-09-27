@@ -1,5 +1,5 @@
 // OpenAI
-import { findBestFoodMatchtoLocalDb } from "./localDbFoodMatch/matchFoodItemToLocalDb"
+import { findBestFoodMatchtoLocalDb } from "./localDbFoodMatch/matchFoodItemToLocalDbOpenAI"
 import { FoodItemIdAndEmbedding } from "@/database/OpenAiFunctions/utils/foodLoggingTypes"
 
 // Utils

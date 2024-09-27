@@ -365,7 +365,10 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
 
 7. When in doubt include words in the message as the brand to help with matching e.g. "why lemon bar" would be item: "lemon bar" and brand:"why".
 
-8. For prompts not in english translate to english in order to get a valid output. You can keep the original name in parentheses.</instructions>
+8. For prompts not in english, translate to english in order to get a valid output. You can keep the original name in parentheses.
+
+9. If nutritional information is available, include it in the nutritional_information field. DO NOT include fields you don't know the exact value of or are null.
+9a. If a calculation is required you can use an equation string instead of a number. An equation string can only contain + - * / and numbers.</instructions>
 <examples>
   <example>
     <input>"I like dancing"</input>
@@ -406,7 +409,10 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
             "full_single_food_database_search_name": "chicken breast",
             "full_single_item_user_message_including_serving_or_quantity": "chicken breast 130 calories",
             "branded": false,
-            "brand": ""
+            "brand": "",
+            "nutritional_information": {
+              "kcal": 130
+            }
           },
           {
             "full_single_food_database_search_name": "olive oil",
@@ -429,6 +435,25 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
             "full_single_item_user_message_including_serving_or_quantity": "200g of Organic Pork & Vegetable Potstickers",
             "branded": true,
             "brand": "Annie Chun"
+          }
+        ],
+        "contains_valid_food_items": true
+      }
+    </output>
+  </example>
+  <example>
+    <input>"2 mission flour burritos (200 cals per burrito)"</input>
+    <output>
+      {
+        "food_items": [
+          {
+            "full_single_food_database_search_name": "Mission Flour Burritos",
+            "full_single_item_user_message_including_serving_or_quantity": "400 cals of Mission Flour Burritos",
+            "branded": true,
+            "brand": "Mission Flour",
+            "nutritional_information": {
+              "kcal": "200*2",
+            }
           }
         ],
         "contains_valid_food_items": true
@@ -500,19 +525,52 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
 Your output should be in a JSON format. This format should consist only of the elements related to each food item's name and serving details, as mentioned in steps 3 and 4. Do not include anything else.
 </output_instruction>
 
-<output_format>
+<json_output_format>
 {
   "food_items": [
     {
       "full_single_food_database_search_name": "string",
       "full_single_item_user_message_including_serving_or_quantity": "string",
       "branded": "boolean",
-      "brand": "string"
+      "brand": "string",
+      "nutritional_information"?: {
+        "kcal"?: "number | string",
+        "totalFatG"?: "number | string",
+        "satFatG"?: "number | string",
+        "transFatG"?: "number | string",
+        "carbG"?: "number | string",
+        "fiberG"?: "number | string",
+        "sugarG"?: "number | string",
+        "proteinG"?: "number | string",
+        "waterMl"?: "number | string",
+        "vitaminAMcg"?: "number | string",
+        "vitaminCMg"?: "number | string",
+        "vitaminDMcg"?: "number | string",
+        "vitaminEMg"?: "number | string",
+        "vitaminKMcg"?: "number | string",
+        "vitaminB1Mg"?: "number | string",
+        "vitaminB2Mg"?: "number | string",
+        "vitaminB3Mg"?: "number | string",
+        "vitaminB5Mg"?: "number | string",
+        "vitaminB6Mg"?: "number | string",
+        "vitaminB7Mcg"?: "number | string",
+        "vitaminB9Mcg"?: "number | string",
+        "vitaminB12Mcg"?: "number | string",
+        "calciumMg"?: "number | string",
+        "ironMg"?: "number | string",
+        "magnesiumMg"?: "number | string",
+        "phosphorusMg"?: "number | string",
+        "potassiumMg"?: "number | string",
+        "sodiumMg"?: "number | string",
+        "cholesterolMg"?: "number | string",
+        "caffeineMg"?: "number | string",
+        "alcoholG"?: "number | string"
+      }
     }
   ],
   "contains_valid_food_items": "boolean"
 }
-</output_format>
+</json_output_format>
 
 Beginning of JSON output:`
     }

@@ -13,7 +13,7 @@ const nutrientMappingConfig: { [key: string]: string[] } = {
   monounsatFatG: ["monounsaturatedFat", "Fatty acids, total monounsaturated", "Monounsaturated Fat"],
   carbG: ["carb", "carbPerServing", "Carbohydrate, by difference", "Total Carbohydrate"],
   fiberG: ["fiber", "fiberPerServing", "Fiber, total dietary", "Dietary Fiber"],
-  sugarG: ["sugar", "sugarPerServing", "Sugars, total including NLEA", "Sugars"],
+  sugarG: ["sugar", "sugarPerServing", "Sugars, total including NLEA", "Sugars", "Sugar"],
   addedSugarG: ["addedSugar", "addedSugarPerServing", "Sugars, added", "Added Sugars"],
   proteinG: ["protein", "proteinPerServing", "Protein"],
   waterMl: ["water", "Water"],
@@ -22,14 +22,14 @@ const nutrientMappingConfig: { [key: string]: string[] } = {
   vitaminDMcg: ["vitaminD", "Vitamin D", "Vitamin D (D2 + D3), International Units"],
   vitaminEMg: ["vitaminE", "Vitamin E", "Vitamin E, IU"],
   vitaminKMcg: ["vitaminK", "Vitamin K (phylloquinone)", "Vitamin K"],
-  vitaminB1Mg: ["thiamin", "Thiamin", "Vitamin B1"],
-  vitaminB2Mg: ["riboflavin", "Riboflavin", "Vitamin B2"],
-  vitaminB3Mg: ["niacin", "Niacin", "Vitamin B3"],
-  vitaminB5Mg: ["pantothenicAcid", "Pantothenic acid", "Vitamin B5"],
-  vitaminB6Mg: ["vitaminB6", "Vitamin B-6"],
-  vitaminB7Mcg: ["biotin", "Biotin", "Vitamin B7"],
-  vitaminB9Mcg: ["folate", "Folate, DFE", "Folic acid", "Vitamin B9"],
-  vitaminB12Mcg: ["vitaminB12", "Vitamin B-12"],
+  vitaminB1Mg: ["thiamin", "Thiamin", "Vitamin B1", "Vitamin B1 (Thiamin)"],
+  vitaminB2Mg: ["riboflavin", "Riboflavin", "Vitamin B2", "Vitamin B2 (Riboflavin)"],
+  vitaminB3Mg: ["niacin", "Niacin", "Vitamin B3", "Vitamin B3 (Niacin)"],
+  vitaminB5Mg: ["pantothenicAcid", "Pantothenic acid", "Vitamin B5", "Vitamin B5 (Pantothenic Acid)"],
+  vitaminB6Mg: ["vitaminB6", "Vitamin B-6", "Vitamin B6"],
+  vitaminB7Mcg: ["biotin", "Biotin", "Vitamin B7", "Vitamin B7 (Biotin)"],
+  vitaminB9Mcg: ["folate", "Folate, DFE", "Folic acid", "Vitamin B9", "Vitamin B9 (Folate)"],
+  vitaminB12Mcg: ["vitaminB12", "Vitamin B-12", "Vitamin B12"],
   calciumMg: ["calcium", "Calcium, Ca", "calciumMg", "Calcium"],
   ironMg: ["iron", "ironMg", "Iron, Fe"],
   magnesiumMg: ["magnesium", "Magnesium, Mg"],
@@ -41,22 +41,34 @@ const nutrientMappingConfig: { [key: string]: string[] } = {
   manganeseMg: ["manganese", "Manganese, Mn"],
   seleniumMcg: ["selenium", "Selenium, Se"],
   iodineMcg: ["iodine", "Iodine, I"],
-  cholesterolMg: ["cholesterol", "Cholesterol", "cholesterolMg", "Cholesterol"],
+  cholesterolMg: ["cholesterol", "Cholesterol", "cholesterolMg"],
   omega3Mg: ["omega3", "Omega-3 fatty acids", "Omega-3 Fatty Acids"],
   omega6Mg: ["omega6", "Omega-6 fatty acids", "Omega-6 Fatty Acids"],
   caffeineMg: ["caffeine", "Caffeine"],
   alcoholG: ["alcohol", "Alcohol, ethyl"]
-}
+};
 
 
 function getMappedNutrientField(nutrientName: string): string | null {
+  const normalize = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/\s+/g, '')     // Remove all whitespace
+      .replace(/[^a-z0-9]/g, ''); // Remove all non-alphanumeric characters
+
+  const normalizedNutrientName = normalize(nutrientName);
+
   for (const field in nutrientMappingConfig) {
-    if (nutrientMappingConfig[field].includes(nutrientName)) {
-      return field
+    for (const name of nutrientMappingConfig[field]) {
+      if (normalize(name) === normalizedNutrientName) {
+        return field;
+      }
     }
   }
-  return null
+
+  return null;
 }
+
 
 export function calculateNutrientData(foodWeightG: number, foodItemInfo: FoodItemWithNutrientsAndServing): any {
   const servingSize = foodWeightG

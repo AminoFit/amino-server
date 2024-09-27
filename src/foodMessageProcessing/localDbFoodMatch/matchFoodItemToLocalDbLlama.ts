@@ -1,5 +1,5 @@
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
-import { FireworksChatCompletion, FireworksChatCompletionStream } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
+import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import Anthropic from "@anthropic-ai/sdk"
 import { FoodItemIdAndEmbedding } from "../../database/OpenAiFunctions/utils/foodLoggingTypes"
 import { FoodEmbeddingCache } from "../../utils/foodEmbedding"
@@ -229,7 +229,7 @@ export async function findBestFoodMatchtoLocalDbLlama(
   const foodToMatch = (user_request.brand ? `${user_request.brand} - ` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
-  let model = 'accounts/fireworks/models/llama-v3-70b-instruct'
+  let model = 'accounts/fireworks/models/llama-v3p1-70b-instruct'
   let max_tokens = 425
   let temperature = 0
   let prompt = matchUserRequestPrompt
@@ -295,8 +295,8 @@ export async function findBestFoodMatchtoLocalDbLlama(
 
 async function testMatching() {
   const sampleUserRequest: FoodItemToLog = {
-    food_database_search_name: "Spicy tuna sushi roll",
-    full_item_user_message_including_serving: "tuna",
+    food_database_search_name: "Spicy tilapia sushi roll",
+    full_item_user_message_including_serving: "tilapia",
     branded: false,
     brand: "",
     serving: {
