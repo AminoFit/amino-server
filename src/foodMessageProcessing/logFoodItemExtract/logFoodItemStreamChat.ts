@@ -10,6 +10,8 @@ import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { logFoodItemPrompts } from "./logFoodItemPrompts"
 import { getUserByEmail } from "../common/debugHelper"
 import { claudeChatCompletionStream } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
+import { vertexChatCompletionStream } from "@/languageModelProviders/vertex/chatCompletionVertex"
+import { sanitizeFoodItemNutritionFieldsJSON } from "../common/sanitizeNutrients"
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
   // Since serving is no longer available in the output, we need to handle its absence
@@ -51,6 +53,32 @@ async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: Ch
   }
 }
 
+async function* processStreamedLoggedFoodItemsVertex(user: Tables<"User">, options: ChatCompletionStreamOptions) {
+  const stream = vertexChatCompletionStream(
+    {
+      model: "gemini-1.5-flash-002",
+      systemPrompt: options.systemPrompt || "You are a helpful assistant that only replies with valid JSON.",
+      userMessage: options.prompt,
+      temperature: 0.1,
+      max_tokens: options.max_tokens || 1024,
+      response_format: "json_object"
+    },
+    user
+  )
+
+  let buffer = "" // Buffer to accumulate chunks of data
+  let lastProcessedIndex = -1 // Track the last processed index
+
+  for await (const chunk of stream) {
+    buffer += chunk // Append the new chunk to the buffer
+    const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
+
+    if (jsonObj && endIndex !== lastProcessedIndex) {
+      lastProcessedIndex = endIndex // Update the last processed index
+      yield jsonObj // Yield the new JSON object
+    }
+  }
+}
 
 async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, options: ChatCompletionStreamOptions) {
   //   console.log("calling mixtral with options", options)
@@ -192,11 +220,12 @@ export async function logFoodItemStream(
   let model = "gpt-4o-mini"
 
   // Use the OpenAI stream processing function
-  const stream = processStreamedLoggedFoodItems(user, {
+  const stream = processStreamedLoggedFoodItemsVertex(user, {
     prompt: logFoodItemPrompts['gpt-4o-mini'].prompt.replace("INPUT_HERE", user_message.content),
     systemPrompt: logFoodItemPrompts['gpt-4o-mini'].systemPrompt,
     temperature: 0,
-    model: model
+    model: model,
+    max_tokens: 4096
   })
 
 
@@ -227,12 +256,14 @@ export async function logFoodItemStream(
     if (chunk.hasOwnProperty("full_single_food_database_search_name")) {
       const elapsedTime = new Date().getTime() - currentDateTime.getTime()
       // It's a single food item
+      const sanitizedFoodItem = sanitizeFoodItemNutritionFieldsJSON(chunk)
       const foodItemToLog = {
         food_database_search_name: chunk.full_single_food_database_search_name,
         full_item_user_message_including_serving: chunk.full_single_item_user_message_including_serving_or_quantity,
-        branded: chunk.branded,
-        brand: chunk.brand || "",
-        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString()
+        branded: sanitizedFoodItem.branded,
+        brand: sanitizedFoodItem.brand || "",
+        timeEaten: new Date(consumedOn.getTime() + elapsedTime).toISOString(),
+        nutritional_information: sanitizedFoodItem.nutritional_information
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
       console.log("just logged: ", foodItemToLog)
@@ -259,7 +290,7 @@ export async function logFoodItemStream(
 async function testChatCompletionJsonStream() {
   const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
-  const userMessage = "one cliff oat chocolate chip bar with starbucks tukrey bacon sandwich with cup of greek yogurt and a banana"
+  const userMessage = "one cliff oat chocolate chip bar (230 cals) with starbucks tukrey bacon sandwich with cup of greek yogurt and a banana with 300 cals of chicken breast and a 200 cals smoothie with 20g protein"
   // Make sure to include all required fields in your insert object
   const insertObject = {
     content: userMessage,
