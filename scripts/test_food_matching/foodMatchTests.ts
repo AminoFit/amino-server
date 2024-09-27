@@ -1,6 +1,5 @@
 import { foodToLogEmbedding, getFoodEmbedding } from "@/utils/foodEmbedding"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
-import { findBestFoodMatchtoLocalDb } from "@/foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDb"
 import { findBestFoodMatchtoLocalDbClaude } from "@/foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbClaude"
 import { findBestFoodMatchtoLocalDbLlama } from "@/foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbLlama"
 import { Tables } from "types/supabase"
@@ -10,6 +9,7 @@ import { getFoodItemFromDbOrExternal } from "@/foodMessageProcessing/findBestLog
 import { findBestServingMatchChatLlama } from "@/foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { std, mean, quantileSeq } from 'mathjs';
 import { findBestServingMatchChat } from "@/foodMessageProcessing/findBestServingMatchChat"
+import { findBestFoodMatchtoLocalDb } from "@/foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbOpenAI"
 
 async function testMatching(foodItems: FoodItemToLog[]) {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
