@@ -87,7 +87,7 @@ export async function classifyFoodItemToCategoryGPT(
       model: "gpt-4o",
       temperature,
       max_tokens: 1024,
-      response_format: "json_object"
+      response_format: { type: "json_object" }
     }, user);
 
     const result: FoodClassifyResult = JSON.parse(response.content!); // Parse response here
