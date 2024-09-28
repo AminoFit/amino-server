@@ -138,124 +138,138 @@ export async function vertexChatCompletion(
  * @param user - The user making the request.
  * @returns An async generator that yields chunks of the generated response text.
  */
+
 export async function* vertexChatCompletionStream(
-    {
-      model,
+  {
+    model,
+    systemPrompt,
+    userMessage,
+    temperature = 0.1,
+    max_tokens = 1024,
+    response_format = "text",
+    safetySettings,
+    responseSchema, // Extract responseSchema
+    ...restOptions // Other options
+  }: ChatCompletionOptions,
+  user: Tables<"User">
+): AsyncGenerator<string, void, unknown> {
+  // Check cache before initiating a new chat session
+  if (systemPrompt && userMessage) {
+    const cachedResponse = await getPromptOutputFromCache({
       systemPrompt,
       userMessage,
-      temperature = 0.1,
-      max_tokens = 1024,
-      response_format = "text",
-      safetySettings,
-      ...options
-    }: ChatCompletionOptions,
-    user: Tables<"User">
-  ): AsyncGenerator<string, void, unknown> {
-    // Check cache before initiating a new chat session
-    if (systemPrompt && userMessage) {
-      const cachedResponse = await getPromptOutputFromCache({
-        systemPrompt,
-        userMessage,
-        modelName: model,
-        temperature,
-        max_tokens,
-        response_format
-      })
-      if (cachedResponse) {
-        // Yield the cached response in chunks of 4 characters
-        let startIndex = 0
-        const responseLength = cachedResponse.length
-        while (startIndex < responseLength) {
-          const endIndex = Math.min(startIndex + 4, responseLength)
-          yield cachedResponse.slice(startIndex, endIndex)
-          startIndex += 4
-        }
-        return
+      modelName: model,
+      temperature,
+      max_tokens,
+      response_format
+    });
+    if (cachedResponse) {
+      // Yield the cached response in chunks
+      let startIndex = 0;
+      const responseLength = cachedResponse.length;
+      while (startIndex < responseLength) {
+        const endIndex = Math.min(startIndex + 4, responseLength);
+        yield cachedResponse.slice(startIndex, endIndex);
+        startIndex += 4;
       }
-    }
-  
-    let startTime = performance.now()
-    let totalResponse = ""
-  
-    try {
-      // Start a new chat session with the specified model
-      const generativeModel = genAI.getGenerativeModel({ model })
-      const chatSession = generativeModel.startChat({
-        systemInstruction: {
-          role: "system",
-          parts: [
-            {
-              text: systemPrompt || ""
-            }
-          ]
-        },
-        safetySettings, // Pass safety settings if provided
-        generationConfig: {
-          temperature,
-          topP: 0.95, // You can adjust or make this configurable
-          topK: 40, // You can adjust or make this configurable
-          maxOutputTokens: max_tokens,
-          responseMimeType: response_format === "json_object" ? "application/json" : "text/plain"
-        },
-        ...options
-      })
-  
-      // Send the user message and receive the streaming response
-      const streamResult = await chatSession.sendMessageStream(userMessage)
-  
-      // Buffer to hold partial chunks of text
-      let buffer = ""
-  
-      // Iterate over the streaming response
-      for await (const chunk of streamResult.stream) {
-        const chunkText = chunk.text() // Get the text from the chunk
-        buffer += chunkText // Append the chunk to the buffer
-        totalResponse += chunkText // Accumulate the full response for caching
-  
-        // Process and yield the buffer in parts of 4 characters
-        while (buffer.length >= 4) {
-          yield buffer.slice(0, 4) // Yield the first 4 characters
-          buffer = buffer.slice(4) // Remove the first 4 characters from the buffer
-        }
-      }
-  
-      // Yield the remaining characters if any
-      if (buffer.length > 0) {
-        yield buffer
-      }
-  
-      // After streaming is complete, cache the full response
-      if (systemPrompt && userMessage && totalResponse) {
-        await writePromptOutputToCache(
-          {
-            systemPrompt,
-            userMessage,
-            modelName: model,
-            temperature,
-            max_tokens,
-            response_format
-          },
-          totalResponse
-        )
-  
-        // Log usage data
-        let completionTimeMs = performance.now() - startTime
-        const totalTokens = encode(totalResponse).length
-        const promptTokens = encode(JSON.stringify({ systemPrompt, userMessage })).length
-  
-        const tokenCompletionUsage: CompletionUsage = {
-          prompt_tokens: promptTokens,
-          completion_tokens: totalTokens - promptTokens,
-          total_tokens: totalTokens
-        }
-  
-        await LogOpenAiUsage(user, tokenCompletionUsage, model, "vertex", completionTimeMs)
-      }
-    } catch (error) {
-      console.error(`Error with Vertex AI streaming API:`, error)
-      throw error
+      return;
     }
   }
+
+  let startTime = performance.now();
+  let totalResponse = "";
+
+  try {
+    // Start a new chat session with the specified model
+    const generativeModel = genAI.getGenerativeModel({ model });
+    const chatSession = generativeModel.startChat({
+      systemInstruction: {
+        role: "system",
+        parts: [
+          {
+            text: systemPrompt || ""
+          }
+        ]
+      },
+      safetySettings,
+      generationConfig: {
+        temperature,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: max_tokens,
+        responseMimeType:
+          response_format === "json_object" ? "application/json" : "text/plain",
+        responseSchema: responseSchema // Pass responseSchema here
+      }
+      // Do not spread restOptions into startChat
+    });
+
+    // Send the user message and receive the streaming response
+    const streamResult = await chatSession.sendMessageStream(userMessage);
+
+    // Buffer to hold partial chunks of text
+    let buffer = "";
+
+    // Iterate over the streaming response
+    for await (const chunk of streamResult.stream) {
+      const chunkText = chunk.text(); // Get the text from the chunk
+      buffer += chunkText; // Append the chunk to the buffer
+      totalResponse += chunkText; // Accumulate the full response for caching
+
+      // Process and yield the buffer in parts
+      while (buffer.length >= 4) {
+        yield buffer.slice(0, 4); // Yield the first 4 characters
+        buffer = buffer.slice(4); // Remove the first 4 characters from the buffer
+      }
+    }
+
+    // Yield any remaining characters
+    if (buffer.length > 0) {
+      yield buffer;
+    }
+
+    console.log("totalResponse:", totalResponse);
+
+    // After streaming is complete, cache the full response
+    if (systemPrompt && userMessage && totalResponse) {
+      await writePromptOutputToCache(
+        {
+          systemPrompt,
+          userMessage,
+          modelName: model,
+          temperature,
+          max_tokens,
+          response_format
+        },
+        totalResponse
+      );
+
+      // Log usage data
+      let completionTimeMs = performance.now() - startTime;
+      const totalTokens = encode(totalResponse).length;
+      const promptTokens = encode(
+        JSON.stringify({ systemPrompt, userMessage })
+      ).length;
+
+      const tokenCompletionUsage: CompletionUsage = {
+        prompt_tokens: promptTokens,
+        completion_tokens: totalTokens - promptTokens,
+        total_tokens: totalTokens
+      };
+
+      await LogOpenAiUsage(
+        user,
+        tokenCompletionUsage,
+        model,
+        "vertex",
+        completionTimeMs
+      );
+    }
+  } catch (error) {
+    console.error(`Error with Vertex AI streaming API:`, error);
+    throw error;
+  }
+}
 
 // ---------------------------
 // Testing Functions
