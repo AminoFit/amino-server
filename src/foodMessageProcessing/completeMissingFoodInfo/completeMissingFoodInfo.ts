@@ -174,7 +174,7 @@ export async function completeMissingFoodInfo(
     ]
 
     try {
-      response = await chatCompletion({ model, messages, temperature, response_format: "json_object" }, user)
+      response = await chatCompletion({ model, messages, temperature, response_format: { type: "json_object" } }, user)
       if (response.content) {
         console.log("response", response.content)
         let food_result: FoodMissingInfo = extractAndParseLastJSON(response.content) as FoodMissingInfo

@@ -12,6 +12,9 @@ import { getUserByEmail } from "../common/debugHelper"
 import { claudeChatCompletionStream } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
 import { vertexChatCompletionStream } from "@/languageModelProviders/vertex/chatCompletionVertex"
 import { sanitizeFoodItemNutritionFieldsJSON } from "../common/sanitizeNutrients"
+import test from "node:test"
+import { last } from "underscore"
+
 
 function mapToFoodItemToLog(outputItem: any): FoodItemToLog {
   // Since serving is no longer available in the output, we need to handle its absence
@@ -53,32 +56,40 @@ async function* processStreamedLoggedFoodItems(user: Tables<"User">, options: Ch
   }
 }
 
-async function* processStreamedLoggedFoodItemsVertex(user: Tables<"User">, options: ChatCompletionStreamOptions) {
+async function* processStreamedLoggedFoodItemsVertex(
+  user: Tables<"User">,
+  options: ChatCompletionStreamOptions
+) {
   const stream = vertexChatCompletionStream(
     {
-      model: "gemini-1.5-flash-002",
-      systemPrompt: options.systemPrompt || "You are a helpful assistant that only replies with valid JSON.",
+      model: "gemini-1.5-pro-002",
+      systemPrompt:
+        options.systemPrompt ||
+        "You are a helpful assistant that only replies with valid JSON.",
       userMessage: options.prompt,
-      temperature: 0.1,
+      temperature: options.temperature || 0,
       max_tokens: options.max_tokens || 1024,
-      response_format: "json_object"
+      response_format: "json_object",
+      responseSchema: logFoodItemPrompts["gemini-1.5-flash-002"].response_schema
+      // Do not include other options here
     },
     user
-  )
+  );
 
-  let buffer = "" // Buffer to accumulate chunks of data
-  let lastProcessedIndex = -1 // Track the last processed index
+  let buffer = ""; // Buffer to accumulate chunks of data
+  let lastProcessedIndex = -1; // Track the last processed index
 
   for await (const chunk of stream) {
-    buffer += chunk // Append the new chunk to the buffer
-    const { jsonObj, endIndex } = extractLatestValidJSON(buffer)
+    buffer += chunk; // Append the new chunk to the buffer
+    const { jsonObj, endIndex } = extractLatestValidJSON(buffer);
 
     if (jsonObj && endIndex !== lastProcessedIndex) {
-      lastProcessedIndex = endIndex // Update the last processed index
-      yield jsonObj // Yield the new JSON object
+      lastProcessedIndex = endIndex; // Update the last processed index
+      yield jsonObj; // Yield the new JSON object
     }
   }
 }
+
 
 async function* processStreamedLoggedFoodItemsMixtral(user: Tables<"User">, options: ChatCompletionStreamOptions) {
   //   console.log("calling mixtral with options", options)
@@ -173,36 +184,90 @@ async function* processStreamedLoggedFoodItemsLlama(user: Tables<"User">, option
     }
   }
 }
-
-function extractLatestValidJSON(inputString: string) {
-  let braceCount = 0
-  let endIndex = -1
-
-  // Start from the end of the string and look for the first closing brace
-  for (let i = inputString.length - 1; i >= 0; i--) {
-    if (inputString[i] === "}") {
-      if (braceCount === 0) {
-        // This is the end of the latest JSON object
-        endIndex = i
-      }
-      braceCount++
-    } else if (inputString[i] === "{") {
-      braceCount--
-      if (braceCount === 0) {
-        // Found the start of the latest JSON object
-        const jsonStr = inputString.substring(i, endIndex + 1)
-        try {
-          const jsonObj = JSON.parse(jsonStr)
-          return { jsonObj, endIndex } // Return both the object and the end index
-        } catch (e) {
-          console.error("Failed to parse JSON:", e)
-          return { jsonObj: null, endIndex: -1 }
-        }
+function extractLatestValidJSONObject(input: string): string | null {
+  // Check if brackets are balanced
+  let stack: number[] = [];
+  
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '{') {
+      stack.push(i);
+    } else if (input[i] === '}') {
+      if (stack.length > 0) {
+        stack.pop();
+      } else {
+        // Found an unmatched closing brace
+        return null;
       }
     }
   }
 
-  return { jsonObj: null, endIndex: -1 } // Return null if no well-formed JSON object is found
+  // If the stack is empty, it means the brackets are balanced
+  if (stack.length === 0) {
+    const trimmedInput = input.trim();
+    if (trimmedInput.startsWith('{') && trimmedInput.endsWith('}')) {
+      return trimmedInput;
+    }
+  }
+
+  // If the brackets are not balanced or entire input is not a valid JSON object, use regex to extract the latest valid JSON object
+  const pattern = /\{(?:[^{}]|\{[^{}]*\}|[\r\n])*?\}(?!.*\{(?:[^{}]|\{[^{}]*\}|[\r\n])*?\})/g;
+  const matches = input.match(pattern);
+
+  if (matches && matches.length > 0) {
+    return matches[matches.length - 1];
+  }
+  
+  return null;
+}
+
+function extractLatestValidJSON(input: string): { jsonObj: any, endIndex: number } {
+  // Check if brackets are balanced
+  let stack: number[] = [];
+  let lastBalancedIndex = -1;
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '{') {
+      stack.push(i);
+    } else if (input[i] === '}') {
+      if (stack.length > 0) {
+        stack.pop();
+        if (stack.length === 0) {
+          lastBalancedIndex = i; // Update the last balanced index when the stack is empty
+        }
+      } else {
+        // Found an unmatched closing brace
+        return { jsonObj: null, endIndex: -1 };
+      }
+    }
+  }
+
+  // If the stack is empty, it means the brackets are balanced
+  if (stack.length === 0 && lastBalancedIndex !== -1) {
+    const possibleJsonString = input.substring(0, lastBalancedIndex + 1).trim();
+    try {
+      const jsonObject = JSON.parse(possibleJsonString);
+      return { jsonObj: jsonObject, endIndex: lastBalancedIndex };
+    } catch (e) {
+      // Failed to parse JSON, continue to extract using regex
+    }
+  }
+
+  // If the brackets are not balanced or entire input is not a valid JSON object, use regex to extract the latest valid JSON object
+  const pattern = /\{(?:[^{}]|\{[^{}]*\}|[\r\n])*?\}(?!.*\{(?:[^{}]|\{[^{}]*\}|[\r\n])*?\})/g;
+  const matches = input.match(pattern);
+
+  if (matches && matches.length > 0) {
+    const lastMatch = matches[matches.length - 1];
+    const endIndex = input.lastIndexOf(lastMatch) + lastMatch.length - 1;
+    try {
+      const jsonObject = JSON.parse(lastMatch);
+      return { jsonObj: jsonObject, endIndex: endIndex };
+    } catch (e) {
+      // Failed to parse JSON, return null
+    }
+  }
+
+  return { jsonObj: null, endIndex: -1 };
 }
 
 export async function logFoodItemStream(
@@ -219,13 +284,17 @@ export async function logFoodItemStream(
   // Change the model to GPT-4o mini
   let model = "gpt-4o-mini"
 
-  // Use the OpenAI stream processing function
-  const stream = processStreamedLoggedFoodItemsVertex(user, {
+  // Use the Vertex stream processing function
+  const stream = processStreamedLoggedFoodItems(user, {
     prompt: logFoodItemPrompts['gpt-4o-mini'].prompt.replace("INPUT_HERE", user_message.content),
     systemPrompt: logFoodItemPrompts['gpt-4o-mini'].systemPrompt,
-    temperature: 0,
+    response_format: {
+      type: "json_schema",
+      json_schema: logFoodItemPrompts['gpt-4o-mini'].response_schema
+        },
+    temperature: 0.002,
     model: model,
-    max_tokens: 4096
+    max_tokens: 8192
   })
 
 
@@ -250,8 +319,6 @@ export async function logFoodItemStream(
 
 
   for await (const chunk of stream) {
-    // console.log("chunk #", i, chunk)
-    // i++;
 
     if (chunk.hasOwnProperty("full_single_food_database_search_name")) {
       const elapsedTime = new Date().getTime() - currentDateTime.getTime()
@@ -270,7 +337,6 @@ export async function logFoodItemStream(
       const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
       loggingTasks.push(loggingTask)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
-      console.log(chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
@@ -290,7 +356,9 @@ export async function logFoodItemStream(
 async function testChatCompletionJsonStream() {
   const supabase = createAdminSupabase()
   const user = await getUserByEmail("seb.grubb@gmail.com")
-  const userMessage = "one cliff oat chocolate chip bar (230 cals) with starbucks tukrey bacon sandwich with cup of greek yogurt and a banana with 300 cals of chicken breast and a 200 cals smoothie with 20g protein"
+  const userMessage = "five apples plus an apple pie (500 cals), a banana, a cup of coffee with annie chungs vegetable and chicken potstickers (130 cals)"
+
+  // const userMessage = "one cliff oat chocolate chip bar (230 cals) with starbucks tukrey bacon sandwich with cup of greek yogurt and a banana with 300 cals of chicken breast and a 200 cals smoothie with 20g protein"
   // Make sure to include all required fields in your insert object
   const insertObject = {
     content: userMessage,
@@ -319,3 +387,5 @@ async function testFoodLoggingStream() {
 }
 
 // testChatCompletionJsonStream()
+
+

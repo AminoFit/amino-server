@@ -5,6 +5,7 @@ import * as math from "mathjs"
 import { Tables } from "types/supabase"
 import { encode } from "gpt-tokenizer"
 import { getPromptOutputFromCache, writePromptOutputToCache } from "@/languageModelProviders/promptCaching/redisPromptCache"
+import { ResponseFormatJSONObject, ResponseFormatJSONSchema, ResponseFormatText } from "openai/resources"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -19,7 +20,7 @@ interface ChatCompletionOptions {
   function_call?: string
   prompt?: string
   stop?: string
-  response_format?: "text" | "json_object"
+  response_format?: ResponseFormatText | ResponseFormatJSONObject | ResponseFormatJSONSchema
 }
 
 export async function chatCompletion(
@@ -30,7 +31,7 @@ export async function chatCompletion(
     temperature = 0.5,
     max_tokens = 2048,
     function_call = "auto",
-    response_format = "text",
+    response_format ={ type: "text" },
     ...options
   }: ChatCompletionOptions,
   user: Tables<"User">
@@ -47,7 +48,7 @@ export async function chatCompletion(
       modelName: model,
       temperature,
       max_tokens,
-      response_format: response_format
+      response_format: typeof response_format === 'string' ? response_format : response_format.type
     })
     if (cachedResponse) {
       return {content: cachedResponse} as OpenAI.Chat.ChatCompletionMessage
@@ -61,7 +62,7 @@ export async function chatCompletion(
       max_tokens,
       temperature,
       functions,
-      response_format: { type: response_format }
+      response_format: response_format 
     })
 
     if (!result.choices[0].message) {
@@ -82,7 +83,7 @@ export async function chatCompletion(
           modelName: model,
           temperature,
           max_tokens,
-          response_format: response_format
+          response_format: typeof response_format === 'string' ? response_format : response_format.type
         },
         result.choices[0].message.content
       );
@@ -341,7 +342,7 @@ export interface ChatCompletionStreamOptions {
   max_tokens?: number
   stop?: string
   systemPrompt?: string
-  response_format?: "json_object" | "text"
+  response_format?: ResponseFormatText | ResponseFormatJSONObject | ResponseFormatJSONSchema
   [key: string]: any
 }
 
@@ -353,7 +354,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     temperature = 0,
     max_tokens = 2048,
     stop,
-    response_format = "json_object",
+    response_format = {type: "json_object"},
     systemPrompt = "You are a helpful assistant that only replies in valid JSON.",
     ...otherParams
   } = options
@@ -364,7 +365,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     modelName: model,
     temperature,
     max_tokens,
-    response_format: response_format
+    response_format: response_format.type
   })
 
   if (cachedResult) {
@@ -393,7 +394,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     max_tokens,
     stop,
     ...otherParams,
-    response_format: { type: response_format },
+    response_format: response_format,
     stream: true
   })
 
@@ -406,7 +407,6 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
     }
   }
 
-  console.log("comppleted response", totalResponse)
   // Calculate token count and log usage
   const completionTimeMs = performance.now() - startTime
   const resultTokens = encode(totalResponse).length
@@ -420,7 +420,7 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
       modelName: model,
       temperature,
       max_tokens,
-      response_format: response_format
+      response_format: response_format.type
     },
     totalResponse
   )
@@ -441,13 +441,13 @@ export async function* OpenAiChatCompletionJsonStream(user: Tables<"User">, opti
 }
 
 export interface ChatCompletionVisionStreamOptions {
-  model?: string
-  messages: OpenAI.Chat.ChatCompletionMessageParam[]
-  temperature?: number
-  max_tokens?: number
-  stop?: string
-  response_format?: ChatCompletionCreateParams.ResponseFormat
-  [key: string]: any
+  model?: string;
+  messages: OpenAI.Chat.ChatCompletionMessageParam[];
+  temperature?: number;
+  max_tokens?: number;
+  stop?: string;
+  response_format?: ResponseFormatText | ResponseFormatJSONObject | ResponseFormatJSONSchema
+  [key: string]: any;
 }
 
 export async function* OpenAiVisionChatStream(user: Tables<"User">, options: ChatCompletionVisionStreamOptions) {

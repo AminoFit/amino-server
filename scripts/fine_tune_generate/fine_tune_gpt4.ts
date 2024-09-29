@@ -32,7 +32,7 @@ async function generateSamplePrompt() {
   const temperature = 0.0
   const max_tokens = 2048
   const result = await chatCompletion(
-    { messages, model, temperature, max_tokens, response_format: "json_object" },
+    { messages, model, temperature, max_tokens, response_format: { type: "json_object" } },
     user!
   )
   console.log(result)
