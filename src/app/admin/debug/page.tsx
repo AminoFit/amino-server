@@ -1,15 +1,24 @@
 // src/app/admin/debug/page.tsx
 "use client"
 
-import { useState, useEffect, FormEvent, ReactNode, useMemo, useCallback } from "react"
-import { fetchMessages } from "./actions"
-import { MessageWithSignedUrls, LoggedFoodItemWithDetailsType } from "./actions"
+import { useState, useEffect, FormEvent, ReactNode, useMemo, useCallback, useRef, Fragment } from "react"
+import {
+  fetchMessages,
+  MessageWithSignedUrls,
+  LoggedFoodItemWithDetailsType,
+  MessageSortField,
+  MessageSortDirection,
+  updateMessageDeletedAt,
+  permanentlyDeleteMessage
+} from "./actions"
 import {
   PhotoIcon as PhotoOutlineIcon,
   MicrophoneIcon as MicrophoneOutlineIcon,
   TrashIcon as TrashOutlineIcon,
   ChevronDownIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowsUpDownIcon,
+  FunnelIcon
 } from "@heroicons/react/24/outline"
 import classNames from "classnames"
 import Pagination from "@/components/pagination/pagination"
@@ -49,8 +58,38 @@ const MessagesOverview = () => {
   const [expandedFoodItems, setExpandedFoodItems] = useState<Record<number, boolean>>({})
   const [progress, setProgress] = useState(0)
   const [showProgress, setShowProgress] = useState(false)
+  const [sortBy, setSortBy] = useState<MessageSortField>("createdAt")
+  const [sortDirection, setSortDirection] = useState<MessageSortDirection>("desc")
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false)
+  const [actionTarget, setActionTarget] = useState<MessageWithSignedUrls | null>(null)
+  const [actionMode, setActionMode] = useState<"soft" | "hard" | "restore">("soft")
+  const [customDeletedAt, setCustomDeletedAt] = useState("")
+  const [mutationFeedback, setMutationFeedback] = useState<
+    { type: "success" | "error"; message: string } | null
+  >(null)
+  const [isMutating, setIsMutating] = useState(false)
 
   const router = useRouter()
+  const isMountedRef = useRef(true)
+  const requestIdRef = useRef(0)
+
+  const sortOptions: { label: string; value: MessageSortField }[] = [
+    { label: "Created time", value: "createdAt" },
+    { label: "Resolved time", value: "resolvedAt" },
+    { label: "Food logged time", value: "consumedOn" }
+  ]
+
+  const toDateTimeLocalValue = (iso?: string | null) => {
+    if (!iso) {
+      const now = new Date()
+      return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, "0")}-${`${now.getDate()}`.padStart(2, "0")}T${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`
+    }
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) {
+      return ""
+    }
+    return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}T${`${date.getHours()}`.padStart(2, "0")}:${`${date.getMinutes()}`.padStart(2, "0")}`
+  }
 
   const toggleExpand = (itemId: number) => {
     setExpandedFoodItems((prevState) => ({
@@ -64,6 +103,7 @@ const MessagesOverview = () => {
     const trimmedUserId = userIdInput.trim()
     setUserIdFilter(trimmedUserId)
     setCurrentPage(1) // Reset to first page on filter apply
+    setIsFilterDrawerOpen(false)
   }
 
   const handleClear = () => {
@@ -73,6 +113,7 @@ const MessagesOverview = () => {
     setHasImage("all")
     setMessageStatus("all")
     setCurrentPage(1) // Reset to first page on filter clear
+    setIsFilterDrawerOpen(false)
   }
 
   const handleSelectUser = (id?: string | null) => {
@@ -145,55 +186,242 @@ const MessagesOverview = () => {
 
   const hasActiveFilters = activeFilters.length > 0
 
-  useEffect(() => {
-    let isCancelled = false
+  const renderFilterPanel = (variant: "sidebar" | "drawer") => (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-slate-900">Filters</h2>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-slate-800"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+      <form className="space-y-5" onSubmit={handleApply}>
+        <div className="space-y-2">
+          <label htmlFor={`show-deleted-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Show Deleted
+          </label>
+          <select
+            id={`show-deleted-${variant}`}
+            name="show-deleted"
+            value={showDeleted}
+            onChange={(e) => {
+              setShowDeleted(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="all">All messages</option>
+            <option value="deleted">Deleted only</option>
+            <option value="not-deleted">Not deleted</option>
+          </select>
+        </div>
 
-    const loadMessages = async () => {
-      setLoading(true)
-      setError(null)
-      setUnauthorized(false)
-      setShowProgress(true)
-      setProgress((prev) => (prev > 15 ? prev : 15))
+        <div className="space-y-2">
+          <label htmlFor={`user-id-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            User ID
+          </label>
+          <input
+            type="text"
+            id={`user-id-${variant}`}
+            name="user-id"
+            value={userIdInput}
+            onChange={(e) => setUserIdInput(e.target.value)}
+            placeholder="Search by user id"
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
 
-      const response = await fetchMessages(
-        currentPage,
-        ITEMS_PER_PAGE,
-        showDeleted,
-        userIdFilter.trim(),
-        hasImage,
-        messageStatus
-      )
+        <div className="space-y-2">
+          <label htmlFor={`has-image-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Has Image
+          </label>
+          <select
+            id={`has-image-${variant}`}
+            name="has-image"
+            value={hasImage}
+            onChange={(e) => {
+              setHasImage(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="all">All messages</option>
+            <option value="has-image">Has image</option>
+            <option value="no-image">No image</option>
+          </select>
+        </div>
 
-      if (isCancelled) return
+        <div className="space-y-2">
+          <label htmlFor={`message-status-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Message Status
+          </label>
+          <select
+            id={`message-status-${variant}`}
+            name="message-status"
+            value={messageStatus}
+            onChange={(e) => {
+              setMessageStatus(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="all">All statuses</option>
+            <option value="RECEIVED">Received</option>
+            <option value="FAILED">Failed</option>
+            <option value="PROCESSING">Processing</option>
+            <option value="RESOLVED">Resolved</option>
+          </select>
+        </div>
 
-      if (response.error) {
-        if (response.error.includes("Unauthorized")) {
-          setUnauthorized(true)
-        } else {
-          setError(response.error)
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="submit"
+            className="flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Apply filters
+          </button>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+
+  const handleSortByChange = (value: MessageSortField) => {
+    setSortBy(value)
+    setCurrentPage(1)
+  }
+
+  const toggleSortDirection = () => {
+    setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+    setCurrentPage(1)
+  }
+
+  const openMessageActions = (message: MessageWithSignedUrls) => {
+    setIsMutating(false)
+    setActionTarget(message)
+    setActionMode(message.deletedAt ? "restore" : "soft")
+    setCustomDeletedAt(toDateTimeLocalValue(message.deletedAt))
+  }
+
+  const closeMessageActions = () => {
+    setActionTarget(null)
+    setActionMode("soft")
+    setCustomDeletedAt("")
+    setIsMutating(false)
+  }
+
+  const handleSubmitMessageAction = async () => {
+    if (!actionTarget?.id) return
+
+    const targetId = actionTarget.id
+    setIsMutating(true)
+
+    try {
+      if (actionMode === "hard") {
+        const result = await permanentlyDeleteMessage(targetId)
+        if (result.error) {
+          throw new Error(result.error)
         }
-        setLoading(false)
-        return
+        setMutationFeedback({ type: "success", message: `Message ${targetId} permanently deleted.` })
+      } else {
+        let deletedAt: string | null = null
+        if (actionMode === "soft") {
+          const timestamp = customDeletedAt || toDateTimeLocalValue()
+          const parsed = new Date(timestamp)
+          if (Number.isNaN(parsed.getTime())) {
+            throw new Error("Please provide a valid deletion timestamp.")
+          }
+          deletedAt = parsed.toISOString()
+        }
+
+        const result = await updateMessageDeletedAt(targetId, deletedAt)
+        if (result.error) {
+          throw new Error(result.error)
+        }
+
+        const successMessage =
+          actionMode === "restore"
+            ? `Message ${targetId} restored.`
+            : `Message ${targetId} marked as deleted${deletedAt ? " with updated timestamp" : ""}.`
+        setMutationFeedback({ type: "success", message: successMessage })
       }
 
-      if (!response.messages || !response.loggedFoodItemsByMessage) {
-        setError("Invalid response")
-        setLoading(false)
-        return
-      }
+      closeMessageActions()
+      await fetchData()
+    } catch (error) {
+      setMutationFeedback({
+        type: "error",
+        message: error instanceof Error ? error.message : "Unable to update message."
+      })
+    } finally {
+      setIsMutating(false)
+    }
+  }
 
-      setMessages(response.messages)
-      setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
-      setTotalMessages(response.totalMessages || 0)
+  const fetchData = useCallback(async () => {
+    const requestId = ++requestIdRef.current
+
+    setLoading(true)
+    setError(null)
+    setUnauthorized(false)
+    setShowProgress(true)
+    setProgress((prev) => (prev > 15 ? prev : 15))
+
+    const response = await fetchMessages(
+      currentPage,
+      ITEMS_PER_PAGE,
+      showDeleted,
+      userIdFilter.trim(),
+      hasImage,
+      messageStatus,
+      sortBy,
+      sortDirection
+    )
+
+    if (!isMountedRef.current || requestId !== requestIdRef.current) {
+      return
+    }
+
+    if (response.error) {
+      if (response.error.includes("Unauthorized")) {
+        setUnauthorized(true)
+      } else {
+        setError(response.error)
+      }
       setLoading(false)
+      return
     }
 
-    loadMessages()
+    if (!response.messages || !response.loggedFoodItemsByMessage) {
+      setError("Invalid response")
+      setLoading(false)
+      return
+    }
 
+    setMessages(response.messages)
+    setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
+    setTotalMessages(response.totalMessages || 0)
+    setLoading(false)
+  }, [currentPage, showDeleted, userIdFilter, hasImage, messageStatus, sortBy, sortDirection])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    fetchData()
     return () => {
-      isCancelled = true
+      isMountedRef.current = false
     }
-  }, [currentPage, showDeleted, userIdFilter, hasImage, messageStatus])
+  }, [fetchData])
 
   useEffect(() => {
     if (!loading) return
@@ -223,6 +451,13 @@ const MessagesOverview = () => {
 
     return () => clearTimeout(timeout)
   }, [loading, showProgress])
+
+  useEffect(() => {
+    if (!mutationFeedback) return
+
+    const timeout = setTimeout(() => setMutationFeedback(null), 5000)
+    return () => clearTimeout(timeout)
+  }, [mutationFeedback])
 
   if (unauthorized) {
     return (
@@ -254,7 +489,8 @@ const MessagesOverview = () => {
     )
   }
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-16">
+    <Fragment>
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-16">
       {showProgress && (
         <div className="fixed inset-x-0 top-0 z-50 h-1 bg-slate-200/60 backdrop-blur">
           <div
@@ -264,117 +500,32 @@ const MessagesOverview = () => {
         </div>
       )}
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:px-8 lg:py-10">
-        <aside className="lg:w-72">
-          <div className="sticky top-24 space-y-5 rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-slate-900">Filters</h2>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-slate-800"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-            <form className="space-y-5" onSubmit={handleApply}>
-              <div className="space-y-2">
-                <label htmlFor="show-deleted" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Show Deleted
-                </label>
-                <select
-                  id="show-deleted"
-                  name="show-deleted"
-                  value={showDeleted}
-                  onChange={(e) => {
-                    setShowDeleted(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="all">All messages</option>
-                  <option value="deleted">Deleted only</option>
-                  <option value="not-deleted">Not deleted</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="user-id" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  User ID
-                </label>
-                <input
-                  type="text"
-                  id="user-id"
-                  name="user-id"
-                  value={userIdInput}
-                  onChange={(e) => setUserIdInput(e.target.value)}
-                  placeholder="Search by user id"
-                  className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="has-image" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Has Image
-                </label>
-                <select
-                  id="has-image"
-                  name="has-image"
-                  value={hasImage}
-                  onChange={(e) => {
-                    setHasImage(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="all">All messages</option>
-                  <option value="has-image">Has image</option>
-                  <option value="no-image">No image</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="message-status" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Message Status
-                </label>
-                <select
-                  id="message-status"
-                  name="message-status"
-                  value={messageStatus}
-                  onChange={(e) => {
-                    setMessageStatus(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="all">All statuses</option>
-                  <option value="RECEIVED">Received</option>
-                  <option value="FAILED">Failed</option>
-                  <option value="PROCESSING">Processing</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                >
-                  Apply filters
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
-                >
-                  Reset
-                </button>
-              </div>
-            </form>
+        <aside className="hidden w-full lg:block lg:w-72">
+          <div className="sticky top-24 rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+            {renderFilterPanel("sidebar")}
           </div>
         </aside>
         <section className="flex-1 space-y-6">
+          {mutationFeedback && (
+            <div
+              className={classNames(
+                "flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm shadow-sm",
+                mutationFeedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-800"
+              )}
+            >
+              <span>{mutationFeedback.message}</span>
+              <button
+                type="button"
+                onClick={() => setMutationFeedback(null)}
+                className="rounded-full border border-transparent p-1 text-current transition hover:border-current/40"
+              >
+                <span className="sr-only">Dismiss notification</span>
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
             <div className="flex flex-wrap items-center gap-3">
               <div>
@@ -384,6 +535,14 @@ const MessagesOverview = () => {
                 </p>
               </div>
               <div className="ml-auto flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDrawerOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 lg:hidden"
+                >
+                  <FunnelIcon className="h-4 w-4" />
+                  Filters
+                </button>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                   {totalMessages} total
                 </span>
@@ -391,6 +550,33 @@ const MessagesOverview = () => {
                   Page {currentPage}
                 </span>
               </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label htmlFor="sort-by" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Sort by
+                </label>
+                <select
+                  id="sort-by"
+                  value={sortBy}
+                  onChange={(e) => handleSortByChange(e.target.value as MessageSortField)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={toggleSortDirection}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+              >
+                <ArrowsUpDownIcon className="h-4 w-4" />
+                {sortDirection === "asc" ? "Oldest first" : "Newest first"}
+              </button>
             </div>
             <div className="mt-4">
               {hasActiveFilters ? (
@@ -559,7 +745,14 @@ const MessagesOverview = () => {
                               <time className="font-medium text-slate-700">{resolvedAt}</time>
                             </div>
                           </div>
-                          <div className="ml-auto flex items-center gap-2">
+                          <div className="ml-auto flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openMessageActions(message)}
+                              className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50"
+                            >
+                              Manage
+                            </button>
                             <span
                               className={classNames(
                                 "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide",
@@ -737,7 +930,159 @@ const MessagesOverview = () => {
           </div>
         </section>
       </div>
-    </div>
+      </div>
+      {isFilterDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 px-4 pb-8 backdrop-blur-sm sm:items-center">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="Close filters"
+            onClick={() => setIsFilterDrawerOpen(false)}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <button
+              type="button"
+              onClick={() => setIsFilterDrawerOpen(false)}
+              className="absolute right-4 top-4 rounded-full border border-transparent p-1 text-slate-400 transition hover:border-slate-200 hover:text-slate-600"
+            >
+              <span className="sr-only">Close filters</span>
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+            <div className="max-h-[70vh] overflow-y-auto pr-1">{renderFilterPanel("drawer")}</div>
+          </div>
+        </div>
+      )}
+      {actionTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 px-4 pb-8 backdrop-blur-sm sm:items-center">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="Dismiss message actions"
+            onClick={() => {
+              if (!isMutating) {
+                closeMessageActions()
+              }
+            }}
+          />
+          <div className="relative w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Manage message</h2>
+                <p className="text-sm text-slate-500">Choose how you want to handle this message. Soft delete keeps the record but updates the timestamp.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isMutating) {
+                    closeMessageActions()
+                  }
+                }}
+                className="rounded-full border border-transparent p-1 text-slate-400 transition hover:border-slate-200 hover:text-slate-600"
+                disabled={isMutating}
+              >
+                <span className="sr-only">Close manage message dialog</span>
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+                <p>
+                  <span className="font-semibold text-slate-900">Message ID:</span> {actionTarget.id}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Current deleted at:</span>{" "}
+                  {actionTarget.deletedAt ? new Date(actionTarget.deletedAt).toLocaleString() : "Not deleted"}
+                </p>
+              </div>
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-slate-800">Action</legend>
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-indigo-200">
+                  <input
+                    type="radio"
+                    name="message-action"
+                    value="soft"
+                    checked={actionMode === "soft"}
+                    onChange={() => {
+                      setActionMode("soft")
+                      setCustomDeletedAt((prev) => prev || toDateTimeLocalValue(actionTarget?.deletedAt))
+                    }}
+                    className="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <p className="font-medium text-slate-900">Soft delete</p>
+                    <p className="text-xs text-slate-500">Keep the message but set a deleted timestamp.</p>
+                  </div>
+                </label>
+                {actionMode === "soft" && (
+                  <div className="ml-7 space-y-2">
+                    <label htmlFor="deleted-at-input" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Deletion timestamp
+                    </label>
+                    <input
+                      id="deleted-at-input"
+                      type="datetime-local"
+                      value={customDeletedAt}
+                      onChange={(e) => setCustomDeletedAt(e.target.value)}
+                      className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                )}
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-indigo-200">
+                  <input
+                    type="radio"
+                    name="message-action"
+                    value="restore"
+                    checked={actionMode === "restore"}
+                    onChange={() => setActionMode("restore")}
+                    className="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <p className="font-medium text-slate-900">Restore</p>
+                    <p className="text-xs text-slate-500">Clear the deleted timestamp and bring the message back.</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm text-rose-600 transition hover:border-rose-300">
+                  <input
+                    type="radio"
+                    name="message-action"
+                    value="hard"
+                    checked={actionMode === "hard"}
+                    onChange={() => setActionMode("hard")}
+                    className="h-4 w-4 border-rose-300 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div>
+                    <p className="font-medium text-rose-700">Hard delete</p>
+                    <p className="text-xs text-rose-500">Remove the message permanently from Supabase.</p>
+                  </div>
+                </label>
+              </fieldset>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isMutating) {
+                      closeMessageActions()
+                    }
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800 disabled:opacity-60"
+                  disabled={isMutating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitMessageAction}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+                  disabled={isMutating}
+                >
+                  {isMutating ? "Saving..." : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Fragment>
   )
 }
 

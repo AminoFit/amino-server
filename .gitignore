@@ -40,3 +40,6 @@ next-env.d.ts
 
 #api counter
 api_request_count.cfg
+
+# docs
+/docs/

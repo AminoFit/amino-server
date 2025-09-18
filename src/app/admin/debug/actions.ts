@@ -28,6 +28,9 @@ export interface MessageWithSignedUrls extends MessageType {
   imageUrls: string[]
 }
 
+export type MessageSortField = "createdAt" | "resolvedAt" | "consumedOn"
+export type MessageSortDirection = "asc" | "desc"
+
 const allowedUserIds = [
   "a1ca16b9-333f-40bd-8f43-88977cc9a371",
   "2cf908ed-90a2-4ecd-a5f3-14b3a28fb05b",
@@ -42,7 +45,9 @@ export async function fetchMessages(
   showDeleted: string,
   userId: string,
   hasImage: string,
-  messageStatus: string
+  messageStatus: string,
+  sortBy: MessageSortField = "createdAt",
+  sortDirection: MessageSortDirection = "desc"
 ) {
   const supabase = await createAdminSupabase()
   const anonSupabase = createClient()
@@ -61,6 +66,15 @@ export async function fetchMessages(
 
   const from = (page - 1) * itemsPerPage
   const to = from + itemsPerPage - 1
+
+  const sortColumn = ((): MessageSortField => {
+    if (sortBy === "resolvedAt" || sortBy === "consumedOn") {
+      return sortBy
+    }
+    return "createdAt"
+  })()
+
+  const isAscending = sortDirection === "asc"
 
   let query = supabase
     .from("Message")
@@ -86,7 +100,8 @@ export async function fetchMessages(
   `,
       { count: "exact" }
     )
-    .order("createdAt", { ascending: false }) // Sort by createdAt in descending order
+    .order(sortColumn, { ascending: isAscending, nullsFirst: isAscending })
+    .order("createdAt", { ascending: false })
     .range(from, to)
 
   if (showDeleted !== "all") {
@@ -263,4 +278,34 @@ export async function fetchMessages(
     loggedFoodItemsByMessage, // This is now a Record as expected by your component state
     totalMessages
   }
+}
+
+export async function updateMessageDeletedAt(messageId: number, deletedAt: string | null) {
+  const supabase = await createAdminSupabase()
+
+  const { error } = await supabase
+    .from("Message")
+    .update({ deletedAt })
+    .eq("id", messageId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function permanentlyDeleteMessage(messageId: number) {
+  const supabase = await createAdminSupabase()
+
+  const { error } = await supabase
+    .from("Message")
+    .delete()
+    .eq("id", messageId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
 }
