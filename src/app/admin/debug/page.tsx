@@ -70,6 +70,10 @@ const MessagesOverview = () => {
     { type: "success" | "error"; message: string } | null
   >(null)
   const [isMutating, setIsMutating] = useState(false)
+  const [dateFieldFilter, setDateFieldFilter] = useState<MessageSortField>("createdAt")
+  const [dateFieldInput, setDateFieldInput] = useState<MessageSortField>("createdAt")
+  const [dateValueFilter, setDateValueFilter] = useState("")
+  const [dateValueInput, setDateValueInput] = useState("")
 
   const router = useRouter()
   const isMountedRef = useRef(true)
@@ -105,6 +109,8 @@ const MessagesOverview = () => {
     const trimmedUserId = userIdInput.trim()
     setUserIdFilter(trimmedUserId)
     setSearchTermFilter(searchTermInput.trim())
+    setDateFieldFilter(dateValueInput ? dateFieldInput : "createdAt")
+    setDateValueFilter(dateValueInput)
     setCurrentPage(1) // Reset to first page on filter apply
     setIsFilterDrawerOpen(false)
   }
@@ -117,6 +123,10 @@ const MessagesOverview = () => {
     setMessageStatus("all")
     setSearchTermInput("")
     setSearchTermFilter("")
+    setDateFieldInput("createdAt")
+    setDateFieldFilter("createdAt")
+    setDateValueInput("")
+    setDateValueFilter("")
     setCurrentPage(1) // Reset to first page on filter clear
     setIsFilterDrawerOpen(false)
   }
@@ -155,6 +165,14 @@ const MessagesOverview = () => {
   const clearSearchTerm = useCallback(() => {
     setSearchTermInput("")
     setSearchTermFilter("")
+    setCurrentPage(1)
+  }, [])
+
+  const clearDateFilter = useCallback(() => {
+    setDateValueInput("")
+    setDateFieldInput("createdAt")
+    setDateFieldFilter("createdAt")
+    setDateValueFilter("")
     setCurrentPage(1)
   }, [])
 
@@ -197,6 +215,18 @@ const MessagesOverview = () => {
         })
       }
 
+      if (dateValueFilter) {
+        const labelMap: Record<MessageSortField, string> = {
+          createdAt: "Created",
+          resolvedAt: "Resolved",
+          consumedOn: "Logged"
+        }
+        filters.push({
+          label: `${labelMap[dateFieldFilter]} on ${dateValueFilter}`,
+          onRemove: clearDateFilter
+        })
+      }
+
       return filters
     },
     [
@@ -205,11 +235,14 @@ const MessagesOverview = () => {
       hasImage,
       messageStatus,
       searchTermFilter,
+      dateFieldFilter,
+      dateValueFilter,
       clearShowDeleted,
       clearUserId,
       clearHasImage,
       clearMessageStatus,
-      clearSearchTerm
+      clearSearchTerm,
+      clearDateFilter
     ]
   )
 
@@ -241,6 +274,39 @@ const MessagesOverview = () => {
             value={searchTermInput}
             onChange={(e) => setSearchTermInput(e.target.value)}
             placeholder="Search message content"
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor={`date-field-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Date Field
+          </label>
+          <select
+            id={`date-field-${variant}`}
+            name="date-field"
+            value={dateFieldInput}
+            onChange={(e) => setDateFieldInput(e.target.value as MessageSortField)}
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor={`date-value-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Date (UTC)
+          </label>
+          <input
+            type="date"
+            id={`date-value-${variant}`}
+            name="date-value"
+            value={dateValueInput}
+            onChange={(e) => setDateValueInput(e.target.value)}
             className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
         </div>
@@ -431,7 +497,9 @@ const MessagesOverview = () => {
       messageStatus,
       sortBy,
       sortDirection,
-      searchTermFilter
+      searchTermFilter,
+      dateFieldFilter,
+      dateValueFilter
     )
 
     if (!isMountedRef.current || requestId !== requestIdRef.current) {
@@ -458,7 +526,18 @@ const MessagesOverview = () => {
     setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
     setTotalMessages(response.totalMessages || 0)
     setLoading(false)
-  }, [currentPage, showDeleted, userIdFilter, hasImage, messageStatus, sortBy, sortDirection, searchTermFilter])
+  }, [
+    currentPage,
+    showDeleted,
+    userIdFilter,
+    hasImage,
+    messageStatus,
+    sortBy,
+    sortDirection,
+    searchTermFilter,
+    dateFieldFilter,
+    dateValueFilter
+  ])
 
   useEffect(() => {
     isMountedRef.current = true

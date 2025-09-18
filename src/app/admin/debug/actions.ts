@@ -48,7 +48,9 @@ export async function fetchMessages(
   messageStatus: string,
   sortBy: MessageSortField = "createdAt",
   sortDirection: MessageSortDirection = "desc",
-  searchTerm = ""
+  searchTerm = "",
+  dateField?: MessageSortField,
+  dateValue?: string
 ) {
   const supabase = await createAdminSupabase()
   const anonSupabase = createClient()
@@ -127,6 +129,19 @@ export async function fetchMessages(
   if (searchTerm.trim()) {
     const term = `%${searchTerm.trim()}%`
     query = query.or(`content.ilike.${term},local_id.ilike.${term}`)
+  }
+
+  if (dateValue) {
+    const parsedDate = new Date(dateValue)
+    if (!Number.isNaN(parsedDate.getTime())) {
+      const startOfDay = new Date(parsedDate)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(startOfDay)
+      endOfDay.setDate(endOfDay.getDate() + 1)
+
+      const column = dateField ?? "createdAt"
+      query = query.gte(column, startOfDay.toISOString()).lt(column, endOfDay.toISOString())
+    }
   }
 
   const { data: messages, error: messagesError, count: totalMessages } = await query
