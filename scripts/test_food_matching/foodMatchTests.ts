@@ -6,7 +6,7 @@ import { Tables } from "types/supabase"
 import { getUserByEmail } from "@/foodMessageProcessing/common/debugHelper"
 import { getBestFoodEmbeddingMatches } from "@/foodMessageProcessing/getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
 import { getFoodItemFromDbOrExternal } from "@/foodMessageProcessing/findBestLoggedFoodItemMatchToFood"
-import { findBestServingMatchChatLlama } from "@/foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem"
+import { findBestServingMatchChatGemini } from "@/foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { std, mean, quantileSeq } from 'mathjs';
 import { findBestServingMatchChat } from "@/foodMessageProcessing/findBestServingMatchChat"
 import { findBestFoodMatchtoLocalDb } from "@/foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbOpenAI"
@@ -60,7 +60,7 @@ async function testMatching(foodItems: FoodItemToLog[]) {
 async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
-  let timesLlama = [];
+  let timesGemini = [];
   let timesGPT = [];
   let differences = [];
 
@@ -87,39 +87,39 @@ async function testMatchingAndServingSize(foodItems: FoodItemToLog[]) {
     }
     const foodItemLlama = await getFoodItemFromDbOrExternal(llamaMatchResult[0]!, user, 1, item);
     
-    const llamaMatchStart = performance.now();
-    const servingMatchResultLlama = await findBestServingMatchChatLlama(item, foodItemLlama, user);
-    const llamaMatchEnd = performance.now();
-    timesLlama.push(llamaMatchEnd - llamaMatchStart);
+    const geminiMatchStart = performance.now();
+    const servingMatchResultGemini = await findBestServingMatchChatGemini(item, foodItemLlama, user);
+    const geminiMatchEnd = performance.now();
+    timesGemini.push(geminiMatchEnd - geminiMatchStart);
 
     const gptMatchStart = performance.now();
     const servingMatchResultGPT = await findBestServingMatchChat(item, foodItemLlama, user);
     const gptMatchEnd = performance.now();
     timesGPT.push(gptMatchEnd - gptMatchStart);
 
-    if (servingMatchResultLlama && servingMatchResultGPT && servingMatchResultLlama.serving && servingMatchResultGPT.serving && servingMatchResultLlama.serving.total_serving_g_or_ml !== servingMatchResultGPT.serving.total_serving_g_or_ml) {
+    if (servingMatchResultGemini && servingMatchResultGPT && servingMatchResultGemini.serving && servingMatchResultGPT.serving && servingMatchResultGemini.serving.total_serving_g_or_ml !== servingMatchResultGPT.serving.total_serving_g_or_ml) {
       differences.push({
         item: name,
-        llama: servingMatchResultLlama.serving.total_serving_g_or_ml,
+        gemini: servingMatchResultGemini.serving.total_serving_g_or_ml,
         gpt: servingMatchResultGPT.serving.total_serving_g_or_ml
       });
       console.log("the two results are different")
     } else {
       console.log("The two results are the same");
-      console.log(servingMatchResultLlama);
+      console.log(servingMatchResultGemini);
     }
   }
 
   console.log("Time Analysis:");
-  console.log(`Median time Llama: ${quantileSeq(timesLlama, 0.5)} ms`);
-  console.log(`Percentiles for Llama: 5th: ${quantileSeq(timesLlama, 0.05)}, 25th: ${quantileSeq(timesLlama, 0.25)}, 75th: ${quantileSeq(timesLlama, 0.75)}, 95th: ${quantileSeq(timesLlama, 0.95)} ms`);
+  console.log(`Median time Gemini: ${quantileSeq(timesGemini, 0.5)} ms`);
+  console.log(`Percentiles for Gemini: 5th: ${quantileSeq(timesGemini, 0.05)}, 25th: ${quantileSeq(timesGemini, 0.25)}, 75th: ${quantileSeq(timesGemini, 0.75)}, 95th: ${quantileSeq(timesGemini, 0.95)} ms`);
   console.log(`Median time GPT: ${quantileSeq(timesGPT, 0.5)} ms`);
   console.log(`Percentiles for GPT: 5th: ${quantileSeq(timesGPT, 0.05)}, 25th: ${quantileSeq(timesGPT, 0.25)}, 75th: ${quantileSeq(timesGPT, 0.75)}, 95th: ${quantileSeq(timesGPT, 0.95)} ms`);
 
   if (differences.length > 0) {
     console.log("Differences in serving sizes:");
     differences.forEach(diff => {
-      console.log(`Item: ${diff.item}, Llama: ${diff.llama}, GPT: ${diff.gpt}`);
+      console.log(`Item: ${diff.item}, Gemini: ${diff.gemini}, GPT: ${diff.gpt}`);
     });
   }
 }

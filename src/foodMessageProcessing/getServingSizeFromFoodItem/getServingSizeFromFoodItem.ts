@@ -2,11 +2,10 @@ import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import OpenAI from "openai"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "../common/extractJSON"
 import { getUserByEmail } from "../common/debugHelper"
-import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
+import { vertexChatCompletion } from "@/languageModelProviders/vertex/chatCompletionVertex"
 
 const serving_assignement_prompt = `<user_message>
 USER_SERVING_INPUT
@@ -158,7 +157,11 @@ Output:
 }
 </output_format>`
 
-let systemPrompt = `You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON.`
+const systemPrompt = `You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON.`
+const SERVING_MATCH_MODEL = process.env.VERTEX_SERVING_MATCH_MODEL ?? "gemini-2.5-flash"
+const DEFAULT_MAX_TOKENS = 1256
+const MIN_VALID_SERVING_GRAMS = 1
+const SERVING_MATCH_TEMPERATURES = [0, 0.1, 0.2]
 interface ConversionResult {
   simplifiedData: any // Adjust this type according to your needs
   idMapping: Record<number, number>
@@ -253,32 +256,37 @@ function convertToServing(
   return food_item_to_log
 }
 
-async function getResponseWithRetry(
-  messages: OpenAI.Chat.ChatCompletionMessageParam[],
-  model: string,
-  backup_model: string,
-  temperature: number,
-  max_tokens: number,
-  user: Tables<"User">
-) {
-  let response = await FireworksChatCompletion(user, {
-    messages,
-    model,
-    temperature,
-    max_tokens
-  })
-  if (!response || extractAndParseLastJSON(response) === null) {
-    response = await FireworksChatCompletion(user, {
-      messages,
-      model: backup_model,
-      temperature,
-      max_tokens
-    })
-  }
-  return response
+interface ServingMatchRequestOptions {
+  temperature?: number
+  maxTokens?: number
 }
 
-export async function findBestServingMatchChatLlama(
+async function requestServingMatchCompletion(
+  user: Tables<"User">,
+  prompt: string,
+  { temperature = 0, maxTokens = DEFAULT_MAX_TOKENS }: ServingMatchRequestOptions = {}
+) {
+  try {
+    const response = await vertexChatCompletion(
+      {
+        model: SERVING_MATCH_MODEL,
+        systemPrompt,
+        userMessage: prompt,
+        temperature,
+        max_tokens: maxTokens,
+        response_format: "json_object"
+      },
+      user
+    )
+
+    return response?.trim()
+  } catch (error) {
+    console.error("Error requesting serving match completion from Vertex:", error)
+    throw error
+  }
+}
+
+export async function findBestServingMatchChatGemini(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
@@ -288,37 +296,51 @@ export async function findBestServingMatchChatLlama(
   const user_serving_input = food_item_to_log.full_item_user_message_including_serving +
   (food_item_to_log.nutritional_information?.kcal ? ` with target calories ${food_item_to_log.nutritional_information.kcal}` : '');
 
-  let serving_prompt = serving_assignement_prompt
+  const serving_prompt = serving_assignement_prompt
     .replace("USER_SERVING_INPUT", user_serving_input)
     .replace("FOOD_INFO_DETAILS", JSON.stringify(simplifiedData.food_info))
     .replace("FOOD_SERVING_DETAILS", JSON.stringify(simplifiedData.food_serving_info))
 
-  let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: serving_prompt }
-  ]
+  let updatedFoodItem = food_item_to_log
 
-  // throw new Error("stop")
-  let model = "accounts/fireworks/models/llama-v3-70b-instruct"
-  let backup_model = "accounts/fireworks/models/llama-v3-70b-instruct"
-  let max_tokens = 1256
-  let temperature = 0.0
+  for (const temperature of SERVING_MATCH_TEMPERATURES) {
+    let response: string | undefined | null
 
-  let response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
+    try {
+      response = await requestServingMatchCompletion(user, serving_prompt, {
+        temperature,
+        maxTokens: DEFAULT_MAX_TOKENS
+      })
+    } catch (error) {
+      // Surface the error on the first attempt; otherwise continue with the next temperature
+      if (temperature === SERVING_MATCH_TEMPERATURES[0]) {
+        throw error
+      }
+      console.warn("Retrying serving match after Vertex error", error)
+      continue
+    }
 
-  food_item_to_log = convertToServing(response!, idMapping, food_item, food_item_to_log)
+    if (!response) {
+      continue
+    }
 
-  if ((food_item_to_log.serving?.total_serving_g_or_ml ?? 0) < 1) {
-    temperature = 0.1
-    response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
-    food_item_to_log = convertToServing(response!, idMapping, food_item, food_item_to_log)
+    if (!extractAndParseLastJSON(response)) {
+      console.warn("Vertex completion did not return valid JSON for serving match. Retrying with next temperature.")
+      continue
+    }
+
+    updatedFoodItem = convertToServing(response, idMapping, food_item, updatedFoodItem)
+
+    if ((updatedFoodItem.serving?.total_serving_g_or_ml ?? 0) >= MIN_VALID_SERVING_GRAMS) {
+      break
+    }
   }
-  if ((food_item_to_log.serving?.total_serving_g_or_ml ?? 0) < 1) {
-    model = "accounts/fireworks/models/llama-v3-70b-instruct"
-    response = await getResponseWithRetry(messages, model, backup_model, temperature, max_tokens, user)
-  }
-  return food_item_to_log
+
+  return updatedFoodItem
 }
+
+export const findBestServingMatchChatVertex = findBestServingMatchChatGemini
+export const findBestServingMatchChatLlama = findBestServingMatchChatGemini
 
 async function getFoodItem(id: number) {
   const supabase = createAdminSupabase()
@@ -336,7 +358,7 @@ async function testServingMatchRequest() {
   const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
 
   const food_serving_request = {
-    brand: "Coca-Cola",
+    brand: "Coca Cola",
     branded: true,
     serving: {
       serving_id: 0,
@@ -360,7 +382,8 @@ async function testServingMatchRequest() {
   // const { bgeBaseEmbedding, ...rest } = food_item
   // console.log(rest)
   // console.log(food_item)
-  const serving_result = await findBestServingMatchChatLlama(food_serving_request, food_item, user)
+  const serving_result = await findBestServingMatchChatGemini(food_serving_request, food_item, user)
+  console.log("serving_result:")
   console.log(serving_result)
   return
 }

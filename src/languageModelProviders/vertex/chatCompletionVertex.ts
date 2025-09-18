@@ -1,6 +1,7 @@
 // src/languageModelProviders/vertex/chatCompletionVertex.ts
 
-import { GoogleGenerativeAI, SafetySetting, HarmCategory, HarmBlockThreshold, Part } from "@google/generative-ai"
+// New SDK
+import { GoogleGenAI, Type } from "@google/genai"
 import { LogOpenAiUsage } from "../openai/utils/openAiHelper"
 import { Tables } from "types/supabase"
 import {
@@ -11,27 +12,87 @@ import { CompletionUsage } from "openai/resources"
 import { encode } from "gpt-tokenizer"
 import { getUserByEmail } from "@/foodMessageProcessing/common/debugHelper"
 
-// Initialize Google Generative AI with your API key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+// ---------------------------
+// Types & Constants
+// ---------------------------
 
-// Define the ChatCompletionOptions interface
+// Keep ChatCompletionOptions shape compatible; add optional 'thinking' knob.
+// thinking:
+//  - omitted or false  => OFF (thinkingBudget: 0)
+//  - true or "auto"    => dynamic (thinkingBudget: -1)
+//  - number            => explicit budget
 export interface ChatCompletionOptions {
-  model: string // Model name is required
-  systemPrompt?: string // Optional system prompt
-  userMessage: string // Single user message
+  model: string
+  systemPrompt?: string
+  userMessage: string
   temperature?: number
   max_tokens?: number
   response_format?: "json_object" | "text"
-  safetySettings?: SafetySetting[] // Optional safety settings
+  safetySettings?: Array<{ category: string; threshold: string }> // accept legacy-like shape
+  // NEW (optional, backwards-compatible):
+  // See mapping above. Off by default.
+  thinking?: boolean | number | "auto"
+  // Pass-through bag for any future config fields
   [key: string]: any
 }
 
+// Initialize Google GenAI client
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY!
+})
+
+// Helper: build GenAI config object (shared by both funcs)
+function buildGenAIConfig({
+  systemPrompt,
+  temperature,
+  topP = 0.95,
+  topK = 40,
+  max_tokens,
+  response_format,
+  safetySettings,
+  thinking,
+  extraConfig = {}
+}: {
+  systemPrompt?: string
+  temperature?: number
+  topP?: number
+  topK?: number
+  max_tokens?: number
+  response_format?: "json_object" | "text"
+  safetySettings?: Array<{ category: string; threshold: string }>
+  thinking?: boolean | number | "auto"
+  extraConfig?: Record<string, any>
+}) {
+  // Thinking: OFF by default
+  let thinkingBudget: number = 0
+  if (thinking === true || thinking === "auto") thinkingBudget = -1
+  else if (typeof thinking === "number") thinkingBudget = thinking
+
+  const config: Record<string, any> = {
+    temperature,
+    topP,
+    topK,
+    maxOutputTokens: max_tokens,
+    responseMimeType: response_format === "json_object" ? "application/json" : "text/plain",
+    thinkingConfig: { thinkingBudget }, // 0 disables; -1 enables dynamic
+    ...extraConfig
+  }
+
+  if (systemPrompt) {
+    // The JS SDK accepts strings or Content; keep it simple for system prompts
+    config.systemInstruction = systemPrompt
+  }
+
+  if (safetySettings && Array.isArray(safetySettings) && safetySettings.length) {
+    config.safetySettings = safetySettings
+  }
+
+  return config
+}
+
 /**
- * Non-streaming chat completion function for Vertex AI Gemini models.
- *
- * @param options - ChatCompletionOptions containing model, messages, and other parameters.
- * @param user - The user making the request.
- * @returns A promise that resolves to the generated response text.
+ * Non-streaming chat completion for Gemini via Google GenAI SDK.
+ * Signature unchanged for backwards compatibility.
  */
 export async function vertexChatCompletion(
   {
@@ -42,11 +103,13 @@ export async function vertexChatCompletion(
     max_tokens = 1024,
     response_format = "text",
     safetySettings,
+    thinking, // optional; OFF by default
+    responseSchema, // optional structured output schema (works with responseMimeType)
     ...options
   }: ChatCompletionOptions,
   user: Tables<"User">
 ): Promise<string> {
-  // Check cache to avoid redundant API calls
+  // Serve from cache if available
   if (systemPrompt && userMessage) {
     const cachedResponse = await getPromptOutputFromCache({
       systemPrompt,
@@ -56,59 +119,58 @@ export async function vertexChatCompletion(
       max_tokens,
       response_format
     })
-    if (cachedResponse) {
-      return cachedResponse
-    }
+    if (cachedResponse) return cachedResponse
   }
 
-  let startTime = performance.now()
+  const startTime = performance.now()
   try {
-    // Start a new chat session with the specified model
-    const generativeModel = genAI.getGenerativeModel({ model })
-    const inputToGemini = {
-      systemInstruction: {
-        role: "system",
-        parts: [
-          {
-            text: systemPrompt || ""
-          }
-        ]
-      },
+    // Build config; pass any extra unknown options through for forward-compat
+    const config = buildGenAIConfig({
+      systemPrompt,
+      temperature,
+      max_tokens,
+      response_format,
       safetySettings,
-      generationConfig: {
-        temperature,
-        topP: 0.95, // You can adjust or make this configurable
-        topK: 40, // You can adjust or make this configurable
-        maxOutputTokens: max_tokens,
-        responseMimeType: response_format === "json_object" ? "application/json" : "text/plain"
-      },
-      ...options
-    }
-    console.log("inputToGemini", JSON.stringify(inputToGemini, null, 2))
-    const chatSession = generativeModel.startChat(inputToGemini)
+      thinking,
+      extraConfig: {
+        ...options,
+        ...(responseSchema
+          ? { responseSchema }
+          : {})
+      }
+    })
 
-    // Send the user message
-    const result = await chatSession.sendMessage(userMessage)
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: userMessage }]
+      }
+    ]
 
-    // Extract the response text
-    const responseText = result.response.text()
+    const response = await ai.models.generateContent({
+      model,
+      contents,
+      config
+    })
 
-    // Log usage and cache the response
+    // New SDK exposes `text` as a property; keep fallback to function for safety
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const responseText: string = typeof response.text === "function" ? response.text() : response.text
+
     if (responseText) {
-      let completionTimeMs = performance.now() - startTime
+      const completionTimeMs = performance.now() - startTime
       const totalTokens = encode(responseText).length
       const promptTokens = encode(JSON.stringify({ systemPrompt, userMessage })).length
 
       const tokenCompletionUsage: CompletionUsage = {
         prompt_tokens: promptTokens,
-        completion_tokens: totalTokens - promptTokens,
+        completion_tokens: Math.max(0, totalTokens - promptTokens),
         total_tokens: totalTokens
       }
 
-      // Log usage data
       await LogOpenAiUsage(user, tokenCompletionUsage, model, "vertex", completionTimeMs)
 
-      // Cache the response for future requests
       if (systemPrompt && userMessage) {
         await writePromptOutputToCache(
           {
@@ -126,19 +188,15 @@ export async function vertexChatCompletion(
 
     return responseText
   } catch (error) {
-    console.error(`Error with Vertex AI API:`, error)
+    console.error(`Error with GenAI generateContent:`, error)
     throw error
   }
 }
 
 /**
- * Streaming chat completion function for Vertex AI Gemini models.
- *
- * @param options - ChatCompletionOptions containing model, messages, and other parameters.
- * @param user - The user making the request.
- * @returns An async generator that yields chunks of the generated response text.
+ * Streaming chat completion for Gemini via Google GenAI SDK.
+ * Signature unchanged for backwards compatibility.
  */
-
 export async function* vertexChatCompletionStream(
   {
     model,
@@ -148,12 +206,13 @@ export async function* vertexChatCompletionStream(
     max_tokens = 1024,
     response_format = "text",
     safetySettings,
-    responseSchema, // Extract responseSchema
-    ...restOptions // Other options
+    thinking, // optional; OFF by default
+    responseSchema,
+    ...restOptions
   }: ChatCompletionOptions,
   user: Tables<"User">
 ): AsyncGenerator<string, void, unknown> {
-  // Check cache before initiating a new chat session
+  // Cache check first
   if (systemPrompt && userMessage) {
     const cachedResponse = await getPromptOutputFromCache({
       systemPrompt,
@@ -162,75 +221,71 @@ export async function* vertexChatCompletionStream(
       temperature,
       max_tokens,
       response_format
-    });
+    })
     if (cachedResponse) {
-      // Yield the cached response in chunks
-      let startIndex = 0;
-      const responseLength = cachedResponse.length;
+      let startIndex = 0
+      const responseLength = cachedResponse.length
       while (startIndex < responseLength) {
-        const endIndex = Math.min(startIndex + 4, responseLength);
-        yield cachedResponse.slice(startIndex, endIndex);
-        startIndex += 4;
+        const endIndex = Math.min(startIndex + 4, responseLength)
+        yield cachedResponse.slice(startIndex, endIndex)
+        startIndex += 4
       }
-      return;
+      return
     }
   }
 
-  let startTime = performance.now();
-  let totalResponse = "";
+  const startTime = performance.now()
+  let totalResponse = ""
 
   try {
-    // Start a new chat session with the specified model
-    const generativeModel = genAI.getGenerativeModel({ model });
-    const chatSession = generativeModel.startChat({
-      systemInstruction: {
-        role: "system",
-        parts: [
-          {
-            text: systemPrompt || ""
-          }
-        ]
-      },
+    const config = buildGenAIConfig({
+      systemPrompt,
+      temperature,
+      max_tokens,
+      response_format,
       safetySettings,
-      generationConfig: {
-        temperature,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: max_tokens,
-        responseMimeType:
-          response_format === "json_object" ? "application/json" : "text/plain",
-        responseSchema: responseSchema // Pass responseSchema here
+      thinking,
+      extraConfig: {
+        ...restOptions,
+        ...(responseSchema
+          ? { responseSchema }
+          : {})
       }
-      // Do not spread restOptions into startChat
-    });
+    })
 
-    // Send the user message and receive the streaming response
-    const streamResult = await chatSession.sendMessageStream(userMessage);
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: userMessage }]
+      }
+    ]
 
-    // Buffer to hold partial chunks of text
-    let buffer = "";
+    // Stream chunks directly from the new SDK
+    const stream = await ai.models.generateContentStream({
+      model,
+      contents,
+      config
+    })
 
-    // Iterate over the streaming response
-    for await (const chunk of streamResult.stream) {
-      const chunkText = chunk.text(); // Get the text from the chunk
-      buffer += chunkText; // Append the chunk to the buffer
-      totalResponse += chunkText; // Accumulate the full response for caching
+    // Buffer to yield fixed-size chunks (4 chars), matching prior behavior
+    let buffer = ""
 
-      // Process and yield the buffer in parts
+    for await (const chunk of stream) {
+      const chunkText: string = (chunk as any).text ?? ""
+      if (!chunkText) continue
+      buffer += chunkText
+      totalResponse += chunkText
+
       while (buffer.length >= 4) {
-        yield buffer.slice(0, 4); // Yield the first 4 characters
-        buffer = buffer.slice(4); // Remove the first 4 characters from the buffer
+        yield buffer.slice(0, 4)
+        buffer = buffer.slice(4)
       }
     }
 
-    // Yield any remaining characters
     if (buffer.length > 0) {
-      yield buffer;
+      yield buffer
     }
 
-    console.log("totalResponse:", totalResponse);
-
-    // After streaming is complete, cache the full response
     if (systemPrompt && userMessage && totalResponse) {
       await writePromptOutputToCache(
         {
@@ -242,32 +297,23 @@ export async function* vertexChatCompletionStream(
           response_format
         },
         totalResponse
-      );
+      )
 
-      // Log usage data
-      let completionTimeMs = performance.now() - startTime;
-      const totalTokens = encode(totalResponse).length;
-      const promptTokens = encode(
-        JSON.stringify({ systemPrompt, userMessage })
-      ).length;
+      const completionTimeMs = performance.now() - startTime
+      const totalTokens = encode(totalResponse).length
+      const promptTokens = encode(JSON.stringify({ systemPrompt, userMessage })).length
 
       const tokenCompletionUsage: CompletionUsage = {
         prompt_tokens: promptTokens,
-        completion_tokens: totalTokens - promptTokens,
+        completion_tokens: Math.max(0, totalTokens - promptTokens),
         total_tokens: totalTokens
-      };
+      }
 
-      await LogOpenAiUsage(
-        user,
-        tokenCompletionUsage,
-        model,
-        "vertex",
-        completionTimeMs
-      );
+      await LogOpenAiUsage(user, tokenCompletionUsage, model, "vertex", completionTimeMs)
     }
   } catch (error) {
-    console.error(`Error with Vertex AI streaming API:`, error);
-    throw error;
+    console.error(`Error with GenAI generateContentStream:`, error)
+    throw error
   }
 }
 
@@ -276,7 +322,7 @@ export async function* vertexChatCompletionStream(
 // ---------------------------
 
 /**
- * Test the non-streaming Vertex AI chat completion function.
+ * Test the non-streaming function.
  */
 async function testVertexChatCompletion() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
@@ -290,10 +336,8 @@ async function testVertexChatCompletion() {
     }
   ]
 
-  // Extract systemPrompt and userMessage
-  const systemPrompt = messages.find((msg) => msg.role === "system")?.content
-  const userMessage = messages.find((msg) => msg.role === "user")?.content
-
+  const systemPrompt = messages.find((m) => m.role === "system")?.content
+  const userMessage = messages.find((m) => m.role === "user")?.content
   if (!userMessage) {
     console.error("No user message found.")
     return
@@ -302,45 +346,40 @@ async function testVertexChatCompletion() {
   try {
     const response = await vertexChatCompletion(
       {
-        model: "gemini-1.5-flash-002",
-        systemPrompt: systemPrompt || undefined,
-        userMessage: userMessage,
+        model: "gemini-2.5-flash",
+        systemPrompt,
+        userMessage,
         temperature: 0.7,
         max_tokens: 1024,
-        response_format: "text"
-        // safetySettings: [ // Optional
-        //   {
-        //     category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        //     threshold: HarmBlockThreshold.HARM_BLOCK_THRESHOLD_HIGH,
-        //   },
-        // ],
+        response_format: "text",
+        // thinking is OFF by default; enable dynamic thinking with `thinking: true`
+        // thinking: true,
+        // Example safety settings (strings accepted by new SDK):
+        // safetySettings: [
+        //   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+        // ]
       },
       user!
     )
     console.log("Vertex AI Response:", response)
   } catch (error) {
-    console.error("Error with Vertex AI chat completion:", error)
+    console.error("Error with chat completion:", error)
   }
 }
 
 /**
- * Test the streaming Vertex AI chat completion function.
+ * Test the streaming function.
  */
 async function testVertexChatCompletionStream() {
   const user = await getUserByEmail("seb.grubb@gmail.com")
 
   const messages = [
     { role: "system", content: "You are a helpful assistant." },
-    {
-      role: "user",
-      content: "Please tell me all the cool ways we can use AI to help us."
-    }
+    { role: "user", content: "Please tell me all the cool ways we can use AI to help us." }
   ]
 
-  // Extract systemPrompt and userMessage
-  const systemPrompt = messages.find((msg) => msg.role === "system")?.content
-  const userMessage = messages.find((msg) => msg.role === "user")?.content
-
+  const systemPrompt = messages.find((m) => m.role === "system")?.content
+  const userMessage = messages.find((m) => m.role === "user")?.content
   if (!userMessage) {
     console.error("No user message found.")
     return
@@ -349,18 +388,14 @@ async function testVertexChatCompletionStream() {
   try {
     for await (const chunk of vertexChatCompletionStream(
       {
-        model: "gemini-1.5-flash-002",
-        systemPrompt: systemPrompt || undefined,
-        userMessage: userMessage,
+        model: "gemini-2.5-flash",
+        systemPrompt,
+        userMessage,
         temperature: 0.1,
         max_tokens: 1024,
-        response_format: "json_object"
-        // safetySettings: [ // Optional
-        //   {
-        //     category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        //     threshold: HarmBlockThreshold.HARM_BLOCK_THRESHOLD_HIGH,
-        //   },
-        // ],
+        response_format: "json_object",
+        // thinking: 512, // Example: explicit thinking budget
+        // responseSchema: { type: Type.OBJECT, properties: { ideas: { type: Type.ARRAY, items: { type: Type.STRING } } } }
       },
       user!
     )) {
@@ -368,10 +403,10 @@ async function testVertexChatCompletionStream() {
     }
     process.stdout.write("\n")
   } catch (error) {
-    console.error("Error with Vertex AI chat completion stream:", error)
+    console.error("Error with streaming chat completion:", error)
   }
 }
 
 // Uncomment to run tests
-// testVertexChatCompletion()
-// testVertexChatCompletionStream();
+testVertexChatCompletion()
+testVertexChatCompletionStream()

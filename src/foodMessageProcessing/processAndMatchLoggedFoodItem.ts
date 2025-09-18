@@ -19,7 +19,7 @@ import { re } from "mathjs"
 import { GetMessageById } from "@/database/GetMessagesForUser"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
-import { findBestServingMatchChatLlama } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
+import { findBestServingMatchChatGemini } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 import { calculateNutrientData } from "./common/calculateNutrientData"
 
@@ -60,7 +60,7 @@ export async function ProcessLogFoodItem(
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {
-      loggedFoodItemInfo = await findBestServingMatchChatLlama(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
+      loggedFoodItemInfo = await findBestServingMatchChatGemini(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
       console.log("Error processing food item for serving:", err1)
       await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
