@@ -1,7 +1,7 @@
 4ed6baa40ca7ed09986bb6148a03a78b813edac8
 Author: Seb
 Date: 2024-09-28
-Message: fix
+Message: fix fine tune
 
 scripts/fine_tune_generate/fine_tune_gpt4.ts
 src/foodMessageProcessing/classifyFoodItemInCategory/classifyFoodItemInCategory.ts
