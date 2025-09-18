@@ -47,7 +47,8 @@ export async function fetchMessages(
   hasImage: string,
   messageStatus: string,
   sortBy: MessageSortField = "createdAt",
-  sortDirection: MessageSortDirection = "desc"
+  sortDirection: MessageSortDirection = "desc",
+  searchTerm = ""
 ) {
   const supabase = await createAdminSupabase()
   const anonSupabase = createClient()
@@ -121,6 +122,11 @@ export async function fetchMessages(
   if (messageStatus !== "all") {
     messageStatus = messageStatus.toUpperCase()
     query = query.eq("status", messageStatus)
+  }
+
+  if (searchTerm.trim()) {
+    const term = `%${searchTerm.trim()}%`
+    query = query.or(`content.ilike.${term},local_id.ilike.${term}`)
   }
 
   const { data: messages, error: messagesError, count: totalMessages } = await query

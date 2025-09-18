@@ -54,6 +54,8 @@ const MessagesOverview = () => {
   const [userIdInput, setUserIdInput] = useState("")
   const [hasImage, setHasImage] = useState("all")
   const [messageStatus, setMessageStatus] = useState("all")
+  const [searchTermFilter, setSearchTermFilter] = useState("")
+  const [searchTermInput, setSearchTermInput] = useState("")
 
   const [expandedFoodItems, setExpandedFoodItems] = useState<Record<number, boolean>>({})
   const [progress, setProgress] = useState(0)
@@ -102,6 +104,7 @@ const MessagesOverview = () => {
     e.preventDefault()
     const trimmedUserId = userIdInput.trim()
     setUserIdFilter(trimmedUserId)
+    setSearchTermFilter(searchTermInput.trim())
     setCurrentPage(1) // Reset to first page on filter apply
     setIsFilterDrawerOpen(false)
   }
@@ -112,6 +115,8 @@ const MessagesOverview = () => {
     setUserIdFilter("")
     setHasImage("all")
     setMessageStatus("all")
+    setSearchTermInput("")
+    setSearchTermFilter("")
     setCurrentPage(1) // Reset to first page on filter clear
     setIsFilterDrawerOpen(false)
   }
@@ -147,6 +152,12 @@ const MessagesOverview = () => {
     setCurrentPage(1)
   }, [])
 
+  const clearSearchTerm = useCallback(() => {
+    setSearchTermInput("")
+    setSearchTermFilter("")
+    setCurrentPage(1)
+  }, [])
+
   const activeFilters = useMemo(
     () => {
       const filters: { label: string; onRemove: () => void }[] = []
@@ -179,9 +190,27 @@ const MessagesOverview = () => {
         })
       }
 
+      if (searchTermFilter) {
+        filters.push({
+          label: `Search "${searchTermFilter}"`,
+          onRemove: clearSearchTerm
+        })
+      }
+
       return filters
     },
-    [showDeleted, userIdFilter, hasImage, messageStatus, clearShowDeleted, clearUserId, clearHasImage, clearMessageStatus]
+    [
+      showDeleted,
+      userIdFilter,
+      hasImage,
+      messageStatus,
+      searchTermFilter,
+      clearShowDeleted,
+      clearUserId,
+      clearHasImage,
+      clearMessageStatus,
+      clearSearchTerm
+    ]
   )
 
   const hasActiveFilters = activeFilters.length > 0
@@ -201,6 +230,21 @@ const MessagesOverview = () => {
         )}
       </div>
       <form className="space-y-5" onSubmit={handleApply}>
+        <div className="space-y-2">
+          <label htmlFor={`search-term-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Text Search
+          </label>
+          <input
+            type="text"
+            id={`search-term-${variant}`}
+            name="search-term"
+            value={searchTermInput}
+            onChange={(e) => setSearchTermInput(e.target.value)}
+            placeholder="Search message content"
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
         <div className="space-y-2">
           <label htmlFor={`show-deleted-${variant}`} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Show Deleted
@@ -386,7 +430,8 @@ const MessagesOverview = () => {
       hasImage,
       messageStatus,
       sortBy,
-      sortDirection
+      sortDirection,
+      searchTermFilter
     )
 
     if (!isMountedRef.current || requestId !== requestIdRef.current) {
@@ -413,7 +458,7 @@ const MessagesOverview = () => {
     setLoggedFoodItemsByMessage(response.loggedFoodItemsByMessage)
     setTotalMessages(response.totalMessages || 0)
     setLoading(false)
-  }, [currentPage, showDeleted, userIdFilter, hasImage, messageStatus, sortBy, sortDirection])
+  }, [currentPage, showDeleted, userIdFilter, hasImage, messageStatus, sortBy, sortDirection, searchTermFilter])
 
   useEffect(() => {
     isMountedRef.current = true
