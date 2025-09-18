@@ -1,7 +1,7 @@
 // src/app/admin/viewas/page.tsx
 "use client"
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import classNames from "classnames"
 import moment from "moment-timezone"
 import {
@@ -10,6 +10,7 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon
 } from "@heroicons/react/24/outline"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import {
   AdminDailyFoodResponse,
@@ -26,17 +27,93 @@ const DEFAULT_IMAGE_URL =
 const DATE_FORMAT = "YYYY-MM-DD"
 
 export default function AdminViewAsPage() {
+  return (
+    <Suspense fallback={<AdminViewAsFallback />}>
+      <AdminViewAsPageContent />
+    </Suspense>
+  )
+}
+
+function AdminViewAsFallback() {
+  return (
+    <div className="flex h-40 items-center justify-center text-sm text-zinc-500">
+      Loading admin tools…
+    </div>
+  )
+}
+
+function AdminViewAsPageContent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const initialUserParam = searchParams.get("user")
+  const initialDateParam = searchParams.get("date")
+  const initialDateMoment =
+    initialDateParam && moment(initialDateParam, DATE_FORMAT, true).isValid()
+      ? moment(initialDateParam, DATE_FORMAT)
+      : moment()
+
+  const initialDate = initialDateMoment.format(DATE_FORMAT)
+
   const [users, setUsers] = useState<AdminViewUserListItem[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [userError, setUserError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
 
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState(moment().format(DATE_FORMAT))
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserParam)
+  const [selectedDate, setSelectedDate] = useState(initialDate)
 
   const [dailyFood, setDailyFood] = useState<AdminDailyFoodResponse | null>(null)
   const [isLoadingFoods, setIsLoadingFoods] = useState(false)
   const [foodError, setFoodError] = useState<string | null>(null)
+
+  const selectedUserRef = useRef<string | null>(initialUserParam)
+  const selectedDateRef = useRef(initialDate)
+
+  useEffect(() => {
+    selectedUserRef.current = selectedUserId
+  }, [selectedUserId])
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate
+  }, [selectedDate])
+
+  const syncUrl = useCallback(
+    (nextUserId: string | null, nextDate?: string) => {
+      const effectiveDate = nextDate ?? selectedDateRef.current
+      const params = new URLSearchParams()
+
+      if (nextUserId) {
+        params.set("user", nextUserId)
+      }
+
+      if (effectiveDate) {
+        params.set("date", effectiveDate)
+      }
+
+      const queryString = params.toString()
+      const nextUrl = queryString ? `${pathname}?${queryString}` : pathname
+      router.replace(nextUrl, { scroll: false })
+    },
+    [pathname, router]
+  )
+
+  const setUserAndUrl = useCallback(
+    (nextUserId: string | null, nextDate?: string) => {
+      setSelectedUserId(nextUserId)
+      syncUrl(nextUserId, nextDate)
+    },
+    [syncUrl]
+  )
+
+  const setDateAndUrl = useCallback(
+    (nextDate: string) => {
+      setSelectedDate(nextDate)
+      syncUrl(selectedUserRef.current, nextDate)
+    },
+    [syncUrl]
+  )
 
   const loadUsers = useCallback(
     async (term = "") => {
@@ -46,19 +123,33 @@ export default function AdminViewAsPage() {
         const data = await fetchTopUsers(100, term)
         setUsers(data)
 
-        if (!selectedUserId || !data.some((user) => user.id === selectedUserId)) {
-          setSelectedUserId(data[0]?.id ?? null)
+        const currentSelectedUserId = selectedUserRef.current
+        const currentDate = selectedDateRef.current
+
+        if (!data.length) {
+          if (currentSelectedUserId) {
+            setUserAndUrl(null, currentDate)
+          }
+          return
+        }
+
+        const isSelectedPresent = currentSelectedUserId
+          ? data.some((user) => user.id === currentSelectedUserId)
+          : false
+
+        if (!currentSelectedUserId || !isSelectedPresent) {
+          setUserAndUrl(data[0].id, currentDate)
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to load users"
         setUserError(message)
         setUsers([])
-        setSelectedUserId(null)
+        setUserAndUrl(null)
       } finally {
         setIsLoadingUsers(false)
       }
     },
-    [selectedUserId]
+    [setUserAndUrl]
   )
 
   useEffect(() => {
@@ -137,15 +228,18 @@ export default function AdminViewAsPage() {
   }
 
   const handlePrevDay = () => {
-    setSelectedDate((prev) => moment(prev).subtract(1, "day").format(DATE_FORMAT))
+    const nextDate = moment(selectedDate, DATE_FORMAT).subtract(1, "day").format(DATE_FORMAT)
+    setDateAndUrl(nextDate)
   }
 
   const handleNextDay = () => {
-    setSelectedDate((prev) => moment(prev).add(1, "day").format(DATE_FORMAT))
+    const nextDate = moment(selectedDate, DATE_FORMAT).add(1, "day").format(DATE_FORMAT)
+    setDateAndUrl(nextDate)
   }
 
   const handleToday = () => {
-    setSelectedDate(moment().format(DATE_FORMAT))
+    const today = moment().format(DATE_FORMAT)
+    setDateAndUrl(today)
   }
 
   return (
@@ -197,7 +291,7 @@ export default function AdminViewAsPage() {
                   <button
                     key={user.id}
                     type="button"
-                    onClick={() => setSelectedUserId(user.id)}
+                    onClick={() => setUserAndUrl(user.id)}
                     className={classNames(
                       "w-full rounded-md border p-3 text-left transition hover:border-amino-400",
                       isSelected
@@ -428,7 +522,8 @@ function FoodRow({ food, timezone }: { food: AdminLoggedFoodItem; timezone: stri
     ? `${(food.extendedOpenAiData as any)?.serving?.serving_amount} ${(food.extendedOpenAiData as any)?.serving?.serving_name || "serving"}`
     : "Custom amount"
 
-  const imageUrl = food.FoodItem?.FoodItemImages?.[0]?.FoodImage?.pathToImage || DEFAULT_IMAGE_URL
+  const fallbackImage = food.FoodItem?.FoodItemImages?.find((img) => img.FoodImage)?.FoodImage?.pathToImage
+  const imageUrl = food.pathToImage || fallbackImage || DEFAULT_IMAGE_URL
   const sourceLabel = food.Message?.content
     ? truncateText(food.Message.content, 90)
     : food.Message?.hasimages

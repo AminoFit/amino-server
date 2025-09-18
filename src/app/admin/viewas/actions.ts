@@ -20,12 +20,11 @@ export type AdminLoggedFoodItem = Tables<"LoggedFoodItem"> & {
   FoodItem:
     | (Tables<"FoodItem"> & {
         Serving: Tables<"Serving">[]
-        FoodItemImages?: {
-          FoodImage: Tables<"FoodImage"> | null
-        }[]
+        FoodItemImages: (Tables<"FoodItemImages"> & { FoodImage: Tables<"FoodImage"> | null })[]
       })
     | null
   Message: Tables<"Message"> | null
+  pathToImage?: string | null
 }
 
 export interface AdminDailyFoodResponse {
@@ -58,16 +57,29 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
 
   ensureAdminAccess(authData.user.id)
 
+  const trimmedSearch = searchTerm.trim()
+  const ilikeTerm = trimmedSearch ? `%${trimmedSearch}%` : null
+
   let query = supabaseAdmin
-    .from("User")
-    .select("id, fullName, email, tzIdentifier, LoggedFoodItem(count)")
-    .order("count", { foreignTable: "LoggedFoodItem", ascending: false })
+    .from("LoggedFoodItem")
+    .select(
+      `
+        userId,
+        totalFoodsLogged:count(),
+        User:User!LoggedFoodItem_userId_fkey!inner (
+          id,
+          fullName,
+          email,
+          tzIdentifier
+        )
+      `
+    )
+    .not("userId", "is", null)
+    .order("totalFoodsLogged", { ascending: false })
     .limit(limit)
 
-  const trimmedSearch = searchTerm.trim()
-  if (trimmedSearch) {
-    const ilikeTerm = `%${trimmedSearch}%`
-    query = query.or(`fullName.ilike.${ilikeTerm},email.ilike.${ilikeTerm}`)
+  if (ilikeTerm) {
+    query = query.or(`User.fullName.ilike.${ilikeTerm},User.email.ilike.${ilikeTerm}`)
   }
 
   const { data, error } = await query
@@ -76,22 +88,30 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
     throw new Error(error.message)
   }
 
-  return (data || [])
-    .map((user) => {
-      const withAggregate = user as typeof user & { LoggedFoodItem?: { count?: number }[] }
-      const totalFoodsLogged = Array.isArray(withAggregate.LoggedFoodItem) && withAggregate.LoggedFoodItem[0]?.count
-        ? Number(withAggregate.LoggedFoodItem[0]?.count) || 0
-        : 0
+  const uniqueUsers = new Map<string, AdminViewUserListItem>()
 
-      return {
+  for (const row of data ?? []) {
+    const typedRow = row as typeof row & { totalFoodsLogged?: number | null }
+    const user = row.User
+    if (!user) {
+      continue
+    }
+
+    const totalFoodsLogged = Number(typedRow.totalFoodsLogged ?? 0)
+
+    const existing = uniqueUsers.get(user.id)
+    if (!existing || existing.totalFoodsLogged < totalFoodsLogged) {
+      uniqueUsers.set(user.id, {
         id: user.id,
         fullName: user.fullName,
         email: user.email,
         tzIdentifier: user.tzIdentifier,
         totalFoodsLogged
-      }
-    })
-    .sort((a, b) => b.totalFoodsLogged - a.totalFoodsLogged)
+      })
+    }
+  }
+
+  return Array.from(uniqueUsers.values()).sort((a, b) => b.totalFoodsLogged - a.totalFoodsLogged)
 }
 
 export async function fetchUserDailyFood(userId: string, date: string): Promise<AdminDailyFoodResponse> {
@@ -164,7 +184,27 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
     throw new Error(foodsError.message)
   }
 
-  const totals = (foods || []).reduce(
+  const enhancedFoods: AdminLoggedFoodItem[] = (foods as AdminLoggedFoodItem[] | null)?.map((item) => {
+    if (item.FoodItem && Array.isArray(item.FoodItem.FoodItemImages) && item.FoodItem.FoodItemImages.length > 0) {
+      const validImages = item.FoodItem.FoodItemImages.filter((img) => img.FoodImage)
+
+      if (validImages.length > 0) {
+        validImages.sort((a, b) => {
+          const downvotesA = a.FoodImage?.downvotes ?? 0
+          const downvotesB = b.FoodImage?.downvotes ?? 0
+          if (downvotesA === downvotesB) {
+            return (b.FoodImage?.id ?? 0) - (a.FoodImage?.id ?? 0)
+          }
+          return downvotesA - downvotesB
+        })
+        return { ...item, pathToImage: validImages[0].FoodImage?.pathToImage ?? null }
+      }
+    }
+
+    return { ...item, pathToImage: null }
+  }) ?? []
+
+  const totals = enhancedFoods.reduce(
     (acc, item) => {
       const grams = item.grams || 0
       const defaultServing = item.FoodItem?.defaultServingWeightGram || 0
@@ -184,7 +224,7 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
 
   return {
     user,
-    foods: (foods as AdminLoggedFoodItem[]) || [],
+    foods: enhancedFoods,
     totals: {
       calories: totals.calories,
       carbs: totals.carbs,
