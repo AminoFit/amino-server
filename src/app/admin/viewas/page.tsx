@@ -29,11 +29,42 @@ const DEFAULT_IMAGE_URL =
 
 const DATE_FORMAT = "YYYY-MM-DD"
 
+type MealKey = "breakfast" | "lunch" | "dinner" | "other"
+
+interface MealGroup {
+  id: string
+  meal: MealKey
+  title: string
+  items: AdminLoggedFoodItem[]
+  message?: AdminLoggedFoodItem["Message"] | null
+  messageImageUrls?: string[]
+  startTime: string
+}
+
 export default function AdminViewAsPage() {
   return (
-    <Suspense fallback={<AdminViewAsFallback />}>
-      <AdminViewAsPageContent />
-    </Suspense>
+    <>
+      <Suspense fallback={<AdminViewAsFallback />}>
+        <AdminViewAsPageContent />
+      </Suspense>
+      <style jsx global>{`
+        @keyframes fadeCardIn {
+          from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .card-fade-in {
+          opacity: 0;
+          animation: fadeCardIn 0.4s ease-out forwards;
+        }
+      `}</style>
+    </>
   )
 }
 
@@ -195,31 +226,82 @@ function AdminViewAsPageContent() {
 
   const timezone = dailyFood?.user?.tzIdentifier || selectedUser?.tzIdentifier || moment.tz.guess()
 
-  const groupedFoods = useMemo(() => {
-    const foods = dailyFood?.foods ?? []
-    const buckets: Record<string, AdminLoggedFoodItem[]> = {
+  const groupedMeals = useMemo(() => {
+    const foodEntries: AdminLoggedFoodItem[] = dailyFood?.foods ?? []
+
+    const buckets: Record<MealKey, MealGroup[]> = {
       breakfast: [],
       lunch: [],
       dinner: [],
       other: []
     }
 
-    foods.forEach((item) => {
-      const time = moment(item.consumedOn).tz(timezone)
+    const messageGroups = new Map<number, MealGroup>()
+
+    const determineMeal = (time: moment.Moment): MealKey => {
       if (!time.isValid()) {
-        buckets.other.push(item)
-        return
+        return "other"
       }
       const hour = time.hour()
-      if (hour < 10) {
-        buckets.breakfast.push(item)
-      } else if (hour < 15) {
-        buckets.lunch.push(item)
-      } else if (hour < 22) {
-        buckets.dinner.push(item)
+      if (hour < 10) return "breakfast"
+      if (hour < 15) return "lunch"
+      if (hour < 22) return "dinner"
+      return "other"
+    }
+
+    for (const item of foodEntries) {
+      const time = moment(item.consumedOn).tz(timezone)
+      const meal = determineMeal(time)
+      const startTime = item.consumedOn ?? item.createdAt ?? new Date().toISOString()
+
+      if (item.Message?.id) {
+        const messageId = item.Message.id
+        let group = messageGroups.get(messageId)
+        if (!group) {
+          const headline = item.Message.content?.trim()
+            ? item.Message.content.trim()
+            : item.Message.hasimages
+            ? "Photo food log"
+            : "Coach message"
+
+          group = {
+            id: `message-${messageId}`,
+            meal,
+            title: headline,
+            items: [],
+            message: item.Message,
+            messageImageUrls: item.messageImageUrls,
+            startTime
+          }
+
+          messageGroups.set(messageId, group)
+          buckets[meal].push(group)
+        }
+
+        group.items.push(item)
+        if (new Date(startTime).getTime() < new Date(group.startTime).getTime()) {
+          group.startTime = startTime
+        }
+        if (!group.messageImageUrls?.length && item.messageImageUrls?.length) {
+          group.messageImageUrls = item.messageImageUrls
+        }
       } else {
-        buckets.other.push(item)
+        buckets[meal].push({
+          id: `manual-${item.id}`,
+          meal,
+          title: item.FoodItem?.name || "Manual entry",
+          items: [item],
+          message: null,
+          startTime,
+          messageImageUrls: undefined
+        })
       }
+    }
+
+    (Object.keys(buckets) as MealKey[]).forEach((key) => {
+      buckets[key].sort(
+        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      )
     })
 
     return buckets
@@ -304,10 +386,10 @@ function AdminViewAsPageContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 rounded-3xl bg-gradient-to-br from-amino-50/60 via-white to-transparent p-4 shadow-inner sm:p-6">
       <div className="flex flex-col gap-6 lg:flex-row">
         <aside className="lg:w-80 lg:flex-none">
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 shadow-md backdrop-blur">
             <div className="mb-4">
               <h1 className="text-lg font-semibold text-zinc-900">View As</h1>
               <p className="text-sm text-zinc-500">Pick a user to mirror their daily food log.</p>
@@ -354,7 +436,7 @@ function AdminViewAsPageContent() {
                     type="button"
                     onClick={() => setUserAndUrl(user.id)}
                     className={classNames(
-                      "w-full rounded-md border p-3 text-left transition hover:border-amino-400",
+                      "w-full rounded-xl border p-3 text-left transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amino-400 hover:shadow-lg",
                       isSelected
                         ? "border-amino-500 bg-amino-50 text-amino-900 shadow"
                         : "border-zinc-200 bg-white text-zinc-700"
@@ -416,29 +498,29 @@ function AdminViewAsPageContent() {
 
                     <MealSection
                       title="Breakfast"
-                      foods={groupedFoods.breakfast}
+                      groups={groupedMeals.breakfast}
                       timezone={timezone}
                       onDelete={handleDeleteFoodItem}
                       deletingId={deletingFoodId}
                     />
                     <MealSection
                       title="Lunch"
-                      foods={groupedFoods.lunch}
+                      groups={groupedMeals.lunch}
                       timezone={timezone}
                       onDelete={handleDeleteFoodItem}
                       deletingId={deletingFoodId}
                     />
                     <MealSection
                       title="Dinner"
-                      foods={groupedFoods.dinner}
+                      groups={groupedMeals.dinner}
                       timezone={timezone}
                       onDelete={handleDeleteFoodItem}
                       deletingId={deletingFoodId}
                     />
-                    {groupedFoods.other.length > 0 && (
+                    {groupedMeals.other.length > 0 && (
                       <MealSection
                         title="Other"
-                        foods={groupedFoods.other}
+                        groups={groupedMeals.other}
                         timezone={timezone}
                         onDelete={handleDeleteFoodItem}
                         deletingId={deletingFoodId}
@@ -570,30 +652,117 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function MealSection({
   title,
-  foods,
+  groups,
   timezone,
   onDelete,
   deletingId
 }: {
   title: string
-  foods: AdminLoggedFoodItem[]
+  groups: MealGroup[]
   timezone: string
   onDelete: (food: AdminLoggedFoodItem) => void
   deletingId: number | null
 }) {
-  if (!foods.length) {
+  if (!groups.length) {
     return null
   }
 
   return (
     <section>
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">{title}</h3>
-      <div className="space-y-3">
-        {foods.map((food) => (
-          <FoodRow key={food.id} food={food} timezone={timezone} onDelete={onDelete} isDeleting={deletingId === food.id} />
+      <div className="space-y-4">
+        {groups.map((group, index) => (
+          <MessageGroupCard
+            key={group.id}
+            group={group}
+            timezone={timezone}
+            onDelete={onDelete}
+            deletingId={deletingId}
+            index={index}
+          />
         ))}
       </div>
     </section>
+  )
+}
+
+function MessageGroupCard({
+  group,
+  timezone,
+  onDelete,
+  deletingId,
+  index
+}: {
+  group: MealGroup
+  timezone: string
+  onDelete: (food: AdminLoggedFoodItem) => void
+  deletingId: number | null
+  index: number
+}) {
+  const startMoment = moment(group.startTime).tz(timezone)
+  const timestampLabel = startMoment.isValid()
+    ? startMoment.format("MMM D • h:mm A")
+    : "Scheduled"
+
+  const isMessageGroup = Boolean(group.message)
+  const itemCountLabel = `${group.items.length} item${group.items.length === 1 ? "" : "s"}`
+
+  const headerTitle = isMessageGroup ? group.title : "Manual entry"
+  const headerSubtitle = isMessageGroup ? itemCountLabel : "Logged manually"
+
+  return (
+    <div
+      className="card-fade-in group relative overflow-hidden rounded-2xl border border-zinc-200/70 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white hover:shadow-2xl"
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amino-100/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="relative z-10 space-y-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-amino-700">
+              <span className="rounded-full bg-amino-100/80 px-3 py-1 text-[11px] uppercase tracking-wide">
+                {timestampLabel}
+              </span>
+              <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-600">
+                {headerSubtitle}
+              </span>
+            </div>
+            <h4 className="text-lg font-semibold text-zinc-900">{headerTitle}</h4>
+            {isMessageGroup && group.message?.content && (
+              <p className="max-w-xl text-sm text-zinc-500">{group.message.content}</p>
+            )}
+          </div>
+          {group.messageImageUrls?.length ? (
+            <div className="flex max-w-full gap-3 overflow-x-auto rounded-xl bg-zinc-100/60 p-2 shadow-inner">
+              {group.messageImageUrls.map((url, imageIndex) => (
+                <a
+                  key={`${group.id}-image-${imageIndex}`}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative h-20 w-20 flex-none overflow-hidden rounded-lg border border-white/60 shadow-sm transition-transform duration-300 hover:rotate-1 hover:scale-105"
+                >
+                  <img src={url} alt={`Message image ${imageIndex + 1}`} className="h-full w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-3">
+          {group.items.map((food) => (
+            <FoodRow
+              key={food.id}
+              food={food}
+              timezone={timezone}
+              onDelete={onDelete}
+              isDeleting={deletingId === food.id}
+              showSourceLabel={!isMessageGroup}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -601,12 +770,14 @@ function FoodRow({
   food,
   timezone,
   onDelete,
-  isDeleting
+  isDeleting,
+  showSourceLabel = true
 }: {
   food: AdminLoggedFoodItem
   timezone: string
   onDelete: (food: AdminLoggedFoodItem) => void
   isDeleting: boolean
+  showSourceLabel?: boolean
 }) {
   const time = moment(food.consumedOn).tz(timezone)
   const timeLabel = time.isValid() ? time.format("h:mm A") : "--"
@@ -637,7 +808,7 @@ function FoodRow({
   const statusLabel = food.status === "Needs Processing" ? "Processing" : null
 
   return (
-    <article className="flex items-start gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <article className="flex items-start gap-4 rounded-xl border border-zinc-100 bg-white/90 p-4 shadow-inner transition-all duration-300 ease-out hover:border-amino-200/70">
       <div className="relative h-16 w-16 flex-none overflow-hidden rounded-md bg-zinc-100">
         <img src={imageUrl} alt="Food item" className="h-full w-full object-cover" />
       </div>
@@ -656,7 +827,7 @@ function FoodRow({
               type="button"
               onClick={() => onDelete(food)}
               disabled={isDeleting}
-              className="inline-flex items-center gap-1 rounded border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-600 transition-all duration-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <TrashIcon className="h-3.5 w-3.5" />
               {isDeleting ? "Deleting…" : "Delete"}
@@ -669,10 +840,12 @@ function FoodRow({
           <MacroPill label="Fat" value={normalizedFat} suffix="g" />
           <MacroPill label="Protein" value={normalizedProtein} suffix="g" />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-          <span className="truncate">{sourceLabel}</span>
-          {statusLabel && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">{statusLabel}</span>}
-        </div>
+        {(showSourceLabel || statusLabel) && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+            {showSourceLabel && <span className="truncate">{sourceLabel}</span>}
+            {statusLabel && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">{statusLabel}</span>}
+          </div>
+        )}
       </div>
     </article>
   )

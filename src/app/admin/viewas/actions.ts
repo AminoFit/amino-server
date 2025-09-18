@@ -16,7 +16,26 @@ export interface AdminViewUserListItem {
   totalFoodsLogged: number
 }
 
-export type AdminLoggedFoodItem = Tables<"LoggedFoodItem"> & {
+export interface ManualFoodPlaceholder {
+  id: number
+  consumedOn: string | null
+  createdAt: string | null
+  grams: number
+  servingAmount: number | null
+  loggedUnit: string | null
+
+  FoodItem: {
+    name: string
+    defaultServingWeightGram: number | null
+    FoodItemImages: { FoodImage: { pathToImage: string | null; downvotes: number; id: number } | null }[]
+  } | null
+
+  Message: null
+  pathToImage?: string | null
+  messageImageUrls?: string[]
+}
+
+export type AdminLoggedFoodItem = (Tables<"LoggedFoodItem"> & {
   FoodItem:
     | (Tables<"FoodItem"> & {
         Serving: Tables<"Serving">[]
@@ -25,7 +44,8 @@ export type AdminLoggedFoodItem = Tables<"LoggedFoodItem"> & {
     | null
   Message: Tables<"Message"> | null
   pathToImage?: string | null
-}
+  messageImageUrls?: string[]
+}) | ManualFoodPlaceholder
 
 export interface AdminDailyFoodResponse {
   user: Tables<"User"> | null
@@ -165,7 +185,62 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
     throw new Error(foodsError.message)
   }
 
-  const enhancedFoods: AdminLoggedFoodItem[] = (foods as AdminLoggedFoodItem[] | null)?.map((item) => {
+  const messageIdsWithImages = Array.from(
+    new Set(
+      (foods ?? [])
+        .filter((item) => item.Message?.hasimages && item.Message?.id !== undefined && item.Message.id !== null)
+        .map((item) => item.Message!.id as number)
+    )
+  )
+
+  const messageImageUrlMap: Record<number, string[]> = {}
+
+  if (messageIdsWithImages.length > 0) {
+    const { data: messageImages, error: messageImagesError } = await supabaseAdmin
+      .from("UserMessageImages")
+      .select("messageId,imagePath")
+      .in("messageId", messageIdsWithImages)
+
+    if (messageImagesError) {
+      throw new Error(messageImagesError.message)
+    }
+
+    const imagePathsByMessage = new Map<number, string[]>()
+    for (const record of messageImages ?? []) {
+      if (!record.imagePath || record.messageId === null) {
+        continue
+      }
+      const list = imagePathsByMessage.get(record.messageId) ?? []
+      list.push(record.imagePath)
+      imagePathsByMessage.set(record.messageId, list)
+    }
+
+    for (const [messageId, imagePaths] of imagePathsByMessage.entries()) {
+      if (!imagePaths.length) {
+        continue
+      }
+
+      const { data: signedUrls, error: signedUrlsError } = await supabaseAdmin.storage
+        .from("userUploadedImages")
+        .createSignedUrls(imagePaths, 3600)
+
+      if (signedUrlsError) {
+        throw new Error(signedUrlsError.message)
+      }
+
+      messageImageUrlMap[messageId] = (signedUrls ?? []).map((entry) => entry.signedUrl)
+    }
+  }
+
+  const enhancedFoods: AdminLoggedFoodItem[] = (foods as Tables<"LoggedFoodItem">[] | null)?.map((rawItem) => {
+    const item = rawItem as Tables<"LoggedFoodItem"> & {
+      FoodItem: Tables<"FoodItem"> & {
+        Serving: Tables<"Serving">[]
+        FoodItemImages: (Tables<"FoodItemImages"> & { FoodImage: Tables<"FoodImage"> | null })[]
+      }
+      Message: Tables<"Message">
+    }
+
     if (item.FoodItem && Array.isArray(item.FoodItem.FoodItemImages) && item.FoodItem.FoodItemImages.length > 0) {
       const validImages = item.FoodItem.FoodItemImages.filter((img) => img.FoodImage)
 
@@ -178,11 +253,21 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
           }
           return downvotesA - downvotesB
         })
-        return { ...item, pathToImage: validImages[0].FoodImage?.pathToImage ?? null }
+        const messageId = item.Message?.id ?? undefined
+        return {
+          ...item,
+          pathToImage: validImages[0].FoodImage?.pathToImage ?? null,
+          messageImageUrls: messageId !== undefined ? messageImageUrlMap[messageId] : undefined
+        }
       }
     }
 
-    return { ...item, pathToImage: null }
+    const messageId = item.Message?.id ?? undefined
+    return {
+      ...item,
+      pathToImage: null,
+      messageImageUrls: messageId !== undefined ? messageImageUrlMap[messageId] : undefined
+    }
   }) ?? []
 
   const totals = enhancedFoods.reduce(
