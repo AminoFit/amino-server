@@ -60,45 +60,39 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
   const trimmedSearch = searchTerm.trim()
   const ilikeTerm = trimmedSearch ? `%${trimmedSearch}%` : null
 
-  let query = supabaseAdmin.from("User").select(
-    `
-      id,
-      fullName,
-      email,
-      tzIdentifier,
-      logged_food_count:LoggedFoodItem(count)
-    `
-  )
+  let query = supabaseAdmin
+    .from("User")
+    .select(
+      `
+        id,
+        fullName,
+        email,
+        tzIdentifier,
+        logged_food:LoggedFoodItem!inner(count)
+      `
+    )
+    .order("count", { foreignTable: "LoggedFoodItem", ascending: false })
+    .limit(limit)
 
   if (ilikeTerm) {
     query = query.or(`fullName.ilike.${ilikeTerm},email.ilike.${ilikeTerm}`)
   }
 
-  // Fetch more items to ensure we have enough users after filtering
   const { data, error } = await query
-    .order("count", { foreignTable: "LoggedFoodItem", ascending: false, nullsFirst: false })
-    .limit(limit * 5)
 
   if (error) {
     throw new Error(error.message)
   }
 
-  if (!data) {
-    return []
-  }
-
-  const users = (data as any[])
-    .map(user => ({
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      tzIdentifier: user.tzIdentifier,
-      totalFoodsLogged: user.logged_food_count?.[0]?.count ?? 0,
-    }))
-    .filter(user => user.totalFoodsLogged > 0)
-    .slice(0, limit)
-
-  return users
+  return (data || []).map((user) => ({
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    tzIdentifier: user.tzIdentifier,
+    totalFoodsLogged: Number(user.logged_food?.[0]?.count ?? 0)
+  }))
+  .filter((user) => user.totalFoodsLogged > 0)
+  .sort((a, b) => b.totalFoodsLogged - a.totalFoodsLogged)
 }
 
 export async function fetchUserDailyFood(userId: string, date: string): Promise<AdminDailyFoodResponse> {
@@ -219,4 +213,62 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
       protein: totals.protein
     }
   }
+}
+
+export async function deleteLoggedFoodItem(foodId: number) {
+  const supabaseAdmin = createAdminSupabase()
+  const supabase = createClient()
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !authData?.user) {
+    throw new Error("Unauthorized")
+  }
+
+  ensureAdminAccess(authData.user.id)
+
+  const { error } = await supabaseAdmin
+    .from("LoggedFoodItem")
+    .delete()
+    .eq("id", foodId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return { success: true }
+}
+
+export async function getLastLoggedDate(userId: string, beforeDate?: string) {
+  const supabaseAdmin = createAdminSupabase()
+  const supabase = createClient()
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !authData?.user) {
+    throw new Error("Unauthorized")
+  }
+
+  ensureAdminAccess(authData.user.id)
+
+  let query = supabaseAdmin
+    .from("LoggedFoodItem")
+    .select("consumedOn")
+    .eq("userId", userId)
+    .not("consumedOn", "is", null)
+    .order("consumedOn", { ascending: false })
+    .limit(1)
+
+  if (beforeDate) {
+    const parsed = moment(beforeDate, "YYYY-MM-DD", true)
+    if (parsed.isValid()) {
+      query = query.lt("consumedOn", parsed.endOf("day").toISOString())
+    }
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.[0]?.consumedOn ?? null
 }

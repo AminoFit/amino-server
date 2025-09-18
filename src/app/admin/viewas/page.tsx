@@ -8,7 +8,8 @@ import {
   ArrowPathIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
@@ -17,7 +18,9 @@ import {
   AdminLoggedFoodItem,
   AdminViewUserListItem,
   fetchTopUsers,
-  fetchUserDailyFood
+  fetchUserDailyFood,
+  deleteLoggedFoodItem,
+  getLastLoggedDate
 } from "./actions"
 import { getNormalizedFoodValue } from "@/app/dashboard/utils/FoodHelper"
 
@@ -67,9 +70,29 @@ function AdminViewAsPageContent() {
   const [dailyFood, setDailyFood] = useState<AdminDailyFoodResponse | null>(null)
   const [isLoadingFoods, setIsLoadingFoods] = useState(false)
   const [foodError, setFoodError] = useState<string | null>(null)
+  const [deletingFoodId, setDeletingFoodId] = useState<number | null>(null)
+  const [isJumpingToLast, setIsJumpingToLast] = useState(false)
 
   const selectedUserRef = useRef<string | null>(initialUserParam)
   const selectedDateRef = useRef(initialDate)
+
+  const fetchDailyData = useCallback(
+    async (userId: string, date: string) => {
+      setIsLoadingFoods(true)
+      setFoodError(null)
+      try {
+        const data = await fetchUserDailyFood(userId, date)
+        setDailyFood(data)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load food data"
+        setFoodError(message)
+        setDailyFood(null)
+      } finally {
+        setIsLoadingFoods(false)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     selectedUserRef.current = selectedUserId
@@ -157,28 +180,13 @@ function AdminViewAsPageContent() {
   }, [loadUsers])
 
   useEffect(() => {
-    const fetchDaily = async () => {
-      if (!selectedUserId) {
-        setDailyFood(null)
-        return
-      }
-
-      setIsLoadingFoods(true)
-      setFoodError(null)
-      try {
-        const data = await fetchUserDailyFood(selectedUserId, selectedDate)
-        setDailyFood(data)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to load food data"
-        setFoodError(message)
-        setDailyFood(null)
-      } finally {
-        setIsLoadingFoods(false)
-      }
+    if (!selectedUserId) {
+      setDailyFood(null)
+      return
     }
 
-    fetchDaily()
-  }, [selectedUserId, selectedDate])
+    fetchDailyData(selectedUserId, selectedDate)
+  }, [selectedUserId, selectedDate, fetchDailyData])
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
@@ -216,6 +224,59 @@ function AdminViewAsPageContent() {
 
     return buckets
   }, [dailyFood?.foods, timezone])
+
+  const handleDeleteFoodItem = useCallback(
+    async (food: AdminLoggedFoodItem) => {
+      if (!selectedUserId) {
+        return
+      }
+
+      if (typeof window !== "undefined") {
+        const confirmDelete = window.confirm(`Permanently delete logged food #${food.id}?`)
+        if (!confirmDelete) {
+          return
+        }
+      }
+
+      setDeletingFoodId(food.id)
+      try {
+        await deleteLoggedFoodItem(food.id)
+        await fetchDailyData(selectedUserId, selectedDate)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to delete food item"
+        setFoodError(message)
+      } finally {
+        setDeletingFoodId(null)
+      }
+    },
+    [selectedUserId, selectedDate, fetchDailyData]
+  )
+
+  const handleGoToLastDay = useCallback(async () => {
+    if (!selectedUserId) {
+      return
+    }
+
+    setIsJumpingToLast(true)
+    setFoodError(null)
+
+    try {
+      const lastDateIso = await getLastLoggedDate(selectedUserId, selectedDate)
+
+      if (!lastDateIso) {
+        setFoodError("No logged food found for this user yet.")
+        return
+      }
+
+      const nextDate = moment(lastDateIso).tz(timezone).format(DATE_FORMAT)
+      setDateAndUrl(nextDate)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to find last logged day"
+      setFoodError(message)
+    } finally {
+      setIsJumpingToLast(false)
+    }
+  }, [selectedUserId, selectedDate, timezone, setDateAndUrl])
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -357,16 +418,46 @@ function AdminViewAsPageContent() {
                       title="Breakfast"
                       foods={groupedFoods.breakfast}
                       timezone={timezone}
+                      onDelete={handleDeleteFoodItem}
+                      deletingId={deletingFoodId}
                     />
-                    <MealSection title="Lunch" foods={groupedFoods.lunch} timezone={timezone} />
-                    <MealSection title="Dinner" foods={groupedFoods.dinner} timezone={timezone} />
+                    <MealSection
+                      title="Lunch"
+                      foods={groupedFoods.lunch}
+                      timezone={timezone}
+                      onDelete={handleDeleteFoodItem}
+                      deletingId={deletingFoodId}
+                    />
+                    <MealSection
+                      title="Dinner"
+                      foods={groupedFoods.dinner}
+                      timezone={timezone}
+                      onDelete={handleDeleteFoodItem}
+                      deletingId={deletingFoodId}
+                    />
                     {groupedFoods.other.length > 0 && (
-                      <MealSection title="Other" foods={groupedFoods.other} timezone={timezone} />
+                      <MealSection
+                        title="Other"
+                        foods={groupedFoods.other}
+                        timezone={timezone}
+                        onDelete={handleDeleteFoodItem}
+                        deletingId={deletingFoodId}
+                      />
                     )}
 
                     {dailyFood && dailyFood.foods.length === 0 && (
-                      <div className="rounded-md border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
-                        No food logged for this day.
+                      <div className="space-y-4 rounded-md border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
+                        <p>No food logged for this day.</p>
+                        {selectedUserId && (
+                          <button
+                            type="button"
+                            onClick={handleGoToLastDay}
+                            disabled={isJumpingToLast}
+                            className="inline-flex items-center justify-center rounded-md border border-amino-500 px-3 py-2 text-xs font-semibold text-amino-700 hover:bg-amino-500/10 disabled:opacity-60"
+                          >
+                            {isJumpingToLast ? "Searching…" : "Go to last day with logged food"}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -480,11 +571,15 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function MealSection({
   title,
   foods,
-  timezone
+  timezone,
+  onDelete,
+  deletingId
 }: {
   title: string
   foods: AdminLoggedFoodItem[]
   timezone: string
+  onDelete: (food: AdminLoggedFoodItem) => void
+  deletingId: number | null
 }) {
   if (!foods.length) {
     return null
@@ -495,14 +590,24 @@ function MealSection({
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">{title}</h3>
       <div className="space-y-3">
         {foods.map((food) => (
-          <FoodRow key={food.id} food={food} timezone={timezone} />
+          <FoodRow key={food.id} food={food} timezone={timezone} onDelete={onDelete} isDeleting={deletingId === food.id} />
         ))}
       </div>
     </section>
   )
 }
 
-function FoodRow({ food, timezone }: { food: AdminLoggedFoodItem; timezone: string }) {
+function FoodRow({
+  food,
+  timezone,
+  onDelete,
+  isDeleting
+}: {
+  food: AdminLoggedFoodItem
+  timezone: string
+  onDelete: (food: AdminLoggedFoodItem) => void
+  isDeleting: boolean
+}) {
   const time = moment(food.consumedOn).tz(timezone)
   const timeLabel = time.isValid() ? time.format("h:mm A") : "--"
 
@@ -539,10 +644,24 @@ function FoodRow({ food, timezone }: { food: AdminLoggedFoodItem; timezone: stri
       <div className="flex flex-1 flex-col">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <div className="text-sm font-semibold text-zinc-900">{foodName}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-sm font-semibold text-zinc-900">{foodName}</div>
+              <span className="text-xs text-zinc-400">ID: {food.id}</span>
+            </div>
             <div className="text-xs text-zinc-500">{servingText}</div>
           </div>
-          <div className="text-right text-xs text-zinc-400">{timeLabel}</div>
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <span>{timeLabel}</span>
+            <button
+              type="button"
+              onClick={() => onDelete(food)}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1 rounded border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+              {isDeleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </div>
         <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-zinc-600">
           <MacroPill label="Cals" value={normalizedCalories} suffix="kcal" />
