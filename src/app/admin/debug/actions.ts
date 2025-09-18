@@ -4,6 +4,7 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import { createClient } from "@/utils/supabase/server"
+import { ADMIN_ALLOWED_USER_IDS } from "@/utils/admin/allowedUserIds"
 
 export interface FoodItemImagesType extends Tables<"FoodItemImages"> {
   FoodImage: Tables<"FoodImage"> | null
@@ -30,14 +31,6 @@ export interface MessageWithSignedUrls extends MessageType {
 
 export type MessageSortField = "createdAt" | "resolvedAt" | "consumedOn"
 export type MessageSortDirection = "asc" | "desc"
-
-const allowedUserIds = [
-  "a1ca16b9-333f-40bd-8f43-88977cc9a371",
-  "2cf908ed-90a2-4ecd-a5f3-14b3a28fb05b",
-  "6b005b82-88a5-457b-a1aa-60ecb1e90e21",
-  "0e99c4d8-0c40-4399-8565-8379ebfffc49",
-  "3fea3294-9dcf-4acf-954b-6648028825ea"
-]
 
 export async function fetchMessages(
   page: number,
@@ -111,7 +104,7 @@ export async function fetchMessages(
     query = showDeleted === "deleted" ? query.not("deletedAt", "is", null) : query.is("deletedAt", null)
   }
 
-  if (!allowedUserIds.includes(currentUserId)) {
+  if (!ADMIN_ALLOWED_USER_IDS.includes(currentUserId)) {
     query = query.eq("userId", currentUserId)
   } else if (userId) {
     query = query.eq("userId", userId)
