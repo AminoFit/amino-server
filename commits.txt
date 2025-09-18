@@ -1,0 +1,831 @@
+4ed6baa40ca7ed09986bb6148a03a78b813edac8 - Seb - 2024-09-28 - fix
+c343f1582ee2406ee545103ce97ebc8b655cb740 - Seb - 2024-09-28 - updated response format
+8344633f370c3c7fab44a92293c8695605ebc37f - Seb - 2024-09-26 - vertex
+d05ec94d245d292bbdfc78cdf80738ae159aee0f - Seb - 2024-09-26 - move to vertex
+d3146772a148033e2d243feff6837ec4d6a1ebbc - Seb - 2024-09-24 - Update actions.ts
+665effb962ca977c06783ed0e15fcd3fc8d27c6b - Seb - 2024-09-24 - Merge branch 'main' of https://github.com/AminoFit/amino-server into staging
+7a4666c70ab98f4282d12a39e3225f04595cdf8a - Seb - 2024-09-24 - new test page
+8210986a71002b58b83f3cdf80c69d862f7333fb - Seb - 2024-09-24 - Merge pull request #81 from AminoFit/staging
+b2bd60226f4cdf4272fac27f031c2452752df251 - Seb - 2024-09-24 - Merge branch 'main' of https://github.com/AminoFit/amino-server into staging
+f51b4e196a89a6f46ac5e52dfc1b85e9943f45ec - Seb - 2024-09-24 - allow updating fooditemid
+020255c9e641b72ed0141303c3b0e134d712b348 - Seb - 2024-09-19 - ensures calories are estimate if not present
+713977f618a1ce6bba657f453278c7973f4c1d85 - Seb - 2024-09-10 - Merge pull request #80 from AminoFit/staging
+0bb75fcc3ebd5ec0e9217bc9d154e6ee72ce281d - Seb - 2024-09-10 - Merge branch 'staging' of https://github.com/AminoFit/amino-server into staging
+a982f08c18fb2808da65822219d0335895d29748 - Seb - 2024-09-10 - Move free trial to 1 day
+664a088ac92451d1049219165f2d4ff0f5e4bbe5 - Seb - 2024-09-10 - Move free trial to 1 day
+ab8dbac3defb5fc94ad0a7fe69abefccf67589f9 - Seb - 2024-07-28 - Merge pull request #79 from AminoFit/staging
+07bd835957939a0cf6aed305664a379f756c8891 - Seb - 2024-07-28 - change to 4o-mini
+a9e99484d5fea8e93557d6d0c5e39407dde7587f - Chris Coudron - 2024-06-28 - Revert "Update push notifications to only send if > 2 hours since last log"
+fc7b36b91a302587759790edf36840b623311f85 - Seb - 2024-06-26 - ensure only nutrient fields can be updated
+d8f2fd07e476e68d1889647a6b4f27fe82525a4c - Seb - 2024-06-25 - remove max duration
+7bcd4a34d5b5967b123c0096500d48b9837638e4 - Seb - 2024-06-25 - better types
+89b6f03ada4389392818635553f2e2fb5b482b28 - Seb - 2024-06-25 - Merge pull request #78 from AminoFit/staging
+4320c922085f1965d928f904ae2e85e0fdc2eb34 - Seb - 2024-06-25 - new path - update-logged-food-item-serving
+d143323e6f9ceb04a198d6a1441718c05a566805 - Seb - 2024-06-25 - calculate nutrion fix
+dc3993deef629aff2b5770f4ad378c85e2e80bff - Seb - 2024-06-25 - valid info from gpt4o
+5ca7a3c2579f5c003a207e725b7365abf178a91a - Seb - 2024-06-20 - Merge pull request #77 from AminoFit/staging
+eb1f23bcc69164b94433da2e1646832a0e0d361d - Seb - 2024-06-20 - remove testing
+2cc7301b61f465f4a67dae18a58ba5d7aaf0449b - Seb - 2024-06-20 - Update claude to 3-5 and dont update nutrient data if already available
+2312be0c58dfb895d8e9406d98c84c7fa51c331e - Seb - 2024-06-19 - Merge pull request #76 from AminoFit/staging
+12f0ce9ee7e2b2e90052a15895a0cc7664879608 - Seb - 2024-06-19 - fix matching bug
+408c64b79688445a086ecb594d2dc709de333026 - Seb - 2024-06-18 - backfill script
+f46a37d5807162ba7117278b5860a382e5fa88c9 - Seb - 2024-06-17 - fix build with new types
+1601175764e614426f44c7fde6b450237084cb92 - Seb - 2024-06-17 - add calories if info available
+bd538b9872c13198d243407a1e58aefe7f57f323 - Seb - 2024-06-17 - Merge pull request #75 from AminoFit/staging
+88fc4cbb5674845d57fbe2f5224e04dcfa0c34b2 - Seb - 2024-06-17 - convert food info instantly on log
+212b7ceb7e66115b5a86fbba70bf8a90d12e8700 - Chris Coudron - 2024-06-17 - Update push notifications to only send if > 2 hours since last log
+18d77342eceeb105f4e39188c3ce869fa1104aa2 - Seb - 2024-06-14 - barcode optimisation
+5fed025e1f190f8f168d2e3c99bc85444afb385f - Seb - 2024-06-14 - Merge pull request #74 from AminoFit/staging
+adeb284f3444108ca8808d1e5759c222969122e8 - Seb - 2024-06-14 - better prompt for faster output
+7b49f339f0197af7df3005947937923f1912baf6 - Seb - 2024-06-13 - Merge pull request #73 from AminoFit/staging
+d05e5314fd5aa6c7d9f0a1946a5a68c356a40e26 - Seb - 2024-06-13 - fix matching
+6add7ee29554bcbc8e4e8f15efe05454a5dfd9f4 - Seb - 2024-06-13 - Merge pull request #72 from AminoFit/staging
+9a792ddd518a6458bae6eda1cfaf12043e5b891d - Seb - 2024-06-13 - fix image logging
+49612cfce954a5bc3befb6f34a1466760e27aae1 - Seb - 2024-06-13 - Merge pull request #71 from AminoFit/staging
+4099291c6d174190ce6bd5b388aaf3359109981e - Seb - 2024-06-13 - store nutrition values in table
+b496841e6d87637c0b6fd72054e3fe5166abfa61 - Seb - 2024-06-13 - fix build
+181dde6a7ae994fb39bddc985b942938732a5ab0 - Seb - 2024-06-13 - better barcode detection
+3a6c345abca33ba5a35fd9566acd113d0badf0ba - Seb - 2024-06-05 - better barcode grid search
+7193a10fdec1617051d0a281be7a80e61c294a4c - Seb - 2024-06-05 - Merge pull request #70 from AminoFit/staging
+05a23b4f7a82f0cabb594bfcbbf403fb5aa654c1 - Seb - 2024-06-05 - better nutrient calc
+d9850006d80d1fea3300ff712ae525201a431457 - Seb - 2024-06-05 - barcode grid search for better accuracy
+87a7d9df535db84cf6a4468bea81bdfb58120fe8 - Seb - 2024-06-04 - return all units fatsecret
+84f65b24913ea432486885f049c8ac6886a11b26 - Seb - 2024-06-04 - extract all nutrients from USDA
+86fb975c2c86f5d89fca4fe86e19db3502c1f849 - Seb - 2024-06-04 - rm
+fe5e60c997347a0b29cbd98bfd9355c141edfb3d - Seb - 2024-06-04 - query more attributes from USDA
+1eeeb7bdbe40e6015899321833cfeb144facbc22 - Seb - 2024-06-04 - save nutrient data to newly logged items
+04f116c58a4ab963dccd34fb961f9467d3c8b28d - Seb - 2024-06-03 - promptune
+1dccbc0752c3c0bfd156bae2fe08b8fdcc10c1b5 - Seb - 2024-06-03 - table migration
+ea99581e845f00bc46fc5ebbbf193cee020ce07b - Seb - 2024-06-01 - Merge pull request #69 from AminoFit/staging
+7437082db895bfd4bb288ccba1c5882c3d658e79 - Seb - 2024-06-01 - move to one month free trial
+e862710e88253959e91e8d18fc59fdd91ab828c5 - Seb - 2024-06-01 - Merge pull request #68 from AminoFit/staging
+aaa9bb97a694db8126041ee71ef8de3b62483bf3 - Seb - 2024-06-01 - build fix
+87f702b5509e16c68abba39ddb8b5943691d4d7a - Seb - 2024-06-01 - Merge pull request #67 from AminoFit/staging
+7883fc6f1c7bbc3197365b7b6fae8724be5ab518 - Seb - 2024-06-01 - ask login
+d9614b732f20bd57b94f70ccaf5931cfe200efcc - Seb - 2024-06-01 - Merge pull request #66 from AminoFit/staging
+ec132aabc2f58367308762f81ba0089ce04e98f8 - Seb - 2024-06-01 - test something
+085c36fe6f60eb1cd992250af0ff995e9e3f2975 - Seb - 2024-06-01 - allow non-admin users to see only their data
+cae82596fe4451aa707a20ede64e1a07fec962e6 - Seb - 2024-05-31 - Merge pull request #65 from AminoFit/staging
+079ddfe7624d8a281dbd42277729a942c27bd909 - Seb - 2024-05-31 - upc
+498dd2354fe8274d3b32e5b224291f3ab327b711 - Seb - 2024-05-31 - find food by UPC
+6809ab2b32b32b6ebc46cd05159c3d7d409ed1d8 - Seb - 2024-05-31 - fix build
+56455df8a463596ed3e76cdc7501474c159d28af - Seb - 2024-05-31 - correctly updates UPC codes
+85b2e8e59cd8fddf721b8fd77b6d41ce8c61e57e - Seb - 2024-05-31 - UPC support (partial)
+2baada6781cde19d853816d386a37588a423a68b - Seb - 2024-05-30 - add ability to extract barcode from image
+c1d41e0eefd271a7abc6ee654704ebeda95898f6 - Seb - 2024-05-29 - fooditemid
+b238744ecfc9699d410eae8933ac13ca84c8007b - Seb - 2024-05-29 - image icons
+3eb109a957cb704fd1529bb111a49b9272b97e8b - Seb - 2024-05-29 - image icons
+0860ff2006a01910a7d7b1fa4b02348b81774b41 - Seb - 2024-05-28 - show images
+450b855cee6b542de128f0504d5b2f74b7c66abd - Seb - 2024-05-28 - fix build
+4f1cc0a21c660f1264150dcf5ed8f281201eaef9 - Seb - 2024-05-28 - sort by descending
+14e0119e4396a029c0fd226bd5c1613cf26caa2e - Seb - 2024-05-28 - make query more efficient
+2354e0e55b9c50553da0c0169b662e6b8bbb7665 - Seb - 2024-05-28 - add user
+a32b886370b270d782717ad147a80f792d76359e - Seb - 2024-05-28 - Forbidden
+465520d2c5dd1d23ec4bcccea13d031d52030b81 - Seb - 2024-05-28 - more debug code
+8fd290f45e8c40ce05256798d43bb47bee2158a5 - Seb - 2024-05-28 - remove use server
+1704cc9d1bd542622713c88a54d945e7c665a0ca - Seb - 2024-05-27 - Merge pull request #64 from AminoFit/staging
+d2141d804f310456306e5e41f793f0abc7da7288 - Seb - 2024-05-27 - update
+ce88e82e827937f3298d19e2b751a7f64f7d84e3 - Seb - 2024-05-27 - Merge pull request #63 from AminoFit/staging
+03055552ea6f18beb9b58129b9ccd021ac794bbe - Seb - 2024-05-27 - better debug
+1ed90746ae61dead419868fb5c2fd95be203589c - Seb - 2024-05-27 - Merge pull request #62 from AminoFit/staging
+41ea62b1084ab3cd17c9545cb6ff4a6ee41e0920 - Seb - 2024-05-27 - fix build
+10422f987a1c5157e82fc869a9974283a7047d03 - Seb - 2024-05-27 - Merge pull request #61 from AminoFit/staging
+67abf3db53edab7d62ec6fe547203b5396a0b812 - Seb - 2024-05-27 - remove test page
+c4d632c3b0bd358ca4bc8c178640edd3c14c0f19 - Seb - 2024-05-27 - debug view
+69158621e5ffd2c8e0e86177a1a777aed2ebcb01 - Chris Coudron - 2024-05-24 - Switch back to twice a day
+0750d16499c78aac301d49e9ff98d399ef83bb60 - Chris Coudron - 2024-05-24 - Drop pushNotificationPref
+49011010e4ec89c67504cf83845454bd56dd9649 - Chris Coudron - 2024-05-24 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+9f44647e501883747ee413b6d5b32d75286d7ea2 - Chris Coudron - 2024-05-24 - Push notifications every 5 mins
+a518473791e173d1ea76236299a098f66794543d - Seb - 2024-05-23 - overview
+6ca9e408a87eee50052458154b380b40a5dd88f0 - Seb - 2024-05-22 - debug update
+2841db1cbf996cb61b29bdec488252e8e6afb959 - Seb - 2024-05-22 - add migrate script
+9fd6be53324087ade3f46e3bc03b7c21b06abc95 - Seb - 2024-05-21 - Merge pull request #60 from AminoFit/staging
+dbca1ba8fef791127b30f1f446304116bd6ae803 - Seb - 2024-05-21 - fix build
+455243f54021abc11b987961663a568e0e7f16f0 - Seb - 2024-05-21 - Merge branch 'staging' of https://github.com/AminoFit/amino-server into staging
+03cfabbe9052b93127a0369c034860b5d1a269e7 - Seb - 2024-05-21 - web oauth
+874ccf5b4d1161f9e18d1d8f3e60e704bb125021 - Seb - 2024-05-21 - web oauth
+19fd8bde19ea82dda3f2ccad82bfbde297e8c77f - Chris Coudron - 2024-05-21 - Update user notifications to happen at lunch and dinner
+e2d9c055bb52b806c0f6193eb9d5b1e93f16d0cd - Chris Coudron - 2024-05-21 - Enable push test notifications
+f6255b49f7e26b2443dfb02385929e980aa4d4d2 - Seb - 2024-05-20 - Merge pull request #59 from AminoFit/staging
+1b8f3d0b65136d23d701aa4390346329cd0efc6a - Seb - 2024-05-20 - fix logging?
+38616e4c90b4a0ef884329418f0db68b8e05e8aa - Seb - 2024-05-16 - extra instructions
+fe848035333c94819a89e6c6aaa19a6813918908 - Seb - 2024-05-15 - Merge pull request #58 from AminoFit/staging
+8729e39b82a7edeb9dad4515390972fb7c008411 - Seb - 2024-05-15 - remove tiktoken
+12685f98ac18ff4a89cd1ed7cd87c303f4d290a0 - Seb - 2024-05-15 - Merge pull request #57 from AminoFit/staging
+7bbbec1530308676afd29d02bcb8c080bfab35f7 - Seb - 2024-05-15 - online fallback for search
+53f366896f941799cc828ccbd04f6d8c54116e21 - Seb - 2024-05-15 - support multilingual logging and remove USDA from search
+1a65417599eed876a603faf200b8fbe9626e4f8e - Seb - 2024-05-14 - Merge pull request #56 from AminoFit/staging
+a46706677b694a9a826b9d28c03c7b3b1ed5acc2 - Seb - 2024-05-14 - move classification to GPT
+89211f9e15713ccb5a9033629d140310ada8459a - Seb - 2024-05-14 - fix build
+242d4d7be9d675f16c059d40c3d6952f3e577f87 - Seb - 2024-05-13 - broken build
+48c321efbf66444713eca4c2bbd6f4c68adfa020 - Seb - 2024-05-06 - move from fetch to axios to force timeout
+b62326f5fc99fdbf33024a5d01f7f4cf9dd48ac8 - Seb - 2024-05-06 - only call completeMissingFoodInfo at most once
+3f8af262e534018c4d555ae8594fa87d63475a52 - Seb - 2024-05-06 - Fix bug where newly added items returned empty servings
+ae3f29da1750a1890e7ea01c0eb1b19f4f967650 - Seb - 2024-05-06 - move to antrhopic for food extraction step
+45d8ee4b7c7120f0e0967a2319f95920af599683 - Seb - 2024-05-02 - Merge pull request #55 from AminoFit/staging
+de20b94416ed54cda68560d0a1dfd1aaa6cad41a - Seb - 2024-05-02 - Merge branch 'main' of https://github.com/AminoFit/amino-server into staging
+b25d444a840d48d4ca8f9e54849e3c0cc4eebf69 - Seb - 2024-05-02 - remove accidental test script from running
+06d1f2a921e7396c20739b5947b2e17b4ada5772 - Seb - 2024-05-02 - remove perplexity use for fixing food info
+64f8db95f8afd47e50f2e7edbaae10b305fa7954 - Seb - 2024-05-01 - fallback on other providers
+0068f9f75734a20a7e4394291117a14181c7c7f7 - Seb - 2024-04-30 - move to haiku
+6721676385a67b980098e4bdd1867f067c7a1a55 - Seb - 2024-04-30 - Merge pull request #54 from AminoFit/staging
+b5351fb1be1fe9d3fba8cbbe02e2f05690e47129 - Seb - 2024-04-30 - move serving calculatio to llama
+caab25339e93d297735163a773d273b33d5fc9da - Seb - 2024-04-29 - llama serving
+3d24b9dade0aafeebc6adb84d9f6eff8255b0b15 - Seb - 2024-04-26 - Merge pull request #53 from AminoFit/staging
+c1f6de0b7ea97f4593186698ba2594f57e578eb7 - Seb - 2024-04-26 - Merge remote-tracking branch 'origin/main' into staging
+f597918c9ceb1fcfcfe844c0e90aa2748f4a5f2b - Seb - 2024-04-26 - move item matching to llama3
+900555861ecafbb249c1a7a91b08e85c13f9bdce - Seb - 2024-04-26 - llama matching
+d948c0b6405bc0ff3dfba766d7d5129fc7eafcf8 - Seb - 2024-04-25 - Merge pull request #52 from AminoFit/staging
+e7605ed4a14d332ec07cc2467767e5535b971d7a - Seb - 2024-04-24 - Merge remote-tracking branch 'origin/main' into staging
+d86ea9cea40d6e9c201e18e80b5b32da60965f67 - Seb - 2024-04-24 - console log remove
+3b94bed1ce2f26bca978597bcc3a4fda84a4ef79 - Seb - 2024-04-24 - move time extraction to haiku
+bea423fab0195f28a02ef8b3566523eb1039df0d - Chris Coudron - 2024-04-23 - Doing push notifications based on user preference
+d312bcf0306eedd2a3aa5a487ea041b3f4c74347 - Chris Coudron - 2024-04-23 - Notifications every 8 hours for now.
+8662bd675e3433396c45b5ba525ecde26adfc0cf - Chris Coudron - 2024-04-23 - cache fix
+19e4d52515ffa6fd138684d6c6cabe244b025976 - Chris Coudron - 2024-04-23 - Logging
+a483071310a53deec8d8fe070e348866fe4d0662 - Chris Coudron - 2024-04-23 - Testing cron jobs
+7167017d70402665af783df7f5b5f5a2d2130020 - Chris Coudron - 2024-04-23 - Push notifications
+6218bbf0ff349a1e2136942de95ea335ee6e4ab2 - Chris Coudron - 2024-04-22 - Adding migration for push notifications
+d3a5175a7b25de694dbcb431b50c288e1321f194 - Seb - 2024-04-22 - Merge pull request #51 from AminoFit/staging
+51aa4ce5b2c26a9ac2fe58a707b114525938524c - Seb - 2024-04-22 - move to llama3-70b with fireworks
+8adfe15f34d75ef6ed1e6c37cedad56a98f59492 - Seb - 2024-04-22 - prompts
+f2d2623a455327e89929443378a58f69ed6f0d56 - Seb - 2024-04-22 - commit
+bf5951774063bfcc6985b9de200c7fad265161b6 - Seb - 2024-04-17 - typo fix
+f4be7b597d4ec19d7b27013f2b6ecb6e607ed39d - Seb - 2024-04-17 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+530ed2b8c101e51c1948e455f69fdfb45e4d2b73 - Seb - 2024-04-17 - try sharp linux
+a27e736b1eed57dde3663908d3673f2c8f869d21 - Seb - 2024-04-17 - Merge pull request #50 from AminoFit/staging
+1bb0995cf091b572f8d7951dbb65db7c3cc07a04 - Seb - 2024-04-17 - update lock
+1fa6d26a3832e12f13c4816720f411461272d1a6 - Seb - 2024-04-17 - Merge remote-tracking branch 'origin/main' into staging
+03e486a22f64b7cb5b5e38421467b7924f1bad55 - Seb - 2024-04-17 - Better migrate hygiene
+3f3c82427003bfb7cfa02a64cc72d16f5e46f7a8 - Seb - 2024-04-17 - Update page.tsx
+884bf6711a4008997dd7ccdfd97de8c965357312 - Seb - 2024-04-17 - fix build
+a8674e20b8d12e203ee702f8d2664b7326630daa - Seb - 2024-04-17 - better marketing page
+0b5f01b05260910901c1105eb753763957330b0c - Seb - 2024-04-15 - add footer links
+a84f8bfaf8e6d8d007b04bfa211675e8b1bed79a - Seb - 2024-04-15 - add links
+383156c09ce849f817fc7496f62fc0304c680bd7 - Seb - 2024-04-15 - new favicons
+7040caaf52af5c7c6f28f75a57c0372d67ae4588 - Seb - 2024-04-10 - support for json mode for images
+73f825d6366437e9cd6a336b5e6cf81b16f24c11 - Seb - 2024-04-09 - test tags
+3673eb30823542017d179473811a30f26526ad3e - Seb - 2024-04-08 - try new tag
+21107860e884e13eaed7a512b78806bb73fcf42f - Seb - 2024-04-08 - fix build attempts
+3562785fc21d329c05cd8e5f29d641b539825f67 - Seb - 2024-04-08 - tag manager
+3d451f7be754c27d2b3b485e1e4b6ebb5e63b65f - Seb - 2024-04-08 - GA setup
+e9ecc2e1a86e7f696717bb964f5314ac159d9913 - Seb - 2024-04-05 - Merge pull request #49 from AminoFit/staging
+fc2b8a30465b9acca5a945fed8cb4a3a71d39b86 - Seb - 2024-04-05 - XXL Change
+d2a8732d2158ce8945a68180f9840112d602c0d3 - Chris Coudron - 2024-04-03 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+fceb3cb204a9fab04d983bbce50cc9eca9edf6a2 - Chris Coudron - 2024-04-03 - Update website links
+6ccd76642de925a6b19acbfe9e584d4619e6743f - Seb - 2024-04-01 - get usda items
+3d857902c59f31b3814313b79e96d5757c352375 - Seb - 2024-03-27 - better migrate
+0a69e9eaa31ed1a0d3e2336389030493c50ddbd8 - Seb - 2024-03-27 - update types
+14f4650b119df53795abbb9553f6b47c0d8c4e39 - Seb - 2024-03-27 - usda vector search
+52e2062b6f1baefc2e082967e2a5823504151ec5 - Seb - 2024-03-26 - fix text
+fa1674abdca2de391ebe1f006e201cb15f9eaa4c - Seb - 2024-03-26 - fix
+7dedff33ef8218af213c0cfd2db822b19464d78a - Seb - 2024-03-26 - ensure subscription time is interpreted in correct timezone
+99a99072651e9a5277c507fe1c885cdc389f8192 - Seb - 2024-03-25 - remove wrong address
+f632d922d41debdf72ad073f885862a6dbb3c950 - Chris Coudron - 2024-03-22 - Build fix. Remove font awesome. Use svg
+a7d36d6004bda7b3a829e3533a038b522e5790af - Chris Coudron - 2024-03-22 - Remove unused nav items
+30ed60f4ee98c8c9402f88fc4c2e5a1390959c77 - Chris Coudron - 2024-03-22 - Simplify website
+5a030cd80cf43083841f158238b440b6c3ca4438 - Seb - 2024-03-21 - give users 1 week free trial
+d94d762fb64a87d12dd764780143201102b9f901 - Seb - 2024-03-21 - finally fix headers?
+c211a801da2f6253a36c0c6f0c826f8ebb6dc8e3 - Seb - 2024-03-21 - more debug
+d410255530d531f8e1ae61300d7956e0ae6d473b - Seb - 2024-03-21 - more debug test
+cb18cf16cff51a605982f1beafbca2357f552a2c - Seb - 2024-03-21 - add edbug mode and sandbox
+41f41823c0722acb118eecc3589e270b32964f8b - Seb - 2024-03-21 - add revenuecat hoook
+348dbe7ae114319914e98f72ffb0e0e9df22553c - Seb - 2024-03-21 - build fix
+fa81c85e7b24a8aec937584a942ec441b15228d2 - Seb - 2024-03-21 - migration fields
+a85028e8a1ea4398e306344aa9db91879783f58a - Chris Coudron - 2024-03-19 - Remove login on website
+d76147e5cf815e6c08ab46aa466389636f863833 - Chris Coudron - 2024-03-19 - Drop pricing page for now
+53048851762c0adca27f55c162c5d917e9f6c7b0 - Seb - 2024-03-07 - classify item on add to database
+570523479210615a7f3969b792039302eefe666e - Seb - 2024-03-06 - test deploy
+36d6340ce40063248c9d6b6a18ebbc1560d7da14 - Seb - 2024-03-06 - fix packages
+afe7f948637c739eb6f21d42b570797fde056c0a - Seb - 2024-03-06 - fix types
+6206f1c3ee099844c7c32ff9cd8947fb873716d8 - Chris Coudron - 2024-03-01 - Package updates
+4d0d56cde77f0d08fd2d5b58b39ddd5c5f1fa31a - Seb - 2024-02-27 - migrate
+7f14f1038a566e8fb175fd38561cb39bd58aa728 - Seb - 2024-02-27 - new types
+88e5a33cbef1d67599277d01566c1c0a16dcd85c - Seb - 2024-02-27 - user_streak
+45af228e05752f1ad498eaa170102de7768e713b - Chris Coudron - 2024-02-26 - Update page.tsx
+e3b34274a7a88f3806ca28472a090d14c1f528ef - Chris Coudron - 2024-02-26 - Add pages
+6e968e081dc8ca34f1509b5b8d213dd02c168206 - Chris Coudron - 2024-02-26 - Update CopyButton.tsx
+595cf4973e29fe83cdfdc0cabe8e1d12695026a8 - Chris Coudron - 2024-02-26 - Update page.tsx
+46f39bac2ab8654a3752931ae40357ddcd1e6820 - Chris Coudron - 2024-02-26 - Add existing icons
+dddf3146bb1546a25ba5a1d7cf886df0cf5a91f3 - Chris Coudron - 2024-02-26 - Fix cache
+a17591545b0112622a750077d7f36836c90e77ec - Chris Coudron - 2024-02-26 - Update vercel.json
+6df3c0325e33297078ff45c07d39755162551e61 - Chris Coudron - 2024-02-26 - Fix cache?
+049938b7c1a45d8ad62383cd5d2c62d99928b958 - Chris Coudron - 2024-02-26 - Update page.tsx
+08dd1cef3b631628bcff78276b4d91968356df5d - Chris Coudron - 2024-02-26 - Cleanup debug
+2142b2190b8bbc828c9bb2d6868f0c90677912d3 - Chris Coudron - 2024-02-26 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+00aa0414e8388f019f9c1bfaaedb1690cbb003d4 - Chris Coudron - 2024-02-26 - Fix copy bug
+a9800049a7f68a578edaea810416fae4e4000133 - Seb - 2024-02-26 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+31488e7df23a31be96d2f5d6e694db0cdfa929f8 - Seb - 2024-02-26 - fix add to queue
+e95332a693c67f47bf60a681a65ac529bf7cedfb - Chris Coudron - 2024-02-26 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+8cacc854a913830a295a0f673f15c33bda47cfdf - Chris Coudron - 2024-02-26 - Update admin icon page
+17ae70984ff4f5d38d0845998847392eece707b4 - Seb - 2024-02-26 - newConsumedOn time fix
+46704bfbd855bd8860a58bddab5a22b32d881297 - Chris Coudron - 2024-02-26 - Cleanup and build test
+8a4a0a3f1d3e0ac84dc98c3ef2869b205a3766b4 - Chris Coudron - 2024-02-26 - Fix caching/render bug
+07292f6eaaef069ca1a9de85c6b3e80bef3f9dca - Chris Coudron - 2024-02-26 - Adding copy button
+c7a7b278fb27c371e43e7ca8053256e1c0610b69 - Chris Coudron - 2024-02-26 - Update icons to use new script (#48)
+c1d73cce8887e6a4c1efc93964a6e3a93133c524 - Seb - 2024-02-25 - add description to returned fooditems
+214234ec7cecb21a3423feba6e5b291fdee8647f - Seb - 2024-02-24 - update search food to also return fooditem
+082495ac9648fd3c06d154d067193a899ae86e8d - Seb - 2024-02-22 - fix issue where serving can be tiny number
+3d0fb56bae4238e4a5c43410c4da00b4598fd7fc - Seb - 2024-02-22 - consumedOn time
+5c7de68aa17748b1306a2e365998050601b541ce - Seb - 2024-02-22 - await all tasks before exiitng
+37fedaf88f83b9d4979b492e0a95a24d58152512 - Seb - 2024-02-22 - add ability to say message tine
+f7000967c690220fe85b3bf5dac7b62ca4f29e61 - Seb - 2024-02-22 - await add to queue
+2be05ce3f868449e71cf275bebf192c81f68db38 - Seb - 2024-02-22 - re-enable food logging
+ed696f2178dcc244cb138f0f822f7bc5aedb89a9 - Seb - 2024-02-22 - cache prompts too
+868f1982ca94fda4467e226c63956e84e72a0b0b - Seb - 2024-02-22 - Add redis caching
+5a53ebd78459ed0da75c720fc5edfc3b79b164a1 - Seb - 2024-02-21 - reset items count to 0 when processing message
+0c0599a9a2c8b0178f7feeae1181dcc4275ae70c - Chris Coudron - 2024-02-19 - unicode fixes
+d95ba3f29026f07c0ea27fa42e1dc70037d40ccf - Chris Coudron - 2024-02-19 - Typo
+a4dbad20928bcd79bc114134fc41da66b3d31290 - Chris Coudron - 2024-02-19 - Adding privacy policy
+a2be62cb16c872fe6b48b93a7b5357386f62c7e9 - Chris Coudron - 2024-02-19 - Adding terms page
+9b8350245a4c95a0f5b555e7438d5cc1c454403c - Chris Coudron - 2024-02-16 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+4d8f8f5c2cc0b8038128ee620766e780407c71bb - Chris Coudron - 2024-02-16 - Update packages
+9293fa47ce38311bb16fb983786b9f10704a6eec - Seb - 2024-02-14 - mark message as bad log request
+ed8d3b5c6d1a4ae310696894576ebb7e07aaf4d3 - Seb - 2024-02-14 - set isBadFoodLogRequest field
+482f4bf1f69e9499567d91ef0ef8b213185b3911 - Seb - 2024-02-14 - move default timeout to 2 minutes
+2165a5a3d16d695f1223b9f7fb666027e962ff24 - Seb - 2024-02-13 - fix softdelete error
+eb40ba766236d452fb0aa3660b362be510ddc266 - Seb - 2024-02-13 - more logs
+b9f949d578bf0197f6e906c15c07a1a2f1f37104 - Seb - 2024-02-13 - logs better
+ea86f296f3258f91260172502f2dc5d421c0390c - Seb - 2024-02-13 - better logs
+b1d47b3d1002058d3955cf60981c0dacb02a3fef - Seb - 2024-02-13 - Update route.ts
+19a50fd3dea4aeaa9a898ecd96c256177acd7cad - Seb - 2024-02-13 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+cebb9c52a777411f8280c2b9ee9f71a1338b44e8 - Seb - 2024-02-13 - add more logging
+af76fe58f83eb7a4f15f013dd3ce8b9d49ea7fbf - Chris Coudron - 2024-02-13 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+dbcec9002acf110a74cf69301bd13269f5e272fd - Chris Coudron - 2024-02-13 - Fix build errors
+ab30f0127e9791c23ddc8560e9174a5712215e8b - Seb - 2024-02-13 - add suspense wrapper
+22cffbc8d15b8e097c649a0e454b30af3435681d - Seb - 2024-02-13 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+0a90ee80ee6ce753a9303e59484d5482df0c9ed6 - Seb - 2024-02-13 - enabled messageEdit
+30ef535e7bc146b66f5e687cafe5a512fc42e38f - Chris Coudron - 2024-02-13 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+0293a41c379d3265790fb0cb40d794e54e4feb1c - Chris Coudron - 2024-02-13 - Cleanup icon script
+91f3739e253d5361298c6541e59469052d80618b - Seb - 2024-02-13 - migrate messages table
+3f250fa1931c62db6469e7ab8be7136d4ac9e708 - Chris Coudron - 2024-02-12 - Update reset page to use hash if needed
+441c22216cc1515aa32d121704a687ef2c288bd7 - Chris Coudron - 2024-02-12 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+3b3c8d8dc40eaacde2da6a57ab2549fe4a525f17 - Chris Coudron - 2024-02-12 - Adding password change page
+6e0b77fd1000c8f765ef1ad99dea000f5b4c2575 - Seb - 2024-02-12 - move details to high and increase max tokens
+bbe41779da86a857c0825463e7eb3ef5ae3cd17c - Seb - 2024-02-09 - upgrade to nextjs 14 - server actions on by default
+05455d81e500686d99cae6658a9d81fcf9156d94 - Seb - 2024-02-09 - update vision to support retry with rotated image
+06674ef99f3e976ebf2bfc5aa4e7a8a48b2672e3 - Seb - 2024-02-08 - Merge pull request #47 from AminoFit/add-photo-support
+8fa5e5e6f4146daba19e14a8c83fe83a5f499cb6 - Seb - 2024-02-08 - Merge branch 'main' into add-photo-support
+07ddc2252b8d04bfd76407908cd6c2c016fb5db8 - Seb - 2024-02-08 - add support for vision and move to gpt-3.5-turbo-0125
+a57d16d46de58adff842a1cab12ff21c9ed3c642 - Seb - 2024-02-08 - Merge pull request #46 from AminoFit/new-food-matching
+6ac6f830a1c6bb744e4bd146f8dd46deb2ccb03e - Seb - 2024-02-08 - Merge branch 'main' into new-food-matching
+c0ba9aef10faa9b06cdff6215eee2f71b4578f3c - Seb - 2024-02-08 - update
+ac504506f89d4fec933e236ddaf56a19defd6cf7 - Seb - 2024-02-08 - better information completion
+46ea8814b12319c1f25c11030634dbdc969fba9f - Chris Coudron - 2024-02-07 - Update to use icons from redis and mj api service
+0783e23bd2a25d6a720a4a9f306b048fcb59cb58 - Seb - 2024-02-07 - submit
+57003b5270f3199c3e3e23250f1df6c7e0fca54d - Chris Coudron - 2024-02-07 - Using new icon queue (#45)
+cd22b19aa0b0649a09f2b1581c7a5d398d7ae3e2 - Seb - 2024-02-07 - more fine tune data + edge case handling
+19ecc0507a7c070fedbaa96dce73bf442eb2c083 - Seb - 2024-02-06 - fix the matching
+506f202a17d1a01e8d4d88bef107c4ebd80e3dca - Seb - 2024-02-06 - Merge pull request #44 from AminoFit/new-food-matching
+7bbe6e23da2170054a5a678983940e60b486440f - Seb - 2024-02-06 - prompt change
+b408d08f08b1d708bc8c5b65420e45a28631730a - Seb - 2024-02-06 - updates servings
+6f6f0ea40018d9db77533d4665a14e43419dbebf - Seb - 2024-02-06 - Merge pull request #43 from AminoFit/new-food-matching
+ebed3ae840fb9b3e2dd983b61baced4a82911222 - Seb - 2024-02-06 - fix build
+d6f400b2baf3f98c2cf016e200c1050215bc289e - Seb - 2024-02-06 - Merge branch 'main' into new-food-matching
+53d5d7656729c55508df45d7c472944c30f8984a - Seb - 2024-02-06 - new servings matching
+f6010eb352c9acfd7a1912112c05f53898c79e56 - Seb - 2024-02-06 - better servings
+704f38d202013ae5baa53cfa95221cf8d0a26d01 - Seb - 2024-02-06 - training data
+55eecb45484c42403e813cfa75ab48b6b3d2f8ba - Seb - 2024-02-02 - updated fine tune
+f51e101a6600a48941fa649f88a2ca55b7aaecb8 - Seb - 2024-02-01 - fine tune data
+f499907c30001b36d36bc5d8d4e1ff66be23a60d - Seb - 2024-02-01 - food matching working
+8038285885ba7286c8dec9b9d931db3ad8eb6d68 - Seb - 2024-02-01 - more edits
+8b22d5bf02d12c4680bb77ac2169268269b2e194 - Seb - 2024-02-01 - more examples
+494bd02d0d42160b4a6707fa53f6a6c976d9e99b - Seb - 2024-02-01 - updated
+0b7213156465fde36cf8a693aab15e595a6e6372 - Seb - 2024-01-31 - time to ms
+b357a8b5553fab614a2afff39bc94eb994c9cb8f - Seb - 2024-01-31 - fine tune
+90e74a10e036a22ae2da7f70d599fb06d00e31ed - Chris Coudron - 2024-01-31 - Drop single arg version of function get_cosine_results
+ea16d4b17657c0ea370c97789d42150567bec9b0 - Seb - 2024-01-30 - updated
+97b5dac685785918c28649fb81d5c6431b426c70 - Seb - 2024-01-30 - more fine tune
+828f46706384f1de549c078896cbe7b97f5ea319 - Seb - 2024-01-30 - udpated fine tune
+cb1fd210b2036bb9488fe2c8143a100239a5bb5a - Seb - 2024-01-30 - updated fine tune
+e81c2987c447baabce4dba05b21a59e9a2c32b91 - Seb - 2024-01-30 - add fine tune to server
+e6468e1146f8b6e266ef2b9aec25fbeb5d193b68 - Seb - 2024-01-29 - edit
+c94d6aa09be408af888322e5f0fee941e62c8e1f - Chris Coudron - 2024-01-29 - Update supabase-generated.types.ts
+c68e98e5358b7472655ec607bc60d5b39a6b2412 - Chris Coudron - 2024-01-29 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+f446d825f198b190f0f78ee72d58528054f19d5c - Chris Coudron - 2024-01-29 - Adding script to fix icons
+f8ab439a552a5d82e191b3c06a2092357d2c3f0a - Seb - 2024-01-28 - better types
+d0bd0a91434b0187bf95b34ac2b61e0e299c0acf - Seb - 2024-01-28 - fix types
+b83049879595f35e0f3f42d629993b280c3b214b - Seb - 2024-01-28 - fix types
+995dbe47eff6edd0425fb4dc68a940b3976d202f - Seb - 2024-01-28 - add migrate
+ec54719de3d9b86d7afd4398e1a938ff6e0b10a7 - Seb - 2024-01-28 - migrate
+79f7811d7a5498b6bc8507213cd56d8872cb60c1 - Seb - 2024-01-28 - some changes
+48f5efec165d736f6b723742622c667bb6a1c5df - Seb - 2024-01-27 - comment out
+c7e4cd9118d8afcf0cbdcf25f46e661c38eecf94 - Seb - 2024-01-26 - do serving match
+8e35a244e4537f2bfc988f9405a536084e2dd081 - Seb - 2024-01-25 - remove bad console log
+1778e1de9f03508cca885c9d95f819ef4442670d - Seb - 2024-01-25 - fix build
+65bd9cd2d0c0c4a827a42dc1ec508877632fc224 - Seb - 2024-01-25 - refactor attempt
+2820d396a9ba5aa189ca846a3c96011848708e7f - Seb - 2024-01-24 - stuff
+87ea69977800ca736c99855062ed480416db3368 - Seb - 2024-01-24 - allow for gpt4 too
+878944506405d3605b8359a01bd374aa548af697 - Seb - 2024-01-24 - update streamchat
+fe657c1278063814f1bf6d27b6839eeb697ae53c - Seb - 2024-01-23 - massive refactor pretty f'ing big
+50c0ecb95598c651dc1ebf7ca35aaac74a065429 - Seb - 2024-01-23 - migrates
+02b3d12fe2fdfb251e69737e0c0e7a7083028887 - Seb - 2024-01-22 - test scripts no production code
+f66da3dc88599354195d572ff04d9ab660c52af0 - Chris Coudron - 2024-01-22 - Update script to generate missing food item images
+6a91bb9fa546b4275c39f1b895e664bb6ee442e9 - Chris Coudron - 2024-01-22 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+721e0a6fa03fc309cc203f6d755373b5d4702bfd - Chris Coudron - 2024-01-22 - Fix icon generation
+cc6aeaedb88c85e82501565a004e27f328763ea0 - Seb - 2024-01-22 - add audio column
+9c587d3cf82bf0a3aa1625ea00cec6b79f326b37 - Chris Coudron - 2024-01-19 - Only generate images if there's less than a 90% match in the database
+301a33c51e2bfd0fa79f3d7af58c37cf6a41d1fa - Chris Coudron - 2024-01-18 - Update message id
+d37e86afc98b2932f9ac3365572980cf3641cc3e - Seb - 2024-01-18 - new types
+97f1f467e745560fc3ae760d3069dffefdf326a7 - Seb - 2024-01-18 - message id optional
+d6256af2c2c24a507eb2f48cd9372f993cbc7834 - Seb - 2024-01-18 - Add user image tables
+3ad9834c35ec9387a2c1e4576dff9754d9353adb - Seb - 2024-01-13 - Create 20240112204139_make_local_id_varchar.sql
+75c502258518271c98a5b41e34eca6e1bbb28bc5 - Seb - 2024-01-12 - add messages RLS
+790728a86d0655ac4c4f0b1d87511d0afb46d00e - Seb - 2024-01-12 - make sure user owns message
+33753fb34cf3d731115c2793ca3a2e3ba63072de - Seb - 2024-01-12 - add quick log process route
+21fb565187f0abb9c01881330c7d41c162255a8d - Chris Coudron - 2024-01-12 - Type updates and fixes
+4896a1d23cec14410927a2ce54cc111c1d589156 - Chris Coudron - 2024-01-12 - Delete 20231223155539_add_query_best_image.sql
+82efa35599488852a857758db217d677b52e4f00 - Chris Coudron - 2024-01-12 - Update Icons (#42)
+5603875e0b5624e8503e4d9cc9168ddfeaa35c5d - Seb - 2024-01-08 - Fix error handling in deepgram-auth-verify route
+0f93ec50c3be5fc4ebb1ff0cdc4b90f0d25dc104 - Seb - 2024-01-08 - Update Deepgram authentication in user route
+d6e5d8b487527ee9417197393dcc9886575c1bb2 - Seb - 2024-01-08 - Add deepgram API handshake
+f2e0f1f946479c9ea090614155dedcdad63ead64 - Seb - 2024-01-07 - Update migrate file
+6e28da4644ec56c229d1f8980de12605124f6840 - Seb - 2024-01-07 - fix build
+9b522d966f179e649fa0b1b77ed59883f527abd2 - Seb - 2024-01-07 - update types to latest
+1d1640e04680c6a16f7704518fa9c783172b36c9 - Seb - 2024-01-07 - add user debug table
+dff88e2ff29cb53ebe14014f4dc4887b49442b8a - Chris Coudron - 2023-12-22 - Add Food Image Queue (#40)
+2622ea564ddbb5dd3cd453e3d2934e1d85a3aa58 - Seb - 2023-12-21 - cleanup script
+443dff904cea6697ea2f62c790d83e157b1ef70f - Seb - 2023-12-21 - better handling of liquid items
+02ec501ea89af94a7f0334a2620d3582fc987a8d - Seb - 2023-12-21 - fix how servings are processed
+7f523b5cc462f30d532f8a0ed7e2165a3114c83b - Seb - 2023-12-21 - migrate + refactor
+d88fff522ffea5570e5f154498d0bff7d660f732 - Seb - 2023-12-18 - build fix
+515ce0b7bd351913a9caa4f206383a344b3be3d6 - Seb - 2023-12-18 - new types
+ee3748785a9b1c65f5a538e5e205aa50e541cc84 - Seb - 2023-12-18 - build fixed
+2dba371a8782a61ee22981442a9acc1eb865709b - Seb - 2023-12-18 - update types
+835b443f14f47887999c600043bcdca4e21fd803 - Seb - 2023-12-18 - add support for activity level
+f8a2339852aeadfce1b74aaac3a10831c5dba724 - Seb - 2023-12-17 - 3 bug fixes
+076a2b188196daf1ac15c48d873f01f7be448066 - Seb - 2023-12-14 - Support DeepInfra inference endpoint as backup
+74e9a0a882ab9d7c1da1757db5a46a34ea9840ee - Seb - 2023-12-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+0a828b47347ce304925566289509ba5ec72d4039 - Seb - 2023-12-11 - xfer scripts
+362dc2d6acf657415ff7887bc92c81a6553c731c - Chris Coudron - 2023-12-10 - Adding favorite foods (#38)
+d6bdea3d99422f6dd715f158858e6ff6da56bea2 - Seb - 2023-12-08 - scripts
+767225fdc7157e3e53f49a175ad2d7f8031adb92 - Seb - 2023-12-06 - deduping function
+cb5d9772b6641a776eaf0bab72bbf315f0f1aa8a - Seb - 2023-12-06 - make case insensitive
+84ff5db652f9d25575cdc33537bba25c728a2883 - Chris Coudron - 2023-12-06 - Update dedupeFoodItems.ts
+c8f2c57ed251e0995ded1a87e725b5db74273ada - Seb - 2023-12-05 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+bb4c148b6a2afe24cbbb5334bd2ca8bfa54b7b3e - Seb - 2023-12-05 - dedupe
+9985fccdc51a54a64a0c2c0cc42d7fbe7dc6ca77 - Chris Coudron - 2023-12-05 - Update supabase-generated.types.ts
+75432256c7e12559304d270239f8f4b90e15a7fa - Chris Coudron - 2023-12-05 - Create 20231206033033_add_created_at_to_cache.sql
+4922428ac680fb843ce54e2c56478c881e5a6d08 - Chris Coudron - 2023-12-05 - Revert "Squash Migration"
+54691ed9c737c33ddd82642987730185459a0e3f - Chris Coudron - 2023-12-05 - Squash Migration
+927467c248997b21adb477e1f2789d74500dba45 - Chris Coudron - 2023-12-05 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+a9b2794082f3a4326a0466e0d7f74e1b9241474f - Chris Coudron - 2023-12-05 - Build fix
+4825ab9a2425ad75575f367072eb7db751dee2e7 - Seb - 2023-12-05 - run server prod
+43f70a7ce0cfe4a1a44c1095f865537095fdc609 - Chris Coudron - 2023-12-05 - Fix downvotes
+81ad64d4e288a84c803a5d7f8289017113a4ee9d - Chris Coudron - 2023-12-05 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+97677a894b635008e695c4e3adee2129ac135dd8 - Chris Coudron - 2023-12-05 - Add search food route
+3b85f63adcf89727231ec3229457da60c6df3299 - Seb - 2023-12-05 - higher threshold
+b4c52d5a0b833908aeb68332ba4f765de65a256d - Seb - 2023-12-05 - include brand
+f7fab51ab9ddd47116f2092afa82206fd61d1777 - Seb - 2023-12-05 - Update prompt
+a66a84af50a75a5fd564df95b0a7aaf351d82192 - Seb - 2023-12-05 - fix downvotes code
+c1214cb30a1733ba0ab8faf8526cb4ea04340a6f - Seb - 2023-12-05 - get_top_foodimage_embedding_similarity
+49f1d7f41ae1c72fdcbdee2689d3129209ebe5bd - Seb - 2023-12-05 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+7e6c3d70d7465d4936ac6ad7e539b37afaab3535 - Seb - 2023-12-05 - delete get calories server function
+8498514389497c40209daf8384552b9706a67878 - Chris Coudron - 2023-12-05 - Fix bug where file names had spaces
+424b928f1cee9c4a8635a639a364260324793613 - Seb - 2023-12-04 - Update 20231204214226_get_daily_calories.sql
+037a0032de1d386db1f235a86de28b502fbd65f8 - Seb - 2023-12-04 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+db117c8c49429620f0006360452254e544e062d2 - Seb - 2023-12-04 - get daily calories
+f3256a92a088318e5c89fac2f02c9e4a652cc5e5 - Chris Coudron - 2023-12-04 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+9a0e161268bc2f9ee19eb78241b7f4009e35efcb - Chris Coudron - 2023-12-04 - Coudron/food images table (#37)
+d013f5eb40142c69eda8509fbd8a73518e9bcdae - Chris Coudron - 2023-12-04 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+5240110da36508594667f0fd4622b578c443f9c8 - Chris Coudron - 2023-12-04 - Rename old migration with snake case
+a9f537560b8967c759ecbfe936e6c896effcc82f - Seb - 2023-12-04 - delete user path
+cad57f68f2f00e847a138f34520f91ed91ad9599 - Seb - 2023-12-04 - fix overzealous filtering of input
+a9c274c82d555c4c9100cec5633aa393822bd857 - Chris Coudron - 2023-12-02 - Build Fixes
+e736b80fa7facae7acab6455c8d4905f1ab233c3 - Chris Coudron - 2023-12-02 - Fixing foodId bug.
+076509b3ccc72e8bbfdedf71cab62637e550c9a8 - Seb - 2023-12-02 - fix food icon queue generation
+02069662eb3a893c7e0e65cbf33785d1aba6c6e9 - Seb - 2023-12-02 - Merge pull request #36 from AminoFit/coudron/-dalle-3-images
+085991c73417ecad4ddfc7d886fde50507ceb462 - Seb - 2023-12-02 - fix build
+5c0f4f25c46b86bd185cad6426c96efd700d30ad - Seb - 2023-12-02 - food image generation
+dacad77fbd9c16cbd8693c1b52fb761d496b0217 - Seb - 2023-12-01 - test queue
+f26164e77154ac9df362860f0538c155ca3dfb68 - Seb - 2023-12-01 - generate food icon and save to db
+c1cc7b2d73d628ffa948980a5808af69ac0783e7 - Seb - 2023-12-01 - fix schema plus make food database upload to background removal
+eee0b7ff6f5fa0d0af918734cde9083274e38d1a - Seb - 2023-11-30 - Merge remote-tracking branch 'origin/main' into coudron/-dalle-3-images save
+677ec7fc692f82b74414c4609b92c44b1c2ff7da - Chris Coudron - 2023-11-30 - Create 20231130233527_enable_rls_messages_and_read_only.sql
+6ecab8ff838eff2bdc450e35bf9d820aed4dc489 - Seb - 2023-11-30 - Merge remote-tracking branch 'origin/main' into coudron/-dalle-3-images
+f782871f33dcdcafa90ced8dec07a8d7a191f88c - Seb - 2023-11-30 - Add columns to FoodImage
+6498304c6e7cfb8f09e62c373a51d0c3ac89c071 - Seb - 2023-11-30 - better prompt
+97f8e781519b451e21ba4786c1a3a504cdfab3d3 - Chris Coudron - 2023-11-29 - Remove drop vector from migration
+3e78ea48afa92ae06283954f1d90c22872ed661a - Seb - 2023-11-29 - trigger schema
+ac9bc7e06d83e8ba554cbf91c4919844e1263199 - Chris Coudron - 2023-11-28 - WIP first pass at adding images
+7ddd34f064b5189acf9c12cf8e9f42b8fb50622b - Seb - 2023-11-27 - make sure updatedAt field also updated with server timestamp
+befb7c3e3a37dc97389b9fbbadb4e8ad0cd31343 - Seb - 2023-11-27 - fix the build
+230178e5dd1f087071776e961df2910a7fcf746b - Seb - 2023-11-26 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+502496bf702ec12edebe19fd1496e7f2d1f62c75 - Seb - 2023-11-26 - new user
+cacccec7c5363118d57c59efd7b19963a45b734e - Chris Coudron - 2023-11-25 - Allow reads on Food Item table
+92f76eb273f06465d5656f8a9ad24dee1dce71dc - Seb - 2023-11-15 - getfoodids
+d1f55321b580e24b0f1e8d3284ee20f755a57acd - Seb - 2023-11-14 - get timestamp
+af81533d9fda842a5dd12da4836a853c05db8640 - Seb - 2023-11-14 - add deletedAt field
+5c5f9ceadaccf6604f572ab40f4c992da1908ed6 - Chris Coudron - 2023-11-09 - Debugging
+8e478225b0acc7e630136c5942b45df8c59c1563 - Chris Coudron - 2023-11-08 - Redirect if not logged in
+93b908b0f0a81ce868458f5d9e766b2fac58937d - Chris Coudron - 2023-11-08 - Fix secrets
+e2a49e33d48c40957fb66afb8c7d89f005220bfd - Chris Coudron - 2023-11-07 - Fixing endpoints for auth
+aca97a24dd193ddfc5360c6e26e65c406b5ea489 - Chris Coudron - 2023-11-02 - Fix marketing nav login
+8f52a98f1bac7462697f54665d4a4c105790763a - Chris Coudron - 2023-11-02 - Fix login page
+5e15b164a83f1c96fd8cfe40ab54c121ecd25ea6 - Chris Coudron - 2023-11-02 - Update FoodTable.tsx
+ddbb7b8318d569cbb17a81b2b8a2ac9734fe6a90 - Chris Coudron - 2023-11-02 - Update 20231026005509_prisma_schema.sql
+e1c9ed2adc635cd60ab8432824b2190e6f8f6709 - Chris Coudron - 2023-11-02 - Fix signup link
+d0ff9a58da279b1e4a1ebb6038ed0442abef98a3 - Chris Coudron - 2023-11-01 - Migrate from Prisma to Supabase (#35)
+55a273cad974762bdbb94b42a8444497c460016e - Seb - 2023-10-24 - Merge pull request #34 from AminoFit/improve-cutoff-matching
+8a08dbd9fc97dfc37d2bbffffde1e31c7ddb620a - Seb - 2023-10-24 - fix bigint stringify
+2a1205e5c68cadb28c48fb35c03703a1f4372c48 - Seb - 2023-10-23 - Merge pull request #33 from AminoFit/improve-cutoff-matching
+6211e70fc99ea075de2e558f2e9cbef0666fca32 - Seb - 2023-10-23 - enable delete and handle empty items
+d5747e5b659e43637a8d895790a076949f2099e9 - Seb - 2023-10-19 - Merge pull request #32 from AminoFit/improve-cutoff-matching
+ba1bdc14320d6a726bad29a6ea73d500c617f400 - Seb - 2023-10-19 - ensures serving id is fine
+0b9e73d6525d604266a0db718e180b6b2e90aa54 - Seb - 2023-10-19 - Merge pull request #31 from AminoFit/improve-cutoff-matching
+b8c192a18e270b59c3aa8c704cfa7c4297832e76 - Seb - 2023-10-19 - fix build
+a27c1869bb2805dc002c70d53740040e6246cb36 - Seb - 2023-10-19 - Merge remote-tracking branch 'origin/main' into improve-cutoff-matching
+7957987285dd7df4b90b5d8d05802cb6954f7dbc - Seb - 2023-10-19 - improve serving matching
+ee780617927f238c39dd295cf8f84914f9af4dbd - Chris Coudron - 2023-10-16 - Switch back to NextAuth (#30)
+64a68f2cf0814b4ea60bd26f991726156e8574c1 - Seb - 2023-10-13 - Merge remote-tracking branch 'origin/main' into improve-cutoff-matching
+e45763d8a15772eae34ce180290cf78baeee437e - Seb - 2023-10-13 - match serving
+7188d800f546b81bc1041caa4f7385e98181422d - Seb - 2023-10-12 - getFsFoodById
+9d2cdcbae55db8c2a683299f93abc4bb3f3da07a - Chris Coudron - 2023-10-11 - Fix new user flow
+e67ffb86cbaf4d66780263be1fca83d8745dc307 - Chris Coudron - 2023-10-11 - Don't return the embeddings for get food on date
+8a06e9c56ace54a94dfb00f70ceb0afb0361e2ad - Seb - 2023-10-10 - fix UPC handling/bigInt
+24666e215089c85b76c434c7ff2a73361ee40efb - Seb - 2023-10-11 - save
+690fb58ced0816c53f25f647a0919491df0087a1 - Chris Coudron - 2023-10-11 - Merge pull request #27 from AminoFit/coudron/auth0
+6e860594fa51dfb7b6d61f9c2a52ebb61e6725de - Chris Coudron - 2023-10-11 - Update package-lock.json
+c0c564fc16b919502a0419a5cd1d00408a6a4ffb - Chris Coudron - 2023-10-11 - Update package-lock.json
+0bf67c43a22d095914909012259403cc25dfda61 - Chris Coudron - 2023-10-11 - Merge branch 'main' into coudron/auth0
+be13f3027ac32611e8cc2d76c9a957dbb336b192 - Chris Coudron - 2023-10-11 - Merge pull request #29 from AminoFit/coudron/quirrel
+54487171be1d06b06c5cfeb9548747715073b1da - Chris Coudron - 2023-10-11 - Merge branch 'main' into coudron/auth0
+b1457b77cc37b5d1ed2d3d8c0798df3cff11b264 - Seb - 2023-10-10 - have falsy evaluation
+b19764e90e9f116309e4016eebeb4044b0c29cfa - Seb - 2023-10-10 - fix calling with empty set
+61ec07395f64f4c7acd29938b2f5ea8d74c156ac - Chris Coudron - 2023-10-10 - Adding Quirrel
+2a95865beb2af8e4fd99391ca08112ab127c0c7b - Seb - 2023-10-10 - fix duplicates causing crash
+af7171a6a76b4507711006ae6c1d3e2ca7b01f1e - Seb - 2023-10-10 - fix UPC handling/bigInt
+4b724afe38ce71eab7af7ddae3d4028043d32cd5 - Seb - 2023-10-09 - Merge pull request #28 from AminoFit/improve-cutoff-matching
+1d1c16372e31ba9894070c0c419c1a69fba3f909 - Seb - 2023-10-09 - fix packages
+81cc4add08e9f94889e81f0c92bf4ba828663f20 - Seb - 2023-10-09 - Merge branch 'main' of https://github.com/AminoFit/amino-server into improve-cutoff-matching
+2e9c196aa7f69c024d04d1c3abd2073825b51e4c - Seb - 2023-10-09 - faster matching
+5697e5cc73bb5784739943639e391f802db77779 - Chris Coudron - 2023-10-09 - Imports fix
+febeb3dd64d8ac058588bbb5751da46b3a0748ab - Chris Coudron - 2023-10-09 - Build fixes
+61147776d65407df53ac2bbdec10b82fbd9a4fc4 - Chris Coudron - 2023-10-09 - Another build fix
+5db3aa583edd4a5302aa2d362298fdfd2d3b1284 - Chris Coudron - 2023-10-09 - Build Fixes
+249e28723b1401aff81bdb17a96ea8b4fa025cbf - Chris Coudron - 2023-10-09 - NextAuth swapped out for Auth0
+54ae9a1be93bc300610346e60c6b8accdce7675c - Seb - 2023-10-06 - v4 upgrade
+6e56584e66bb02e9f5fc98124479b0bcc0706f11 - Seb - 2023-10-06 - open ai pre upgrade
+89b1751ea78832a1ad955b22fd308d3465d7235d - Seb - 2023-10-06 - fix Usda embedding
+3dbe1f56aef82cf151757419a7797ca8dd1f7b6d - Seb - 2023-10-06 - refactor GenerateResponseForQuickLog
+0891f9f5f3f7410ab33d4587f3112d640ba9f2d9 - Chris Coudron - 2023-10-06 - Add endpoint for quick log
+f17f363599be3c735c5b07049920e77259e68035 - Seb - 2023-10-05 - faster match
+de303aca0aea9795c76250703741082773c91db5 - Chris Coudron - 2023-10-04 - Update api-auth-tools.ts
+c19ccea01e2556ab6c2513ad027e2d4e07321add - Seb - 2023-10-04 - Food Request now takes >10s
+ce8eecfa61d5f941e7e3dbef82f27f90bc5741d3 - Seb - 2023-10-03 - Update .gitignore
+913eb8ea75b61d49d8d7064c533354e528ad82fd - Seb - 2023-10-03 - still not working
+92e717fe71181b69b45cf640c526f1b6aa514a1c - Chris Coudron - 2023-10-02 - Working API call using user lookup
+6e5d44de35d932241503eeb19f244aa893389778 - Chris Coudron - 2023-09-30 - WIP example of protected api route
+225fd32931390339a33fd761da1ee27da3ca1ebc - Seb - 2023-09-26 - bgeLarge Embedding
+11ee1a95e2a622e71cae01608a9dee737137ad6e - Seb - 2023-09-26 - create migration for usda embeddings w/HNSW
+dc095a4324e2931cdcd27094e9319a76864cf8a6 - Seb - 2023-09-26 - bgeLarge dimensions
+1867dd2ecc7f698263a762f7afb6e646de64e144 - Seb - 2023-09-26 - move dimension to 1024
+a667b31893cc04e702a9e1926c87c7c71cf137bb - Seb - 2023-09-26 - compare bgelarge to bgebase
+bc243aa5011ff0cb63691f4e2841f4210463e307 - Seb - 2023-09-26 - gteEmbedding test
+efe5087d118d6ed05401d26101bc9acf9bc7dc46 - Seb - 2023-09-26 - new schema w/usda embeddings
+5af74c8c86e03080bcf3b444aa4ec41e5884301b - Seb - 2023-09-26 - remove largestfdcid
+718f3bcc936dadfd9516337e63b67951fd98274c - Seb - 2023-09-26 - new prisma schema
+8376c0fee084845ca5cc5ed8dab041186b1e131b - Chris Coudron - 2023-09-25 - Update README.md
+0c852f121e20cb714bbd73b3bccb6687dda7bb7f - Chris Coudron - 2023-09-25 - Update README.md
+e937d64ae59977463ce91ed0a27a27b4b29709c0 - Chris Coudron - 2023-09-25 - Cleanup imports
+c211b837d10bc2bfa5316624a5ad1f8e30cd8631 - Chris Coudron - 2023-09-25 - Cleanup imports
+8b22cf499c67d6827fab42135b8548d9dd580b59 - Chris Coudron - 2023-09-23 - Revert back to OpenAi 3.0
+6eaf3348f981e7573ab8f3a64bd918fb9cf9fc54 - Chris Coudron - 2023-09-23 - Upgrade all the packages
+ff0fff908f63bcbd4bb732159188943916dafe91 - Chris Coudron - 2023-09-23 - Upgrade next to 13.5.2
+a3fa896e6521d93cbda82c1151c3065cfa4e5fa3 - Seb - 2023-09-22 - not working
+566ce5490f1c47d24d79739115c76bc9c100663f - Chris Coudron - 2023-09-22 - Updates to food table
+7b192ac81a0a9e22b27ee32ab4316090a1403ecf - Chris Coudron - 2023-09-21 - Building a food table
+dd1eb3a5c44fc53a5a5336b7a21364e44f886f4f - Chris Coudron - 2023-09-21 - Copy update
+ce499aa90d68fd76ac3ccb98e21c3be747f0fd34 - Chris Coudron - 2023-09-21 - Build fix
+70af3de41d7241d4c6df1780a22a2c6eadc7cc05 - Chris Coudron - 2023-09-21 - Fixing custom login / verify pages
+d829a91a127f65b89f7afbe1511bd43f3c77b22f - Chris Coudron - 2023-09-21 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+de9df6cbe4245492c3d6e67aa526693cd80f7862 - Chris Coudron - 2023-09-21 - Adding 300 second timeout for process food item
+c228337c146c853ed1db89cb0cf911ca38b1ffb9 - Seb - 2023-09-21 - format correctly
+c539f3f662f9ba2dcdaf9c2d9dd7d159e0df1234 - Seb - 2023-09-21 - ensure LLM food request is to 3sf at most
+4c2aa9d7a84585b858b921f16fb39706396bd582 - Seb - 2023-09-20 - Fix how food is requested to GPT4
+c8823ebf04a4785d172c9b419d28e007035d4033 - Seb - 2023-09-20 - Merge pull request #26 from AminoFit/improve-cutoff-matching
+8d76aaf18728d2a2d437f564049f1588363be039 - Seb - 2023-09-20 - Merge remote-tracking branch 'origin/main' into improve-cutoff-matching
+5e0c123727f0c382b6247f0aedda30561dc15413 - Seb - 2023-09-20 - make food matching not include portion names
+04ac67e40cf6a8a2a8865ca1ca050e0200c64293 - Seb - 2023-09-20 - ensure we don't save twice to DB
+a57612a052401cf740c00cae0e6025412e36fd2a - Seb - 2023-09-20 - better USDA matching
+3c480ca6a2234d6769e56d1b28946a861e9ecae7 - Chris Coudron - 2023-09-20 - Update email template
+7ec51ffd067bda712f79581d2fc4a2ada9811640 - Chris Coudron - 2023-09-20 - Working email template
+ee8dfa139d7e6d1b07f780489c96a6b5b69e150d - Chris Coudron - 2023-09-20 - Switching to login with email link
+fae8f9b742e08d0d62b053cc63a5ebff49f9b11f - Seb - 2023-09-20 - support items with no weight
+23d5275897d47dd1ed0c80d13544029c702fc3fa - Chris Coudron - 2023-09-15 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+c5b9acf1ff607dffbc50fd284e7ced9520f3a443 - Chris Coudron - 2023-09-15 - Adding copy from yesterday
+d72b76cee4f2d9e6cdcc784f5606df940f99a3b5 - Seb - 2023-09-15 - Merge pull request #25 from AminoFit/improve-cutoff-matching
+3cad909ddd255a92b16744a6677b3eecc96c71ce - Seb - 2023-09-15 - better logging
+baf98c763b90fe813b1d8f99ae83fce2c5dc3a3f - Chris Coudron - 2023-09-15 - Merge pull request #24 from AminoFit/fatsecretapi
+b27b4b6c705df35e8124a1b2a47125047e90dd03 - Seb - 2023-09-15 - Better food matching
+cbe902e092a30247ba582a68ebf2a8c6de2ecd87 - Seb - 2023-09-14 - Merge branch 'main' into fatsecretapi
+91ef144ed80473b0e1569c579621dc86c8103079 - Seb - 2023-09-14 - better vector search
+0a47554caf5398dbcef3acfdbb13cbc67239974d - Chris Coudron - 2023-09-13 - Break out food into meals. Responsive fixes
+bb7a00f3ac77972edeed5022407b32e6948ef816 - Chris Coudron - 2023-09-12 - Add description to the function so it gets called more
+1b2f9a2fa154933a9bf84f890a2eab6bcdd1030b - Seb - 2023-09-12 - USDA Vector Search
+e32f85c522ac9029e1383a80380416f09f1c1aee - Chris Coudron - 2023-09-11 - Build fix
+6e0178399590c71acf89c9bccac8ae4a3495bb73 - Chris Coudron - 2023-09-11 - Cleanup UI.
+6d82082f0cadd31d1059a03f707a98c9e09fee2b - Chris Coudron - 2023-09-08 - Merge pull request #23 from AminoFit/coudron/add-dedicated-quick-log
+ea7b913ee48463e097b14b95f63d1408199b9990 - Chris Coudron - 2023-09-08 - Add dedicated quick log logic
+6f77c06467e7821a0de743b58f4039f6ba5bb01f - Chris Coudron - 2023-09-07 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+7e93fa997d078aff86a883bf2e774341f9378b42 - Chris Coudron - 2023-09-07 - Send a static first message
+c2ed9aa43f71e5f207998d4f3ed22e0a7ca2e599 - Seb - 2023-09-07 - Merge pull request #22 from AminoFit/pgvector
+347eab41bc3d05ef65b28a81848cf4a3af40dc30 - Chris Coudron - 2023-09-07 - Update README.md
+6701dfe4bf6090459db4d9ad983dce928c195c42 - Seb - 2023-09-06 - convert field to float
+fc854227ad710c03b5f68dc1754f1dd47d5468c7 - Seb - 2023-09-06 - Fix migrate and food entry
+473a14367d3b16a86680e4f13b6f7b35e8a52a99 - Seb - 2023-09-06 - Enable fast adding of food from databases
+a9db429bf21863c4381249059a1575a69032928a - Seb - 2023-08-30 - get token in better way for debug
+099a1abb98543599821ebcbc3e4041a56d5e27a0 - Seb - 2023-08-30 - add custom item from FS
+450d33373622ffc464363846ad0a0a01567b77d3 - Chris Coudron - 2023-08-21 - Fix so yesterday works
+3b068621b72f3fd0df1b82a843f145d752d03f9b - Chris Coudron - 2023-08-21 - Fix for TZ bug
+c62a852e910b45ad1440325a7590eb6fa2c2247d - Chris Coudron - 2023-08-17 - Loading read data for streak
+7acc69f449cf7646b299f608dec1010f525bad62 - Chris Coudron - 2023-08-17 - Adding stats cards in the header
+215d5a6c2d5b02f4354c3f20d23dd264c1e86761 - Seb - 2023-08-17 - Resolved merge conflicts with main
+4164b0c47611ac7d6ce3e0a66a7250df9faf55b7 - Seb - 2023-08-17 - fix build
+416e538d917412826cf3dbcbf07a5e6f337c2370 - Seb - 2023-08-17 - Add pgvector search - no optimisations for now
+7c5328f0b712043df314739e5af3104b6de3076d - Chris Coudron - 2023-08-17 - Hookup the N day streak thing
+76520201aa7b53aee5ac3dd5ed50d2d676b77334 - Chris Coudron - 2023-08-17 - Clean up some colors. Still need more on the modal
+03f7ffa469d789c8ddd9a0b9f912264f169cb0d3 - Seb - 2023-08-16 - query top items in database using cosine similarity
+5b78ae51b920dc922dd932b3b2547f6c0f2c5f46 - Seb - 2023-08-16 - Embedding Backfill function
+d1ced828b6ccca4eb9ca2fe651f4b28c6e316f95 - Chris Coudron - 2023-08-16 - Refresh on quick log
+476110588e6d52852c456bc85c961b4f971263c1 - Chris Coudron - 2023-08-16 - Fix build
+3c28b69c4a57279c333ca02a3a15be4b52afad5c - Seb - 2023-08-16 - save new embedding to database
+c18815b4b63a93a0f3abaa9d301b4b784366406c - Chris Coudron - 2023-08-16 - Update FoodTable.tsx
+f894a4b08bbf3af9227b308fb6ba22cbc77acebf - Chris Coudron - 2023-08-16 - Rename FoodTable
+b420f12fc0c72e1ce2c856233b6d78187c34d199 - Chris Coudron - 2023-08-16 - Squashed commit of the following:
+71bc893693287bf021f5f304366b7da2478c67e5 - Chris Coudron - 2023-08-16 - Build fixes
+fb7fbb4190ab2e7f47c43f21b70aaeb496c6814e - Chris Coudron - 2023-08-16 - reinstall SWR
+3c4fdb5417d252c10829fed4c37af6c1e3c5ff5f - Chris Coudron - 2023-08-16 - Switching to API data fetching.
+71a0dad4507cad00ec6123c33459090b301217e5 - Chris Coudron - 2023-08-16 - Adding placeholder cards for streak etc
+dc78bc5aee0ae7809d3f934a648c8c24a9e0800d - Seb - 2023-08-16 - install pgvector
+c71a74dbfd2f5b733218ea3c56ec780d17c7cb7f - Chris Coudron - 2023-08-16 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+e793879133d26598d9fb8b10ad13afcdad1f17e9 - Chris Coudron - 2023-08-16 - Update README.md
+329723d895758ceba7060e934005decadea1ea5a - Seb - 2023-08-16 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+dd5e8972559081c508db5dedba39fb09db02c081 - Seb - 2023-08-16 - add embedding test
+58bde10dc9fe3a115c6ed4eaba7d2956b9b17e8c - Chris Coudron - 2023-08-15 - Update DashNav.tsx
+1f833350dbbc4ace8f83e357153505c88f88561e - Chris Coudron - 2023-08-15 - Cleanup imports
+e344a144dde24bc7a3bf7526de663c057d25d4c3 - Chris Coudron - 2023-08-15 - Update FoodTableMobile.tsx
+ca7ad19898982890805f8127cc16f4b47b934dc3 - Chris Coudron - 2023-08-15 - Squashed commit of the following:
+199a74be97b9782031bbf91337e0a2f8db3ad5e4 - Seb - 2023-08-15 - fix build
+56133a1053ced2916477e4fe2a02816587cd620c - Seb - 2023-08-15 - fix message queue
+b70c79a371691842973287bdb5deaa4998493f7b - Chris Coudron - 2023-08-15 - Merge branch 'coudron/revert-edge'
+2ac9316ba5de36ac0b910b08f04aa351eca8ce91 - Chris Coudron - 2023-08-15 - Revert "Update route.ts"
+0ef74311407d2695fc4bb5caacb9918a8b1509eb - Chris Coudron - 2023-08-15 - Update route.ts
+19d4fca8be76cae74c8db0f1811fe719b48e2b40 - Chris Coudron - 2023-08-15 - Update route.ts
+56c11e0e3a21badffefc92a3c1b0b3005af2cfa0 - Chris Coudron - 2023-08-15 - Update package.json
+d8e135bf64330e5da81ebb0fd033c7b3eb5e1fa0 - Chris Coudron - 2023-08-15 - Testing adding an edge function with streaming to process food
+3a7d997c63a4626b72609262f77f38cad6635a44 - Chris Coudron - 2023-08-15 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+f6bba837fcaa210d1bcac627367a9c55484d885a - Chris Coudron - 2023-08-15 - Moving queue endpoint to be a GET request
+c62e2f3e72510426d3f3717b1f9f856667d96dcc - Seb - 2023-08-15 - Fix time picker
+24835d40d93f7d1fd9e3c96c60d81bbcec74d7be - Chris Coudron - 2023-08-15 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+72d1b932a1780092c282f8192a4a50160cd9677e - Chris Coudron - 2023-08-15 - Fixing quick log to use different path for logging messages
+3c0a57e491fc6cd0dfb6609a4383f247d296535f - Seb - 2023-08-15 - handle API request in parallel
+c4b9877ccd6b8b096a874c1e2b0663756036de79 - Chris Coudron - 2023-08-14 - Revert Seb's breaking tailwind!
+8e9777312d50fbcd51c1c47b6ef7d5af996a6110 - Chris Coudron - 2023-08-14 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+a4e2b62249e0137b2833d48b8bb4f6e57cfa29aa - Chris Coudron - 2023-08-14 - Update loading card for food items
+e25417f09fd40c35a285cd7528ad0b2a3feeb9d0 - Seb - 2023-08-14 - Merge pull request #21 from AminoFit/food-edit-ui
+ef5b98a5d0cfad8667c47f46534006494c76f946 - Seb - 2023-08-14 - fix types
+0e49b6d01e9cb13d94069be1328c90e6fa85e3b9 - Chris Coudron - 2023-08-14 - Fixing quick add so it only does a single message.
+47c2d6f0bec6e708b66b054b4bd836db54e80fd5 - Seb - 2023-08-14 - Merge branch 'main' into food-edit-ui
+3ddd61547ca4c448879a74a6f2b94c07f849ce27 - Seb - 2023-08-14 - Edit and save food
+31baea2bd23583b3f931b7e3a9fc1fd3cea31685 - Chris Coudron - 2023-08-14 - Merge pull request #20 from AminoFit/coudron/add-q
+4973f6c99f2c95e92b9c334ce5bbb31d302e7fcd - Chris Coudron - 2023-08-14 - Update instead of creating new items
+3c8ff5c6777d2812ed67f31802a4d56a1b38bd04 - Chris Coudron - 2023-08-14 - Working queue
+358cb4e2b53b02487633ca6b4adc63c88a5c2801 - Seb - 2023-08-14 - cleanup food modal
+456b136f158a64de92f1822e8e629e497b329812 - Seb - 2023-08-11 - Show calorie info
+661265f5eb3eaca63accafe8beca441faaadad2e - Chris Coudron - 2023-08-10 - Proof of concept working
+4aea5054bcd631fc3c8f602e5c7977f18832a684 - Chris Coudron - 2023-08-10 - Merge branch 'main' into coudron/add-q
+8d79450ba04e0b20a8215c061d0a973b59574a98 - Seb - 2023-08-10 - fix build for chris
+31de3c5f4775f5226972537208188af0b75ade3b - Seb - 2023-08-10 - add foodeditmodal
+a9acee2ea29088efffc1ce81e6665f6871472706 - Chris Coudron - 2023-08-10 - WIP trying to fix types
+a2a8a8ed0a0b5c4d127a4b786208f851846651c1 - Seb - 2023-08-10 - gpt4 by default for food completion
+0bfff70b182678ae2c01a7330e45d480f8338493 - Seb - 2023-08-10 - better format
+9391ba712a4139cf40d94041cd2d17c245bf7494 - Chris Coudron - 2023-08-10 - WIP adding serverless q
+cec5844a3d09083135030665b1ec72ed7da65877 - Chris Coudron - 2023-08-10 - Merge pull request #19 from AminoFit/food-database-api
+db432ee9410e00d43e8f3c8d4e5bc1d7643dfd33 - Seb - 2023-08-10 - Merge branch 'food-database-api' of https://github.com/AminoFit/amino-server into food-database-api
+7e39d5a8f210654e48019f68570e0a9475d5b519 - Seb - 2023-08-10 - add USDA logging + implement rate limiting
+51c296df7253ad1b2a0b1152bac12f26209d806d - Seb - 2023-08-09 - add USDA
+b20134d32385ba9caf0b4ac3483f41204a7a0da7 - Seb - 2023-08-08 - log food request
+e8769bbdca6a1a7ed49793e1ec813d99fe888396 - Seb - 2023-08-10 - add USDA logging + implement rate limiting
+c3106716b0b331f7be89c76e536e272c27bdd554 - Chris Coudron - 2023-08-09 - Adding status string on logged food item
+7978f168048e1090970cb2df0419b2a4d84d0861 - Chris Coudron - 2023-08-09 - Adding Queue callback
+a971e27d69c0dbdd3e1288d5998d0dfd4ec88e86 - Seb - 2023-08-09 - add USDA
+fd92d976fdbf9b809689fe52da933fd275a55a6e - Chris Coudron - 2023-08-09 - Remove food image on desktop for now
+bcd2d325ad31be84241512551058c75b1606f807 - Chris Coudron - 2023-08-09 - Update the users name
+b3a9cb4c63cf43ebc402562b9f1e89c799686ace - Chris Coudron - 2023-08-09 - Fixed the graph
+07bbb3079bb889cd74e58941206130deb65c8ce5 - Chris Coudron - 2023-08-08 - Update Favicon
+024f5df31dd5f915b630a1f4aa1dbf1e9b422a35 - Chris Coudron - 2023-08-08 - Use placeholder image for no food picture
+f7eb58a56b94635e0d80fe588350f18b31a753a0 - Chris Coudron - 2023-08-08 - Merge pull request #18 from AminoFit/coudron/redesign
+19a779d70c58a12c8fdb00c253a6c473bdc5642c - Chris Coudron - 2023-08-08 - Make the nav work on mobile
+9266393f7bf74d5236fe63e6af70a3016dfb9a6c - Chris Coudron - 2023-08-08 - Color updates for desktop view
+768aa1eb5ed10a32e90e4e70610a11fc19a6c333 - Chris Coudron - 2023-08-08 - Fix dashboard to be full dark bg
+2e9db49527b08357fbfd38cca53ee8ed910ba353 - Chris Coudron - 2023-08-08 - Fix marketing nav
+d621a1646fb5020ae3eea9c38dea553c876727ca - Chris Coudron - 2023-08-08 - Update CalorieChart.tsx
+5a0ef4fe38e230245a9dbacff211df1efbb926f1 - Seb - 2023-08-08 - log food request
+e0bce25169f20420678590871d1392fe6780e5c2 - Chris Coudron - 2023-08-08 - Adding quick log
+c2b3b7056c303c0ee6886a155df6f6a256d9e792 - Seb - 2023-08-08 - Improve user prompt and give descr
+00047d780318e1608563d73323ca21dca254de32 - Chris Coudron - 2023-08-08 - Update README.md
+b65d54c04dc2c64e2a1891cf85d393222ea81543 - Chris Coudron - 2023-08-08 - Merge pull request #17 from AminoFit/food-logging-improvement
+64a952501025fbc042b44125bb243620c7b0d507 - Seb - 2023-08-08 - remove node fetch
+c11f7ae0f7077f3dd146a313178aeda18c4a9655 - Chris Coudron - 2023-08-08 - Adding calorie chart
+44e500ea994eba205986bd1f9e749a936dc3f574 - Seb - 2023-08-08 - fix message schema
+e67eb214d40aed264c09466a454622fdac8718c3 - Seb - 2023-08-08 - Merge branch 'main' into food-logging-improvement
+44b01dd7b79e3763c08e50e07141e0b17ee3accb - Seb - 2023-08-08 - get from nutritionix
+81ece6e6ffbdab9146bd6fb356de57110392c7db - Chris Coudron - 2023-08-06 - WIP nav fixes
+05b0d3732e52c3234ab0de2d3bad465efff60d16 - Chris Coudron - 2023-08-06 - WIP Prog checkin
+8ebbd6bfca0dc678402c862c76222e128ba3857c - Chris Coudron - 2023-08-06 - WIP First pass at redesign
+f8c022fc79f50fd6753f644e59330333738a8648 - Chris Coudron - 2023-08-04 - Remove settings nav
+6e4432f8fc7c7d717b84267cd3a1256f5f2b2bf3 - Chris Coudron - 2023-08-04 - Fix mobile nav buttons
+cb30d9afe835935968c99a1efb35d9283849efd7 - Chris Coudron - 2023-08-04 - Adding more calendar buttons
+2408078beb609126584b10134894a838eff80b86 - Seb - 2023-08-04 - nutritionix
+dafdfbe391e7d7bbdae27c4b585fc85c0e2c978b - Chris Coudron - 2023-08-04 - Build fix
+ab61a582b7b702feb19c44e80c267d429f6ebaad - Chris Coudron - 2023-08-04 - Responsive pass
+6ac330d61f60e3fbc274efdd43ff6d27be0528ca - Seb - 2023-08-03 - nutritionix API
+e38a77eec8c19c6a9ab38af0ecaf370ea1f48ea3 - Chris Coudron - 2023-08-03 - Food stats responsive pass
+cdcb5f2c0be6a18f42cbad76733622696bd5f0ae - Chris Coudron - 2023-08-03 - Disable edit for now
+13f46bb5bde7584bf6b330b80cc1fe92efb45c35 - Chris Coudron - 2023-08-03 - Fix key missing error
+25887d9ebb47adbe40a8e20affaed43706e5d606 - Chris Coudron - 2023-08-03 - Adding delete food modal
+7d9ae917d7c8499c74d87eb6a4ec542dbdbfcf1d - Seb - 2023-08-03 - Merge branch 'main' into food-logging-improvement
+00fa53d3508a1f75e8e6213a747cefe78aff71b7 - Seb - 2023-08-03 - log progress and status of food logging
+2dfb10825a80f040acf192901b72cab463a76f2b - Chris Coudron - 2023-08-03 - Fix some page layout stuff
+0a72fc0f26201ef7f8afa944b49d4055d82b6201 - Chris Coudron - 2023-08-03 - Add user profile icon
+dcbc1a43bbe7aecfbdf01d139b3be8b3cb06283b - Chris Coudron - 2023-08-03 - Cleanup nav
+0dce1f089dc14a31a01254f45805af52f350d3c7 - Chris Coudron - 2023-08-03 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+e5a622ebe3d6980d3d9dd19b4f314d45ffd8cef4 - Chris Coudron - 2023-08-03 - Update macro colors
+78796f37a33ddb0056be0f9461be3a735138dfcd - Seb - 2023-08-03 - fix chat view
+33bc809850504b91ace976925198083148d6d4be - Seb - 2023-08-03 - fix homepage display
+0227ca4319dc38eb1a823d4ac1df5f6395189dbd - Chris Coudron - 2023-08-03 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+cebfa7dd19e1631e4a0248f602f243d23d2c6555 - Chris Coudron - 2023-08-03 - Adding test endpoint for embeddings
+a4e175637a082e8ea8d3134f2d63d10035e31804 - Seb - 2023-08-03 - Merge pull request #16 from AminoFit/initial-onboarding
+629f083f2642ec449976a44b6e254abf34ec96b5 - Seb - 2023-08-03 - fix weight
+f7310e58927a1e76b243f488af04033e99fc04cb - Seb - 2023-08-03 - Merge pull request #15 from AminoFit/initial-onboarding
+78c11fed831e74b85334ff1c5d5895a608dedbb4 - Seb - 2023-08-03 - add goals to prompt
+8c580a7ab84f996e8d4933839c4b5beece525b81 - Chris Coudron - 2023-08-02 - Small UI fixes for new layout
+815a764ac05224033c2009eac693c1afd6422dc9 - Chris Coudron - 2023-08-02 - Fix homepage nav
+d8cf01956233fbbebd6b0317550a8b1fe9c33970 - Seb - 2023-08-02 - Add user goals
+abc72536d45931f0bc14a2363fc8f178efbeb50c - Chris Coudron - 2023-08-02 - Adding new nav bar
+65b215324770e51d7d4b8bd23a3e6e4d8bddf58c - Chris Coudron - 2023-08-01 - Run process foods in parallel to make them faster
+b9bf87fabf22046509b80890b2e52f8e0c949b0e - Seb - 2023-08-01 - unit preference change
+666909c10d39fef647583725818153814b550e61 - Seb - 2023-07-31 - request user name consistently
+46a2d03130b2fbc0ae5d3a3ca45d5a5b7c40e323 - Chris Coudron - 2023-07-28 - Adding buffer message between user messages
+d093eee03d389094b2421b6a844d6f03c490d665 - Seb - 2023-07-28 - Merge pull request #13 from AminoFit/log-message-for-debug
+bc3b3be068630c50fa359f5df4209d90d1cf6215 - Seb - 2023-07-28 - move to chat4 for all food completions
+b0ab660a14ec0c359fa6e1fd15ab41ae41254be3 - Seb - 2023-07-28 - updated logging
+e7f2e93d4f20f32de1c9df43ee3ca7f884d108cb - Chris Coudron - 2023-07-27 - WIP food modal coming soon
+72b6e228b522a353cf2a96c54fae12f5d8cd0f6c - Chris Coudron - 2023-07-27 - Update route.ts
+5daaf74bcae526a2809eea7ee4e0f137e7adc85d - Chris Coudron - 2023-07-27 - Update route.ts
+850947b087b90db0dae26aeed6b1fad03010a698 - Chris Coudron - 2023-07-27 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+110bbdd7f76a09d21d374766413b8314f3af9654 - Chris Coudron - 2023-07-27 - Update route.ts
+41ddd71f184756676671fa7eba1556f7f917a4ee - Seb - 2023-07-27 - improve quality of logging
+10d1e4bdf9af09ebdb6e2fd3d7b60cf6fe5cf002 - Chris Coudron - 2023-07-27 - Update route.ts
+9ae440ec607d9c6c150287f77ab29d8eb365dfd2 - Chris Coudron - 2023-07-27 - Update route.ts
+d98de2798486c80a0b9f571d887d88c042d8704d - Chris Coudron - 2023-07-27 - Update route.ts
+5a8f37745129ce67977bc6ad97855bef4c72a734 - Chris Coudron - 2023-07-27 - Update route.ts
+1095d1b1fd7268f9231f2e6f42ee5d7c4bf7a5ef - Chris Coudron - 2023-07-27 - Adding edge test
+dfc448845303cbf608e348d4566997e995f9e4bf - Chris Coudron - 2023-07-27 - Adding food images
+16d60aaf82c1a86e165e5db1c9fb2a74bbfdc055 - Chris Coudron - 2023-07-27 - Adding test time endpoint
+164df507ed2c2b087f22b1a656b5ccb31b06c105 - Chris Coudron - 2023-07-27 - Update route.ts
+155d6f66f4c006c455028f8902efc802e2f3275b - Chris Coudron - 2023-07-27 - Update route.ts
+309e7736c14f793f281b8384085ef5d0efa64f8a - Chris Coudron - 2023-07-26 - Update route.ts
+b7402fa2ba05cda1d1e7ef2309aba89e661bf377 - Chris Coudron - 2023-07-26 - Touch build
+98fe0606042bba847aaacf9194f43522ed7541d8 - Chris Coudron - 2023-07-26 - Update route.ts
+3111e3d73e05550b4a4a43513ae2d21f867f973c - Chris Coudron - 2023-07-26 - Update route.ts
+f8050c9ab9f46d138a9f62ccb482a38d822173e8 - Chris Coudron - 2023-07-26 - Update vercel.json
+e6278d51ef3fbc06621ba30072e2eec35ada3867 - Chris Coudron - 2023-07-26 - Update route.ts
+590224938f667f5046a60a539fcebc313b6de8cd - Chris Coudron - 2023-07-26 - Update route.ts
+7b5cd60559b69ecd45d04590bacbf6f3068215b8 - Chris Coudron - 2023-07-26 - Testing
+399785a081ff2aaae9661db68f052ce64e9ee8f1 - Chris Coudron - 2023-07-26 - Testing
+698a45b80c85a8ceae8065b743ed6c303546f2c4 - Chris Coudron - 2023-07-26 - Adding cron event to send checkin text to user
+348a89a11f95cc0c9b3b30133602f73f6f9f3b39 - Chris Coudron - 2023-07-26 - Update vercel.json
+eaf7de8db1f07b019358fc6ab93afac1adda1335 - Chris Coudron - 2023-07-26 - Adding route placeholder for cron jobs
+5338542a743bafc56652529078e47b08a4dd6518 - Chris Coudron - 2023-07-26 - Create vercel.json
+6c090d16e34da7db9b2aa99a6a3dfb84126ec34f - Chris Coudron - 2023-07-25 - Reset init db migration
+58f413e4fd8f06254a656c89d2f3be0bc0fa2e73 - Chris Coudron - 2023-07-25 - Merge pull request #9 from AminoFit/food-database-sms-fixes
+5ca4a34f7a076ec633be6f547a2a2db1076fe594 - Chris Coudron - 2023-07-25 - Don't send sms on web chat
+0f6febc7e154a8d1e4cf29b9bb5ae6d18b00e240 - Seb - 2023-07-25 - Merge pull request #8 from AminoFit/food_database
+eb2825e5182fb206143b07afc967148c49014eae - Seb - 2023-07-25 - fix build
+66bac651156a9109adea68f3e8bbc1120332e1ef - Seb - 2023-07-25 - add defaults
+91d7a70075126ab62f57f4c44b4dc52786ee7219 - Seb - 2023-07-19 - try diff prompts
+7a1965491ff327ea817f5f1ea2328971d628b399 - Seb - 2023-07-19 - bring up to main
+e74aabd28baa4083ffb1e862898220ff127e8828 - Seb - 2023-07-19 - handle matching better w/lemma
+228a15b5cb99d2e5401082ae312e822b9e1734de - Seb - 2023-07-18 - fix build
+b7fcbff2bbc8a263b44e3b0bb79db9c45e4ca88c - Seb - 2023-07-18 - show food items
+7de997be1ea8e2a71f2620bc7923508701589dfa - Seb - 2023-07-14 - enable food database logging
+a96b17e97c68c9304a74b90fcdfa252c52e16901 - Chris Coudron - 2023-07-14 - Disable days in the future
+df2f4da9cba4e36728c9ec00a15b54595d344146 - Chris Coudron - 2023-07-14 - CSS bugs
+b5ce1936af03edd9f4a4a98dec35f4f6face7ba4 - Chris Coudron - 2023-07-14 - Food table fixes
+d92be324600c0ebb7466ed903662c2d2e2c039ee - Seb - 2023-07-14 - Merge branch 'main' into food_database
+2d767c6174d14bc4a861749e832f2be6e02209b1 - Seb - 2023-07-14 - add to food db
+915d6bc24a63cc33afac7c55eaeb9a9fe083517b - Chris Coudron - 2023-07-14 - Update FoodStats.tsx
+49e8d17bae551d9d50ba395adc75ffbfdf2ed43a - Chris Coudron - 2023-07-14 - Rename graph
+4ac7d5cccc462d9e2d806a0a4c2d35015b108264 - Chris Coudron - 2023-07-14 - Filter food stats based on day
+20648a9894184cc74f03ce8d31f119a7127ccd95 - Chris Coudron - 2023-07-14 - Drop regular moment as we're now using moment-timezone
+854c380adaf5e250b9e70130d1ebdfdb380fcb76 - Seb - 2023-07-14 - food_db
+a42122b70fd42b8f44c7d827c1e3b87197095219 - Chris Coudron - 2023-07-14 - Adding more UI fixes
+258a5fc5a271393093e7d1098c63d1a9146a23e0 - Chris Coudron - 2023-07-14 - Adding time to food logging
+6f289430fb2047fc4afb1974fc79e0073183a733 - Chris Coudron - 2023-07-13 - Adding calendar
+febd3f67aa4c5458b90989f55c85b22fd1bc0f26 - Chris Coudron - 2023-07-13 - Working on calendar
+ed79235e5d3f6ae893f43d26c6116513bdabf197 - Chris Coudron - 2023-07-13 - WIP Adding calendar
+1fd3cd701d2779cb5a5c0a793bbbf31ce4162720 - Chris Coudron - 2023-07-12 - Cleanup css in chat
+a122bd0ced234451488cda31b481501b5e05d18e - Chris Coudron - 2023-07-12 - Hook up settings page
+20f2a74c535cc2a669e4dfc2b5131656f265d56f - Chris Coudron - 2023-07-12 - Update SystemPrompt.ts
+a71957850aef8a5b3f7cc7501297408e601f1fba - Chris Coudron - 2023-07-12 - Build fix
+2b6b39d3d4e63507d67a53e948a83f7d58d43121 - Chris Coudron - 2023-07-12 - WIP. New settings page.
+834421276c08d5ec6b9ad0026e2850d3161fa2ca - Chris Coudron - 2023-07-12 - Filter for food buy meal time
+ef9c78864fa909d888317cd346be1d29d0cc4c0d - Chris Coudron - 2023-07-12 - Import cleanup
+283d3e6eeb81be6904c7ccde2930d5128e0e2eae - Chris Coudron - 2023-07-12 - Redirect to dashboard page on success login
+3d65cc30eb40eefca4a0e32835b690941bac1d59 - Chris Coudron - 2023-07-12 - Cleanup login page
+1e6c56577f9df5b04a0ce466f192ffe3fb11b4bf - Chris Coudron - 2023-07-12 - Update route.ts
+e7957ef9d89056a3ef01677a5b61b98c2ad4452f - Chris Coudron - 2023-07-11 - Better looking food log
+a405b637273a1b3b0cc5ed257fc1869770fea3ca - Chris Coudron - 2023-07-11 - Update login url
+aabe51b096c2e112f72c7b537309195471da5ebc - Chris Coudron - 2023-07-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+621947b81e2c7ff7b8e6612677cc2f7402eee80a - Chris Coudron - 2023-07-11 - Adding some charts to the food log
+d06dfbd88c6c3cd81edd6171a4fd7a78d953bdbf - Seb - 2023-07-11 - filter only for assistant and user mesages
+7dddcb1bb64346e3180683d38ec4a18b8fa158bc - Seb - 2023-07-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+768439eb45b6df2f35a3e5829e01522515856717 - Seb - 2023-07-11 - fix indentation
+d5b80287a138e1ac3c3eed5bb0d0f40bcce87b84 - Chris Coudron - 2023-07-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+2aa23a76c4bbb34d6d8d0c3d0caf13bbefbf7de3 - Chris Coudron - 2023-07-11 - Update TimeZoneBanner.tsx
+3b78051be8d4e5f1199b04b9940a2cf93e65b9fd - Seb - 2023-07-11 - sending messages
+30640a40ae37d740e8f0b7d8687a170c0b219808 - Chris Coudron - 2023-07-11 - Fix focus bug. Had to disable some transitions for now
+ab129199585149a560dbf9f8a0b070a4bbfa3fa5 - Chris Coudron - 2023-07-11 - Fix keys
+4614423d6139dee2f66760fcc68bac26bd92bc4f - Chris Coudron - 2023-07-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+2d56f73a5cc6e0c7de0c68050b463b87b3607a43 - Chris Coudron - 2023-07-11 - Adding timezone banner when in wrong tz
+f974b039357e9745f2031a78fc5a8662738d4c7e - Seb - 2023-07-11 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+d1f708eb7273bb0635d0bdf828ae37b17e9b43a9 - Seb - 2023-07-11 - update chat
+1aa65250ffbc5e81674fa04ea47bf4c45b3237e2 - Chris Coudron - 2023-07-11 - Adding update timezone option
+6540f6782d618e9d43b1c684460f4abe808afd49 - Chris Coudron - 2023-07-11 - Fix scroll
+34716c1df92ff5b163ee18e941d06fa9763fbc3a - Seb - 2023-07-11 - Ensure input box stays at bottom
+7936e3e1108e1b4b2cc0773ae940c45439b7e8c1 - Seb - 2023-07-11 - move to components + allow multiline (shift+enter)
+c9fb6913ee70784eda0a07926c4aaa6e4e17bae5 - Chris Coudron - 2023-07-11 - Add row totals
+38217faf420fa8e8513b86fb50f54bf351e17f9c - Chris Coudron - 2023-07-11 - Filter out the system messages
+e3eaa09d9e8a144e7db4ff85fe6106e9ad289e48 - Chris Coudron - 2023-07-11 - Pull action into it's own state + ui fixes
+8103251523e4ecbf763a2a0f18a61e1cc9a120a9 - Chris Coudron - 2023-07-11 - Server functions for chat. yay
+4107ed1a1508168141c92fa27b3549c738d85f16 - Chris Coudron - 2023-07-11 - Adding dashboard chat
+3540697e598da15722e6774de403c8262c0c38f2 - Chris Coudron - 2023-07-11 - Render chat interface.
+8b32a3595d97d2e896b5839e0e35e04e9f4f56ef - Chris Coudron - 2023-07-10 - Add logout in dashboard
+f527859b7a4d6e9d445e7c4eb720607b9ac89bab - Chris Coudron - 2023-07-10 - Fix bug where messages are saved twice from assistant
+e7ce4a0d53861aaeccc6686e34b3a613705338e3 - Chris Coudron - 2023-07-10 - Update package.json
+d0fd357be4625000b5cc207bb862c15645bfdd05 - Chris Coudron - 2023-07-10 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+dd7bdcbd32e79e6b1f542746ac4de2c5c88afb9a - Chris Coudron - 2023-07-10 - Add deploy dev
+44347159cdee4d8bcaf27b630d511c04aa8ecce7 - Seb - 2023-07-10 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+2b1e543232a6856efa869ea080cbf582915b9bbf - Seb - 2023-07-10 - id change
+056c8f513442bf5d095d2f50fb0e25895d2fd1d1 - Chris Coudron - 2023-07-10 - Reset migrations on all platforms
+1f1ef5aa472df087bd2a99a05aa0e983d724f55f - Chris Coudron - 2023-07-10 - Update route.ts
+af2a04b1b6a99389ff8b625880bb7b82ed62a4bd - Chris Coudron - 2023-07-10 - Update route.ts
+4ff8aa7b0d6d7e3773a0aa1926addfdf2d9cf0bd - Chris Coudron - 2023-07-10 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+7fe06d14efb8b62a08f8370bc74621f819be676d - Chris Coudron - 2023-07-10 - Fix: Use server to render layout
+96c3ca14a19e7f1ed1c848edcdc4f45b2d28a75e - Seb - 2023-07-10 - update error
+3ed6d1c267b71172b877e92da54501fa6cbfd1ff - Seb - 2023-07-10 - Fix build
+1c24954c077fc722ea9226185bf03d022aed7c2d - Seb - 2023-07-10 - Merge branch 'main' of https://github.com/AminoFit/amino-server
+270f3ef3b089e03957dd84579032df7e56b2c634 - Seb - 2023-07-10 - web chat interface
+4f3cd415f72037b906447166b9762df50173d8b2 - Chris Coudron - 2023-07-10 - Fixing up the table
+46274b757303a2e2478df9aa179c8ea60bc2cb87 - Chris Coudron - 2023-07-10 - Updated user auth token
+868fd5221513e967c24ee9c8102285df363fac36 - Chris Coudron - 2023-07-10 - Adding basic food log
+7e5a84632bd3a277d46eac10fc5a692786247bf6 - Chris Coudron - 2023-07-10 - Update MarketingNav.tsx
+ee3dc8d638b209199cdc51e007523c785cb9e0ed - Chris Coudron - 2023-07-10 - Merge pull request #7 from AminoFit/coudron/auth-setup
+e41f30e16eabd909d7421f185d592aa94171f3cc - Chris Coudron - 2023-07-10 - Merge branch 'coudron/auth-setup' of https://github.com/AminoFit/amino-server into coudron/auth-setup
+adb23682e02d6c11ba9bdfa393c627a51feea43a - Chris Coudron - 2023-07-10 - Adding Postgres Docker info
+88609efc0c24ea2c860312c4867c269b80635b93 - Chris Coudron - 2023-07-07 - Kill dev migrations
+eb7177b09565a8a6fdc82fe2ae6eac95a98e23a1 - Chris Coudron - 2023-07-07 - Update page.tsx
+f30c08b6a001e323bef5d5f4f9e7c952f51464b0 - Seb - 2023-07-07 - fix favicon
+a1b2d56ca4e55b248c600713f00b49400a545c3f - Seb - 2023-07-07 - add favico back
+7e2e61139f41fce05a6db0ff87f9fd41f8e3f718 - Chris Coudron - 2023-07-02 - Working on dashboard
+b1c0d40589f5e2176df3b78bc0e45abecb6585ed - Chris Coudron - 2023-07-01 - Starting to add the dashboard
+1e6ceca564412013289f00a57c46397b38b4bf72 - Chris Coudron - 2023-07-01 - Fix nav for session
+214d7e6eb87dc5d603e3baaa287456b7c460e80e - Chris Coudron - 2023-07-01 - WIP Login fixes
+c02181d701f17e983694404c433df9dcc577bf70 - Chris Coudron - 2023-06-30 - WIP: Checkin progress for login code
+100e05369f1d0fd82dbf56acc27d72ddaffa2726 - Chris Coudron - 2023-06-29 - Update page.tsx
+250f92973926b82ac993402ac3bdf57edd007322 - Chris Coudron - 2023-06-29 - Update page.tsx
+9568bc45870d1ec8d62637d5d14766cc9bbe3980 - Chris Coudron - 2023-06-29 - Cleanup login with code page
+e96153007f1a26b8bbcb9ae74fe52b470ad8334f - Chris Coudron - 2023-06-29 - WIP first pass at adding auth
+7e52892f35cd5e73bb9b8ca0e50a1daf70b6bf9b - Chris Coudron - 2023-06-28 - Build fixes.
+ea4a518eeafecacc499142939b18fadd84945bac - Chris Coudron - 2023-06-28 - WIP on login screen
+776708f6c0610a86b2c4114d67ce9bf781639349 - Chris Coudron - 2023-06-28 - Adding openAI tracking table
+9520a42388375a0b83cc030527eaa088d6e796de - Chris Coudron - 2023-06-28 - Adding SMS tracking
+868523e5b54804e81d595c34f757a1983a59904b - Chris Coudron - 2023-06-28 - Add site banner
+ab4c711a5029d28491e8755790fe1c9764a8de65 - Chris Coudron - 2023-06-28 - Update README.md
+df874b991b9ac7265b886a88aea8b58d3124595a - Chris Coudron - 2023-06-28 - increase temp to 1
+48b83c757301a238711b5fe95e84b6ca3ebe9bb1 - Chris Coudron - 2023-06-28 - No subheading on logo
+8ba136d0086ec8d21cb17a1b977745e79cf108ca - Chris Coudron - 2023-06-28 - Default modal closed
+0b1509858c48e3ffb41f5993f73d035d6b784704 - Chris Coudron - 2023-06-28 - Adding ability for users to sign up on the website.
+f5b27dd056a5e6b47b42926549f5e3c58c4c3f37 - Chris Coudron - 2023-06-28 - adding sub heading to logo
+6bdab34835ae174c967f7c4d1d558a34e835c213 - Chris Coudron - 2023-06-28 - Remove statement telling the bot to repeat it back
+14f33a99f9cf1a36bf52955a4567542cbdbfe6f6 - Chris Coudron - 2023-06-28 - Starting to add the phone number
+aac045a27bbfc6b62fe441b25fe0f2c4e5681097 - Chris Coudron - 2023-06-27 - Responsive pass on homepage
+151945a13dcb7804553fdc89a7f7c67d341dd92c - Chris Coudron - 2023-06-27 - Build fixes
+7ee9fdc9b3db00f56ea58c884a4466e40280c374 - Chris Coudron - 2023-06-27 - Update package.json
+2ead5521dd416a3ad630d3a94de5af916f0be614 - Chris Coudron - 2023-06-27 - Update website copy
+f230ab7a35551d5a9f131619f44d74f517b78571 - Chris Coudron - 2023-06-27 - Update favicon.ico
+3c5bae896a34a8e1c9e74531996d2f20123b5c7c - Chris Coudron - 2023-06-27 - Adding favicons
+ae01b32c930214ff9eab88658f9a8b3a916e1983 - Chris Coudron - 2023-06-27 - Update phone entry
+8d1ea3346a356630755e93152c93d466fe51ed30 - Chris Coudron - 2023-06-27 - Update homepage to template
+dace27e9fb3dba6f0d6e6e31f83e2efeb53344cf - Chris Coudron - 2023-06-27 - Limit the number of messages in prompt
+4f60d9b8ea3b377bf12af13305c7cfb47e7d578c - Chris Coudron - 2023-06-26 - Refactor function calls
+1defdd12d14650dcef09e03d90ffd218ecbb7ee0 - Chris Coudron - 2023-06-26 - Adding food database stuff and contact card
+793786e59edfe152afec08f2b1fe53f9e2e6c71b - Chris Coudron - 2023-06-25 - Adding exercise tracking
+fabb1bb956314119a85816434519648b551749e9 - Chris Coudron - 2023-06-25 - Update HandleLogFoodItems.ts
+1315513521e14363f6c6d8d8cea4eb6d886fa9b1 - Chris Coudron - 2023-06-24 - Update package.json
+0190d3df7e6dd9614c6b07ae0e1c128be5372f5b - Chris Coudron - 2023-06-24 - Delete foo.ts
+996db27c58d0656b92e8f79e3c1f6d77863fb187 - Chris Coudron - 2023-06-24 - Adding migrations etc.
+b59d993018b265da60ccef1c1e697750ed2d6b65 - Chris Coudron - 2023-06-24 - First working demo
+b01e2f4ef58f99c25f78d2e969daeb68853bb1b5 - Chris Coudron - 2023-06-22 - Initial commit from Create Next App
