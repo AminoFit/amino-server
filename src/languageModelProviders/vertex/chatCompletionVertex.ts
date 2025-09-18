@@ -154,7 +154,6 @@ export async function vertexChatCompletion(
     })
 
     // New SDK exposes `text` as a property; keep fallback to function for safety
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const responseText: string = typeof response.text === "function" ? response.text() : response.text
 
