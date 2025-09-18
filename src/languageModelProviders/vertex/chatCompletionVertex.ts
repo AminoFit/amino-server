@@ -408,5 +408,5 @@ async function testVertexChatCompletionStream() {
 }
 
 // Uncomment to run tests
-testVertexChatCompletion()
-testVertexChatCompletionStream()
+// testVertexChatCompletion()
+// testVertexChatCompletionStream()
