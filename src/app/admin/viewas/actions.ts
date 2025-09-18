@@ -60,59 +60,45 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
   const trimmedSearch = searchTerm.trim()
   const ilikeTerm = trimmedSearch ? `%${trimmedSearch}%` : null
 
-  let query = supabaseAdmin
-    .from("LoggedFoodItem")
-    .select(
-      `
-        userId,
-        totalFoodsLogged:count,
-        User:User!LoggedFoodItem_userId_fkey!inner (
-          id,
-          fullName,
-          email,
-          tzIdentifier
-        )
-      `
-    )
-    .not("userId", "is", null)
-    .group("userId,User(id,fullName,email,tzIdentifier)")
-    .order("totalFoodsLogged", { ascending: false })
-    .limit(limit)
+  let query = supabaseAdmin.from("User").select(
+    `
+      id,
+      fullName,
+      email,
+      tzIdentifier,
+      logged_food_count:LoggedFoodItem(count)
+    `
+  )
 
   if (ilikeTerm) {
-    query = query.or(`User.fullName.ilike.${ilikeTerm},User.email.ilike.${ilikeTerm}`)
+    query = query.or(`fullName.ilike.${ilikeTerm},email.ilike.${ilikeTerm}`)
   }
 
+  // Fetch more items to ensure we have enough users after filtering
   const { data, error } = await query
+    .order("count", { foreignTable: "LoggedFoodItem", ascending: false, nullsFirst: false })
+    .limit(limit * 5)
 
   if (error) {
     throw new Error(error.message)
   }
 
-  const uniqueUsers = new Map<string, AdminViewUserListItem>()
-
-  for (const row of data ?? []) {
-    const typedRow = row as typeof row & { totalFoodsLogged?: number | null }
-    const user = row.User
-    if (!user) {
-      continue
-    }
-
-    const totalFoodsLogged = Number(typedRow.totalFoodsLogged ?? 0)
-
-    const existing = uniqueUsers.get(user.id)
-    if (!existing || existing.totalFoodsLogged < totalFoodsLogged) {
-      uniqueUsers.set(user.id, {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        tzIdentifier: user.tzIdentifier,
-        totalFoodsLogged
-      })
-    }
+  if (!data) {
+    return []
   }
 
-  return Array.from(uniqueUsers.values()).sort((a, b) => b.totalFoodsLogged - a.totalFoodsLogged)
+  const users = (data as any[])
+    .map(user => ({
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      tzIdentifier: user.tzIdentifier,
+      totalFoodsLogged: user.logged_food_count?.[0]?.count ?? 0,
+    }))
+    .filter(user => user.totalFoodsLogged > 0)
+    .slice(0, limit)
+
+  return users
 }
 
 export async function fetchUserDailyFood(userId: string, date: string): Promise<AdminDailyFoodResponse> {
