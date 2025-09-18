@@ -2,6 +2,10 @@
   "name": "amino",
   "version": "0.1.1",
   "private": true,
+  "engines": {
+    "node": ">=20.11.1",
+    "npm": ">=10.2.0"
+  },
   "scripts": {
     "dev": "concurrently 'next dev' 'quirrel'",
     "dev-prod": "concurrently 'DOTENV_CONFIG_PATH=.env.prod next dev' 'DOTENV_CONFIG_PATH=.env.prod quirrel'",
