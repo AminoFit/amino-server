@@ -27,12 +27,18 @@ export interface ManualFoodPlaceholder {
   FoodItem: {
     name: string
     defaultServingWeightGram: number | null
+    kcalPerServing: number | null
+    carbPerServing: number | null
+    totalFatPerServing: number | null
+    proteinPerServing: number | null
     FoodItemImages: { FoodImage: { pathToImage: string | null; downvotes: number; id: number } | null }[]
   } | null
 
   Message: null
   pathToImage?: string | null
   messageImageUrls?: string[]
+  extendedOpenAiData?: any
+  status?: string | null
 }
 
 export type AdminLoggedFoodItem = (Tables<"LoggedFoodItem"> & {
@@ -45,6 +51,8 @@ export type AdminLoggedFoodItem = (Tables<"LoggedFoodItem"> & {
   Message: Tables<"Message"> | null
   pathToImage?: string | null
   messageImageUrls?: string[]
+  extendedOpenAiData?: any
+  status?: string | null
 }) | ManualFoodPlaceholder
 
 export interface AdminDailyFoodResponse {
