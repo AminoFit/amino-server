@@ -428,7 +428,7 @@ function FoodRow({ food, timezone }: { food: AdminLoggedFoodItem; timezone: stri
     ? `${(food.extendedOpenAiData as any)?.serving?.serving_amount} ${(food.extendedOpenAiData as any)?.serving?.serving_name || "serving"}`
     : "Custom amount"
 
-  const imageUrl = food.FoodItem?.FoodImage?.[0]?.pathToImage || DEFAULT_IMAGE_URL
+  const imageUrl = food.FoodItem?.FoodItemImages?.[0]?.FoodImage?.pathToImage || DEFAULT_IMAGE_URL
   const sourceLabel = food.Message?.content
     ? truncateText(food.Message.content, 90)
     : food.Message?.hasimages

@@ -20,7 +20,9 @@ export type AdminLoggedFoodItem = Tables<"LoggedFoodItem"> & {
   FoodItem:
     | (Tables<"FoodItem"> & {
         Serving: Tables<"Serving">[]
-        FoodImage?: Tables<"FoodImage">[]
+        FoodItemImages?: {
+          FoodImage: Tables<"FoodImage"> | null
+        }[]
       })
     | null
   Message: Tables<"Message"> | null
@@ -138,7 +140,9 @@ export async function fetchUserDailyFood(userId: string, date: string): Promise<
       FoodItem(
         *,
         Serving(*),
-        FoodImage(*)
+        FoodItemImages(
+          FoodImage(*)
+        )
       ),
       Message(
         id,
