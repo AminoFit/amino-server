@@ -65,7 +65,7 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
     .select(
       `
         userId,
-        totalFoodsLogged:count(),
+        totalFoodsLogged:count,
         User:User!LoggedFoodItem_userId_fkey!inner (
           id,
           fullName,
@@ -75,6 +75,7 @@ export async function fetchTopUsers(limit = 50, searchTerm = ""): Promise<AdminV
       `
     )
     .not("userId", "is", null)
+    .group("userId,User(id,fullName,email,tzIdentifier)")
     .order("totalFoodsLogged", { ascending: false })
     .limit(limit)
 
