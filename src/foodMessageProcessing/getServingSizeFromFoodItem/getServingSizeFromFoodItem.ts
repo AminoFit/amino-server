@@ -1,3 +1,4 @@
+import { explicitMassServing } from "./explicitMassServing"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
@@ -5,7 +6,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "../common/extractJSON"
 import { getUserByEmail } from "../common/debugHelper"
-import { vertexChatCompletion } from "@/languageModelProviders/vertex/chatCompletionVertex"
+import { foodCompletion as vertexChatCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
 
 const serving_assignement_prompt = `<user_message>
 USER_SERVING_INPUT
@@ -158,7 +159,7 @@ Output:
 </output_format>`
 
 const systemPrompt = `You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON.`
-const SERVING_MATCH_MODEL = process.env.VERTEX_SERVING_MATCH_MODEL ?? "gemini-2.5-flash"
+const SERVING_MATCH_MODEL = process.env.VERTEX_SERVING_MATCH_MODEL ?? FOOD_REASONING_MODEL
 const DEFAULT_MAX_TOKENS = 1256
 const MIN_VALID_SERVING_GRAMS = 1
 const SERVING_MATCH_TEMPERATURES = [0, 0.1, 0.2]
@@ -291,6 +292,8 @@ export async function findBestServingMatchChatGemini(
   food_item: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
 ): Promise<FoodItemToLog> {
+  const explicit = explicitMassServing(food_item_to_log.full_item_user_message_including_serving)
+  if (explicit) return { ...food_item_to_log, serving: explicit }
   const { simplifiedData, idMapping } = convertToDatabaseOptions(food_item)
 
   const user_serving_input = food_item_to_log.full_item_user_message_including_serving +
@@ -336,6 +339,10 @@ export async function findBestServingMatchChatGemini(
     }
   }
 
+  const grams = updatedFoodItem.serving?.total_serving_g_or_ml
+  if (typeof grams !== "number" || !Number.isFinite(grams) || grams <= 0) {
+    throw new Error("Could not determine a valid serving weight")
+  }
   return updatedFoodItem
 }
 

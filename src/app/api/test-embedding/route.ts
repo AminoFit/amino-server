@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { openai } from "@/utils/openaiFunctionSchemas"
 import { NextResponse } from "next/server"
 

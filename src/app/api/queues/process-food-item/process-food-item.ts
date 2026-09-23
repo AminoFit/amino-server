@@ -1,3 +1,4 @@
+import { refreshFoodMessageProgress } from "@/foodMessageProcessing/common/refreshFoodMessageProgress"
 // See docs here: https://vercel.com/docs/functions/serverless-functions/runtimes#maxduration
 export const maxDuration = 300
 
@@ -50,8 +51,11 @@ async function processFoodItem(loggedFoodIdString: string) {
     throw new Error("No Logged Food with that ID")
   }
 
+  if (loggedFoodItem.deletedAt) return
   if (loggedFoodItem.status !== "Needs Processing") {
-    throw new Error("Food does not need processing.")
+    // Queue redelivery may follow a successful food commit and a failed progress update.
+    if (loggedFoodItem.messageId) await refreshFoodMessageProgress(loggedFoodItem.messageId)
+    return
   }
   if (!loggedFoodItem.User) {
     throw new Error("No user for food item")

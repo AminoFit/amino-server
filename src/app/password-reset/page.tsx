@@ -1,150 +1,72 @@
 "use client"
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useState } from "react"
-import { Database } from "types/supabase-generated.types"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { getPasswordRecoveryClient } from "@/utils/supabase/passwordRecoveryClient"
+import { passwordRecoveryErrorMessage, requestPasswordReset } from "@/utils/supabase/passwordRecovery"
 
-function PasswordResetForm() {
+export default function PasswordReset() {
   const [email, setEmail] = useState("")
-  const [success, setSuccess] = useState("")
+  const [sent, setSent] = useState(false)
   const [error, setError] = useState("")
-  const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
+  const [isSubmitting, setSubmitting] = useState(false)
+  const [ready, setReady] = useState(false)
+  const submitting = useRef(false)
 
-  const origin = typeof window !== "undefined" ? window.location.origin : ""
+  // Avoid a native form submission before the browser has attached React's handler.
+  useEffect(() => { setReady(true) }, [])
 
-  console.log("Using redirect:", `${origin}/auth/callback`)
-
-  function UseSearchParamsComponent() {
-    const searchParams = useSearchParams();
-    const expiresAt = searchParams.get("expires_at");
-    const access_token = searchParams.get("access_token");
-    const refresh_token = searchParams.get("refresh_token");
-    const error_description = searchParams.get("error_description");
-    const error_code = searchParams.get("error_code");
-  
-    console.log("error_description", error_description);
-  
-    // You can return these values or use them directly within this component.
-    return null; // Adjust based on your use case
-  }
-
-  const handleRequestPasswordReset = async () => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_VERCEL_URL
-          ? "https://" + process.env.NEXT_PUBLIC_VERCEL_URL + "/password-change"
-          : "http://localhost:3000/password-change"
-        }`
-    })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setSuccess("Password reset email sent. Go check your email and follow the instructions.")
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (submitting.current) return
+    submitting.current = true
+    setSubmitting(true)
+    setError("")
+    try {
+      await requestPasswordReset(getPasswordRecoveryClient().auth, email, window.location.origin)
+      setSent(true)
+    } catch (failure) {
+      setError(passwordRecoveryErrorMessage(failure))
+    } finally {
+      submitting.current = false
+      setSubmitting(false)
     }
   }
 
-  const renderError = () => {
-    return (
-      <div className="bg-gray-50 sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-base font-semibold leading-6 text-gray-900">Error</h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
-            <p>{error}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  const renderSuccess = () => {
-    return (
-      <div className="bg-gray-50 sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-base font-semibold leading-6 text-gray-900">Success</h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
-            <p>{success}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderForm = () => {
-    return (
-      <form className="space-y-6" action="#" method="POST">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-            Email address
-          </label>
-          <div className="mt-2">
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              placeholder="jack@amino.com"
-              required
-              className="block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            />
-          </div>
-        </div>
-        <div>
-          <button
-            type="submit"
-            onClick={handleRequestPasswordReset}
-            className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Update Password
-          </button>
-        </div>
-      </form>
-    )
-  }
-
   return (
-    <>
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <img
-            className="mx-auto h-10 w-auto"
-            src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600"
-            alt="Your Company"
-          />
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Need to reset your password?
-          </h2>
+    <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+        <h1 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+          Reset your Amino password
+        </h1>
+        <div className="mt-10">
+          {sent ? (
+            <p role="status" className="rounded-md bg-gray-50 p-4 text-sm text-gray-700">
+              If an account exists for this email, you will receive a password reset link. Check your inbox and spam folder.
+            </p>
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit} aria-busy={isSubmitting}>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">Email address</label>
+                <input
+                  id="email" name="email" type="email" autoComplete="email" required
+                  value={email} onChange={(event) => setEmail(event.target.value)} disabled={!ready || isSubmitting}
+                  className="mt-2 block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+              {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+              <button
+                type="submit" disabled={!ready || isSubmitting}
+                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {isSubmitting ? "Sending…" : "Send reset email"}
+              </button>
+            </form>
+          )}
         </div>
-
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-            {success ? renderSuccess() : error ? renderError() : renderForm()}
-        </div>
-
-
-        <Suspense fallback={<div>Loading...</div>}>
-          <UseSearchParamsComponent />
-        </Suspense>
-
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <p className="mt-10 text-center text-sm text-gray-500">
-            {"Don't have Amino? "}
-            <a href="/" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
-              Download in the Apple App Store
-            </a>
-          </p>
-        </div>
+        <p className="mt-8 text-center text-sm">
+          <a href="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">Back to sign in</a>
+        </p>
       </div>
-    </>
-  )
-}
-
-export default function PasswordReset() {
-  return (
-    // You could have a loading skeleton as the `fallback` too
-    <Suspense>
-      <PasswordResetForm />
-    </Suspense>
+    </div>
   )
 }

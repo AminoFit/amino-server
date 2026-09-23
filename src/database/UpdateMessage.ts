@@ -17,35 +17,30 @@ type UpdateMessageProps = {
 }
 
 export default async function UpdateMessage(props: UpdateMessageProps) {
-  const { id, incrementItemsProcessedBy, incrementItemsToProcessBy } = props
-
   const supabase = createAdminSupabase()
-
-  // Fetch the current message
-  const { data: currentMessage } = await supabase.from("Message").select().eq("id", id).single()
-
-  // Increment the itemsProcessed count
-  const newItemsProcessed = (currentMessage?.itemsProcessed ?? 0) + (incrementItemsProcessedBy ?? 0)
-
-  const itemsToProcess = props.itemsToProcess || ((currentMessage?.itemsToProcess ?? 0) + (incrementItemsToProcessBy ?? 0));
-  
-  // Check if all items have been processed
-  if (newItemsProcessed === currentMessage?.itemsToProcess) {
-    props.status = "RESOLVED"
+  // Compare-and-swap prevents parallel workers from losing counter updates.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { data: current, error } = await supabase.from("Message").select().eq("id", props.id).single()
+    if (error) throw error
+    const update: Partial<Tables<"Message">> = {}
+    if (props.status !== undefined) update.status = props.status
+    if (props.resolvedAt !== undefined) update.resolvedAt = props.resolvedAt.toISOString()
+    if (props.consumedOn !== undefined) update.consumedOn = props.consumedOn.toISOString()
+    if (props.deletedAt !== undefined) update.deletedAt = props.deletedAt.toISOString()
+    if (props.messageType !== undefined) update.messageType = props.messageType
+    if (props.isBadFoodLogRequest !== undefined) update.isBadFoodRequest = props.isBadFoodLogRequest
+    if (props.itemsProcessed !== undefined || props.incrementItemsProcessedBy !== undefined) {
+      update.itemsProcessed = props.itemsProcessed ?? ((current.itemsProcessed ?? 0) + (props.incrementItemsProcessedBy ?? 0))
+    }
+    if (props.itemsToProcess !== undefined || props.incrementItemsToProcessBy !== undefined) {
+      update.itemsToProcess = props.itemsToProcess ?? ((current.itemsToProcess ?? 0) + (props.incrementItemsToProcessBy ?? 0))
+    }
+    let query = supabase.from("Message").update(update).eq("id", props.id).eq("status", current.status)
+    query = current.itemsProcessed === null ? query.is("itemsProcessed", null) : query.eq("itemsProcessed", current.itemsProcessed)
+    query = current.itemsToProcess === null ? query.is("itemsToProcess", null) : query.eq("itemsToProcess", current.itemsToProcess)
+    const result = await query.select().maybeSingle()
+    if (result.error) throw result.error
+    if (result.data) return result.data
   }
-
-  const updateData: Partial<Tables<"Message">> = {}
-  
-  if (props.status !== undefined) updateData.status = props.status
-  if (props.resolvedAt !== undefined) updateData.resolvedAt = props.resolvedAt.toISOString()
-  if (props.consumedOn !== undefined) updateData.consumedOn = props.consumedOn.toISOString()
-  if (props.deletedAt !== undefined) updateData.deletedAt = props.deletedAt.toISOString()
-  if (props.messageType !== undefined) updateData.messageType = props.messageType
-  updateData.itemsToProcess = itemsToProcess
-  updateData.itemsProcessed = newItemsProcessed
-  if (props.isBadFoodLogRequest !== undefined) updateData.isBadFoodRequest = props.isBadFoodLogRequest 
-
-  const { data: updatedMessage } = await supabase.from("Message").update(updateData).eq("id", id).single()
-
-  return updatedMessage
+  throw new Error("Message changed repeatedly while updating")
 }

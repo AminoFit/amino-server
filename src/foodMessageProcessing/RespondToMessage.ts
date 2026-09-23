@@ -1,3 +1,5 @@
+import { AddLoggedFoodItemToQueue } from "./addLogFoodItemToQueue"
+import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
 // Database related imports
 import { GetMessageById, GetMessagesForUser } from "@/database/GetMessagesForUser"
 import UpdateMessage from "@/database/UpdateMessage"
@@ -26,7 +28,6 @@ import { i } from "mathjs"
 import { softDeleteLoggedFoodItemsByMessageId } from "./common/deleteAssociatedMessageFoodItems"
 import { getMessageTimeChat } from "./messageTime/extractMessageTime"
 import { get } from "underscore"
-import { updateConsumedOnTimesAsync } from "./common/updateLoggedFoodItemConsumedOnTime"
 
 const ROLE_MAPPING = {
   User: "user" as ChatCompletionRole,
@@ -37,6 +38,10 @@ const ROLE_MAPPING = {
 type ResponseForUser = {
   resultMessage: string
   responseToFunctionName?: string
+  status?: Enums<"MessageStatus">
+  itemsProcessed?: number
+  itemsToProcess?: number
+  warning?: string
 }
 
 // Define a mapping from function_call name to MessageType enum
@@ -197,17 +202,8 @@ export async function GenerateResponseForUser(user: Tables<"User">): Promise<Res
   }
 }
 
-// Helper function to handle error scenarios and update the message accordingly
-function handleQuickLogError(inputMessageId: number, logMessage: string) {
-  console.log("error", logMessage)
-  UpdateMessage({
-    id: inputMessageId,
-    status: "FAILED",
-    resolvedAt: new Date()
-  })
-}
-
-// Utility function to generate a response for the user when they send a quick log food request
+// Extract first, then publish the complete expected count before any queue job
+// can finish. Pending and failed matches are never reported as successful meals.
 export async function GenerateResponseForQuickLog(
   user: Tables<"User">,
   inputMessageId: number,
@@ -215,117 +211,64 @@ export async function GenerateResponseForQuickLog(
   isMessageBeingEdited: boolean = false
 ): Promise<ResponseForUser> {
   const loadedMessage = await GetMessageById(inputMessageId)
-  if (!loadedMessage) {
-    handleQuickLogError(inputMessageId, "Message is not available. Could not find the message.")
-    return {
-      resultMessage: "Sorry, we're having problems right now. Please try again later."
-    }
+  if (!loadedMessage || loadedMessage.userId !== user.id || loadedMessage.deletedAt) {
+    throw new Error("Message is unavailable")
   }
-
-  //verify user is owner of message
-  if (loadedMessage.userId !== user.id) {
-    handleQuickLogError(inputMessageId, "Message is not available. User is not the owner of the message.")
-    return {
-      resultMessage: "Sorry, we're having problems right now. Please try again later."
-    }
+  if (!Number.isFinite(new Date(consumedOn).getTime())) throw new Error("Invalid consumedOn")
+  if (!isMessageBeingEdited && ["RESOLVED", "PROCESSING", "FAILED"].includes(loadedMessage.status)) {
+    return { resultMessage: "Message has already been submitted. Check its food items before retrying.",
+      status: loadedMessage.status, itemsProcessed: loadedMessage.itemsProcessed ?? 0,
+      itemsToProcess: loadedMessage.itemsToProcess ?? 0 }
   }
+  if (isMessageBeingEdited) await softDeleteLoggedFoodItemsByMessageId(inputMessageId)
+  await UpdateMessage({ id: inputMessageId, status: "PROCESSING", consumedOn: new Date(consumedOn),
+    itemsToProcess: 0, itemsProcessed: 0 })
 
-  if (isMessageBeingEdited) {
-    // if message is being edited, delete all associated items since we are going to start again.
-    await softDeleteLoggedFoodItemsByMessageId(inputMessageId)
-    // reset items to process to 0
-    UpdateMessage({
-      id: inputMessageId,
-      itemsToProcess: 0,
-      itemsProcessed: 0
-      // consumedOn: new Date(consumedOn)
+  // Attach the rejection handler immediately, even if extraction later fails.
+  // Time inference is optional; the caller already supplied a valid timestamp.
+  let warning: string | undefined
+  const timePromise = isMessageBeingEdited ? Promise.resolve(null) :
+    getMessageTimeChat(user, loadedMessage.content).catch(() => {
+      console.error("Quick log time inference failed", { messageId: inputMessageId })
+      warning = "Used the selected meal time because automatic time detection failed."
+      return null
     })
-  } else {
-    // if message is already resolved or processing, return
-    if (loadedMessage.status === "RESOLVED" || loadedMessage.status === "PROCESSING") {
-      return {
-        resultMessage: "Message is already processed or processing."
-      }
-    }
+  let foodItemsToLog: FoodItemToLog[]
+  let isBadFoodLogRequest: boolean
+  try {
+    const result = loadedMessage.hasimages
+      ? await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn))
+      : await logFoodItemStream(user, loadedMessage, new Date(consumedOn))
+    ;({ foodItemsToLog, isBadFoodLogRequest } = result)
+  } catch (error) {
+    await UpdateMessage({ id: inputMessageId, status: "FAILED", resolvedAt: new Date() })
+    throw error
   }
-
-  await UpdateMessage({
-    id: inputMessageId,
-    status: "PROCESSING",
-    consumedOn: new Date(consumedOn)
-  })
-
-  let foodItemsToLog: FoodItemToLog[] = []
-  let isBadFoodLogRequest = false
-  let newConsumedOnTime: Date | undefined = undefined
-
-  // start promise to get the message logged time
-  let getTimeEatenPromise: Promise<{ timeWasSpecified: boolean; consumedDateTime: Date | null }> | undefined = undefined
-  if (!isMessageBeingEdited) {
-    getTimeEatenPromise = getMessageTimeChat(user, loadedMessage.content)
+  if (!foodItemsToLog.length) {
+    await UpdateMessage({ id: inputMessageId, status: "FAILED", resolvedAt: new Date(), isBadFoodLogRequest: true })
+    return { resultMessage: "Could not identify any food items.", status: "FAILED", itemsProcessed: 0, itemsToProcess: 0 }
   }
-
-  if (loadedMessage.hasimages) {
-    try {
-      // Try with images
-      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStreamWithImages(
-        user,
-        loadedMessage,
-        new Date(consumedOn)
-      ))
-    } catch (error) {
-      console.log("Error using image model:", error)
-
-      // If an error occurs, fallback to the function stream method
-      // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
-    }
-  } else {
-    try {
-      // Try using just text
-      ({ foodItemsToLog, isBadFoodLogRequest } = await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
-    } catch (error) {
-      console.log("Error using chat model:", error)
-
-      // If an error occurs, fallback to the function stream method
-      // foodItemsToLog = await logFoodItemFunctionStream(user, loadedMessage.content, inputMessageId)
-    }
+  const inferred = await timePromise
+  const inferredDate = inferred?.timeWasSpecified ? inferred.consumedDateTime : null
+  const mealTime = inferredDate && Number.isFinite(inferredDate.getTime()) ? inferredDate : new Date(consumedOn)
+  await UpdateMessage({ id: inputMessageId, itemsToProcess: foodItemsToLog.length,
+    consumedOn: mealTime, isBadFoodLogRequest })
+  const queued = await Promise.allSettled(foodItemsToLog.map(async (food, index) => {
+    food.timeEaten = new Date(mealTime.getTime() + index * 10).toISOString()
+    const result = await AddLoggedFoodItemToQueue(user, loadedMessage, food, index)
+    food.database_id = result.loggedFoodItemId
+  }))
+  if (queued.some(result => result.status === "rejected")) {
+    await UpdateMessage({ id: inputMessageId, status: "FAILED", resolvedAt: new Date() })
   }
-
-  // Check if we have received any valid food items to log
-  if (foodItemsToLog.length === 0) {
-    await UpdateMessage({
-      id: inputMessageId,
-      status: "FAILED",
-      resolvedAt: new Date(),
-      isBadFoodLogRequest: true
-    })
-    return {
-      resultMessage: "Sorry, I couldn't understand the food items you mentioned. Please try again."
-    }
-  }
-
-  // Process the returned food items to generate a response message for the user
-  const loggedFoodItems = foodItemsToLog.map((item) => item.food_database_search_name).join(", ")
-  const messageForUser = `Successfully logged the following food items: ${loggedFoodItems}`
-
-  if (getTimeEatenPromise) {
-    const { timeWasSpecified, consumedDateTime } = await getTimeEatenPromise
-    if (timeWasSpecified && consumedDateTime) {
-      newConsumedOnTime = consumedDateTime
-      await updateConsumedOnTimesAsync(foodItemsToLog, consumedDateTime)
-    }
-  }
-
-  // Update the message status as RESOLVED
-  await UpdateMessage({
-    id: inputMessageId,
-    status: "RESOLVED",
-    resolvedAt: new Date(),
-    consumedOn: newConsumedOnTime,
-    isBadFoodLogRequest: isBadFoodLogRequest
-  })
-
+  const progress = await refreshFoodMessageProgress(inputMessageId)
   return {
-    resultMessage: messageForUser
+    resultMessage: progress.status === "RESOLVED" ? "All food items were logged successfully." :
+      progress.status === "FAILED" ? "Some food items could not be logged. Review the saved items before retrying." :
+      "Food items submitted and still processing.",
+    status: progress.status,
+    itemsProcessed: progress.itemsProcessed ?? 0,
+    itemsToProcess: progress.itemsToProcess ?? 0,
+    ...(warning ? { warning } : {})
   }
 }

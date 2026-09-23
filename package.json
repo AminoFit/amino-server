@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "concurrently 'next dev' 'quirrel'",
-    "dev-prod": "concurrently 'DOTENV_CONFIG_PATH=.env.prod next dev' 'DOTENV_CONFIG_PATH=.env.prod quirrel'",
+    "dev-prod": "concurrently 'dotenv -e .env.prod -- next dev' 'dotenv -e .env.prod -- quirrel'",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

@@ -6,7 +6,6 @@ import {
 } from "@/languageModelProviders/openai/customFunctions/chatCompletion"
 import { FireworksChatCompletionStream } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import { FoodItemToLog, LoggedFoodServing } from "../../utils/loggedFoodItemInterface"
-import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { logFoodItemPrompts } from "./logFoodItemPrompts"
 import { getUserByEmail } from "../common/debugHelper"
 import { claudeChatCompletionStream } from "@/languageModelProviders/anthropic/anthropicChatCompletion"
@@ -277,8 +276,6 @@ export async function logFoodItemStream(
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
-  // Add logging task to the tasks array
-  const loggingTasks: Promise<any>[] = []
   const currentDateTime = new Date()
 
   // Change the model to GPT-4o mini
@@ -333,23 +330,11 @@ export async function logFoodItemStream(
         nutritional_information: sanitizedFoodItem.nutritional_information
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
-      console.log("just logged: ", foodItemToLog)
-      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
-      loggingTasks.push(loggingTask)
+      console.log("extracted food: ", foodItemToLog)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
-  // Await for all tasks and get their return values
-  const results = await Promise.all(loggingTasks)
-
-  // Update each foodItemToLog with its corresponding database_id
-  results.forEach(({ loggedFoodItemId, index }) => {
-    foodItemsToLog[index].database_id = loggedFoodItemId
-  })
-
-  // console.log("foodItemsToLog", foodItemsToLog)
-
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 
@@ -386,6 +371,9 @@ async function testFoodLoggingStream() {
   // const userMessage = "Two apples with a latte from starbcuks with 2% milk and 3 waffles with butter and maple syrup"
 }
 
+// testChatCompletionJsonStream()
+
+// Run this diagnostic explicitly; never execute it when a route imports this module.
 // testChatCompletionJsonStream()
 
 

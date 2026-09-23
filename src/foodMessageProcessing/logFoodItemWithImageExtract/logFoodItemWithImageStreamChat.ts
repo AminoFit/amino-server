@@ -8,7 +8,6 @@ import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import OpenAI from "openai"
 import { getUserByEmail, getUserMessageById } from "../common/debugHelper"
 import { exit } from "process"
-import { AddLoggedFoodItemToQueue } from "../addLogFoodItemToQueue"
 import { fetchRotateAndConvertToBase64 } from "../common/imageTools/rotateImageFromUrl"
 import { fetchAndDecodeBarcode } from "./utils/barcodeExtract"
 import { sanitizeFoodItemNutritionFieldsJSON } from "../common/sanitizeNutrients"
@@ -256,7 +255,6 @@ async function processOpenAiVisionChatStream(
 ): Promise<{ foodItemsToLog: FoodItemToLog[]; isBadFoodLogRequest: boolean }> {
   const foodItemsToLog: FoodItemToLog[] = []
   let isBadFoodLogRequest = false
-  const loggingTasks: Promise<any>[] = []
 
   let model = "gpt-4o"
   const currentDateTime = new Date()
@@ -283,20 +281,12 @@ async function processOpenAiVisionChatStream(
         nutritional_information: sanitizedFoodItem.nutritional_information
       } as FoodItemToLog
       foodItemsToLog.push(foodItemToLog)
-      console.log("just logged: ", foodItemToLog)
-      const loggingTask = AddLoggedFoodItemToQueue(user, user_message, foodItemToLog, foodItemsToLog.length - 1)
-      loggingTasks.push(loggingTask)
+      console.log("extracted food: ", foodItemToLog)
     } else if (chunk.hasOwnProperty("contains_valid_food_items")) {
       console.log("valid items?", chunk.contains_valid_food_items)
       isBadFoodLogRequest = !chunk.contains_valid_food_items
     }
   }
-  // Await for all tasks and get their return values
-  const results = await Promise.all(loggingTasks)
-  // Update each foodItemToLog with its corresponding database_id
-  results.forEach(({ loggedFoodItemId, index }) => {
-    foodItemsToLog[index].database_id = loggedFoodItemId
-  })
   return { foodItemsToLog, isBadFoodLogRequest }
 }
 

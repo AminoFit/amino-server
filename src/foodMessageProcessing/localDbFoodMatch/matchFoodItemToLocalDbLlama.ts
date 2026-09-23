@@ -1,3 +1,4 @@
+import { foodCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import Anthropic from "@anthropic-ai/sdk"
@@ -229,7 +230,7 @@ export async function findBestFoodMatchtoLocalDbLlama(
   const foodToMatch = (user_request.brand ? `${user_request.brand} - ` : "") + user_request.food_database_search_name
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
-  let model = 'accounts/fireworks/models/llama-v3p1-70b-instruct'
+  let model = FOOD_REASONING_MODEL
   let max_tokens = 425
   let temperature = 0
   let prompt = matchUserRequestPrompt
@@ -247,15 +248,8 @@ export async function findBestFoodMatchtoLocalDbLlama(
 
   try {
     const timerStart = Date.now()
-    const response = await FireworksChatCompletion(user,
-      {
-        system: matchSystemPrompt,
-        messages,
-        model,
-        temperature,
-        max_tokens
-    }
-    )
+    const response = await foodCompletion({ systemPrompt: matchSystemPrompt,
+      userMessage: prompt, model, max_tokens }, user)
     const timerEnd = Date.now()
     console.log("Time taken for food match:", timerEnd - timerStart, "ms")
     // console.log('response', response)
@@ -266,15 +260,8 @@ export async function findBestFoodMatchtoLocalDbLlama(
       database_match = remapIds(extractAndParseLastJSON(response) as DatabaseMatch, idMapping)
     } catch (err) {
       console.error("Failed to parse JSON response. Retrying with higher temperature.")
-      const retryResponse = await FireworksChatCompletion(user,
-        {
-          system: matchSystemPrompt,
-          messages,
-          model,
-          temperature: 0.1,
-          max_tokens
-      }
-      )
+      const retryResponse = await foodCompletion({ systemPrompt: matchSystemPrompt,
+        userMessage: prompt, model, max_tokens }, user)
       database_match = remapIds(extractAndParseLastJSON(retryResponse) as DatabaseMatch, idMapping)
     }
 

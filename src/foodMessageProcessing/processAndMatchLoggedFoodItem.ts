@@ -1,3 +1,5 @@
+import { findExactLocalFood } from "./findExactLocalFood"
+import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
 // Utils
 import { foodToLogEmbedding } from "@/utils/foodEmbedding"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
@@ -7,7 +9,6 @@ import { printSearchResults } from "./common/processFoodItemsUtils"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
 // Database
-import UpdateMessage from "@/database/UpdateMessage"
 
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
@@ -33,9 +34,7 @@ export async function ProcessLogFoodItem(
   try {
     const message = await GetMessageById(messageId)
 
-    const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message!.content])
-    console.log(`getting embedding for food ${loggedFoodItemInfo.full_item_user_message_including_serving}`)
-    const userQueryVectorCache = await foodToLogEmbedding(loggedFoodItemInfo)
+    if (!message || message.deletedAt || loggedFoodItem.deletedAt) return "Message was deleted."
 
     let bestMatch: FoodItemWithNutrientsAndServing | null = null
     let secondBestMatch: number | null = null
@@ -45,7 +44,10 @@ export async function ProcessLogFoodItem(
       bestMatch = await findFoodByUPC(loggedFoodItemInfo.upc, messageId, user)
     }
 
+    if (!bestMatch) bestMatch = await findExactLocalFood(loggedFoodItemInfo)
     if (!bestMatch) {
+      const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message.content])
+      const userQueryVectorCache = await foodToLogEmbedding(loggedFoodItemInfo)
       let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20);
 
       [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
@@ -99,18 +101,25 @@ export async function ProcessLogFoodItem(
       return "Sorry, I could not log your food items. Please try again later."
     }
 
-    UpdateMessage({ id: messageId, incrementItemsProcessedBy: 1 })
+
 
     console.log("About to queue icon generation")
     console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
     console.log("bestMatch.name", bestMatch.name)
 
-    await LinkIconsOrCreateIfNeeded(bestMatch.id)
+    // Icon decoration is optional after the food has committed successfully.
+    try {
+      await LinkIconsOrCreateIfNeeded(bestMatch.id)
+    } catch (error) {
+      console.error("Food saved, but icon generation failed", { messageId, foodId: bestMatch.id })
+    }
     return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
   } catch (error) {
     console.log("Error processing food item for matching:", error)
     await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."
+  } finally {
+    await refreshFoodMessageProgress(messageId)
   }
 }
 

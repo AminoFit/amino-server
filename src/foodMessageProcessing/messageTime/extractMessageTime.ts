@@ -1,3 +1,4 @@
+import { foodCompletion } from "@/languageModelProviders/gemini/foodCompletion"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import {
@@ -221,32 +222,19 @@ export async function getMessageTimeChat(
   //   systemPrompt: extractMessageTimePrompt["claude-haiku"].systemPrompt
   // })
 
-  const stream = processMessageTimeExtractStreamAnthropic(user, {
-    temperature: 0,
-    messages:[],
-    model: "claude-3-haiku",
-    max_tokens: 250,
-    system: extractMessageTimePrompt["claude-haiku"].systemPrompt
-  }, requestPrompt)
-
-  let timeWasSpecified = false
-  let consumedDateTime: Date | null = null
-
-  for await (const chunk of stream) {
-    if (chunk.hasOwnProperty("date_time_food_consumed")) {
-      return {
-        timeWasSpecified: true,
-        consumedDateTime: transformCurrentDateTime(chunk.date_time_food_consumed, user.tzIdentifier)
-      }
-    } else if (chunk.hasOwnProperty("user_has_specified_time_or_date")) {
-      timeWasSpecified = chunk.user_has_specified_time_or_date
-      if (timeWasSpecified == false) {
-        return { timeWasSpecified, consumedDateTime: null }
-      }
-    }
+  const response = JSON.parse(await foodCompletion({
+    systemPrompt: extractMessageTimePrompt["claude-haiku"].systemPrompt,
+    userMessage: requestPrompt,
+    max_tokens: 4096
+  }, user)) as FoodConsumptionDetails
+  if (response.user_has_specified_time_or_date !== true) {
+    return { timeWasSpecified: false, consumedDateTime: null }
   }
+  if (!response.date_time_food_consumed) throw new Error("Missing inferred meal time")
+  const consumedDateTime = transformCurrentDateTime(response.date_time_food_consumed, user.tzIdentifier)
+  if (!Number.isFinite(consumedDateTime.getTime())) throw new Error("Invalid inferred meal time")
+  return { timeWasSpecified: true, consumedDateTime }
 
-  return { timeWasSpecified, consumedDateTime }
 }
 
 async function testChatCompletionJsonStream() {

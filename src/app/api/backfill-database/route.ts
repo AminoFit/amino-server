@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 // src/app/api/backfill-database/route.ts
 import { embeddingBackfill } from "@/database/OpenAiFunctions/utils/embeddingBackfill";
 import { NextResponse } from "next/server";

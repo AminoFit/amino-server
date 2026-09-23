@@ -3,7 +3,7 @@ import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { isServerTimeData } from "./common/processFoodItemsUtils"
 import { convertNutritionalInfoStrings } from "@/utils/helper/convertFoodItemToLog" // Import the conversion utility
 // Database
-import UpdateMessage from "@/database/UpdateMessage"
+import { updateLoggedFoodItemWithData } from "./common/updateLoggedFoodItemData"
 
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
@@ -18,7 +18,6 @@ export async function AddLoggedFoodItemToQueue(
 ): Promise<{ loggedFoodItemId: number, index: number }> {
   console.log("food_item_to_log", food_item_to_log)
 
-  UpdateMessage({ id: user_message.id, incrementItemsToProcessBy: 1 })
 
   const supabase = createAdminSupabase()
   const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
@@ -65,9 +64,12 @@ export async function AddLoggedFoodItemToQueue(
     throw new Error("Failed to create food item")
   }
   console.log("Adding food item to queue:", loggedFoodToProcess.id)
-  await processFoodItemQueue.enqueue(
-    `${loggedFoodToProcess.id}` 
-  )
+  try {
+    await processFoodItemQueue.enqueue(`${loggedFoodToProcess.id}`)
+  } catch (error) {
+    await updateLoggedFoodItemWithData(loggedFoodToProcess.id, { status: "Matching Failed" })
+    throw error
+  }
   console.log(`Added food id to queue: ${loggedFoodToProcess.id}`)
 
   return {loggedFoodItemId: loggedFoodToProcess.id, index: index}
