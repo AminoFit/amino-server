@@ -110,7 +110,7 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
       queued++;queuedFoods.push(food);mem.state.foods.push({status:typeof foodStatus==='function'?foodStatus(food,index):foodStatus});await refresh(1);return {loggedFoodItemId:10,index:0}
     }}
   })
-  return { ...mem, run:()=>api.GenerateResponseForQuickLog({id:'user'},1,'2026-09-23T12:00:00Z'), queued:()=>queued,queuedFoods }
+  return { ...mem, run:(editing=false)=>api.GenerateResponseForQuickLog({id:'user'},1,'2026-09-23T12:00:00Z',editing), queued:()=>queued,queuedFoods }
 }
 test('time-provider rejection still allows the meal to be logged successfully', async()=>{
   const h=quickLogHarness({timeFails:true}); const result=await h.run()
@@ -432,3 +432,12 @@ test('the final worker boundary rejects a conflicting milk variant even if a mat
  const h=agentWorkerHarness({exact:true,foodOverrides:{name:'Whole Milk'},itemOverrides:{food_database_search_name:'Fairlife milk',full_item_user_message_including_serving:'one cup Fairlife 2% milk'}})
  await h.run();assert.equal(h.saved().status,'Matching Failed');assert.equal(h.saved().foodItemId,undefined)
 })
+
+test('history edits bypass destructive extraction and do not claim before validated replacement',async()=>{
+  for(const status of ['RESOLVED','FAILED']) {
+    const reply={resultMessage:'History outcome',status,itemsProcessed:status==='RESOLVED'?4:0,itemsToProcess:status==='RESOLVED'?4:0};
+    const h=quickLogHarness({extractionFails:true,reuseReply:reply});h.state.message.status='RESOLVED';
+    assert.equal(await h.run(true),reply);assert.equal(h.queued(),0);
+    assert.equal(h.state.message.status,'RESOLVED','the coordinator must not claim/delete before history validation');
+  }
+});

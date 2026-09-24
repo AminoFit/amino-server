@@ -1218,6 +1218,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      replace_food_from_history: {
+        Args: { p_user_id: string; p_message_id: number; p_consumed_on: string; p_expected: Json; p_source: Json; p_food_ids: number[] }
+        Returns: Json
+      }
+
       calculate_user_streak: {
         Args: {
           user_id: string

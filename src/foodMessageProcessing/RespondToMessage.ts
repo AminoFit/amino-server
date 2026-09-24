@@ -1,6 +1,6 @@
 import { shadowFoodHistory } from "@/foodResolution/history/shadow"
-import { reuseFoodHistory, isHistoryReference } from "@/foodResolution/history/reuse"
-import { foodTrace, foodStage, currentFoodConfig } from "@/foodResolution/telemetry"
+import { reuseFoodHistory } from "@/foodResolution/history/reuse"
+import { foodTrace, foodStage } from "@/foodResolution/telemetry"
 import { claimFoodMessage } from "./common/claimFoodMessage"
 import { AddLoggedFoodItemToQueue } from "./addLogFoodItemToQueue"
 import { preserveExplicitAdditions } from "@/foodResolution/composition"
@@ -222,14 +222,14 @@ export async function GenerateResponseForQuickLog(
   }
   return foodTrace(user.id, inputMessageId, loadedMessage.hasimages ? "image" : "text", async () => {
     if (!Number.isFinite(new Date(consumedOn).getTime())) throw new Error("Invalid consumedOn")
-    // Preserve old items on unsupported edits instead of deleting them first.
-    if (isMessageBeingEdited && currentFoodConfig()?.features.history_reuse === "on" && isHistoryReference(loadedMessage.content)) {
-      throw new Error("History references cannot yet be used while editing; enter explicit foods and amounts")
-    }
     if (!isMessageBeingEdited && ["RESOLVED", "PROCESSING", "FAILED"].includes(loadedMessage.status)) {
       return { resultMessage: "Message has already been submitted. Check its food items before retrying.",
         status: loadedMessage.status, itemsProcessed: loadedMessage.itemsProcessed ?? 0,
         itemsToProcess: loadedMessage.itemsToProcess ?? 0 }
+    }
+    if (loadedMessage.status !== "PROCESSING") {
+      const historyReply = await reuseFoodHistory(user, loadedMessage, consumedOn, isMessageBeingEdited)
+      if (historyReply) return historyReply
     }
     if (!await claimFoodMessage(loadedMessage, user.id, consumedOn)) {
       const current = await GetMessageById(inputMessageId)
@@ -237,8 +237,6 @@ export async function GenerateResponseForQuickLog(
         status: current?.status ?? "PROCESSING", itemsProcessed: current?.itemsProcessed ?? 0,
         itemsToProcess: current?.itemsToProcess ?? 0 }
     }
-    const historyReply = await reuseFoodHistory(user, loadedMessage, consumedOn, isMessageBeingEdited)
-    if (historyReply) return historyReply
     if (isMessageBeingEdited) {
       try { await softDeleteLoggedFoodItemsByMessageId(inputMessageId) }
       catch (error) {

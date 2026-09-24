@@ -110,3 +110,9 @@ test('search uses word boundaries instead of treating pineapple as apple',()=>{
   const m=message(1,{content:'pineapple'});m.LoggedFoodItem[0].FoodItem.name='Pineapple'
   assert.equal(rank([m],{...request,text:'apple'}).candidates.length,0)
 })
+
+test('a meal entered later is eligible when the edit supplies its knowledge cutoff',()=>{
+  const row=message(1,{createdAt:'2026-09-23T16:00:00Z'});
+  assert.equal(rank([row]).disposition,'none');
+  assert.equal(rank([row],{...request,recordedBefore:'2026-09-23T17:00:00Z'}).disposition,'single_event');
+});

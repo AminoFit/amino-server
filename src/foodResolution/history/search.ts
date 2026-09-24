@@ -2,10 +2,10 @@ import moment from "moment-timezone"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { HISTORY_NUTRIENTS, HistoryNutrition } from "./nutrients"
 
-export type HistoryRequest = { text: string; referenceTime: string; excludeMessageId: number; explicitBrand?: string }
+export type HistoryRequest = { text: string; referenceTime: string; recordedBefore?: string; excludeMessageId: number; explicitBrand?: string }
 export type HistoryFood = { id: number; userId: string; deletedAt: string | null; status: string | null;
   foodItemId: number | null; grams: number; kcal: number | null; servingAmount: number | null;
-  loggedUnit: string | null; FoodItem: { name: string; brand: string | null } | null } & HistoryNutrition
+  loggedUnit: string | null; updatedAt: string; FoodItem: { name: string; brand: string | null } | null } & HistoryNutrition
 export type HistoryMessage = { id: number; userId: string; content: string; consumedOn: string | null;
   createdAt: string; deletedAt: string | null; status: string; itemsToProcess: number | null;
   itemsProcessed: number | null; LoggedFoodItem: HistoryFood[] }
@@ -48,7 +48,7 @@ export function rankFoodHistory(rows: HistoryMessage[], userId: string, timezone
     if (row.userId !== userId || row.id === request.excludeMessageId || row.deletedAt || row.status !== "RESOLVED" || !row.consumedOn) continue
     const consumed = historyTime(row.consumedOn)
     const created = historyTime(row.createdAt)
-    if (!consumed.isValid() || !created.isValid() || created.isAfter(historyTime(request.referenceTime)) ||
+    if (!consumed.isValid() || !created.isValid() || created.isAfter(historyTime(request.recordedBefore ?? request.referenceTime)) ||
         consumed.isBefore(window.start) || !consumed.isBefore(window.end)) continue
     const foods = row.LoggedFoodItem.filter(food => !food.deletedAt)
     // Never reconstruct a meal from a partial or differently owned collection.
@@ -102,10 +102,10 @@ export function createUserFoodHistorySearch(user: { id: string; tzIdentifier: st
     if (!user.id || request.text.length > 4000 || !Number.isSafeInteger(request.excludeMessageId)) throw new Error("Invalid history request")
     const window = historyWindow(request,user.tzIdentifier)
     let query = db.from("Message").select(`id,userId,content,consumedOn,createdAt,deletedAt,status,itemsToProcess,itemsProcessed,
-      LoggedFoodItem(id,userId,deletedAt,status,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingAmount,loggedUnit,FoodItem(name,brand))`)
+      LoggedFoodItem(id,userId,deletedAt,status,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingAmount,loggedUnit,updatedAt,FoodItem(name,brand))`)
       .eq("userId",user.id).eq("status","RESOLVED").is("deletedAt",null).neq("id",request.excludeMessageId)
       .gte("consumedOn",window.start).lt("consumedOn",window.end)
-      .lte("createdAt",historyTime(request.referenceTime).toISOString()).order("consumedOn",{ascending:false}).order("id",{ascending:false}).limit(101)
+      .lte("createdAt",historyTime(request.recordedBefore ?? request.referenceTime).toISOString()).order("consumedOn",{ascending:false}).order("id",{ascending:false}).limit(101)
     query = query.abortSignal(signal ?? AbortSignal.timeout(750))
     const result = await query
     if (result.error) throw new Error("History lookup unavailable")

@@ -24,14 +24,17 @@ export function referenceTarget(text: string): string | null {
 export function historyCopies(result: HistoryResult, target: string, userId: string, messageId: number, consumedOn: string) {
   if (result.disposition !== "single_event" || result.truncated || result.candidates.length !== 1) return null
   const source = result.candidates[0]
-  const wholeMeal = ["breakfast","bfast","lunch","dinner","meal"].includes(target)
+  // A smoothie is the recorded meal group, including its separate ingredients.
+  // Search has already required smoothie evidence and a unique complete event.
+  const smoothie = tokens(target).includes("smoothie") &&
+    tokens(source.originalText ?? "").includes("smoothie")
+  const wholeMeal = smoothie || ["breakfast","bfast","lunch","dinner","meal"].includes(target)
   const wanted = tokens(target)
   const foods = wholeMeal ? source.foods : source.foods.filter(food => {
     const item = food.FoodItem
     return item && wanted.every(word=>tokens(`${item.name} ${item.brand ?? ""}`).includes(word))
   })
-  // A food reference cannot silently become an entire multi-food meal. A named
-  // smoothie represented only by ungrouped ingredients remains unsupported.
+  // Individual food references still copy only that food, not unrelated rows.
   if (!foods.length || foods.length > 30 || source.messageId === messageId) return null
   const rows: TablesInsert<"LoggedFoodItem">[] = []
   for (const food of foods) {
@@ -55,8 +58,8 @@ export function historyCopies(result: HistoryResult, target: string, userId: str
   return rows
 }
 
-// Called only after the existing atomic message claim. No new queue job or model
-// call is needed to reproduce already validated historical log values.
+// Resolve before claiming or deleting anything. The RPC validates the observed
+// source/target and replaces foods + completion in one transaction.
 export async function reuseFoodHistory(user: { id: string; tzIdentifier: string }, message: Tables<"Message">,
   consumedOn: string, editing: boolean, providedDb?: ReturnType<typeof createAdminSupabase>): Promise<HistoryReply | null> {
   if (currentFoodConfig()?.features.history_reuse !== "on" || !isHistoryReference(message.content)) return null
@@ -65,34 +68,42 @@ export async function reuseFoodHistory(user: { id: string; tzIdentifier: string 
   const started = performance.now()
   let rows: TablesInsert<"LoggedFoodItem">[] | null = null
   const target = referenceTarget(message.content)
-  if (target && !editing && !message.hasimages) {
+  let history: HistoryResult | undefined
+  let lookupFailed = false
+  if (target && !message.hasimages) {
     try {
-      const history = await createUserFoodHistorySearch(user,db)({text:message.content,
-        referenceTime:message.createdAt,excludeMessageId:message.id})
+      history = await createUserFoodHistorySearch(user,db)({text:message.content,
+        referenceTime:consumedOn,recordedBefore:new Date().toISOString(),excludeMessageId:message.id},
+        AbortSignal.timeout(5000))
       rows = historyCopies(history,target,user.id,message.id,consumedOn)
-    } catch { /* Unknown history must not fall through to generic matching. */ }
+    } catch { lookupFailed = true }
   }
   if (!rows) {
-    const failed = await db.from("Message").update({status:"FAILED",itemsProcessed:0,itemsToProcess:0,
-      resolvedAt:new Date().toISOString()}).eq("id",message.id).eq("userId",user.id)
-      .eq("status","PROCESSING").is("deletedAt",null).select("id").maybeSingle()
-    if (failed.error || !failed.data) throw new Error("History request changed")
+    // A rejected edit leaves the existing foods and lifecycle intact. New
+    // unsuccessful references have no foods and can use the FAILED state.
+    if (!editing) {
+      const failed = await db.from("Message").update({status:"FAILED",itemsProcessed:0,itemsToProcess:0,
+        resolvedAt:new Date().toISOString()}).eq("id",message.id).eq("userId",user.id)
+        .eq("status",message.status).eq("content",message.content).is("deletedAt",null).select("id").maybeSingle()
+      if (failed.error || !failed.data) throw new Error("History request changed")
+    }
     foodMetric("history_reuse",performance.now()-started,"ok",{status:"unmatched"})
-    return {resultMessage:"Could not safely reuse a previous meal. Enter the food and amount directly.",
+    const resultMessage = lookupFailed ? "Could not load yesterday's meals. Please retry. Your existing foods were kept." :
+      history?.disposition === "ambiguous" ? "More than one matching meal was found yesterday. Describe which one you mean. Your existing foods were kept." :
+      !target || message.hasimages ? "Use a reference such as 'same smoothie as yesterday', or enter the foods and amounts directly." :
+      "No complete matching meal was found yesterday. Your existing foods were kept. Check the meal's date or enter the foods directly."
+    return {resultMessage,
       status:"FAILED",itemsProcessed:0,itemsToProcess:0}
   }
-
-  const prepared = await db.from("Message").update({itemsToProcess:rows.length,itemsProcessed:0,consumedOn})
-    .eq("id",message.id).eq("userId",user.id).eq("status","PROCESSING").eq("content",message.content)
-    .is("deletedAt",null).select("id").maybeSingle()
-  if (prepared.error || !prepared.data) throw new Error("History request changed")
-  // One bulk insert is atomic; never retry it after an uncertain network response.
-  const inserted = await db.from("LoggedFoodItem").insert(rows).select("id")
-  if (inserted.error || inserted.data?.length !== rows.length) throw new Error("Could not save historical foods; check saved items before retrying")
-  const completed = await db.from("Message").update({status:"RESOLVED",itemsProcessed:rows.length,
-    resolvedAt:new Date().toISOString()}).eq("id",message.id).eq("userId",user.id).eq("status","PROCESSING")
-    .is("deletedAt",null).select("id").maybeSingle()
-  if (completed.error || !completed.data) throw new Error("Historical foods saved; progress update needs recovery")
+  const source = history!.candidates[0]
+  const completed = await db.rpc("replace_food_from_history", {
+    p_user_id:user.id, p_message_id:message.id, p_consumed_on:consumedOn,
+    p_expected:{content:message.content,status:message.status,resolvedAt:message.resolvedAt,consumedOn:message.consumedOn},
+    p_source:{messageId:source.messageId,content:source.originalText,consumedOn:source.consumedOn,
+      foods:source.foods.map(food=>({id:food.id,updatedAt:food.updatedAt}))},
+    p_food_ids:rows.map(row=>(row.extendedOpenAiData as {historySourceLoggedFoodItemId:number}).historySourceLoggedFoodItemId)
+  })
+  if (completed.error) throw new Error("Could not replace the meal from history. Refresh the food log and retry.")
   foodMetric("history_reuse",performance.now()-started,"ok",{status:"RESOLVED",itemsProcessed:rows.length,itemsToProcess:rows.length})
   return {resultMessage:"Previous food amounts were logged successfully.",status:"RESOLVED",itemsProcessed:rows.length,itemsToProcess:rows.length}
 }
