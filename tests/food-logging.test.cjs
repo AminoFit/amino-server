@@ -10,13 +10,16 @@ function load(file, stubs = {}, globals = {}) {
   const module = { exports: {} }
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name in stubs) return stubs[name]
+    if (name === '@/foodResolution/history/reuse') return {reuseFoodHistory:async()=>null,isHistoryReference:()=>false}
+    if (name === '@/foodResolution/history/shadow') return {shadowFoodHistory:async()=>{}}
+    if (name === '@/foodResolution/telemetry') return { foodTrace: (u,m,c,fn)=>fn(), foodStage:(s,fn)=>fn(), foodMetric(){}, setFoodInputClass(){}, currentFoodConfig:()=>undefined }
     // Unused legacy imports have no live side effects in this isolated harness.
     return {}
   }, console: { log(){}, error(){}, warn(){} }, Date, process: {env: {}}, Response, Request, ...globals })
   return module.exports
 }
 function memoryDb(message, foods = []) {
-  const state = { message: { id: 1, status: 'PROCESSING', itemsProcessed: 0, itemsToProcess: 1, deletedAt: null, ...message }, foods }
+  const state = { message: { id: 1, status: 'PROCESSING', resolvedAt: null, itemsProcessed: 0, itemsToProcess: 1, deletedAt: null, ...message }, foods }
   const db = { from(table) {
     const filters = []; let update
     const q = { select(){return q}, update(data){update=data;return q}, eq(k,v){filters.push([k,v]);return q}, is(k,v){filters.push([k,v]);return q},
@@ -49,7 +52,7 @@ test('ambiguous quantities and volume do not use the mass shortcut', () => {
 test('explicit grams bypass the serving provider entirely', async () => {
   const api = load('foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem.ts', {
     './explicitMassServing': {explicitMassServing},
-    '@/languageModelProviders/gemini/foodCompletion': {foodCompletion(){throw Error('must not call model')}}
+    '@/foodResolution/model': {foodCompletion(){throw Error('must not call model')}}
   })
   const result = await api.findBestServingMatchChatGemini({full_item_user_message_including_serving:'100 g cooked white rice'}, {}, {})
   assert.equal(result.serving.total_serving_g_or_ml, 100)
@@ -81,7 +84,7 @@ for (const [statuses,expected,count] of [
   const result = await refreshFoodMessageProgress(1)
   assert.equal(result.status,expected); assert.equal(result.itemsProcessed,count)
 })
-function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user', extractionFails=false }={}) {
+function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user', extractionFails=false, reuseReply=null }={}) {
   const mem = memoryDb({status:'RECEIVED',userId:owner,content:'100 g cooked white rice',itemsToProcess:0})
   const update = load('database/UpdateMessage.ts',{'@/utils/supabase/serverAdmin':mem.admin}).default
   const refresh = load('foodMessageProcessing/common/refreshFoodMessageProgress.ts',{'@/utils/supabase/serverAdmin':mem.admin}).refreshFoodMessageProgress
@@ -89,6 +92,8 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
   const api=load('foodMessageProcessing/RespondToMessage.ts', {
     '@/database/GetMessagesForUser':{GetMessageById:async()=>({...mem.state.message})},
     '@/database/UpdateMessage':{default:update},
+    '@/foodResolution/history/reuse':{reuseFoodHistory:async()=>reuseReply,isHistoryReference:()=>true},
+    './common/claimFoodMessage':load('foodMessageProcessing/common/claimFoodMessage.ts',{'@/utils/supabase/serverAdmin':mem.admin}),
     './common/refreshFoodMessageProgress':{refreshFoodMessageProgress:refresh},
     './messageTime/extractMessageTime':{getMessageTimeChat:async()=>{if(timeFails)throw Error('provider unavailable');return null}},
     '@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat':{logFoodItemStream:async()=>{
@@ -216,4 +221,77 @@ test('OpenRouter insufficient credits falls back without forwarding the router k
   assert.equal(requests[0].auth,'Bearer router-test')
   assert.equal(requests[1].auth,'Bearer openai-test')
   assert.match(requests[1].url,/api.openai.com/)
+})
+
+test('simultaneous initial submissions enqueue a meal only once', async()=>{
+  const h=quickLogHarness(); await Promise.all([h.run(),h.run()]); assert.equal(h.queued(),1)
+  await h.run(); assert.equal(h.queued(),1)
+})
+
+for (const owner of ['user','other']) test(`post-commit response recovery respects owner ${owner}`,async()=>{
+  const api=load('app/api/protected/user/process-message-quick-log/route.ts',{
+    'next/server':{NextResponse:{json:(value,init)=>Response.json(value,init)}},
+    '@/utils/supabase/GetUserFromRequest':{GetAminoUserOnRequest:async()=>({aminoUser:{id:'user',subscriptionExpiryDate:'2099-01-01'}})},
+    '@/foodMessageProcessing/RespondToMessage':{GenerateResponseForQuickLog:async()=>{throw Error('response failed')}},
+    '@/database/GetMessagesForUser':{GetMessageById:async()=>({userId:owner,status:'RESOLVED',itemsToProcess:2,itemsProcessed:2})}
+  })
+  const response=await api.POST(new Request('https://example.test',{method:'POST',body:JSON.stringify({messageId:1})}))
+  assert.equal(response.status,owner==='user'?200:500)
+})
+
+test('queue redelivery after a successful item commit refreshes progress without processing again',async()=>{
+  let handler,processed=0,refreshed=0
+  const row={id:1,messageId:2,status:'Needs Processing',User:{id:'u'},extendedOpenAiData:{food_database_search_name:'rice'}}
+  const q={select(){return q},eq(){return q},single:async()=>({data:{...row},error:null})}
+  load('app/api/queues/process-food-item/process-food-item.ts',{
+    'quirrel/next-app':{Queue:(name,fn)=>{handler=fn;return {}}},
+    '@supabase/supabase-js':{createClient:()=>({from:()=>q})},
+    '@/foodMessageProcessing/processAndMatchLoggedFoodItem':{ProcessLogFoodItem:async()=>{
+      processed++;row.status='Processed';throw Error('progress failed after commit')
+    }},
+    '@/foodMessageProcessing/common/refreshFoodMessageProgress':{refreshFoodMessageProgress:async()=>{refreshed++}}
+  })
+  await assert.rejects(handler('1'),/after commit/)
+  await handler('1');assert.equal(processed,1);assert.equal(refreshed,1)
+})
+
+test('failed edits do not recover an older resolved result as success',async()=>{
+  const api=load('app/api/protected/user/process-message-quick-log/route.ts',{
+    'next/server':{NextResponse:{json:(value,init)=>Response.json(value,init)}},
+    '@/utils/supabase/GetUserFromRequest':{GetAminoUserOnRequest:async()=>({aminoUser:{id:'user',subscriptionExpiryDate:'2099-01-01'}})},
+    '@/foodMessageProcessing/RespondToMessage':{GenerateResponseForQuickLog:async()=>{throw Error('edit failed')}},
+    '@/database/GetMessagesForUser':{GetMessageById:async()=>({userId:'user',status:'RESOLVED',itemsToProcess:2,itemsProcessed:2})}
+  })
+  const response=await api.POST(new Request('https://example.test',{method:'POST',body:JSON.stringify({messageId:1,isMessageBeingEdited:true})}))
+  assert.equal(response.status,500)
+})
+for(const fixture of require('./fixtures/food-baseline.json')) {
+  if(fixture.expected.grams || fixture.expected.mustNotUseMassShortcut) test(`baseline fixture: ${fixture.id}`,()=>{
+    const serving=explicitMassServing(fixture.input)
+    if(fixture.expected.mustNotUseMassShortcut)assert.equal(serving,null)
+    else {
+      assert.equal(serving.total_serving_g_or_ml,fixture.expected.grams)
+      const nutrition=calculateNutrientData(serving.total_serving_g_or_ml,{defaultServingWeightGram:158,kcalPerServing:205.4,Nutrient:[]})
+      assert.ok(Math.abs(nutrition.kcal-fixture.expected.kcal)<=fixture.expected.kcalTolerance)
+    }
+  })
+}
+
+test('history response bypasses extraction, generic matching and queue insertion',async()=>{
+  const reply={resultMessage:'Reused',status:'RESOLVED',itemsProcessed:1,itemsToProcess:1}
+  const h=quickLogHarness({extractionFails:true,reuseReply:reply})
+  assert.equal(await h.run(),reply);assert.equal(h.queued(),0)
+})
+test('post-commit history progress failure recovers from saved item counts without retrying work',async()=>{
+  let repairs=0
+  const saved={id:1,userId:'user',status:'PROCESSING',itemsToProcess:1,itemsProcessed:0}
+  const api=load('app/api/protected/user/process-message-quick-log/route.ts',{
+    'next/server':{NextResponse:{json:(value,init)=>Response.json(value,init)}},
+    '@/utils/supabase/GetUserFromRequest':{GetAminoUserOnRequest:async()=>({aminoUser:{id:'user',subscriptionExpiryDate:'2099-01-01'}})},
+    '@/foodMessageProcessing/RespondToMessage':{GenerateResponseForQuickLog:async()=>{throw Error('final update failed')}},
+    '@/database/GetMessagesForUser':{GetMessageById:async()=>saved},
+    '@/foodMessageProcessing/common/refreshFoodMessageProgress':{refreshFoodMessageProgress:async()=>{repairs++;return {...saved,status:'RESOLVED',itemsProcessed:1}}}
+  })
+  const response=await api.POST(new Request('https://example.test',{method:'POST',body:JSON.stringify({messageId:1})}))
+  assert.equal(response.status,200);assert.equal((await response.json()).status,'RESOLVED');assert.equal(repairs,1)
 })

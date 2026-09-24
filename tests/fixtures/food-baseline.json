@@ -1,0 +1,10 @@
+[
+  {"id":"rice-grams","class":"text","input":"100 g cooked white rice","expected":{"status":"Processed","foodId":387,"grams":100,"kcal":130,"kcalTolerance":1}},
+  {"id":"rice-kg","class":"text","input":"0.1 kg cooked white rice","expected":{"status":"Processed","foodId":387,"grams":100,"kcal":130,"kcalTolerance":1}},
+  {"id":"banana-eggs","class":"text","input":"1 medium banana and 2 large eggs","expected":{"status":"RESOLVED","itemsProcessed":2,"kcal":248.02,"kcalTolerance":5}},
+  {"id":"zero-mass","class":"text","input":"0 g cooked white rice","expected":{"mustNotUseMassShortcut":true}},
+  {"id":"volume-not-mass","class":"text","input":"100 ml cooked white rice","expected":{"mustNotUseMassShortcut":true}},
+  {"id":"quantity-range","class":"text","input":"100-200 g cooked white rice","expected":{"mustNotUseMassShortcut":true}},
+  {"id":"brand-override","class":"text","input":"Acme protein powder","expected":{"mustNotSelectOtherBrand":true}},
+  {"id":"missing-food","class":"text","input":"synthetic nonexistent product xyz987","expected":{"mustNotInventFood":true}}
+]

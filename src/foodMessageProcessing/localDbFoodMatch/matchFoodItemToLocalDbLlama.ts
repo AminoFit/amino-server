@@ -1,4 +1,4 @@
-import { foodCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
+import { foodCompletion, FOOD_REASONING_MODEL } from "@/foodResolution/model"
 import { FoodItemToLog } from "../../utils/loggedFoodItemInterface"
 import { FireworksChatCompletion } from "@/languageModelProviders/fireworks/chatCompletionFireworks"
 import Anthropic from "@anthropic-ai/sdk"

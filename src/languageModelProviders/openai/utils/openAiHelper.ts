@@ -1,3 +1,4 @@
+import { foodMetric } from "@/foodResolution/telemetry"
 import { openai } from "../../../utils/openaiFunctionSchemas"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
@@ -12,6 +13,11 @@ export async function LogOpenAiUsage(
   provider: string = "openai",
   completionTimeMs: null | number = null
 ) {
+  foodMetric("model_usage", completionTimeMs, "ok", {
+    model: modelName, provider, promptTokens: usage.prompt_tokens,
+    completionTokens: usage.completion_tokens,
+    costUsd: typeof (usage as any).cost === "number" ? (usage as any).cost : undefined
+  })
   //console.log(`This request used ${usage.total_tokens || "??"} tokens`)
   //console.log(`user id: ${user.id}`)
   const data = {

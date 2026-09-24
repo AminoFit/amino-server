@@ -1,3 +1,4 @@
+import { foodTrace, foodStage, foodMetric, setFoodInputClass } from "@/foodResolution/telemetry"
 import { findExactLocalFood } from "./findExactLocalFood"
 import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
 // Utils
@@ -24,7 +25,12 @@ import { findBestServingMatchChatGemini } from "./getServingSizeFromFoodItem/get
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 import { calculateNutrientData } from "./common/calculateNutrientData"
 
-export async function ProcessLogFoodItem(
+export function ProcessLogFoodItem(...args: Parameters<typeof processLogFoodItemInternal>) {
+  return foodTrace(args[3].id, args[2], args[1].upc ? "barcode" : "text", () =>
+    foodStage("item", () => processLogFoodItemInternal(...args)), "worker")
+}
+
+async function processLogFoodItemInternal(
   loggedFoodItem: Tables<"LoggedFoodItem">,
   loggedFoodItemInfo: FoodItemToLog,
   messageId: number,
@@ -36,6 +42,7 @@ export async function ProcessLogFoodItem(
 
     if (!message || message.deletedAt || loggedFoodItem.deletedAt) return "Message was deleted."
 
+    setFoodInputClass(loggedFoodItemInfo.upc ? "barcode" : message.hasimages ? "image" : "text")
     let bestMatch: FoodItemWithNutrientsAndServing | null = null
     let secondBestMatch: number | null = null
 
@@ -59,12 +66,14 @@ export async function ProcessLogFoodItem(
       )
     }
 
+    if (!bestMatch) throw new Error("No food matched")
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {
       loggedFoodItemInfo = await findBestServingMatchChatGemini(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
       console.log("Error processing food item for serving:", err1)
+      foodMetric("item_result", 0, "error", { status: "Matching Failed" })
       await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
       return "Sorry, I could not log your food items. Please try again later."
     }
@@ -113,8 +122,10 @@ export async function ProcessLogFoodItem(
     } catch (error) {
       console.error("Food saved, but icon generation failed", { messageId, foodId: bestMatch.id })
     }
+    foodMetric("item_result", 0, "ok", { status: "Processed", matchedFoodId: bestMatch.id, matchedGrams: updatedLoggedFoodItem.grams })
     return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
   } catch (error) {
+    foodMetric("item_result", 0, "error", { status: "Matching Failed" })
     console.log("Error processing food item for matching:", error)
     await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."

@@ -1,4 +1,4 @@
-import { foodCompletion } from "@/languageModelProviders/gemini/foodCompletion"
+import { foodCompletion } from "@/foodResolution/model"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Tables } from "types/supabase"
 import {

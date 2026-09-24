@@ -6,6 +6,8 @@ import { GetAminoUserOnRequest } from "@/utils/supabase/GetUserFromRequest"
 import { NextRequest, NextResponse } from "next/server"
 import { GenerateResponseForQuickLog } from "@/foodMessageProcessing/RespondToMessage"
 import { checkAndUpdateUserIsSubscribed } from "@/subscription/checkAndUpdateUserIsSubscribed"
+import { GetMessageById } from "@/database/GetMessagesForUser"
+import { refreshFoodMessageProgress } from "@/foodMessageProcessing/common/refreshFoodMessageProgress"
 
 export async function POST(
   request: NextRequest // needed so we don't cache this request
@@ -63,12 +65,27 @@ export async function POST(
     }
 
     // log items
-    let responseMessage = await GenerateResponseForQuickLog(
+    let responseMessage
+    try {
+      responseMessage = await GenerateResponseForQuickLog(
       aminoUser,
       messageId as number,
       consumedOn,
       isMessageBeingEdited
     )
+    } catch (error) {
+      // Only recover this authenticated user's authoritative completed result.
+      // Never retry extraction or enqueue work after a response/cleanup failure.
+      // Without persisted edit revisions, a prior result cannot prove this edit saved.
+      if (isMessageBeingEdited) throw error
+      let saved = await GetMessageById(messageId)
+      if (saved?.userId === aminoUser.id && !saved.deletedAt && saved.status === "PROCESSING" &&
+          (saved.itemsToProcess ?? 0) > 0) saved = await refreshFoodMessageProgress(messageId)
+      if (!saved || saved.userId !== aminoUser.id || saved.deletedAt || saved.status !== "RESOLVED" ||
+          !saved.itemsToProcess || saved.itemsProcessed !== saved.itemsToProcess) throw error
+      responseMessage = { resultMessage: "All food items were logged successfully.", status: saved.status,
+        itemsProcessed: saved.itemsProcessed, itemsToProcess: saved.itemsToProcess }
+    }
 
     console.log("Response message: ", responseMessage)
 

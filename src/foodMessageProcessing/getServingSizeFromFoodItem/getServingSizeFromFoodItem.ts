@@ -6,7 +6,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "../common/extractJSON"
 import { getUserByEmail } from "../common/debugHelper"
-import { foodCompletion as vertexChatCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
+import { foodCompletion as vertexChatCompletion, FOOD_REASONING_MODEL } from "@/foodResolution/model"
 
 const serving_assignement_prompt = `<user_message>
 USER_SERVING_INPUT
