@@ -7,6 +7,7 @@ import type { AgentInput, AgentResult } from "./types"
 let active = 0
 export function startFoodAgentShadow(input: AgentInput, run?: typeof resolveFoodAgent): Promise<AgentResult | null> {
   const features = currentFoodConfig()?.features
+  if (features?.fast_selector === "on") return Promise.resolve(null)
   const cascade = features?.fast_selector === "shadow"
   if (!cascade && features?.agent_text !== "shadow") return Promise.resolve(null)
   if (active >= 2) {

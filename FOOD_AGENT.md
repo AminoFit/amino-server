@@ -1,5 +1,7 @@
 # Phase 3: Jev selection with a Gemini agent fallback
 
+Update: [live worker integration and rollout](FOOD_LIVE.md) now supersede this document's original shadow-only rollout restrictions. The implementation and smoke evidence below describe the preceding shadow milestone.
+
 Implemented locally on 23 September 2026. **Shadow-only, default off, not deployed.** The text worker can now compare its saved result with the selected Jev → Gemini route. Models cannot save or import foods. Existing exact matches, Phase 2 history reuse, images and barcodes keep their current routing.
 
 The [648-trial benchmark](FOOD_AGENT_BENCHMARK.md) informed this choice, but measured a one-call Gemini fallback. The tool-enabled implementation below has separate verification; those earlier latency figures are not its production performance.

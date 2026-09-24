@@ -1,4 +1,5 @@
 import { startFoodAgentShadow, finishFoodAgentShadow } from "@/foodResolution/agent/shadow"
+import { tryFoodAgentLive, LiveFood } from "@/foodResolution/agent/live"
 import { foodTrace, foodStage, foodMetric, setFoodInputClass } from "@/foodResolution/telemetry"
 import { findExactLocalFood } from "./findExactLocalFood"
 import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
@@ -40,6 +41,7 @@ async function processLogFoodItemInternal(
 ): Promise<string> {
   let shadow: ReturnType<typeof startFoodAgentShadow> | undefined
   let baseline: {foodId:number;grams:number} | undefined
+  let live: LiveFood | null = null
   try {
     const message = await GetMessageById(messageId)
 
@@ -63,10 +65,17 @@ async function processLogFoodItemInternal(
       // Exact foods, barcodes and images keep their current fast paths. Snapshot
       // the input before legacy serving resolution can mutate it.
       if (!message.hasimages && !loggedFoodItemInfo.upc) {
-        shadow = startFoodAgentShadow({user:{id:user.id,tzIdentifier:user.tzIdentifier},messageId,referenceTime:message.createdAt,
-          item:{...loggedFoodItemInfo},candidates:cosineSearchResults.filter(c=>Number.isSafeInteger(c.id)).map(c=>({id:c.id!,name:c.name,brand:c.brand ?? null}))})
+        const input={user:{id:user.id,tzIdentifier:user.tzIdentifier},messageId,referenceTime:message.createdAt,
+          item:{...loggedFoodItemInfo},candidates:cosineSearchResults.filter(c=>Number.isSafeInteger(c.id)).map(c=>({id:c.id!,name:c.name,brand:c.brand ?? null}))}
+        // Existing user-supplied nutrient values stay on their current path until
+        // the typed nutrition-constraint contract is enabled separately.
+        if ([loggedFoodItem.kcal,loggedFoodItem.proteinG,loggedFoodItem.carbG,loggedFoodItem.totalFatG].every(n=>n==null)) {
+          live=await tryFoodAgentLive(input)
+        }
+        if (live) {bestMatch=live.food;loggedFoodItemInfo={...loggedFoodItemInfo,serving:live.serving}}
+        else shadow = startFoodAgentShadow(input)
       }
-      [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
+      if (!bestMatch) [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
         cosineSearchResults,
         loggedFoodItemInfo,
         userQueryVectorCache,
@@ -79,7 +88,7 @@ async function processLogFoodItemInternal(
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {
-      loggedFoodItemInfo = await findBestServingMatchChatGemini(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
+      if (!live) loggedFoodItemInfo = await findBestServingMatchChatGemini(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
       console.log("Error processing food item for serving:", err1)
       foodMetric("item_result", 0, "error", { status: "Matching Failed" })
@@ -87,7 +96,8 @@ async function processLogFoodItemInternal(
       return "Sorry, I could not log your food items. Please try again later."
     }
 
-    let extendedFoodData = { ...loggedFoodItemInfo, second_best_match: secondBestMatch }
+    let extendedFoodData = { ...loggedFoodItemInfo, second_best_match: secondBestMatch,
+      ...(live ? {resolution:live.provenance} : {}) }
     
     // Check if the loggedFoodItem already has kcal, protein, fat, and carb values
     const hasExistingNutrients = loggedFoodItem.kcal != null && 
