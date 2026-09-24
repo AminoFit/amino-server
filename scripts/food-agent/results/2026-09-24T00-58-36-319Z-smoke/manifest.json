@@ -1,0 +1,109 @@
+{
+  "runId": "2026-09-24T00-58-36-319Z-smoke",
+  "startedAt": "2026-09-24T00:58:36.320Z",
+  "node": "v22.21.1",
+  "seed": 9232026,
+  "repeats": 1,
+  "concurrency": 3,
+  "deadlineMs": 12000,
+  "scope": "Synthetic, post-extraction in-memory catalogue; standard exact+semantic+serving+nutrients vs Phase3 loop and one-call selectors; no hosted reads/writes.",
+  "variants": [
+    {
+      "id": "standard",
+      "kind": "standard",
+      "model": "google/gemini-3.8-flash"
+    },
+    {
+      "id": "phase3-loop",
+      "kind": "loop",
+      "model": "google/gemini-3.8-flash"
+    },
+    {
+      "id": "gemini-one-call",
+      "kind": "chat",
+      "model": "google/gemini-3.8-flash"
+    },
+    {
+      "id": "deepseek-one-call",
+      "kind": "chat",
+      "model": "deepseek/deepseek-v4.1-flash"
+    },
+    {
+      "id": "jev-one-call",
+      "kind": "jev",
+      "model": "typesafe/jev-1.13"
+    }
+  ],
+  "cases": [
+    {
+      "id": "rice_mass",
+      "group": "ordinary",
+      "item": {
+        "food_database_search_name": "cooked white rice",
+        "full_item_user_message_including_serving": "100 g cooked white rice",
+        "branded": false
+      },
+      "foods": [
+        {
+          "id": 12,
+          "name": "White rice, dry",
+          "brand": null,
+          "defaultServingWeightGram": 100,
+          "weightUnknown": false,
+          "kcalPerServing": 365,
+          "proteinPerServing": null,
+          "carbPerServing": null,
+          "totalFatPerServing": null,
+          "Nutrient": [],
+          "Serving": []
+        },
+        {
+          "id": 13,
+          "name": "Brown rice, cooked",
+          "brand": null,
+          "defaultServingWeightGram": 100,
+          "weightUnknown": false,
+          "kcalPerServing": 123,
+          "proteinPerServing": null,
+          "carbPerServing": null,
+          "totalFatPerServing": null,
+          "Nutrient": [],
+          "Serving": []
+        },
+        {
+          "id": 11,
+          "name": "White rice, cooked",
+          "brand": null,
+          "defaultServingWeightGram": 100,
+          "weightUnknown": false,
+          "kcalPerServing": 130,
+          "proteinPerServing": null,
+          "carbPerServing": null,
+          "totalFatPerServing": null,
+          "Nutrient": [],
+          "Serving": [
+            {
+              "id": 111,
+              "foodItemId": 11,
+              "servingName": "cup",
+              "servingWeightGram": 158,
+              "defaultServingAmount": 1
+            }
+          ]
+        }
+      ],
+      "history": [],
+      "expected": {
+        "foodId": 11,
+        "grams": 100,
+        "kcal": 130
+      }
+    }
+  ],
+  "sourceHashes": {
+    "benchmark.cjs": "ddb317bb9a03959f63703b3575dd262d46809313905f0e95e155d9a019aa9567",
+    "benchmark-runtime.cjs": "02788fc674ea85a95e1c7968bbd3a698ef6770c974e587fe195176a4d1c1518b",
+    "benchmark-fixtures.cjs": "bd81021a16bda811f84b82791a20350b2f9b5b39f21298c89f143a94b0cb1256"
+  },
+  "promptHash": "75c06b7ef33214ccaa6304c171fb085d04264f35e0edf729f138d9183cdd895d"
+}

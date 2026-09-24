@@ -1,0 +1,346 @@
+[
+  {
+    "id": "cooked_couscous",
+    "text": "150 g cooked couscous",
+    "query": "cooked couscous",
+    "foods": [
+      {
+        "id": 302,
+        "name": "Couscous, dry",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 376,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      },
+      {
+        "id": 301,
+        "name": "Couscous, cooked",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 112,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "expected": {
+      "foodId": 301,
+      "grams": 150,
+      "kcal": 168
+    }
+  },
+  {
+    "id": "soup_not_sauce",
+    "text": "200 g tomato soup",
+    "query": "tomato soup",
+    "foods": [
+      {
+        "id": 304,
+        "name": "Tomato sauce",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 70,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      },
+      {
+        "id": 303,
+        "name": "Tomato soup",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 35,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "expected": {
+      "foodId": 303,
+      "grams": 200,
+      "kcal": 70
+    }
+  },
+  {
+    "id": "kefir_typo",
+    "text": "100 g plain kefire",
+    "query": "plain kefire",
+    "foods": [
+      {
+        "id": 306,
+        "name": "Plain kefir",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 60,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "expected": {
+      "foodId": 306,
+      "grams": 100,
+      "kcal": 60
+    }
+  },
+  {
+    "id": "personal_peanut_butter",
+    "text": "one tbsp smooth peanut butter",
+    "query": "smooth peanut butter",
+    "foods": [
+      {
+        "id": 307,
+        "name": "Smooth peanut butter",
+        "brand": "Alpha",
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 600,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": [
+          {
+            "id": 3070,
+            "foodItemId": 307,
+            "servingName": "tbsp",
+            "servingWeightGram": 16,
+            "defaultServingAmount": 1
+          }
+        ]
+      },
+      {
+        "id": 308,
+        "name": "Smooth peanut butter",
+        "brand": "Beta",
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 590,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": [
+          {
+            "id": 3080,
+            "foodItemId": 308,
+            "servingName": "tbsp",
+            "servingWeightGram": 17,
+            "defaultServingAmount": 1
+          }
+        ]
+      }
+    ],
+    "history": {
+      "disposition": "ranked_foods",
+      "truncated": false,
+      "candidates": [
+        {
+          "messageId": 1,
+          "consumedOn": "2026-09-22T12:00:00Z",
+          "occurrenceDays": 6,
+          "foods": [
+            {
+              "foodId": 308,
+              "name": "Smooth peanut butter",
+              "brand": "Beta",
+              "grams": 17
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "foodId": 308,
+      "grams": 17,
+      "kcal": 100.3
+    }
+  },
+  {
+    "id": "explicit_brand_override",
+    "text": "one tbsp Alpha smooth peanut butter",
+    "query": "smooth peanut butter",
+    "brand": "Alpha",
+    "foods": [
+      {
+        "id": 307,
+        "name": "Smooth peanut butter",
+        "brand": "Alpha",
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 600,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": [
+          {
+            "id": 3070,
+            "foodItemId": 307,
+            "servingName": "tbsp",
+            "servingWeightGram": 16,
+            "defaultServingAmount": 1
+          }
+        ]
+      },
+      {
+        "id": 308,
+        "name": "Smooth peanut butter",
+        "brand": "Beta",
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 590,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": [
+          {
+            "id": 3080,
+            "foodItemId": 308,
+            "servingName": "tbsp",
+            "servingWeightGram": 17,
+            "defaultServingAmount": 1
+          }
+        ]
+      }
+    ],
+    "history": {
+      "disposition": "ranked_foods",
+      "truncated": false,
+      "candidates": [
+        {
+          "messageId": 1,
+          "consumedOn": "2026-09-22T12:00:00Z",
+          "occurrenceDays": 6,
+          "foods": [
+            {
+              "foodId": 308,
+              "name": "Smooth peanut butter",
+              "brand": "Beta",
+              "grams": 17
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "foodId": 307,
+      "grams": 16,
+      "kcal": 96
+    }
+  },
+  {
+    "id": "canonical_search_needed",
+    "text": "100 g cooked garbanzo beans",
+    "query": "cooked garbanzo beans",
+    "foods": [
+      {
+        "id": 305,
+        "name": "Chickpeas, cooked",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 164,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "noSeeds": true,
+    "expected": {
+      "foodId": 305,
+      "grams": 100,
+      "kcal": 164
+    }
+  },
+  {
+    "id": "invalid_nutrition",
+    "text": "100 g plain kefir",
+    "query": "plain kefir",
+    "foods": [
+      {
+        "id": 306,
+        "name": "Plain kefir",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": null,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "status": "unmatched"
+  },
+  {
+    "id": "future_constraint_0",
+    "text": "chocolate protein bar with 25g of protein",
+    "query": "food",
+    "foods": [
+      {
+        "id": 306,
+        "name": "Plain kefir",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 60,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "status": "unsupported_input"
+  },
+  {
+    "id": "future_constraint_1",
+    "text": "250cals of kefire",
+    "query": "food",
+    "foods": [
+      {
+        "id": 306,
+        "name": "Plain kefir",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 60,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "status": "unsupported_input"
+  },
+  {
+    "id": "future_constraint_2",
+    "text": "700 cal Sweetgreen salad",
+    "query": "food",
+    "foods": [
+      {
+        "id": 306,
+        "name": "Plain kefir",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 60,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "status": "unsupported_input"
+  }
+]

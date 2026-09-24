@@ -1,0 +1,58 @@
+{
+  "jev-gemini-cascade": {
+    "attempts": 72,
+    "correct": 72,
+    "wrongAccepted": 0,
+    "abstained": 18,
+    "deadlines": 0,
+    "statuses": {
+      "unmatched": 18,
+      "matched": 54
+    },
+    "p50Ms": 210.87004200000047,
+    "p95Ms": 2510.4036670000005,
+    "completedP50Ms": 210.87004200000047,
+    "reportedCostUsd": 0.011999866499999998,
+    "incompleteCostRuns": 0,
+    "requests": 66,
+    "zeroCallRuns": 18,
+    "groups": {
+      "abstention": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "personal": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "ordinary": {
+        "attempts": 36,
+        "correct": 36,
+        "wrongAccepted": 0
+      }
+    },
+    "providers": [
+      "TypeSafe",
+      "Google AI Studio"
+    ],
+    "confidence": {
+      "0.8": {
+        "attempts": 42,
+        "correct": 42,
+        "wrongAccepted": 0
+      },
+      "0.9": {
+        "attempts": 42,
+        "correct": 42,
+        "wrongAccepted": 0
+      },
+      "0.95": {
+        "attempts": 28,
+        "correct": 28,
+        "wrongAccepted": 0
+      }
+    }
+  }
+}

@@ -7,7 +7,10 @@ const context = new AsyncLocalStorage<Context>()
 type Metrics = { status?: string; itemsProcessed?: number; itemsToProcess?: number; model?: string;
   provider?: string; promptTokens?: number; completionTokens?: number; costUsd?: number;
   historyCandidateCount?: number; historySourceMessageIds?: number[]; historyFoodIds?: number[]; historyTruncated?: boolean;
-  matchedFoodId?: number; matchedGrams?: number }
+  matchedFoodId?: number; matchedGrams?: number; agentSteps?: number; agentToolCalls?: number; agentToolErrors?: number;
+  agentComparison?: string; agentFoodId?: number; agentGrams?: number;
+  agentStrategy?:string;agentRoute?:string;agentFallbackReason?:string;selectorModel?:string;selectorStatus?:string;
+  selectorConfidence?:number;selectorDurationMs?:number;prefetchDurationMs?:number;candidateCount?:number;validOptionCount?:number }
 
 // Deliberate allowlist: never serialize prompts, user objects, responses, keys or errors.
 export function foodMetric(stage: string, durationMs: number | null, outcome: "ok" | "error", metrics: Metrics = {}) {
@@ -22,7 +25,13 @@ export function foodMetric(stage: string, durationMs: number | null, outcome: "o
       completionTokens: metrics.completionTokens, costUsd: metrics.costUsd,
       historyCandidateCount: metrics.historyCandidateCount, historySourceMessageIds: metrics.historySourceMessageIds?.slice(0,5),
       historyFoodIds: metrics.historyFoodIds?.slice(0,30), historyTruncated: metrics.historyTruncated,
-      matchedFoodId: metrics.matchedFoodId, matchedGrams: metrics.matchedGrams }))
+      matchedFoodId: metrics.matchedFoodId, matchedGrams: metrics.matchedGrams,
+      agentSteps: metrics.agentSteps, agentToolCalls: metrics.agentToolCalls, agentToolErrors: metrics.agentToolErrors,
+      agentComparison: metrics.agentComparison, agentFoodId: metrics.agentFoodId, agentGrams: metrics.agentGrams,
+      agentStrategy:metrics.agentStrategy,agentRoute:metrics.agentRoute,agentFallbackReason:metrics.agentFallbackReason,
+      selectorModel:metrics.selectorModel,selectorStatus:metrics.selectorStatus,selectorConfidence:metrics.selectorConfidence,
+      selectorDurationMs:metrics.selectorDurationMs,prefetchDurationMs:metrics.prefetchDurationMs,
+      candidateCount:metrics.candidateCount,validOptionCount:metrics.validOptionCount }))
   } catch { /* Observability must not affect food processing. */ }
 }
 

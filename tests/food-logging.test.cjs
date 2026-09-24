@@ -10,6 +10,8 @@ function load(file, stubs = {}, globals = {}) {
   const module = { exports: {} }
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name in stubs) return stubs[name]
+    if (name === '@/foodResolution/nutrition') return load('foodResolution/nutrition.ts')
+    if (name === '@/foodResolution/agent/shadow') return {startFoodAgentShadow:()=>Promise.resolve(null),finishFoodAgentShadow:async()=>{}}
     if (name === '@/foodResolution/history/reuse') return {reuseFoodHistory:async()=>null,isHistoryReference:()=>false}
     if (name === '@/foodResolution/history/shadow') return {shadowFoodHistory:async()=>{}}
     if (name === '@/foodResolution/telemetry') return { foodTrace: (u,m,c,fn)=>fn(), foodStage:(s,fn)=>fn(), foodMetric(){}, setFoodInputClass(){}, currentFoodConfig:()=>undefined }
@@ -294,4 +296,66 @@ test('post-commit history progress failure recovers from saved item counts witho
   })
   const response=await api.POST(new Request('https://example.test',{method:'POST',body:JSON.stringify({messageId:1})}))
   assert.equal(response.status,200);assert.equal((await response.json()).status,'RESOLVED');assert.equal(repairs,1)
+})
+
+function agentWorkerHarness({image=false,upc,exact=false,failed=false,refreshFailed=false,foodOverrides={},existingNutrients={}}={}) {
+  const events=[];let completeShadow,saved;const comparison=new Promise(r=>{completeShadow=r})
+  const food={id:387,name:'cooked white rice',brand:'',defaultServingWeightGram:158,kcalPerServing:205.4,Nutrient:[],...foodOverrides}
+  const api=load('foodMessageProcessing/processAndMatchLoggedFoodItem.ts',{
+    '@/foodResolution/agent/shadow':{startFoodAgentShadow:input=>{events.push(['start',input]);return comparison},
+      finishFoodAgentShadow:async(pending,baseline)=>{if(pending){events.push(['join',baseline]);await pending}}},
+    '@/database/GetMessagesForUser':{GetMessageById:async()=>({id:1,content:'100 g rice',hasimages:image,createdAt:'2026-09-23T12:00:00Z'})},
+    './findExactLocalFood':{findExactLocalFood:async()=>exact?food:null},
+    './findFoodByUPC/findFoodByUPC':{findFoodByUPC:async()=>null},
+    '@/utils/embeddingsCache/getCachedOrFetchEmbeddings':{getCachedOrFetchEmbeddings:async()=>[{id:3}]},
+    '@/utils/foodEmbedding':{foodToLogEmbedding:async()=>({embedding_cache_id:4})},
+    './getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches':{getBestFoodEmbeddingMatches:async()=>[{id:387,name:'cooked white rice'},{externalId:'usda',name:'external rice'}]},
+    './findBestLoggedFoodItemMatchToFood':{findBestLoggedFoodItemMatchToFood:async()=>{if(failed)throw Error('matcher failed');return [food,null]}},
+    './getServingSizeFromFoodItem/getServingSizeFromFoodItem':{findBestServingMatchChatGemini:async item=>({...item,serving:explicitMassServing(item.full_item_user_message_including_serving)})},
+    './common/calculateNutrientData':{calculateNutrientData},
+    './common/updateLoggedFoodItemData':{updateLoggedFoodItemWithData:async(id,data)=>{events.push(['save']);saved=data;return data}},
+    './common/refreshFoodMessageProgress':{refreshFoodMessageProgress:async()=>{events.push(['progress']);if(refreshFailed)throw Error('refresh failed')}},
+    './foodIconsProcess':{LinkIconsOrCreateIfNeeded:async()=>{}}
+  })
+  return {events,completeShadow,saved:()=>saved,run:()=>api.ProcessLogFoodItem({id:10,...existingNutrients},
+    {food_database_search_name:'cooked white rice',full_item_user_message_including_serving:'100 g cooked white rice',upc},1,{id:'user',tzIdentifier:'UTC'})}
+}
+test('shadow comparison joins only after baseline food and progress commit',async()=>{
+  const h=agentWorkerHarness();const work=h.run()
+  for(let i=0;i<30&&!h.events.some(e=>e[0]==='join');i++)await Promise.resolve()
+  assert.equal(h.saved().status,'Processed');assert.equal(h.saved().kcal,130)
+  assert.deepEqual(h.events.map(e=>e[0]),['start','save','progress','join'])
+  assert.equal(h.events[0][1].candidates.length,1)
+  assert.equal(h.events[3][1].foodId,387)
+  h.completeShadow({status:'invalid_proposal'});await work
+  assert.equal(h.saved().status,'Processed')
+})
+test('exact foods, image-derived foods and barcode fallbacks do not start text agents',async()=>{
+  for(const options of [{exact:true},{image:true},{upc:1234}]){
+    const h=agentWorkerHarness(options);await h.run()
+    assert.equal(h.saved().status,'Processed');assert.ok(!h.events.some(e=>e[0]==='start'))
+  }
+})
+test('failed baseline and progress refresh errors still join shadow without saving proposals',async()=>{
+  const failed=agentWorkerHarness({failed:true});failed.completeShadow({status:'matched',resolution:{foodId:7,grams:900}})
+  await failed.run();assert.equal(failed.saved().status,'Matching Failed');assert.equal(failed.saved().foodItemId,undefined)
+  const refresh=agentWorkerHarness({refreshFailed:true});refresh.completeShadow(null)
+  await assert.rejects(refresh.run(),/refresh failed/)
+  assert.equal(refresh.saved().status,'Processed');assert.ok(refresh.events.some(e=>e[0]==='join'))
+})
+
+test('shared worker validation rejects missing/impossible nutrition even on exact matches',async()=>{
+  for(const foodOverrides of [{kcalPerServing:null},{kcalPerServing:1800,defaultServingWeightGram:100},{proteinPerServing:900},{defaultServingWeightGram:0},{weightUnknown:true}]){
+    const h=agentWorkerHarness({exact:true,foodOverrides});await h.run()
+    assert.equal(h.saved().status,'Matching Failed');assert.equal(h.saved().foodItemId,undefined)
+  }
+})
+test('valid catalogue calories preserve unknown macros instead of writing zeros',async()=>{
+  const h=agentWorkerHarness({exact:true});await h.run()
+  assert.equal(h.saved().status,'Processed');assert.equal(h.saved().kcal,130)
+  assert.equal(h.saved().proteinG,null);assert.equal(h.saved().carbG,null);assert.equal(h.saved().totalFatG,null)
+})
+test('complete pre-existing nutrition cannot bypass the shared plausibility checks',async()=>{
+  const h=agentWorkerHarness({exact:true,existingNutrients:{kcal:1800,proteinG:0,carbG:0,totalFatG:0}})
+  await h.run();assert.equal(h.saved().status,'Matching Failed')
 })

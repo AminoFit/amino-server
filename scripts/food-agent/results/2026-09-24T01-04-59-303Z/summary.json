@@ -1,0 +1,151 @@
+{
+  "gemini-filtered": {
+    "attempts": 72,
+    "correct": 72,
+    "wrongAccepted": 0,
+    "abstained": 18,
+    "deadlines": 0,
+    "statuses": {
+      "unmatched": 18,
+      "matched": 54
+    },
+    "p50Ms": 990.2805840000001,
+    "p95Ms": 2000.8889999999992,
+    "completedP50Ms": 990.2805840000001,
+    "reportedCostUsd": 0.04001258250000001,
+    "incompleteCostRuns": 0,
+    "requests": 54,
+    "zeroCallRuns": 18,
+    "groups": {
+      "abstention": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "personal": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "ordinary": {
+        "attempts": 36,
+        "correct": 36,
+        "wrongAccepted": 0
+      }
+    },
+    "providers": [
+      "Google AI Studio"
+    ]
+  },
+  "jev-filtered": {
+    "attempts": 72,
+    "correct": 71,
+    "wrongAccepted": 0,
+    "abstained": 19,
+    "deadlines": 0,
+    "statuses": {
+      "unmatched": 19,
+      "matched": 53
+    },
+    "p50Ms": 207.04433400000016,
+    "p95Ms": 370.382792,
+    "completedP50Ms": 207.04433400000016,
+    "reportedCostUsd": 0.001993194,
+    "incompleteCostRuns": 0,
+    "requests": 54,
+    "zeroCallRuns": 18,
+    "groups": {
+      "abstention": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "personal": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "ordinary": {
+        "attempts": 36,
+        "correct": 35,
+        "wrongAccepted": 0
+      }
+    },
+    "providers": [
+      "TypeSafe"
+    ],
+    "confidence": {
+      "0.8": {
+        "attempts": 44,
+        "correct": 44,
+        "wrongAccepted": 0
+      },
+      "0.9": {
+        "attempts": 42,
+        "correct": 42,
+        "wrongAccepted": 0
+      },
+      "0.95": {
+        "attempts": 31,
+        "correct": 31,
+        "wrongAccepted": 0
+      }
+    }
+  },
+  "jev-one-call": {
+    "attempts": 72,
+    "correct": 69,
+    "wrongAccepted": 0,
+    "abstained": 15,
+    "deadlines": 0,
+    "statuses": {
+      "matched": 54,
+      "unmatched": 15,
+      "invalid_proposal": 3
+    },
+    "p50Ms": 228.54733299999998,
+    "p95Ms": 333.2551249999997,
+    "completedP50Ms": 228.54733299999998,
+    "reportedCostUsd": 0.0031085460000000007,
+    "incompleteCostRuns": 0,
+    "requests": 72,
+    "zeroCallRuns": 0,
+    "groups": {
+      "personal": {
+        "attempts": 18,
+        "correct": 18,
+        "wrongAccepted": 0
+      },
+      "abstention": {
+        "attempts": 18,
+        "correct": 15,
+        "wrongAccepted": 0
+      },
+      "ordinary": {
+        "attempts": 36,
+        "correct": 36,
+        "wrongAccepted": 0
+      }
+    },
+    "providers": [
+      "TypeSafe"
+    ],
+    "confidence": {
+      "0.8": {
+        "attempts": 44,
+        "correct": 42,
+        "wrongAccepted": 0
+      },
+      "0.9": {
+        "attempts": 39,
+        "correct": 39,
+        "wrongAccepted": 0
+      },
+      "0.95": {
+        "attempts": 34,
+        "correct": 34,
+        "wrongAccepted": 0
+      }
+    }
+  }
+}

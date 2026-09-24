@@ -1,0 +1,27 @@
+[
+  {
+    "id": "canonical_search_needed",
+    "text": "100 g cooked garbanzo beans",
+    "query": "cooked garbanzo beans",
+    "foods": [
+      {
+        "id": 305,
+        "name": "Chickpeas, cooked",
+        "brand": null,
+        "defaultServingWeightGram": 100,
+        "weightUnknown": false,
+        "kcalPerServing": 164,
+        "proteinPerServing": null,
+        "carbPerServing": null,
+        "totalFatPerServing": null,
+        "Serving": []
+      }
+    ],
+    "noSeeds": true,
+    "expected": {
+      "foodId": 305,
+      "grams": 100,
+      "kcal": 164
+    }
+  }
+]

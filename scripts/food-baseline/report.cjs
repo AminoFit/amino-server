@@ -18,6 +18,9 @@ function summarize(events) {
     const costs = rows.map(r=>r.costUsd).filter(n=>Number.isFinite(n)&&n>=0)
     return {group, samples:rows.length, errors:rows.filter(r=>r.outcome==='error').length,
       statuses:rows.reduce((out,r)=>{if(r.status)out[r.status]=(out[r.status]||0)+1;return out},{}),
+      comparisons:rows.reduce((out,r)=>{if(r.agentComparison)out[r.agentComparison]=(out[r.agentComparison]||0)+1;return out},{}),
+      routes:rows.reduce((out,r)=>{if(r.agentRoute)out[r.agentRoute]=(out[r.agentRoute]||0)+1;return out},{}),
+      fallbackReasons:rows.reduce((out,r)=>{if(r.agentFallbackReason)out[r.agentFallbackReason]=(out[r.agentFallbackReason]||0)+1;return out},{}),
       p50Ms:percentile(duration,.5), p95Ms:percentile(duration,.95),
       promptTokens:rows.reduce((n,r)=>n+(Number.isFinite(r.promptTokens)?r.promptTokens:0),0),
       completionTokens:rows.reduce((n,r)=>n+(Number.isFinite(r.completionTokens)?r.completionTokens:0),0),

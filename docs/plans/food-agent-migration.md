@@ -1,7 +1,7 @@
 # Food matching upgrade: simple phased plan
 
 **Updated:** 23 September 2026  
-**Status:** Plan only. No production changes. This replaces the earlier, broader proposal.
+**Status:** Phases 1–2 implemented; Phase 3A and the local-tool portion of 3B are now integrated into text shadow mode. Jev fast selection and Gemini fallback have separate default-off gates, shared validation and one deadline. Next: typed nutrition constraints and meal totals, followed by separately gated structured-provider/online evidence. Phase 3 live replacement remains gated. See [the implementation and integration checks](../../FOOD_AGENT.md) and [the historical benchmark](../../FOOD_AGENT_BENCHMARK.md). No Phase 3 production rollout yet.
 
 ## Scope
 
@@ -9,7 +9,25 @@ Keep the current food database, queues and app API. Improve the server in small,
 
 Use the user's existing food history as personal context. No preference-management UI, saved aliases, recipe system or separate memory service is required. Recipes, clarification conversations and richer progress UI are later product features.
 
-Keep the proposed Vercel AI SDK adapter, with configurable models through OpenRouter. The application owns its tools, validation and writes so a model/provider can be swapped after evaluation. Do not change the model and matching behaviour in the same rollout.
+Use the existing Vercel AI SDK for the fallback, with configurable models through OpenRouter. The application owns its tools, validation and writes so a model/provider can be swapped after evaluation. Once the selected route passes shadow evaluation, hold its model versions and policy fixed during cohort rollout; evaluate later model substitutions separately.
+
+## Selected architecture
+
+**Decision:** use filtered Jev for fast selection and a Gemini agent for fallback. This route is implemented in text shadow mode. Its separate ten-case integration check and three follow-up search-recovery trials passed after fixing an observed search/read turn-budget failure. All 144 local tests pass. The earlier one-call cascade benchmark does not validate tool-enabled fallback accuracy or production latency.
+
+| Responsibility | Selected implementation |
+|---|---|
+| Fast structured selection | `typesafe/jev-1.13` through OpenRouter's Decisions API, behind a small dedicated adapter |
+| Interpretation and agentic fallback | `google/gemini-3.8-flash`, low reasoning, through OpenRouter and the existing Vercel AI SDK |
+| Evidence | Existing catalogue, stored servings and user-scoped food history; structured providers and web grounding enabled separately |
+| Quantities, nutrient targets and meal totals | Deterministic server code with typed constraints and provenance |
+| Persistence | Server-owned, validated and idempotent; the models propose results |
+
+The route is: **extract food and nutrition constraints → validated exact/history shortcuts → prefetch and filter → Jev → Gemini when unresolved → validate/reconcile → save**. Gemini's first fallback turn can answer from the supplied evidence or choose tools; later turns continue that same session within the shared budget. Missing evidence can route directly to Gemini without paying for a Jev call over an empty candidate set.
+
+The initial Jev confidence gate is 0.9 for evaluation, subject to a fresh holdout. Its score alone cannot establish correctness. Keep model IDs, routing and confidence policy configurable independently of application tools and validation.
+
+**Implementation order:** shared worker nutrition validation and text shadow integration are complete locally. Next add and evaluate scoped nutrition constraints/meal totals under their own flag; then add structured-provider evidence and grounded online tools/imports in Phase 4. Local agent tools, nutrition constraints and online grounding each need their own evaluation and rollout gate. Retain current app-compatible statuses; clarification UI remains later work.
 
 ## Phase 1 — Establish a reliable baseline
 
@@ -51,22 +69,50 @@ Exclude deleted and failed items. Do not combine unrelated foods into a meal jus
 
 **Enable when:** Reviewed history-based matches improve on the baseline without increasing unsupported selections. No app changes required.
 
-## Phase 3 — Introduce the bounded food agent
+## Phase 3 — Fast selection, with an agentic fallback
 
-**Change:** Replace rigid ambiguous-match steps with one resolver that can choose which evidence to retrieve. Keep exact matches and arithmetic in code.
+**Change:** Resolve common entries quickly and spend extra model/tool calls only when the evidence needs work. Keep exact matches and arithmetic in code. The benchmark supports trying filtered Jev selection with Gemini fallback; its 72/72 result is a small synthetic regression check, not a live rollout gate.
 
-Initial tools:
+### 3A — Filter and select from available evidence
+
+**Implemented locally, shadow-only.** The worker now also rejects missing/impossible calories before saving, including exact matches, and preserves unknown macros as null. This correctness check applies outside the shadow cohort; manual-edit endpoints are not comprehensively migrated by this change.
+
+1. Keep reliable exact-food, exact-history and barcode routes. Apply shared nutrition/serving validation to these routes too; the benchmark exposed missing/impossible nutrition being accepted by the standard path.
+2. Prefetch a bounded set of relevant catalogue foods, servings and history. Parallelize independent reads and reuse this evidence throughout the request.
+3. Filter food/serving options deterministically. Missing calories, invalid serving weights, impossible nutrition and explicit brand/preparation conflicts must not become selectable answers. A single remaining option still needs semantic matching unless an existing exact route already establishes identity.
+4. Ask Jev for a joint food/serving choice. Accept only a validated match that meets a confidence policy established on a fresh holdout; 0.9 is the benchmark's experimental threshold, not a calibrated correctness probability.
+5. Escalate uncertain decisions with adequate evidence to Gemini. It can finish in one call; unnecessary retrieval must not become a prerequisite for answering.
+
+An empty filtered candidate set means **no usable evidence retrieved so far**, not necessarily “this food cannot be logged.” Retain typed reasons for exclusion so the next step can distinguish missing food/serving data from a quantity that cannot be inferred safely. Never turn unknown nutrition into zero to create an eligible option.
+
+### 3B — Let the fallback retrieve missing evidence
+
+Give the Gemini fallback the existing evidence and a small set of read-only tools. Its first turn may finish or retrieve; it can continue within the same session when further evidence is needed. Do not always pay for a separate one-call Gemini answer and then start a new agent from scratch. Catalogue/history tools and the shared budget are implemented behind `FOOD_AGENT_FALLBACK=shadow`, dependent on the fast-selector cohort. Structured providers and the nutrition examples below remain planned; the new cascade explicitly rejects detected nutrition constraints until their typed contract exists. This tool-enabled fallback is separate from the measured one-call cascade.
+
+| Unresolved case | Fallback action |
+|---|---|
+| Low-confidence choice, sufficient candidates and servings | Interpret the wording and select from the existing evidence |
+| Typo, colloquial food name or poor initial retrieval | Reformulate the catalogue query and read the resulting food/serving evidence |
+| “Chocolate protein bar with 25 g of protein” | Treat 25 g protein per bar as identifying evidence; compare the correct serving basis, then retrieve more candidates if needed |
+| “250 cals of kefire” | Normalize to kefir, match the food and derive its portion from 250 kcal using the food's documented energy basis |
+| “700 cal Sweetgreen salad” | Preserve 700 kcal as a salad-group constraint; identify the dish/composition where possible and reconcile the entire group before saving |
+| “Same smoothie as yesterday” or a repeated personal food | Search the user's scoped history; reuse only supported identities, grouping and quantities |
+| Explicit product or serving missing from local evidence | Search structured providers; online grounding becomes available in Phase 4 |
+| “A big bowl” with no authoritative quantity, equally plausible meal references, or an aggregate smoothie without ingredients | Return unresolved if the evidence cannot settle it; no invented portions or ingredients |
+| Provider timeout or exhausted request budget | Return a distinct failure; do not reinterpret a transport error as missing food or restart a fresh research budget |
+
+Initial fallback tools:
 
 | Tool | Purpose |
 |---|---|
 | `searchUserFoodHistory` | Retrieve relevant previous foods and meals |
-| `searchFoodCandidates` | Search the existing food DB and structured nutrition providers |
+| `searchFoodCandidates` | Retry the existing food DB with a more useful query |
 | `getFoodAndServings` | Read the selected food's nutrients and available servings |
-| `lookupBarcode` | Find an exact product when a barcode is available |
+| Structured-provider lookup | Read authoritative food/serving candidates; evaluate this adapter before enabling it |
 
-The resolver returns a proposed food and quantity. Server code validates and saves it. The model does not write to the database directly.
+The normal barcode path stays separate initially. The resolver returns a proposed food and serving with supporting evidence; server code computes quantity, validates and saves. The model does not write to the database directly, and neither Jev confidence nor a second model can override deterministic validation. Extend supported wording/servings through labelled cases and code changes, not a prompt that bypasses a failed check.
 
-Start with at most three model steps, a shared deadline and bounded tool concurrency. Search history and the food catalogue in parallel when both are useful. Resolve independent foods concurrently within provider limits. Skip agent calls for reliable exact matches.
+Use the current limits as a starting budget: at most three Gemini fallback turns, six evidence retrievals including prefetch, two concurrent retrievals and a shared 12-second resolver deadline. Jev, prefetch and fallback all consume that deadline; no tier restarts the clock. Batch candidate/serving reads, cache evidence within the request and search history/catalogue in parallel when both are useful. Resolve independent foods concurrently within provider limits. These are caps to evaluate, not a promise of full app latency.
 
 Mandatory checks:
 
@@ -77,19 +123,35 @@ Mandatory checks:
 - Invalid quantities and unsupported assumptions cannot become successful matches.
 - Retries reuse the same logical item; icons/enrichment cannot fail an already saved meal.
 
+### Nutrition statements and meal totals
+
+These examples need a richer extraction/resolution contract, not just a different model. Preserve each nutrition statement's original text, source, unit, scope and meaning: **product-identification hint**, **consumed-portion target**, or **whole-meal total**. “25 g of protein” must not become 25 g of food, and one salad's calorie total must not be copied onto every extracted ingredient. Distinguish an exact stated value from “about,” “at least,” per-100-g labels and per-serving labels.
+
+- **Protein bar:** use the 25 g protein claim to rank/filter matching chocolate bars at the stated one-bar serving. History can help identify the product but cannot override that explicit clue. Do not scale a different 20 g-protein bar to 1.25 bars just to force a match. If the user instead says “enough of this bar to get 25 g protein,” that is a portion target and scaling may be appropriate.
+- **Kefir:** once the product and energy basis are supported, code calculates `quantity = requested_kcal / source_kcal × source_quantity`. For a hypothetical 60 kcal per 100 g kefir, 250 kcal corresponds to 416.666… g. Scale known macros with the same factor, keep missing macros unknown, and do not infer millilitres from grams without a supported conversion. Conflicting explicit weights/calories require reconciliation, not silent overrides. This inverse arithmetic can take the fast path when the evidence is already available.
+- **Sweetgreen salad:** treat the stated 700 kcal as the consumed salad's total, distinct from a menu's full-portion value or an approximate estimate. Search for the correct dish, customizations and included dressing; calories alone do not identify its ingredients. Prefer a supported complete-dish record. If the salad is split into independently logged components, server code must verify their sum equals the stated total at the agreed logging precision, without also counting a parent salad row. Preserve source rounding and handle only rounding-sized residuals deterministically.
+
+A substantial mismatch triggers a check for missing dressing/toppings, duplicates, wrong serving basis or wrong dish. Never invent ingredients, a balancing oil entry, or independently scale component weights solely to make the sum 700. Uniform portion scaling is allowed only when the evidence supports consuming that proportion of a known composition. If the composition cannot be established, preserve the user-provided 700 kcal as **one aggregate meal with unknown unprovided macros**, rather than fabricate an ingredient breakdown. This needs an explicit per-log calorie-only representation and client compatibility checks before enabling it; it must not overwrite a global food's nutrition or masquerade as a verified menu item.
+
+Resolve and reconcile all members of a constrained meal group before committing it. Independent candidate searches can run in parallel, but saves for that group require an idempotent all-or-nothing boundary. Other unrelated foods in the message can continue independently. Store whether a value was user-stated, source-reported, calculated or estimated; retain disagreements for review instead of losing them in a model prompt.
+
+**Implementation gap:** the current `FoodItemToLog.nutritional_information` has optional per-item nutrient fields and the serving prompt receives a calorie hint. It does not encode these meanings/scopes or enforce a cross-item calorie total. Add the typed constraints and group validation behind a separate proposed `food_nutrition_constraints` flag. Extend the strict validator to calorie/protein-derived portions before admitting these paths; this is planned work, not covered by the earlier 72-trial cascade result.
+
+**Additional acceptance cases:** one bar with 25 g protein versus a 25 g-weight bar; 25 g protein per 100 g versus per bar; typo “kefire”; 250 kcal of a matched kefir; zero/missing energy basis; conflicting explicit weight and calories; exact versus approximate calorie totals; a salad with dressing included versus dressing added separately; a 700 kcal salad plus a separate 100 kcal drink (800 kcal overall); half of a menu item labelled 700 kcal (350 kcal consumed); split-item rounding; contradictory component totals; calorie-only aggregate fallback; concurrent retries with no parent/child double count. Measure extraction of constraint meaning/scope as well as final nutrient totals.
+
 Apply the shared resolver to text first. Then migrate image-derived items and barcode fallbacks separately. Manual food selection shares serving validation but should not trigger unnecessary agent reconsideration.
 
-**Test:** Replay the same labelled inputs against old and new matching. Include raw/cooked rice, serving ambiguity, explicit brands, tool errors, exhausted budgets, mixed successes and retries. Evaluate image/barcode cases before enabling those paths.
+**Test:** Use a fresh larger holdout, not only the benchmark's 24 cases. Compare the standard path, filtered Gemini, Jev/Gemini selection and the tool-enabled fallback. Include correct matches rejected by the first candidate search, semantic near-misses with valid nutrition, unfamiliar wording, conflicting history, missing servings, preparation/brand conflicts, genuine ambiguity, provider errors, exhausted budgets and duplicate retries. Verify low-confidence selection does not automatically trigger online search and all tiers share one deadline. Measure ordinary and escalated cases separately, including retrieval latency, escalation frequency and accepted incorrect matches. Evaluate image/barcode cases before enabling those paths.
 
-**Enable when:** Matching accuracy improves, deterministic regressions pass, and common-path latency remains within the agreed baseline budget. No new app interaction required. Jev is deferred unless later evaluation demonstrates a specific benefit.
+**Enable when:** Reviewed matching quality improves, validation gaps are closed, and common-path latency remains within the agreed baseline budget. Introduce 3A in shadow first, then enable 3B separately for unresolved cases. Online tools remain unavailable until Phase 4. No new app interaction is required; unresolved items use existing truthful partial-failure handling.
 
 ## Phase 4 — Ground missing foods and safely extend the global DB
 
-**Change:** Add `searchGroundedFood` for foods missing from the catalogue and structured providers.
+**Change:** Add `searchGroundedFood` to the agentic fallback for foods missing from the catalogue and structured providers. An explicit local-evidence gap enables this tool; low Jev confidence alone does not. Online search can resolve public product/nutrition facts, not what an individual meant by an ambiguous portion or which personal meal they ate.
 
 **Yes, a food discovered this way can be added to the global database.** The search tool itself only returns a candidate and its source evidence. A separate server-controlled validation/save step decides whether to reuse an existing record or create a new one.
 
-The current online fallback already calls `addFoodItemToDatabase` after retrieving food information in `findAndAddFoodFromExternalDb.ts`. This phase improves that boundary rather than inventing a second food catalogue.
+The current online fallback already calls `addFoodItemToDatabase` after retrieving food information in `findAndAddFoodFromExternalDb.ts`. This phase improves that boundary rather than inventing a second food catalogue. Wrap only read-only retrieval as agent tools; never expose the legacy combined search/import function as a tool. Web page text is evidence, never instructions for tool execution or writes.
 
 Proposed flow:
 
@@ -99,13 +161,15 @@ Proposed flow:
 4. Check again for an existing equivalent food; use a concurrency-safe deduplication strategy before inserting.
 5. Reuse or save the validated food, servings and available nutrients, then log the user's quantity.
 
+Start with one focused web search and at most two source-page reads, all inside the remaining shared retrieval/deadline budget. Do not send private history text, user identifiers or personal meal descriptions to a public search provider; form a query from the necessary public food/product attributes. If time or evidence runs out, return unresolved through the current worker status handling rather than publish provisional nutrition as a saved result.
+
 Do not mark an automatically extracted food as manually verified. Preserve provenance and distinguish sourced values from calculations. If existing fields cannot retain that evidence, add minimal supporting storage before enabling imports.
 
 Private history, “Seb's usual smoothie” and personal meal combinations must not become shared global foods. Reuse their component IDs for the user's log. Uncertain web candidates remain unmatched; they are not saved globally just to make logging succeed.
 
 Keep the current search provider as the baseline. Compare Exa and Brave behind the same interface on missing-food examples; choose based on correct-source retrieval, usable serving data, latency and cost. Adding either is optional, not a prerequisite for Phases 1–3.
 
-**Test:** Duplicate products, concurrent imports, wrong market/brand, per-package versus per-serving values, conflicting pages, missing nutrients and unsupported model claims. Shadow tests must never insert global foods.
+**Test:** Duplicate products, concurrent imports, wrong market/brand, per-package versus per-serving values, conflicting pages, missing nutrients, tool-instruction text in sources and unsupported model claims. Verify public search queries exclude personal history and that online work cannot bypass request limits or duplicate a save. Shadow tests must never insert global foods.
 
 **Enable when:** New records have attributable nutrition and serving data, deduplication works, and false imports do not increase. Use separate switches for grounded lookup and global insertion so insertion can be disabled independently.
 
@@ -121,7 +185,7 @@ Each needs a separate mobile/server contract and app capability check. Do not en
 
 ## How each server phase rolls out
 
-Use independent flags such as `food_history_search`, `food_agent_text`, `food_agent_image`, `food_grounded_search` and `food_grounded_import`. Record the selected configuration for each request/job so retries remain consistent.
+Use independent flags such as `food_history_search`, `food_fast_selector`, `food_agent_fallback`, `food_nutrition_constraints`, `food_agent_image`, `food_grounded_search` and `food_grounded_import`. These are proposed names; the existing `food_agent_text` switch still controls the implemented shadow loop. Keep selector, local agent fallback, nutrition constraints, online lookup and global insertion independently disableable. Record the selected configuration for each request/job so retries remain consistent.
 
 1. **Offline tests:** Compare against reviewed food examples, including expected unmatched outcomes.
 2. **Shadow:** Run the new logic alongside the current path on a limited sample, without changing logs, global foods or user data. Review disagreements.
@@ -129,8 +193,8 @@ Use independent flags such as `food_history_search`, `food_agent_text`, `food_ag
 4. **Gradual cohorts:** Enable for stable user groups at 5%, 25%, then 100%, reviewing each step before expanding.
 5. **Rollback:** Disable new admissions to the failing feature. Finish or safely recover in-flight work; never blindly rerun committed items through the old pipeline.
 
-Measure correct food/quantity, unsupported selections, completion rate, duplicate saves, p50/p95 latency and cost per successful meal. Require all critical regression tests to pass and no known cross-user exposure or duplicate-write failures. As an initial guardrail, pause if common-path p95 latency worsens by more than 10%; review any cost increase against the measured accuracy gain.
+Measure correct food/quantity, unsupported selections, completion rate, duplicate saves, p50/p95 latency and cost per successful meal. Record the route and escalation reason separately: exact/history reuse, Jev, one-call Gemini, local agent or grounded lookup. Measure agent recovery of initially unresolved cases alongside its extra latency and cost. Require all critical regression tests to pass and no known cross-user exposure or duplicate-write failures. As an initial guardrail, pause if common-path p95 latency worsens by more than 10%; review any cost increase against the measured accuracy gain.
 
 Observe at least a full day and enough relevant examples at each cohort step to judge the feature. Low traffic requires more time and reviewed test cases, not an automatic rollout. Keep image, model and search-provider changes separate so failures are attributable.
 
-**First implementation:** Phase 1, then history search in shadow mode. No recipes, preference UI, clarification UI or new memory platform is needed to begin.
+**Current implementation:** Phases 1–2, including separately gated exact-history reuse, and Phase 3 text shadow comparisons. The filtered Jev/Gemini cascade exists only in the benchmark harness. Next: close shared validation gaps and integrate Phase 3A in shadow, then add the bounded Phase 3B evidence-retrieval fallback. Phase 4 adds online grounding and separately gated imports. No recipes, preference UI, clarification UI or new memory platform is required.

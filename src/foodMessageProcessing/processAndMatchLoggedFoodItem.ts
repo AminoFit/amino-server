@@ -1,3 +1,4 @@
+import { startFoodAgentShadow, finishFoodAgentShadow } from "@/foodResolution/agent/shadow"
 import { foodTrace, foodStage, foodMetric, setFoodInputClass } from "@/foodResolution/telemetry"
 import { findExactLocalFood } from "./findExactLocalFood"
 import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
@@ -24,6 +25,7 @@ import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBe
 import { findBestServingMatchChatGemini } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 import { calculateNutrientData } from "./common/calculateNutrientData"
+import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
 
 export function ProcessLogFoodItem(...args: Parameters<typeof processLogFoodItemInternal>) {
   return foodTrace(args[3].id, args[2], args[1].upc ? "barcode" : "text", () =>
@@ -36,7 +38,8 @@ async function processLogFoodItemInternal(
   messageId: number,
   user: Tables<"User">
 ): Promise<string> {
-  // const supabase = createServerActionClient<Database>({ cookies })
+  let shadow: ReturnType<typeof startFoodAgentShadow> | undefined
+  let baseline: {foodId:number;grams:number} | undefined
   try {
     const message = await GetMessageById(messageId)
 
@@ -57,6 +60,12 @@ async function processLogFoodItemInternal(
       const userQueryVectorCache = await foodToLogEmbedding(loggedFoodItemInfo)
       let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20);
 
+      // Exact foods, barcodes and images keep their current fast paths. Snapshot
+      // the input before legacy serving resolution can mutate it.
+      if (!message.hasimages && !loggedFoodItemInfo.upc) {
+        shadow = startFoodAgentShadow({user:{id:user.id,tzIdentifier:user.tzIdentifier},messageId,referenceTime:message.createdAt,
+          item:{...loggedFoodItemInfo},candidates:cosineSearchResults.filter(c=>Number.isSafeInteger(c.id)).map(c=>({id:c.id!,name:c.name,brand:c.brand ?? null}))})
+      }
       [bestMatch, secondBestMatch] = await findBestLoggedFoodItemMatchToFood(
         cosineSearchResults,
         loggedFoodItemInfo,
@@ -88,7 +97,13 @@ async function processLogFoodItemInternal(
 
     let nutrientData = {};
     if (!hasExistingNutrients) {
-      nutrientData = calculateNutrientData(loggedFoodItemInfo.serving!.total_serving_g_or_ml, bestMatch as FoodItemWithNutrientsAndServing);
+      const verified = foodNutrition(bestMatch,loggedFoodItemInfo.serving!.total_serving_g_or_ml)
+      if (!verified) throw new Error("Food has no usable nutrition basis")
+      nutrientData = {...calculateNutrientData(loggedFoodItemInfo.serving!.total_serving_g_or_ml, bestMatch as FoodItemWithNutrientsAndServing),...verified};
+    } else if (!validNutrition(loggedFoodItemInfo.serving!.total_serving_g_or_ml,{
+      kcal:loggedFoodItem.kcal!,proteinG:loggedFoodItem.proteinG!,carbG:loggedFoodItem.carbG!,totalFatG:loggedFoodItem.totalFatG!
+    })) {
+      throw new Error("Logged nutrition is invalid for this quantity")
     }
 
     const data = {
@@ -112,6 +127,7 @@ async function processLogFoodItemInternal(
 
 
 
+    baseline = {foodId:bestMatch.id,grams:updatedLoggedFoodItem.grams}
     console.log("About to queue icon generation")
     console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
     console.log("bestMatch.name", bestMatch.name)
@@ -130,7 +146,8 @@ async function processLogFoodItemInternal(
     await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."
   } finally {
-    await refreshFoodMessageProgress(messageId)
+    try { await refreshFoodMessageProgress(messageId) }
+    finally { await finishFoodAgentShadow(shadow,baseline) }
   }
 }
 
