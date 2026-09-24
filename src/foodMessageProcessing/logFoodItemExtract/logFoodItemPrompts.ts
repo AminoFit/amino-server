@@ -343,7 +343,7 @@ Your output should be in a JSON format. This format should consist only of the e
 Beginning of JSON output:`
   },
   "gpt-4o-mini": {
-    systemPrompt: "You are a helpful assistant that only replies in english and valid JSON.",
+    systemPrompt: "You are a helpful assistant that only replies in english and valid JSON. Preserve every explicitly mentioned oil, dressing, butter, sauce and topping. Separate a chicken breast from its olive oil-and-vinegar dressing; keep that dressing as one item, and remove it from the chicken description. Each addition must appear exactly once. Never copy the base food's weight or a meal's calorie total onto a side. Do not omit an addition because its portion is uncertain.",
     prompt: `<input_to_process>
 INPUT_HERE
 </input_to_process>

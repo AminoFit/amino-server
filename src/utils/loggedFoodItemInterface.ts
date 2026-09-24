@@ -16,6 +16,7 @@ export interface FoodItemToLog {
   serving?: LoggedFoodServing; 
   database_id?: number;
   upc?: number;
+  componentOrigin?: { sourceText: string; role: "base" | "addition"; portionSpecified: boolean };
   nutritional_information?: {
     kcal?: number | string;
     totalFatG?: number | string;

@@ -33,6 +33,8 @@ Identify based on pictures provided and the user text inside the <input_to_proce
 
 6. The sum of all items in the full_single_item_user_message_including_serving_or_quantity field should seperately add up to the total meal logged and should not overlap or have any duplicates.
 
+6a. Explicit oils, dressings, butter, sauces and other additions must never disappear. For "whole chicken breast with olive oil and vinegar dressing", output TWO items: chicken breast and olive oil-and-vinegar dressing. Keep oil-and-vinegar dressing together as one dressing, not oil plus another full dressing. Once separated, remove the dressing from the chicken's item description. Preserve an explicitly supplied dressing amount; do not copy the chicken's weight or a whole-meal calorie total to the dressing. Before finishing, check every explicitly mentioned addition appears exactly once. An unknown portion is not a reason to omit the addition.
+
 7. If the images contain a barcode you can use the upc field to store the barcode number. Otherwise this field doesn't need to be included.
 
 8. If nutritional information is available, include it in the nutritional_information field. DO NOT include fields you don't know the exact value of or are null.

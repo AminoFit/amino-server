@@ -3,6 +3,7 @@ import { reuseFoodHistory, isHistoryReference } from "@/foodResolution/history/r
 import { foodTrace, foodStage, currentFoodConfig } from "@/foodResolution/telemetry"
 import { claimFoodMessage } from "./common/claimFoodMessage"
 import { AddLoggedFoodItemToQueue } from "./addLogFoodItemToQueue"
+import { preserveExplicitAdditions } from "@/foodResolution/composition"
 import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
 // Database related imports
 import { GetMessageById, GetMessagesForUser } from "@/database/GetMessagesForUser"
@@ -266,6 +267,7 @@ export async function GenerateResponseForQuickLog(
           ? await logFoodItemStreamWithImages(user, loadedMessage, new Date(consumedOn))
           : await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
         ;({ foodItemsToLog, isBadFoodLogRequest } = result)
+        foodItemsToLog=preserveExplicitAdditions(foodItemsToLog)
       } catch (error) {
         await UpdateMessage({ id: inputMessageId, status: "FAILED", resolvedAt: new Date() })
         throw error

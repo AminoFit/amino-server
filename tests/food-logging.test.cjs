@@ -11,6 +11,7 @@ function load(file, stubs = {}, globals = {}) {
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name in stubs) return stubs[name]
     if (name === '@/foodResolution/nutrition') return load('foodResolution/nutrition.ts')
+    if (name === '@/foodResolution/composition') return load('foodResolution/composition.ts')
     if (name === '@/foodResolution/agent/shadow') return {startFoodAgentShadow:()=>Promise.resolve(null),finishFoodAgentShadow:async()=>{}}
     if (name === '@/foodResolution/agent/live') return {tryFoodAgentLive:async()=>null}
     if (name === '@/foodResolution/history/reuse') return {reuseFoodHistory:async()=>null,isHistoryReference:()=>false}
@@ -87,7 +88,7 @@ for (const [statuses,expected,count] of [
   const result = await refreshFoodMessageProgress(1)
   assert.equal(result.status,expected); assert.equal(result.itemsProcessed,count)
 })
-function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user', extractionFails=false, reuseReply=null }={}) {
+function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user', extractionFails=false, reuseReply=null,extracted,expectedCount=1 }={}) {
   const mem = memoryDb({status:'RECEIVED',userId:owner,content:'100 g cooked white rice',itemsToProcess:0})
   const update = load('database/UpdateMessage.ts',{'@/utils/supabase/serverAdmin':mem.admin}).default
   const refresh = load('foodMessageProcessing/common/refreshFoodMessageProgress.ts',{'@/utils/supabase/serverAdmin':mem.admin}).refreshFoodMessageProgress
@@ -101,10 +102,10 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
     './messageTime/extractMessageTime':{getMessageTimeChat:async()=>{if(timeFails)throw Error('provider unavailable');return null}},
     '@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat':{logFoodItemStream:async()=>{
       if(extractionFails)throw Error('stream unavailable')
-      return {foodItemsToLog:[{food_database_search_name:'cooked white rice'}],isBadFoodLogRequest:false}
+      return {foodItemsToLog:extracted??[{food_database_search_name:'cooked white rice'}],isBadFoodLogRequest:false}
     }},
     './addLogFoodItemToQueue':{AddLoggedFoodItemToQueue:async()=>{
-      assert.equal(mem.state.message.itemsToProcess,1,'final expected count is published before dispatch')
+      assert.equal(mem.state.message.itemsToProcess,expectedCount,'final expected count is published before dispatch')
       queued++;mem.state.foods.push({status:foodStatus});await refresh(1);return {loggedFoodItemId:10,index:0}
     }}
   })
@@ -299,7 +300,7 @@ test('post-commit history progress failure recovers from saved item counts witho
   assert.equal(response.status,200);assert.equal((await response.json()).status,'RESOLVED');assert.equal(repairs,1)
 })
 
-function agentWorkerHarness({image=false,upc,exact=false,failed=false,refreshFailed=false,foodOverrides={},existingNutrients={},liveResult}={}) {
+function agentWorkerHarness({image=false,upc,exact=false,failed=false,refreshFailed=false,foodOverrides={},existingNutrients={},liveResult,itemOverrides={}}={}) {
   const events=[];let completeShadow,saved;const comparison=new Promise(r=>{completeShadow=r})
   const food={id:387,name:'cooked white rice',brand:'',defaultServingWeightGram:158,kcalPerServing:205.4,Nutrient:[],...foodOverrides}
   const api=load('foodMessageProcessing/processAndMatchLoggedFoodItem.ts',{
@@ -320,8 +321,18 @@ function agentWorkerHarness({image=false,upc,exact=false,failed=false,refreshFai
     './foodIconsProcess':{LinkIconsOrCreateIfNeeded:async()=>{}}
   })
   return {events,completeShadow,saved:()=>saved,run:()=>api.ProcessLogFoodItem({id:10,...existingNutrients},
-    {food_database_search_name:'cooked white rice',full_item_user_message_including_serving:'100 g cooked white rice',upc},1,{id:'user',tzIdentifier:'UTC'})}
+    {food_database_search_name:'cooked white rice',full_item_user_message_including_serving:'100 g cooked white rice',upc,...itemOverrides},1,{id:'user',tzIdentifier:'UTC'})}
 }
+test('image/exact and legacy paths cannot mark plain chicken as covering an explicit oil dressing',async()=>{
+ for(const options of [{image:true,exact:true},{image:true,exact:false}]){
+  const h=agentWorkerHarness({...options,foodOverrides:{name:'chicken breast'},itemOverrides:{food_database_search_name:'Whole Chicken Breast',full_item_user_message_including_serving:'Whole chicken breast with olive oil and vinegar dressing'}})
+  await h.run();assert.equal(h.saved().status,'Matching Failed');assert.equal(h.saved().kcal,undefined)
+ }
+})
+test('explicit additions increase the authoritative item count before queue dispatch',async()=>{
+ const h=quickLogHarness({expectedCount:2,extracted:[{food_database_search_name:'Whole Chicken Breast',full_item_user_message_including_serving:'Whole chicken breast with olive oil and vinegar dressing',branded:false}]})
+ const r=await h.run();assert.equal(h.queued(),2);assert.equal(r.itemsToProcess,2);assert.equal(r.itemsProcessed,2)
+})
 test('live match uses the existing save/progress path without a second matcher, serving model or shadow run',async()=>{
  const h=agentWorkerHarness({liveResult:true});await h.run()
  assert.equal(h.saved().status,'Processed');assert.equal(h.saved().foodItemId,387);assert.equal(h.saved().grams,100);assert.equal(h.saved().kcal,130)

@@ -35,3 +35,13 @@ Rollback: set `FOOD_KILL_SWITCH=true` and redeploy, or promote the previous know
 151 tests pass, including live admission/kill-switch behaviour, no duplicate shadow runs, catalogue revalidation, gram and household serving conversion, baseline recovery and the actual worker save/progress path. TypeScript passes. Production deployment and synthetic HTTP smoke results are recorded below once completed.
 
 The earlier synthetic benchmarks are not proof of improved production accuracy. This activation is an explicit user decision for a single-user app; broader rollout still requires reviewed matching and latency data.
+
+## Production verification — 23 September 2026
+
+Live release `4d7c29b` was deployed as `dpl_FZkcV7ZGvp36YC3ZwNU7Nx6jjGu2` and promoted to https://www.amino.fit. Production flags enable the supported text route and Gemini fallback for 100% of traffic.
+
+Synthetic API smoke requests returned HTTP 200 and completed RESOLVED 1/1. “100 g cooked garbanzo beans” saved catalogue food 1456, 100 g, 164 kcal; “100 g boiled long grain white rice” saved food 387, 100 g, 130 kcal. Both saved records contained `resolution.strategy=jev_gemini` and `route=gemini`. Test messages 30285/30286 and their food rows were soft-deleted afterward.
+
+An earlier smoke used “steamed white rice,” which correctly took the exact-food shortcut to catalogue food 486 (151 kcal/100 g). Its hard-coded 130 kcal test expectation was invalid for that different food. That record was cleaned up; the follow-up tests used source-derived checks and verified agent provenance explicitly.
+
+The separately reported image dressing omission is addressed in [the composition fix](FOOD_COMPOSITION.md); it came from a legacy/image path, not the new live text resolver.

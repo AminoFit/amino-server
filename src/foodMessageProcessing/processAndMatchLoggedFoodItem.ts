@@ -27,6 +27,7 @@ import { findBestServingMatchChatGemini } from "./getServingSizeFromFoodItem/get
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 import { calculateNutrientData } from "./common/calculateNutrientData"
 import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
+import { missingExplicitAdditions } from "@/foodResolution/composition"
 
 export function ProcessLogFoodItem(...args: Parameters<typeof processLogFoodItemInternal>) {
   return foodTrace(args[3].id, args[2], args[1].upc ? "barcode" : "text", () =>
@@ -85,6 +86,7 @@ async function processLogFoodItemInternal(
     }
 
     if (!bestMatch) throw new Error("No food matched")
+    if (missingExplicitAdditions(loggedFoodItemInfo,bestMatch.name).length) throw new Error("Matched food omits an explicit addition")
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {

@@ -2,6 +2,7 @@ import { explicitMassServing } from "@/foodMessageProcessing/getServingSizeFromF
 import type { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import type { EvidenceFood, Proposal, Resolution, Serving } from "./types"
 import { foodNutrition } from "../nutrition"
+import { missingExplicitAdditions } from "../composition"
 
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0
 const normal = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim()
@@ -31,6 +32,7 @@ export function validateProposal(proposal: Proposal, item: FoodItemToLog, foods:
   if (proposal.decision !== "match" || !Number.isSafeInteger(proposal.foodId)) return null
   const food = foods.get(proposal.foodId!) // Only evidence actually read by this run.
   if (!food || food.id !== proposal.foodId || food.weightUnknown || !positive(food.defaultServingWeightGram)) return null
+  if (missingExplicitAdditions(item,food.name).length) return null
   if (item.branded && !item.brand?.trim()) return null
   if (item.brand?.trim() && normal(item.brand) !== normal(food.brand ?? "")) return null
   const text = item.full_item_user_message_including_serving

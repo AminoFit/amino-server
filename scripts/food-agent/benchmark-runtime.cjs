@@ -12,7 +12,7 @@ function load(file,stubs={},env={},globals={}) {
 }
 const mass=load('foodMessageProcessing/getServingSizeFromFoodItem/explicitMassServing.ts')
 const validate=load('foodResolution/agent/validate.ts',{'@/foodMessageProcessing/getServingSizeFromFoodItem/explicitMassServing':mass,
- '../nutrition':load('foodResolution/nutrition.ts')}).validateProposal
+ '../nutrition':load('foodResolution/nutrition.ts'),'../composition':load('foodResolution/composition.ts')}).validateProposal
 const json=load('foodMessageProcessing/common/extractJSON.ts')
 const nutrients=load('foodMessageProcessing/common/calculateNutrientData.ts')
 function inMemoryDb(foods) {
@@ -32,7 +32,7 @@ async function standard(c,{request,signal,model}) {
  const boundary={...provider}
  const matcher=load('foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbLlama.ts',{'@/foodResolution/model':boundary,'../common/extractJSON':json})
  const admin={createAdminSupabase:()=>inMemoryDb(c.foods)}
- const exact=load('foodMessageProcessing/findExactLocalFood.ts',{'@/utils/supabase/serverAdmin':admin})
+ const exact=load('foodMessageProcessing/findExactLocalFood.ts',{'@/utils/supabase/serverAdmin':admin,'@/foodResolution/composition':load('foodResolution/composition.ts')})
  const match=load('foodMessageProcessing/findBestLoggedFoodItemMatchToFood.ts',{
   './localDbFoodMatch/matchFoodItemToLocalDbLlama':matcher,'@/utils/supabase/serverAdmin':admin,
   './common/foodProcessingConstants':{COSINE_THRESHOLD:.975,COSINE_THRESHOLD_LOW_QUALITY:.7},
