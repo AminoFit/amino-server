@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict')
 require('ts-node').register({transpileOnly:true,compilerOptions:{module:'CommonJS',target:'ES2020'}});require('tsconfig-paths/register')
-const {preserveExplicitAdditions,missingExplicitAdditions}=require('../src/foodResolution/composition.ts')
+const {preserveExplicitAdditions,missingExplicitAdditions,matchesExplicitMilkVariant}=require('../src/foodResolution/composition.ts')
 const {validateProposal}=require('../src/foodResolution/agent/validate.ts')
 const item=(text,name='Whole Chicken Breast',extra={})=>({food_database_search_name:name,full_item_user_message_including_serving:text,branded:false,...extra})
 test('reported image extraction keeps chicken and oil/vinegar dressing as two distinct foods',()=>{
@@ -99,4 +99,25 @@ test('coffee size and milk quantity stay attached to their own components',()=>{
  assert.equal(rows.length,2);assert.equal(rows[0].full_item_user_message_including_serving,'one cup coffee')
  assert.equal(rows[1].full_item_user_message_including_serving,'2 tbsp Fairlife 2% milk')
  assert.equal(rows[1].food_database_search_name,'Fairlife 2% milk')
+})
+test('explicit milk variants survive a shortened search query and reject unknown or contradictory labels',()=>{
+ const milk=item('one cup Fairlife 2% milk','Fairlife milk',{brand:'Fairlife',branded:true})
+ assert.equal(matchesExplicitMilkVariant(milk,'2% Reduced Fat Ultra-Filtered Milk'),true)
+ for(const name of ['Whole Milk','Fat Free Milk','1% Milk','Ultra-Filtered Milk'])assert.equal(matchesExplicitMilkVariant(milk,name),false)
+ assert.equal(matchesExplicitMilkVariant(item('one cup skim milk','milk'),'Fat-Free Milk'),true)
+ assert.equal(matchesExplicitMilkVariant(item('one cup whole milk','milk'),'Whole Ultra-Filtered Milk'),true)
+ assert.equal(matchesExplicitMilkVariant(item('one cup whole milk','milk'),'2% Milk'),false)
+ assert.equal(matchesExplicitMilkVariant(item('one cup Fairlife milk','Fairlife milk'),'Whole Milk'),true)
+ assert.equal(matchesExplicitMilkVariant(item('one milk chocolate bar with 20% protein','milk chocolate bar'),'Milk chocolate protein bar'),true)
+})
+test('a milk percentage is not an extra serving amount and cannot be bypassed by an agent proposal',()=>{
+ const milk=item('one cup Fairlife 2% milk','Fairlife milk',{brand:'Fairlife',branded:true})
+ const source={id:65,name:'2% Reduced Fat Ultra-Filtered Milk',brand:'Fairlife',weightUnknown:false,defaultServingWeightGram:240,kcalPerServing:120,proteinPerServing:12,carbPerServing:6,totalFatPerServing:4.51,Serving:[{id:320,foodItemId:65,servingName:'cup',servingWeightGram:240,defaultServingAmount:1}]}
+ const proposal={decision:'match',foodId:65,servingId:320}
+ const result=validateProposal(proposal,milk,new Map([[65,source]]))
+ assert.equal(result.grams,240);assert.equal(result.kcal,120)
+ const mass=validateProposal({...proposal,servingId:null},{...milk,full_item_user_message_including_serving:'100 g Fairlife 2% milk'},new Map([[65,source]]))
+ assert.equal(mass.grams,100);assert.equal(mass.kcal,50)
+ assert.equal(validateProposal(proposal,milk,new Map([[65,{...source,name:'Whole Milk'}]])),null)
+ assert.equal(validateProposal(proposal,{...milk,full_item_user_message_including_serving:'one cup Fairlife 2% milk plus 2 cups'},new Map([[65,source]])),null)
 })

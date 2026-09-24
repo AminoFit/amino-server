@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { missingExplicitAdditions } from "@/foodResolution/composition"
+import { missingExplicitAdditions, matchesExplicitMilkVariant } from "@/foodResolution/composition"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 
@@ -14,6 +14,6 @@ export async function findExactLocalFood(food: FoodItemToLog): Promise<FoodItemW
   const brand = (food.brand ?? "").trim().toLowerCase()
   const matches = data.filter(item => (item.brand ?? "").trim().toLowerCase() === brand &&
     (!food.branded || brand.length > 0) && (item.defaultServingWeightGram ?? 0) > 0 && item.kcalPerServing !== null &&
-    missingExplicitAdditions(food,item.name).length === 0)
+    missingExplicitAdditions(food,item.name).length === 0 && matchesExplicitMilkVariant(food,item.name))
   return matches.length === 1 ? matches[0] as FoodItemWithNutrientsAndServing : null
 }

@@ -227,7 +227,8 @@ export async function findBestFoodMatchtoLocalDbLlama(
   user_request: FoodItemToLog,
   user: Tables<"User">
 ): Promise<[FoodItemIdAndEmbedding | null, FoodItemIdAndEmbedding | null]> {
-  const foodToMatch = (user_request.brand ? `${user_request.brand} - ` : "") + user_request.food_database_search_name
+  const foodToMatch = JSON.stringify({searchName:user_request.food_database_search_name,brand:user_request.brand ?? "",
+    description:user_request.full_item_user_message_including_serving})
   const { databaseOptionsString, idMapping } = convertToDatabaseOptions(database_options)
 
   let model = FOOD_REASONING_MODEL

@@ -33,6 +33,22 @@ export function missingExplicitAdditions(item: FoodItemToLog, foodName: string):
   const supplied=evidenceFor(foodName)
   return [...required].filter(key=>!supplied.has(key))
 }
+// Milk percentage is product identity, not a serving amount or nutrient target.
+// A shortened search name must not erase a variant retained in the description.
+export function matchesExplicitMilkVariant(item:FoodItemToLog, foodName:string):boolean {
+  const requested=`${item.food_database_search_name} ${item.full_item_user_message_including_serving ?? ""}`
+  if(!/\bmilk\b/i.test(requested)||/\b(?:bars?|shakes?|smoothies?|lattes?|cappuccinos?|mochas?|powder|yogurt|cheese|ice cream|coffee|espresso|tea)\b/i.test(requested))return true
+  const variants=(text:string)=>{
+    const values=new Set([...text.matchAll(/\b(\d+(?:\.\d+)?)\s*%/g)].map(m=>String(Number(m[1]))))
+    if(/\b(?:fat[- ]free|non[- ]?fat|skim(?:med)?)\b/i.test(text))values.add("0")
+    if(/\bwhole\s+(?:(?:ultra[- ]filtered|organic|lactose[- ]free)\s+)*milk\b/i.test(text))values.add("whole")
+    return values
+  }
+  const required=variants(requested)
+  if(!required.size)return true
+  const supplied=variants(foodName)
+  return required.size===1&&supplied.size===1&&[...required][0]===[...supplied][0]
+}
 function searchName(text:string) {
   return text.replace(/^(?:(?:one|two|three|a|an|\d+(?:\.\d+)?)\s*(?:tbsp|tsp|tablespoons?|teaspoons?|g|grams?|ml|cups?)\s+(?:of\s+)?)/i,"")
     .replace(/\s+(?:(?:one|two|three|a|an|\d+(?:\.\d+)?)\s+)?(?:cups?|tbsp|tsp|tablespoons?|teaspoons?)$/i,"")

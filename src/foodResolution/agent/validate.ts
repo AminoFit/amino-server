@@ -2,7 +2,7 @@ import { explicitMassServing } from "@/foodMessageProcessing/getServingSizeFromF
 import type { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import type { EvidenceFood, Proposal, Resolution, Serving } from "./types"
 import { foodNutrition } from "../nutrition"
-import { missingExplicitAdditions } from "../composition"
+import { missingExplicitAdditions, matchesExplicitMilkVariant } from "../composition"
 
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0
 const normal = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim()
@@ -23,7 +23,7 @@ function householdGrams(text: string, serving: Serving): number | null {
   if (!labelled || singular(labelled[2]) !== unit ||
       (labelled[1] && Number(labelled[1]) !== serving.defaultServingAmount)) return null
   // Reject other explicit amounts/modifications instead of ignoring them.
-  const rest = text.trim().slice(match[0].length)
+  const rest = text.trim().slice(match[0].length).replace(/\b\d+(?:\.\d+)?\s*%/g,"")
   if (/\d|\b(half|double|extra|heaped|heaping|large|small|medium|per|each|pack|without|instead)\b/i.test(rest)) return null
   return amount * serving.servingWeightGram / serving.defaultServingAmount
 }
@@ -33,6 +33,7 @@ export function validateProposal(proposal: Proposal, item: FoodItemToLog, foods:
   const food = foods.get(proposal.foodId!) // Only evidence actually read by this run.
   if (!food || food.id !== proposal.foodId || food.weightUnknown || !positive(food.defaultServingWeightGram)) return null
   if (missingExplicitAdditions(item,food.name).length) return null
+  if (!matchesExplicitMilkVariant(item,food.name)) return null
   if (item.branded && !item.brand?.trim()) return null
   if (item.brand?.trim() && normal(item.brand) !== normal(food.brand ?? "")) return null
   const text = item.full_item_user_message_including_serving
@@ -43,7 +44,8 @@ export function validateProposal(proposal: Proposal, item: FoodItemToLog, foods:
         (!new RegExp(`\\b${state}\\b`).test(identity) || new RegExp(`\\b${opposite}\\b`).test(identity))) return null
   }
   if (/\b(same|usual|yesterday|regular|without|instead)\b/i.test(text)) return null // Reference reuse owns these.
-  const explicit = explicitMassServing(text)
+  const portionText=/\bmilk\b/i.test(text) ? text.replace(/\b\d+(?:\.\d+)?\s*%/g,"") : text
+  const explicit = explicitMassServing(portionText)
   let grams: number | null = null
   if (explicit) {
     if (proposal.servingId !== null) return null

@@ -34,6 +34,7 @@ async function standard(c,{request,signal,model}) {
  const admin={createAdminSupabase:()=>inMemoryDb(c.foods)}
  const exact=load('foodMessageProcessing/findExactLocalFood.ts',{'@/utils/supabase/serverAdmin':admin,'@/foodResolution/composition':load('foodResolution/composition.ts')})
  const match=load('foodMessageProcessing/findBestLoggedFoodItemMatchToFood.ts',{
+  '@/foodResolution/composition':load('foodResolution/composition.ts'),
   './localDbFoodMatch/matchFoodItemToLocalDbLlama':matcher,'@/utils/supabase/serverAdmin':admin,
   './common/foodProcessingConstants':{COSINE_THRESHOLD:.975,COSINE_THRESHOLD_LOW_QUALITY:.7},
   './findAndAddFoodFromExternalDb':{findAndAddFoodItemInExternalDatabase:async()=>{throw Error('external_required')}},

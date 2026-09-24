@@ -1,5 +1,6 @@
 // OpenAI
 import { findBestFoodMatchtoLocalDb } from "./localDbFoodMatch/matchFoodItemToLocalDbOpenAI"
+import { matchesExplicitMilkVariant } from "@/foodResolution/composition"
 import { FoodItemIdAndEmbedding } from "@/database/OpenAiFunctions/utils/foodLoggingTypes"
 
 // Utils
@@ -105,6 +106,7 @@ export async function findBestLoggedFoodItemMatchToFood(
   messageId: number
 ): Promise<[FoodItemWithNutrientsAndServing, number | null]> {
   console.log("Finding best match for logged food item")
+  cosineSearchResults = cosineSearchResults.filter(candidate=>matchesExplicitMilkVariant(food,candidate.name))
   // Filter items above the COSINE_THRESHOLD
   const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
 

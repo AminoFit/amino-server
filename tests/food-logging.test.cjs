@@ -418,3 +418,17 @@ test('a combined branded coffee queues independent components and preserves part
   assert.equal(result.status,milkStatus==='Processed'?'RESOLVED':'FAILED')
  }
 })
+
+test('legacy similarity shortcut filters a conflicting milk variant before selection',async()=>{
+ const sources=[{id:11,name:'Whole Milk',cosine_similarity:.999},{id:65,name:'2% Milk',cosine_similarity:.99}]
+ const api=load('foodMessageProcessing/findBestLoggedFoodItemMatchToFood.ts',{
+  '@/utils/supabase/serverAdmin':{createAdminSupabase:()=>({from(){let id;const q={select(){return q},eq(_key,value){id=value;return q},single:async()=>({data:sources.find(f=>f.id===id),error:null})};return q}})},
+  './common/foodProcessingConstants':{COSINE_THRESHOLD:.97,COSINE_THRESHOLD_LOW_QUALITY:.7}
+ })
+ const [match]=await api.findBestLoggedFoodItemMatchToFood(sources,{food_database_search_name:'Fairlife milk',full_item_user_message_including_serving:'one cup Fairlife 2% milk'}, {},{},1)
+ assert.equal(match.id,65)
+})
+test('the final worker boundary rejects a conflicting milk variant even if a matcher returns it',async()=>{
+ const h=agentWorkerHarness({exact:true,foodOverrides:{name:'Whole Milk'},itemOverrides:{food_database_search_name:'Fairlife milk',full_item_user_message_including_serving:'one cup Fairlife 2% milk'}})
+ await h.run();assert.equal(h.saved().status,'Matching Failed');assert.equal(h.saved().foodItemId,undefined)
+})
