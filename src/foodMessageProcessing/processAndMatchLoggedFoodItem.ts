@@ -43,6 +43,7 @@ async function processLogFoodItemInternal(
   let shadow: ReturnType<typeof startFoodAgentShadow> | undefined
   let baseline: {foodId:number;grams:number} | undefined
   let live: LiveFood | null = null
+  let iconFoodId: number | undefined
   try {
     const message = await GetMessageById(messageId)
 
@@ -59,8 +60,10 @@ async function processLogFoodItemInternal(
 
     if (!bestMatch) bestMatch = await findExactLocalFood(loggedFoodItemInfo)
     if (!bestMatch) {
-      const messageEmbedding = await getCachedOrFetchEmbeddings("BGE_BASE", [message.content])
-      const userQueryVectorCache = await foodToLogEmbedding(loggedFoodItemInfo)
+      const [messageEmbedding, userQueryVectorCache] = await Promise.all([
+        getCachedOrFetchEmbeddings("BGE_BASE", [message.content]),
+        foodToLogEmbedding(loggedFoodItemInfo)
+      ])
       let cosineSearchResults = (await getBestFoodEmbeddingMatches(userQueryVectorCache.embedding_cache_id, messageEmbedding[0].id)).slice(0, 20);
 
       // Exact foods, barcodes and images keep their current fast paths. Snapshot
@@ -144,12 +147,7 @@ async function processLogFoodItemInternal(
     console.log("food", JSON.stringify(updatedLoggedFoodItem, null, 2))
     console.log("bestMatch.name", bestMatch.name)
 
-    // Icon decoration is optional after the food has committed successfully.
-    try {
-      await LinkIconsOrCreateIfNeeded(bestMatch.id)
-    } catch (error) {
-      console.error("Food saved, but icon generation failed", { messageId, foodId: bestMatch.id })
-    }
+    iconFoodId = bestMatch.id
     foodMetric("item_result", 0, "ok", { status: "Processed", matchedFoodId: bestMatch.id, matchedGrams: updatedLoggedFoodItem.grams })
     return `${bestMatch.name} - ${updatedLoggedFoodItem.grams}g - ${updatedLoggedFoodItem.loggedUnit}`
   } catch (error) {
@@ -158,7 +156,15 @@ async function processLogFoodItemInternal(
     await updateLoggedFoodItemWithData(loggedFoodItem.id, { status: "Matching Failed" })
     return "Sorry, I could not log your food items. Please try again later."
   } finally {
-    try { await refreshFoodMessageProgress(messageId) }
+    try {
+      // Publish completion before optional icon/Redis work. A slow icon queue
+      // must not leave an already saved meal marked PROCESSING.
+      await refreshFoodMessageProgress(messageId)
+      if (iconFoodId !== undefined) {
+        try { await LinkIconsOrCreateIfNeeded(iconFoodId) }
+        catch { console.error("Food saved, but icon generation failed", { messageId, foodId: iconFoodId }) }
+      }
+    }
     finally { await finishFoodAgentShadow(shadow,baseline) }
   }
 }

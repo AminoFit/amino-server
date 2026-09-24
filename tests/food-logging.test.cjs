@@ -184,6 +184,34 @@ test('rice worker uses exact food and grams without embeddings; icon failure pre
   await api.ProcessLogFoodItem({id:10},{food_database_search_name:'cooked white rice',full_item_user_message_including_serving:'100 g cooked white rice'},1,{id:'user'})
   assert.equal(saved.status,'Processed');assert.equal(saved.kcal,130);assert.equal(saved.grams,100);assert.equal(refreshed,1)
 })
+test('meal is marked complete before slow icon decoration finishes', async () => {
+  let releaseIcon, iconStarted = false, refreshed = false, saved;
+  const icon = new Promise(resolve => { releaseIcon = resolve });
+  const api = load('foodMessageProcessing/processAndMatchLoggedFoodItem.ts', {
+    './findExactLocalFood': { findExactLocalFood: async () => ({ id: 387, name: 'rice', defaultServingWeightGram: 100, kcalPerServing: 130, Nutrient: [] }) },
+    '@/database/GetMessagesForUser': { GetMessageById: async () => ({ id: 1, content: '100 g rice' }) },
+    './getServingSizeFromFoodItem/getServingSizeFromFoodItem': { findBestServingMatchChatGemini: async item => ({ ...item, serving: explicitMassServing('100 g rice') }) },
+    './common/calculateNutrientData': { calculateNutrientData },
+    './common/updateLoggedFoodItemData': { updateLoggedFoodItemWithData: async (_id, data) => (saved = data) },
+    './common/refreshFoodMessageProgress': { refreshFoodMessageProgress: async () => { assert.equal(saved.status, 'Processed'); refreshed = true } },
+    './foodIconsProcess': { LinkIconsOrCreateIfNeeded: async () => { iconStarted = true; assert.equal(refreshed, true); await icon } }
+  });
+  const work = api.ProcessLogFoodItem({ id: 10 }, { food_database_search_name: 'rice', full_item_user_message_including_serving: '100 g rice' }, 1, { id: 'user' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(iconStarted, true); assert.equal(refreshed, true);
+  releaseIcon(); await work;
+})
+test('enqueue inserts immediately using database timestamp defaults, without a clock RPC', async () => {
+  let inserted, queued;
+  const q = { insert(value) { inserted = value; return q }, select() { return q }, single: async () => ({ data: { id: 10 }, error: null }) };
+  const api = load('foodMessageProcessing/addLogFoodItemToQueue.ts', {
+    '@/utils/supabase/serverAdmin': { createAdminSupabase: () => ({ from: () => q, rpc() { throw Error('extra round trip') } }) },
+    '@/utils/helper/convertFoodItemToLog': { convertNutritionalInfoStrings: value => value },
+    '@/app/api/queues/process-food-item/process-food-item': { processFoodItemQueue: { enqueue: async id => { queued = id } } }
+  });
+  await api.AddLoggedFoodItemToQueue({ id: 'user' }, { id: 1 }, { timeEaten: '2026-09-23T12:00:00Z' }, 0);
+  assert.equal(inserted.status, 'Needs Processing'); assert.equal(inserted.createdAt, undefined); assert.equal(inserted.updatedAt, undefined); assert.equal(queued, '10');
+})
 test('Gemini access denial falls back once to the working OpenAI provider',async()=>{
   const urls=[]
   const api=load('languageModelProviders/gemini/foodCompletion.ts',{}, {

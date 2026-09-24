@@ -1,6 +1,5 @@
 // Utils
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
-import { isServerTimeData } from "./common/processFoodItemsUtils"
 import { convertNutritionalInfoStrings } from "@/utils/helper/convertFoodItemToLog" // Import the conversion utility
 // Database
 import { updateLoggedFoodItemWithData } from "./common/updateLoggedFoodItemData"
@@ -20,17 +19,6 @@ export async function AddLoggedFoodItemToQueue(
 
 
   const supabase = createAdminSupabase()
-  const { data: serverTimeData, error: serverTimeError } = await supabase.rpc("get_current_timestamp")
-
-  if (serverTimeError) {
-    throw serverTimeError
-  }
-
-  // Extract the timestamp from the server's response
-  const timestamp = isServerTimeData(serverTimeData)
-    ? new Date(serverTimeData.current_timestamp).toISOString()
-    : new Date().toISOString()
-  console.log("serverTimeData", serverTimeData)
 
   // Convert nutritional information strings to numbers
   const convertedFoodItemToLog = convertNutritionalInfoStrings(food_item_to_log)
@@ -40,8 +28,7 @@ export async function AddLoggedFoodItemToQueue(
   .from("LoggedFoodItem")
   .insert({
     userId: user.id,
-    createdAt: timestamp,
-    updatedAt: timestamp,
+    // Database defaults/triggers supply server timestamps in the INSERT.
     consumedOn: convertedFoodItemToLog.timeEaten
       ? new Date(convertedFoodItemToLog.timeEaten).toISOString()
       : new Date().toISOString(),
