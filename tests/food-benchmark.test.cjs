@@ -38,20 +38,20 @@ test('standard exact grams path uses actual code and makes no model call',async(
  const result=await r.standard(c,{model:'google/gemini-3.8-flash',signal:new AbortController().signal,request:()=>{throw Error('No model expected')}})
  assert.equal(result.pathway,'exact');assert.equal(b.score(c,result).correct,true)
 })
-test('standard semantic plus household serving path uses original two prompts and no stores',async()=>{
+test('standard semantic plus household serving path uses two Flash calls and no stores',async()=>{
  const c=cases.find(c=>c.id==='rice_cup'),sent=[]
  const result=await r.standard(c,{model:'google/gemini-3.8-flash',signal:new AbortController().signal,request:async(kind,body)=>{
-  sent.push(body);const out=sent.length===1?{exact_food_match_id:2,alternative_match_id:null,is_correct_match:true,extra_item_name:null}:
+  sent.push(body);const out=sent.length===1?{choice:'candidate_2',alternative:null}:
    {equation_grams:'158',amount:1,serving_name:'cup',full_serving_string:'one cup',matching_serving_id:1}
   return {choices:[{finish_reason:'stop',message:{content:JSON.stringify(out)}}]}
  }})
- assert.equal(sent.length,2);assert.match(sent[0].messages[1].content,/<database_search_results>/)
- assert.match(sent[1].messages[1].content,/<food_serving_info>/);assert.equal(sent[0].max_tokens,4096)
+ assert.equal(sent.length,2);assert.match(sent[0].messages[1].content,/candidate_1/)
+ assert.match(sent[1].messages[1].content,/<food_serving_info>/);assert.equal(sent[0].max_tokens,500)
  assert.equal(b.score(c,result).correct,true)
 })
 test('standard external fallback is reported without importing food',async()=>{
  const result=await r.standard(cases[0],{model:'google/gemini-3.8-flash',signal:new AbortController().signal,
- request:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({is_correct_match:false,exact_food_match_id:null})}}]})})
+ request:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({choice:'none',alternative:null})}}]})})
  assert.equal(result.status,'external_required')
 })
 test('prefilter removes invalid options without using labels or hiding good answers',()=>{

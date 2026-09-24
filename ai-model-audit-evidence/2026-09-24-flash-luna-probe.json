@@ -1,0 +1,195 @@
+{
+  "date": "2026-09-24T20:00:39.536Z",
+  "description": "3 interleaved synthetic text food extraction trials each; common tokenizer TPS is approximate; no application or database writes",
+  "results": [
+    {
+      "model": "google/gemini-3.8-flash",
+      "provider": "openrouter",
+      "trial": 1,
+      "status": "stop",
+      "ttftMs": 902,
+      "totalMs": 1472,
+      "commonTokenizerOutputTokens": 261,
+      "approxOutputTokensPerSecond": 468,
+      "providerUsage": {
+        "prompt_tokens": 103,
+        "completion_tokens": 306,
+        "total_tokens": 409,
+        "cost": 0.0012125025,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00122475,
+          "upstream_inference_prompt_cost": 0.00007725,
+          "upstream_inference_completions_cost": 0.0011475
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 7
+    },
+    {
+      "model": "gpt-6-luna",
+      "provider": "openai",
+      "trial": 1,
+      "status": "stop",
+      "ttftMs": 2037,
+      "totalMs": 3277,
+      "commonTokenizerOutputTokens": 183,
+      "approxOutputTokensPerSecond": 149,
+      "providerUsage": {
+        "prompt_tokens": 107,
+        "completion_tokens": 189,
+        "total_tokens": 296,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 8
+    },
+    {
+      "model": "gpt-6-luna",
+      "provider": "openai",
+      "trial": 2,
+      "status": "stop",
+      "ttftMs": 880,
+      "totalMs": 1983,
+      "commonTokenizerOutputTokens": 164,
+      "approxOutputTokensPerSecond": 151,
+      "providerUsage": {
+        "prompt_tokens": 107,
+        "completion_tokens": 164,
+        "total_tokens": 271,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 8
+    },
+    {
+      "model": "google/gemini-3.8-flash",
+      "provider": "openrouter",
+      "trial": 2,
+      "status": "stop",
+      "ttftMs": 790,
+      "totalMs": 969,
+      "commonTokenizerOutputTokens": 138,
+      "approxOutputTokensPerSecond": 775,
+      "providerUsage": {
+        "prompt_tokens": 103,
+        "completion_tokens": 130,
+        "total_tokens": 233,
+        "cost": 0.0005591025,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00056475,
+          "upstream_inference_prompt_cost": 0.00007725,
+          "upstream_inference_completions_cost": 0.0004875
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 7
+    },
+    {
+      "model": "google/gemini-3.8-flash",
+      "provider": "openrouter",
+      "trial": 3,
+      "status": "stop",
+      "ttftMs": 760,
+      "totalMs": 866,
+      "commonTokenizerOutputTokens": 149,
+      "approxOutputTokensPerSecond": 1435,
+      "providerUsage": {
+        "prompt_tokens": 103,
+        "completion_tokens": 141,
+        "total_tokens": 244,
+        "cost": 0.00059994,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.000606,
+          "upstream_inference_prompt_cost": 0.00007725,
+          "upstream_inference_completions_cost": 0.00052875
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 7
+    },
+    {
+      "model": "gpt-6-luna",
+      "provider": "openai",
+      "trial": 3,
+      "status": "stop",
+      "ttftMs": 797,
+      "totalMs": 1824,
+      "commonTokenizerOutputTokens": 165,
+      "approxOutputTokensPerSecond": 165,
+      "providerUsage": {
+        "prompt_tokens": 107,
+        "completion_tokens": 165,
+        "total_tokens": 272,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "validJson": true,
+      "foodCount": 8
+    }
+  ]
+}

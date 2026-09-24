@@ -1,11 +1,10 @@
-import { foodCompletion as legacyCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
+import { foodCompletion as flashCompletion, FOOD_REASONING_MODEL } from "@/languageModelProviders/gemini/foodCompletion"
 import { foodStage } from "./telemetry"
 
 export { FOOD_REASONING_MODEL }
-export type FoodCompletionOptions = Parameters<typeof legacyCompletion>[0]
+export type FoodCompletionOptions = Parameters<typeof flashCompletion>[0]
 
-// Stable application boundary. Keep wire format, prompts, defaults and fallback
-// exactly as before; an SDK transport can be evaluated independently later.
-export function foodCompletion(options: FoodCompletionOptions, user: Parameters<typeof legacyCompletion>[1]) {
-  return foodStage("reasoning", () => legacyCompletion(options, user))
+// Shared Flash boundary for food text and vision work.
+export function foodCompletion(options: FoodCompletionOptions, user: Parameters<typeof flashCompletion>[1]) {
+  return foodStage("reasoning", () => flashCompletion(options, user))
 }

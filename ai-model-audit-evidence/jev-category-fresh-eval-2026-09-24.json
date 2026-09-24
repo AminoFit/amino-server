@@ -1,0 +1,1505 @@
+{
+  "summary": {
+    "total": 50,
+    "thresholds": [
+      {
+        "threshold": 0,
+        "correct": 45,
+        "wrong": 0,
+        "abstained": 5,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.5,
+        "correct": 44,
+        "wrong": 0,
+        "abstained": 6,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.7,
+        "correct": 43,
+        "wrong": 0,
+        "abstained": 7,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.8,
+        "correct": 43,
+        "wrong": 0,
+        "abstained": 7,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.9,
+        "correct": 39,
+        "wrong": 0,
+        "abstained": 11,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.95,
+        "correct": 36,
+        "wrong": 0,
+        "abstained": 14,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.99,
+        "correct": 25,
+        "wrong": 0,
+        "abstained": 25,
+        "correctAbstention": 5
+      }
+    ],
+    "p50Ms": 391,
+    "p95Ms": 534,
+    "unavailable": 0,
+    "costUsd": 0.004818198000000001
+  },
+  "rows": [
+    {
+      "index": 0,
+      "name": "lactose-free whole cow's milk",
+      "brand": "Meadow Farm",
+      "expected": "A-1-1",
+      "actual": "A-1-1",
+      "actualName": "Whole Milk",
+      "expectedName": "Whole Milk",
+      "durationMs": 425,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.99,
+          "durationMs": 267.601625,
+          "promptTokens": 1155,
+          "completionTokens": 122,
+          "costUsd": 0.00004851
+        },
+        {
+          "status": "ok",
+          "choice": "A-1-1",
+          "confidence": 0.98,
+          "durationMs": 156.66062500000004,
+          "promptTokens": 1102,
+          "completionTokens": 320,
+          "costUsd": 0.000046284
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "plain cultured kefir drink",
+      "expected": "A-4-5",
+      "actual": "A-4-5",
+      "actualName": "Kefir",
+      "expectedName": "Kefir",
+      "durationMs": 388,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.91,
+          "durationMs": 227.58099999999996,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "A-4-5",
+          "confidence": 1,
+          "durationMs": 160.45499999999998,
+          "promptTokens": 1095,
+          "completionTokens": 320,
+          "costUsd": 0.00004599
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "cashew-based vegan yogurt",
+      "expected": "A-5-2",
+      "actual": "A-5-2",
+      "actualName": "Plant-Based Yogurt",
+      "expectedName": "Plant-Based Yogurt",
+      "durationMs": 397,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 1,
+          "durationMs": 230.17879200000002,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "A-5-2",
+          "confidence": 1,
+          "durationMs": 166.74766700000004,
+          "promptTokens": 1095,
+          "completionTokens": 320,
+          "costUsd": 0.00004599
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "sliced rye bread loaf",
+      "expected": "B-1-1",
+      "actual": "B-1-1",
+      "actualName": "Yeast Breads (Loaves)",
+      "expectedName": "Yeast Breads (Loaves)",
+      "durationMs": 435,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "B",
+          "confidence": 1,
+          "durationMs": 255.713667,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "B-1-1",
+          "confidence": 1,
+          "durationMs": 178.80779200000006,
+          "promptTokens": 1097,
+          "completionTokens": 345,
+          "costUsd": 0.000046074
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "buckwheat pancakes",
+      "expected": "B-2-3",
+      "actual": "B-2-3",
+      "actualName": "Pancakes",
+      "expectedName": "Pancakes",
+      "durationMs": 370,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "B",
+          "confidence": 0.86,
+          "durationMs": 180.5474999999999,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "B-2-3",
+          "confidence": 1,
+          "durationMs": 188.85583400000007,
+          "promptTokens": 1097,
+          "completionTokens": 345,
+          "costUsd": 0.000046074
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "cooked farro grain",
+      "expected": "B-5-3",
+      "actual": "B-5-3",
+      "actualName": "Farro",
+      "expectedName": "Farro",
+      "durationMs": 364,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "B",
+          "confidence": 1,
+          "durationMs": 174.83520799999997,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "B-5-3",
+          "confidence": 0.99,
+          "durationMs": 189.107667,
+          "promptTokens": 1097,
+          "completionTokens": 345,
+          "costUsd": 0.000046074
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "raw hazelnuts in shell",
+      "expected": "C-2-5",
+      "actual": "C-2-5",
+      "actualName": "Hazelnuts",
+      "expectedName": "Hazelnuts",
+      "durationMs": 468,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "C",
+          "confidence": 1,
+          "durationMs": 271.049,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "C-2-5",
+          "confidence": 0.99,
+          "durationMs": 196.95320900000002,
+          "promptTokens": 743,
+          "completionTokens": 203,
+          "costUsd": 0.000031206
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "ground flaxseeds",
+      "expected": "C-1-2",
+      "actual": "C-1-2",
+      "actualName": "Flaxseeds",
+      "expectedName": "Flaxseeds",
+      "durationMs": 411,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "C",
+          "confidence": 1,
+          "durationMs": 157.46170899999993,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "C-1-2",
+          "confidence": 1,
+          "durationMs": 252.7242500000001,
+          "promptTokens": 742,
+          "completionTokens": 203,
+          "costUsd": 0.000031164
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "name": "smoked mackerel fillet",
+      "expected": "D-3-13",
+      "actual": "D-3-13",
+      "actualName": "Mackerel",
+      "expectedName": "Mackerel",
+      "durationMs": 308,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 1,
+          "durationMs": 150.24708299999998,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "D-3-13",
+          "confidence": 0.99,
+          "durationMs": 156.78041600000006,
+          "promptTokens": 1361,
+          "completionTokens": 480,
+          "costUsd": 0.000057162
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "name": "roasted turkey breast slices",
+      "expected": "D-1-4",
+      "actual": "D-1-4",
+      "actualName": "Poultry (Chicken, Turkey, Duck)",
+      "expectedName": "Poultry (Chicken, Turkey, Duck)",
+      "durationMs": 446,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 1,
+          "durationMs": 218.44891600000005,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "D-1-4",
+          "confidence": 0.98,
+          "durationMs": 227.70337500000005,
+          "promptTokens": 1358,
+          "completionTokens": 479,
+          "costUsd": 0.000057036
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "name": "plain tempeh",
+      "expected": "D-5-4",
+      "actual": "D-5-4",
+      "actualName": "Processed Soy Products (Tofu, Tempeh)",
+      "expectedName": "Processed Soy Products (Tofu, Tempeh)",
+      "durationMs": 388,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.99,
+          "durationMs": 192.85749999999985,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "D-5-4",
+          "confidence": 1,
+          "durationMs": 195.1891250000001,
+          "promptTokens": 1357,
+          "completionTokens": 479,
+          "costUsd": 0.000056994
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "name": "almond-based protein bar",
+      "brand": "Peak Fuel",
+      "expected": "D-6-3",
+      "actual": "D-6-3",
+      "actualName": "Protein Bars",
+      "expectedName": "Protein Bars",
+      "durationMs": 482,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.89,
+          "durationMs": 171.31108300000005,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "D-6-3",
+          "confidence": 0.92,
+          "durationMs": 310.71675000000005,
+          "promptTokens": 1361,
+          "completionTokens": 479,
+          "costUsd": 0.000057162
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "name": "unsweetened dried apricots",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 402,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 212.95395800000006,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.94,
+          "durationMs": 188.8404999999998,
+          "promptTokens": 1547,
+          "completionTokens": 541,
+          "costUsd": 0.000064974
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "name": "fresh clementine segments",
+      "expected": "E-2-3",
+      "actual": "E-2-3",
+      "actualName": "Tangerines and Mandarins",
+      "expectedName": "Tangerines and Mandarins",
+      "durationMs": 534,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 268.841958,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "E-2-3",
+          "confidence": 0.95,
+          "durationMs": 264.829209,
+          "promptTokens": 1544,
+          "completionTokens": 541,
+          "costUsd": 0.000064848
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "name": "ripe guava fruit",
+      "expected": "E-6-10",
+      "actual": "E-6-10",
+      "actualName": "Guava",
+      "expectedName": "Guava",
+      "durationMs": 505,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 234.181875,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-10",
+          "confidence": 0.99,
+          "durationMs": 270.41670799999997,
+          "promptTokens": 1544,
+          "completionTokens": 542,
+          "costUsd": 0.000064848
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "name": "cooked chickpeas without sauce",
+      "expected": "F-6-2",
+      "actual": "F-6-2",
+      "actualName": "Chickpeas",
+      "expectedName": "Chickpeas",
+      "durationMs": 375,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 0.99,
+          "durationMs": 182.62175000000002,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "F-6-2",
+          "confidence": 0.99,
+          "durationMs": 192.7220000000002,
+          "promptTokens": 1553,
+          "completionTokens": 519,
+          "costUsd": 0.000065226
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "name": "raw orange bell pepper",
+      "expected": "F-8-5",
+      "actual": "F-8-5",
+      "actualName": "Peppers",
+      "expectedName": "Peppers",
+      "durationMs": 581,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 1,
+          "durationMs": 272.78587500000003,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "F-8-5",
+          "confidence": 1,
+          "durationMs": 308.15379199999984,
+          "promptTokens": 1549,
+          "completionTokens": 519,
+          "costUsd": 0.000065058
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "name": "romaine lettuce leaves",
+      "expected": "F-1-3",
+      "actual": "F-1-3",
+      "actualName": "Lettuce (e.g. for salads)",
+      "expectedName": "Lettuce (e.g. for salads)",
+      "durationMs": 344,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 1,
+          "durationMs": 168.14266599999996,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "F-1-3",
+          "confidence": 1,
+          "durationMs": 175.34104200000002,
+          "promptTokens": 1549,
+          "completionTokens": 519,
+          "costUsd": 0.000065058
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "name": "sea-salt air-popped popcorn",
+      "expected": "G-1-3",
+      "actual": "G-1-3",
+      "actualName": "Popcorn",
+      "expectedName": "Popcorn",
+      "durationMs": 395,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.99,
+          "durationMs": 165.26029199999994,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "G-1-3",
+          "confidence": 1,
+          "durationMs": 229.31712500000003,
+          "promptTokens": 1211,
+          "completionTokens": 385,
+          "costUsd": 0.000050862
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "name": "assorted fruit gummy candies",
+      "expected": "G-2-10",
+      "actual": "G-2-10",
+      "actualName": "Gummy sweets (other shape)",
+      "expectedName": "Gummy sweets (other shape)",
+      "durationMs": 369,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 1,
+          "durationMs": 211.62470900000017,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "G-2-10",
+          "confidence": 0.44,
+          "durationMs": 157.09537499999988,
+          "promptTokens": 1210,
+          "completionTokens": 386,
+          "costUsd": 0.00005082
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "name": "honey oat granola breakfast bar",
+      "expected": "G-2-1",
+      "actual": "G-2-1",
+      "actualName": "Cereal Bars",
+      "expectedName": "Cereal Bars",
+      "durationMs": 367,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 1,
+          "durationMs": 210.613875,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "G-2-1",
+          "confidence": 1,
+          "durationMs": 155.763375,
+          "promptTokens": 1210,
+          "completionTokens": 385,
+          "costUsd": 0.00005082
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "name": "frozen vanilla oat-milk dessert, no dairy",
+      "expected": "G-3-10",
+      "actual": "G-3-10",
+      "actualName": "Frozen Desserts (Excluding Ice Cream)",
+      "expectedName": "Frozen Desserts (Excluding Ice Cream)",
+      "durationMs": 350,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.67,
+          "durationMs": 182.00712499999963,
+          "promptTokens": 1153,
+          "completionTokens": 122,
+          "costUsd": 0.000048426
+        },
+        {
+          "status": "ok",
+          "choice": "G-3-10",
+          "confidence": 0.86,
+          "durationMs": 167.57891699999982,
+          "promptTokens": 1213,
+          "completionTokens": 386,
+          "costUsd": 0.000050946
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "name": "lime-flavored unsweetened sparkling water",
+      "expected": "H-1-3",
+      "actual": "H-1-3",
+      "actualName": "Flavored Sparkling Water",
+      "expectedName": "Flavored Sparkling Water",
+      "durationMs": 339,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 179.1441249999998,
+          "promptTokens": 1153,
+          "completionTokens": 122,
+          "costUsd": 0.000048426
+        },
+        {
+          "status": "ok",
+          "choice": "H-1-3",
+          "confidence": 1,
+          "durationMs": 159.7878340000002,
+          "promptTokens": 1500,
+          "completionTokens": 501,
+          "costUsd": 0.000063
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "name": "carton coconut milk beverage",
+      "expected": "H-5-O",
+      "actual": "H-5-O",
+      "actualName": "Other Dairy Drink Alternatives",
+      "expectedName": "Other Dairy Drink Alternatives",
+      "durationMs": 428,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 217.42904100000032,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-O",
+          "confidence": 0.99,
+          "durationMs": 209.81862499999988,
+          "promptTokens": 1495,
+          "completionTokens": 500,
+          "costUsd": 0.00006279
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "name": "sugar-free cola soda",
+      "expected": "H-4-1",
+      "actual": "H-4-1",
+      "actualName": "All Diet Drinks",
+      "expectedName": "All Diet Drinks",
+      "durationMs": 369,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 161.2247910000001,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "H-4-1",
+          "confidence": 0.95,
+          "durationMs": 207.40054199999986,
+          "promptTokens": 1495,
+          "completionTokens": 501,
+          "costUsd": 0.00006279
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "name": "banana and peanut protein smoothie",
+      "expected": "H-10-3",
+      "actual": "H-10-3",
+      "actualName": "Protein Smoothies",
+      "expectedName": "Protein Smoothies",
+      "durationMs": 383,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 0.99,
+          "durationMs": 207.4910420000001,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "H-10-3",
+          "confidence": 0.99,
+          "durationMs": 174.86783300000025,
+          "promptTokens": 1497,
+          "completionTokens": 502,
+          "costUsd": 0.000062874
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "name": "cold-brew coffee with oat milk",
+      "expected": "H-6-2",
+      "actual": "H-6-2",
+      "actualName": "Coffee with milk or cream (e.g. latte)",
+      "expectedName": "Coffee with milk or cream (e.g. latte)",
+      "durationMs": 553,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 337.2364580000003,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "H-6-2",
+          "confidence": 0.98,
+          "durationMs": 215.43283299999985,
+          "promptTokens": 1497,
+          "completionTokens": 501,
+          "costUsd": 0.000062874
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "name": "avocado cooking oil",
+      "expected": "I-2-O",
+      "actual": "I-2-O",
+      "actualName": "Other Vegetable Oils",
+      "expectedName": "Other Vegetable Oils",
+      "durationMs": 418,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "I",
+          "confidence": 1,
+          "durationMs": 224.65925000000016,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "I-2-O",
+          "confidence": 0.98,
+          "durationMs": 192.78079200000002,
+          "promptTokens": 599,
+          "completionTokens": 113,
+          "costUsd": 0.000025158
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "name": "heavy whipping cream",
+      "expected": "I-4-1",
+      "actual": "I-4-1",
+      "actualName": "Creams",
+      "expectedName": "Creams",
+      "durationMs": 370,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "I",
+          "confidence": 0.95,
+          "durationMs": 190.30150000000003,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        },
+        {
+          "status": "ok",
+          "choice": "I-4-1",
+          "confidence": 1,
+          "durationMs": 179.9285420000001,
+          "promptTokens": 597,
+          "completionTokens": 114,
+          "costUsd": 0.000025074
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "name": "unsweetened cashew nut butter",
+      "expected": "J-2-7",
+      "actual": "J-2-7",
+      "actualName": "Other Nut Butters",
+      "expectedName": "Other Nut Butters",
+      "durationMs": 368,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 1,
+          "durationMs": 167.82479200000034,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "J-2-7",
+          "confidence": 1,
+          "durationMs": 200.34733400000005,
+          "promptTokens": 1021,
+          "completionTokens": 304,
+          "costUsd": 0.000042882
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "name": "sriracha chili hot sauce",
+      "expected": "J-1-5",
+      "actual": "J-1-5",
+      "actualName": "Hot Sauces",
+      "expectedName": "Hot Sauces",
+      "durationMs": 400,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 1,
+          "durationMs": 205.10395800000015,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "J-1-5",
+          "confidence": 1,
+          "durationMs": 194.49954200000002,
+          "promptTokens": 1019,
+          "completionTokens": 304,
+          "costUsd": 0.000042798
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "name": "hazelnut cocoa spread",
+      "expected": "J-2-1",
+      "actual": "J-2-1",
+      "actualName": "Chocolate spreads",
+      "expectedName": "Chocolate spreads",
+      "durationMs": 445,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 0.98,
+          "durationMs": 209.69212500000003,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "J-2-1",
+          "confidence": 0.99,
+          "durationMs": 234.8624579999996,
+          "promptTokens": 1018,
+          "completionTokens": 304,
+          "costUsd": 0.000042756
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "name": "vegetarian bean burrito",
+      "expected": "K-1-2",
+      "actual": "K-1-2",
+      "actualName": "Burritos",
+      "expectedName": "Burritos",
+      "durationMs": 344,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 1,
+          "durationMs": 173.39154099999996,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-2",
+          "confidence": 0.98,
+          "durationMs": 170.2211669999997,
+          "promptTokens": 1438,
+          "completionTokens": 471,
+          "costUsd": 0.000060396
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "name": "restaurant ramen noodle soup with pork",
+      "expected": "K-1-11",
+      "actual": "K-1-11",
+      "actualName": "Noodle based dishes",
+      "expectedName": "Noodle based dishes",
+      "durationMs": 391,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.99,
+          "durationMs": 210.43279100000018,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-11",
+          "confidence": 0.81,
+          "durationMs": 179.35058400000025,
+          "promptTokens": 1440,
+          "completionTokens": 472,
+          "costUsd": 0.00006048
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "name": "pickled daikon radish slices",
+      "expected": "K-5-3",
+      "actual": "K-5-3",
+      "actualName": "Pickled Vegetables",
+      "expectedName": "Pickled Vegetables",
+      "durationMs": 453,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.92,
+          "durationMs": 207.02562499999976,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "K-5-3",
+          "confidence": 1,
+          "durationMs": 245.59712500000023,
+          "promptTokens": 1439,
+          "completionTokens": 471,
+          "costUsd": 0.000060438
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "name": "chicken Caesar salad served as an entree",
+      "expected": "K-1-15",
+      "actual": "K-1-15",
+      "actualName": "Salads (substantial mixed salads as main dishes)",
+      "expectedName": "Salads (substantial mixed salads as main dishes)",
+      "durationMs": 420,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 1,
+          "durationMs": 199.45399999999972,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-15",
+          "confidence": 0.99,
+          "durationMs": 219.86262499999975,
+          "promptTokens": 1441,
+          "completionTokens": 472,
+          "costUsd": 0.000060522
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "name": "baby sweet potato puree jar",
+      "expected": "L-1-1",
+      "actual": "L-1-1",
+      "actualName": "Purees (single fruit or vegetable)",
+      "expectedName": "Purees (single fruit or vegetable)",
+      "durationMs": 381,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 0.99,
+          "durationMs": 204.17549999999983,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "L-1-1",
+          "confidence": 1,
+          "durationMs": 176.81154199999992,
+          "promptTokens": 667,
+          "completionTokens": 138,
+          "costUsd": 0.000028014
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "name": "oat cereal for babies",
+      "expected": "L-1-6",
+      "actual": "L-1-6",
+      "actualName": "Infant Cereal",
+      "expectedName": "Infant Cereal",
+      "durationMs": 441,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 0.97,
+          "durationMs": 261.0433750000002,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "L-1-6",
+          "confidence": 1,
+          "durationMs": 179.76691699999992,
+          "promptTokens": 667,
+          "completionTokens": 138,
+          "costUsd": 0.000028014
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "name": "ready-to-feed infant formula bottle",
+      "expected": "L-2-1",
+      "actual": "L-2-1",
+      "actualName": "Ready-to-Feed",
+      "expectedName": "Ready-to-Feed",
+      "durationMs": 377,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 1,
+          "durationMs": 178.35800000000017,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "L-2-1",
+          "confidence": 0.99,
+          "durationMs": 198.43937499999993,
+          "promptTokens": 668,
+          "completionTokens": 138,
+          "costUsd": 0.000028056
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "name": "complete meal replacement shake",
+      "expected": "M-1-2",
+      "actual": "M-1-2",
+      "actualName": "Meal replacements shakes",
+      "expectedName": "Meal replacements shakes",
+      "durationMs": 324,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "M",
+          "confidence": 0.99,
+          "durationMs": 148.73600000000033,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "M-1-2",
+          "confidence": 1,
+          "durationMs": 174.4439999999995,
+          "promptTokens": 766,
+          "completionTokens": 190,
+          "costUsd": 0.000032172
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "name": "electrolyte energy gel packet",
+      "expected": "M-2-2",
+      "actual": "M-2-2",
+      "actualName": "Gel based supplements (e.g. energy gels)",
+      "expectedName": "Gel based supplements (e.g. energy gels)",
+      "durationMs": 376,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "M",
+          "confidence": 0.8,
+          "durationMs": 184.7779999999998,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "M-2-2",
+          "confidence": 1,
+          "durationMs": 191.52158299999974,
+          "promptTokens": 769,
+          "completionTokens": 190,
+          "costUsd": 0.000032298
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "name": "baking soda powder",
+      "expected": "M-4-3",
+      "actual": "M-4-3",
+      "actualName": "Baking Soda",
+      "expectedName": "Baking Soda",
+      "durationMs": 339,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "M",
+          "confidence": 1,
+          "durationMs": 184.02149999999983,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "M-4-3",
+          "confidence": 0.98,
+          "durationMs": 154.29183399999965,
+          "promptTokens": 766,
+          "completionTokens": 190,
+          "costUsd": 0.000032172
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "name": "dried thyme leaves",
+      "expected": "N-2-3",
+      "actual": "N-2-3",
+      "actualName": "Dried Thyme",
+      "expectedName": "Dried Thyme",
+      "durationMs": 374,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 185.3033749999995,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "N-2-3",
+          "confidence": 0.99,
+          "durationMs": 188.2758330000006,
+          "promptTokens": 977,
+          "completionTokens": 300,
+          "costUsd": 0.000041034
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "name": "fresh cilantro sprigs",
+      "expected": "N-1-2",
+      "actual": "N-1-2",
+      "actualName": "Cilantro (Coriander leaves)",
+      "expectedName": "Cilantro (Coriander leaves)",
+      "durationMs": 360,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 146.79050000000007,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "N-1-2",
+          "confidence": 1,
+          "durationMs": 212.91158300000006,
+          "promptTokens": 978,
+          "completionTokens": 300,
+          "costUsd": 0.000041076
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "name": "ground cumin spice",
+      "expected": "N-3-3",
+      "actual": "N-3-3",
+      "actualName": "Cumin",
+      "expectedName": "Cumin",
+      "durationMs": 527,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 357.00325000000066,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "N-3-3",
+          "confidence": 0.99,
+          "durationMs": 169.42500000000018,
+          "promptTokens": 976,
+          "completionTokens": 300,
+          "costUsd": 0.000040992
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "name": "bar",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 522,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.58,
+          "durationMs": 176.8153339999999,
+          "promptTokens": 1144,
+          "completionTokens": 122,
+          "costUsd": 0.000048048
+        },
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.86,
+          "durationMs": 344.5535840000002,
+          "promptTokens": 1204,
+          "completionTokens": 381,
+          "costUsd": 0.000050568
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "name": "a sauce",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 363,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 0.95,
+          "durationMs": 161.40450000000055,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        },
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.97,
+          "durationMs": 201.40262500000063,
+          "promptTokens": 1015,
+          "completionTokens": 300,
+          "costUsd": 0.00004263
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "name": "something for dinner",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 481,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.95,
+          "durationMs": 480.7150839999995,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        }
+      ]
+    },
+    {
+      "index": 48,
+      "name": "an organic beverage",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 424,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 0.83,
+          "durationMs": 253.04275000000052,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        },
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.99,
+          "durationMs": 170.74154199999975,
+          "promptTokens": 1493,
+          "completionTokens": 497,
+          "costUsd": 0.000062706
+        }
+      ]
+    },
+    {
+      "index": 49,
+      "name": "the snack",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 322,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.65,
+          "durationMs": 162.6232089999994,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        },
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 1,
+          "durationMs": 157.79904200000055,
+          "promptTokens": 1205,
+          "completionTokens": 381,
+          "costUsd": 0.00005061
+        }
+      ]
+    }
+  ]
+}

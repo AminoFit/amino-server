@@ -1,0 +1,20 @@
+[
+  {"name":"air-dried mango strips","expected":"E-6-6"},
+  {"name":"freeze-dried whole blueberries","expected":"E-6-6"},
+  {"name":"dehydrated apple rings","expected":"E-6-6"},
+  {"name":"dried papaya cubes","expected":"E-6-6"},
+  {"name":"dried pineapple chunks","expected":"E-6-6"},
+  {"name":"fresh apricot halves","expected":"E-4-5"},
+  {"name":"frozen whole blueberries, unsweetened","expected":"E-1-2"},
+  {"name":"fresh ripe mango slices","expected":"E-5-1"},
+  {"name":"pickled sushi ginger","expected":"K-5-4"},
+  {"name":"raw ginger root","expected":"F-5-4"},
+  {"name":"powdered dried ginger spice","expected":"N-3-7"},
+  {"name":"dried oregano leaf flakes","expected":"N-2-2"},
+  {"name":"fresh oregano sprigs","expected":"N-1-O"},
+  {"name":"frozen almond-milk-based dessert","expected":"G-3-10"},
+  {"name":"dairy vanilla gelato","expected":"A-4-4"},
+  {"name":"dried item","expected":null},
+  {"name":"something creamy","expected":null},
+  {"name":"a fruit product","expected":null}
+]

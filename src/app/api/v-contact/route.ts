@@ -1,4 +1,3 @@
-import { openai } from "@/utils/openaiFunctionSchemas";
 import { NextResponse } from "next/server";
 import path from "path";
 import vCardsJs from "vcards-js";

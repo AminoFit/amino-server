@@ -22,8 +22,7 @@ export async function extractNutritionPlan(text:string,items:FoodItemToLog[],dep
   if(!hasNutritionStatement(text))return {...result,status:"skipped"}
   if(text.length>8000||!items.length||items.length>20)return {...result,status:"invalid"}
   try{
-    const env={...(dependencies.env ?? process.env)},model=(dependencies.model ?? fallbackAgentModel)({...env,
-      FOOD_FALLBACK_MODEL:env.FOOD_CONSTRAINT_MODEL ?? "google/gemini-3.8-flash"})
+    const env=dependencies.env ?? process.env,model=(dependencies.model ?? fallbackAgentModel)(env)
     result.model=model.id
     const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error("deadline"))},dependencies.deadlineMs ?? 8000)})
     const response=await Promise.race([(dependencies.generate ?? generateText)({model:model.model,system:instructions,

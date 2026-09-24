@@ -1,0 +1,38 @@
+{
+  "start": "2026-08-25T19:53:04.323Z",
+  "end": "2026-09-24T19:53:04.322Z",
+  "total": 195,
+  "limitReached": false,
+  "groups": {
+    "openai:gpt-4o-mini": {
+      "calls": 24,
+      "promptTokens": 58898,
+      "completionTokens": 2597,
+      "lastSeen": "2026-09-24T14:46:46.966"
+    },
+    "vertex:gemini-2.5-flash": {
+      "calls": 2,
+      "promptTokens": 5643,
+      "completionTokens": 0,
+      "lastSeen": "2026-09-23T19:46:56.99"
+    },
+    "openrouter:google/gemini-3.8-flash": {
+      "calls": 133,
+      "promptTokens": 296007,
+      "completionTokens": 14502,
+      "lastSeen": "2026-09-24T14:47:16.218"
+    },
+    "openai:gpt-4o": {
+      "calls": 33,
+      "promptTokens": 203851,
+      "completionTokens": 12327,
+      "lastSeen": "2026-09-24T14:47:14.532"
+    },
+    "openai:gpt-3.5-turbo-instruct-0914": {
+      "calls": 3,
+      "promptTokens": 437,
+      "completionTokens": 96,
+      "lastSeen": "2026-09-24T14:11:41.329"
+    }
+  }
+}

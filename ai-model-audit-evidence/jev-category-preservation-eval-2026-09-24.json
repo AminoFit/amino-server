@@ -1,0 +1,557 @@
+{
+  "summary": {
+    "total": 18,
+    "thresholds": [
+      {
+        "threshold": 0,
+        "correct": 15,
+        "wrong": 0,
+        "abstained": 3,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.5,
+        "correct": 15,
+        "wrong": 0,
+        "abstained": 3,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.7,
+        "correct": 15,
+        "wrong": 0,
+        "abstained": 3,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.8,
+        "correct": 14,
+        "wrong": 0,
+        "abstained": 4,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.9,
+        "correct": 14,
+        "wrong": 0,
+        "abstained": 4,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.95,
+        "correct": 12,
+        "wrong": 0,
+        "abstained": 6,
+        "correctAbstention": 3
+      },
+      {
+        "threshold": 0.99,
+        "correct": 9,
+        "wrong": 0,
+        "abstained": 9,
+        "correctAbstention": 3
+      }
+    ],
+    "p50Ms": 363,
+    "p95Ms": 494,
+    "unavailable": 0,
+    "costUsd": 0.0017324999999999999
+  },
+  "rows": [
+    {
+      "index": 0,
+      "name": "air-dried mango strips",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 467,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 307.74800000000005,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.93,
+          "durationMs": 159.20487500000002,
+          "promptTokens": 1544,
+          "completionTokens": 541,
+          "costUsd": 0.000064848
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "freeze-dried whole blueberries",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 470,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 0.99,
+          "durationMs": 295.35587499999997,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.97,
+          "durationMs": 174.59537500000005,
+          "promptTokens": 1547,
+          "completionTokens": 541,
+          "costUsd": 0.000064974
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "dehydrated apple rings",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 490,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 300.38079200000004,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.99,
+          "durationMs": 189.83299999999997,
+          "promptTokens": 1544,
+          "completionTokens": 541,
+          "costUsd": 0.000064848
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "dried papaya cubes",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 494,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 298.782875,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.95,
+          "durationMs": 194.83516699999996,
+          "promptTokens": 1544,
+          "completionTokens": 541,
+          "costUsd": 0.000064848
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "dried pineapple chunks",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 397,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 223.87741700000004,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 0.99,
+          "durationMs": 172.90529199999992,
+          "promptTokens": 1543,
+          "completionTokens": 541,
+          "costUsd": 0.000064806
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "fresh apricot halves",
+      "expected": "E-4-5",
+      "actual": "E-4-5",
+      "actualName": "Apricots",
+      "expectedName": "Apricots",
+      "durationMs": 330,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 159.76179100000002,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "E-4-5",
+          "confidence": 1,
+          "durationMs": 169.49633300000005,
+          "promptTokens": 1543,
+          "completionTokens": 541,
+          "costUsd": 0.000064806
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "frozen whole blueberries, unsweetened",
+      "expected": "E-1-2",
+      "actual": "E-1-2",
+      "actualName": "Blueberries",
+      "expectedName": "Blueberries",
+      "durationMs": 353,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 185.0714999999999,
+          "promptTokens": 1155,
+          "completionTokens": 122,
+          "costUsd": 0.00004851
+        },
+        {
+          "status": "ok",
+          "choice": "E-1-2",
+          "confidence": 0.99,
+          "durationMs": 167.30204200000003,
+          "promptTokens": 1551,
+          "completionTokens": 541,
+          "costUsd": 0.000065142
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "fresh ripe mango slices",
+      "expected": "E-5-1",
+      "actual": "E-5-1",
+      "actualName": "Mango",
+      "expectedName": "Mango",
+      "durationMs": 363,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 1,
+          "durationMs": 182.98987499999998,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "E-5-1",
+          "confidence": 1,
+          "durationMs": 179.78616599999987,
+          "promptTokens": 1543,
+          "completionTokens": 541,
+          "costUsd": 0.000064806
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "name": "pickled sushi ginger",
+      "expected": "K-5-4",
+      "actual": "K-5-4",
+      "actualName": "Pickled Ginger",
+      "expectedName": "Pickled Ginger",
+      "durationMs": 358,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.97,
+          "durationMs": 162.32212500000003,
+          "promptTokens": 1147,
+          "completionTokens": 122,
+          "costUsd": 0.000048174
+        },
+        {
+          "status": "ok",
+          "choice": "K-5-4",
+          "confidence": 1,
+          "durationMs": 195.15150000000017,
+          "promptTokens": 1436,
+          "completionTokens": 471,
+          "costUsd": 0.000060312
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "name": "raw ginger root",
+      "expected": "F-5-4",
+      "actual": "F-5-4",
+      "actualName": "Ginger (fresh)",
+      "expectedName": "Ginger (fresh)",
+      "durationMs": 352,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 0.99,
+          "durationMs": 179.1265410000001,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        },
+        {
+          "status": "ok",
+          "choice": "F-5-4",
+          "confidence": 1,
+          "durationMs": 172.5412080000001,
+          "promptTokens": 1548,
+          "completionTokens": 519,
+          "costUsd": 0.000065016
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "name": "powdered dried ginger spice",
+      "expected": "N-3-7",
+      "actual": "N-3-7",
+      "actualName": "Ginger (Dried)",
+      "expectedName": "Ginger (Dried)",
+      "durationMs": 343,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 181.31045799999993,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "N-3-7",
+          "confidence": 1,
+          "durationMs": 161.73962499999993,
+          "promptTokens": 978,
+          "completionTokens": 300,
+          "costUsd": 0.000041076
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "name": "dried oregano leaf flakes",
+      "expected": "N-2-2",
+      "actual": "N-2-2",
+      "actualName": "Dried Oregano",
+      "expectedName": "Dried Oregano",
+      "durationMs": 467,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 183.13762500000007,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "N-2-2",
+          "confidence": 0.99,
+          "durationMs": 283.4180839999999,
+          "promptTokens": 979,
+          "completionTokens": 300,
+          "costUsd": 0.000041118
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "name": "fresh oregano sprigs",
+      "expected": "N-1-O",
+      "actual": "N-1-O",
+      "actualName": "Other Fresh Herbs",
+      "expectedName": "Other Fresh Herbs",
+      "durationMs": 488,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 310.28866700000003,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "N-1-O",
+          "confidence": 0.99,
+          "durationMs": 177.42558299999996,
+          "promptTokens": 978,
+          "completionTokens": 299,
+          "costUsd": 0.000041076
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "name": "frozen almond-milk-based dessert",
+      "expected": "G-3-10",
+      "actual": "G-3-10",
+      "actualName": "Frozen Desserts (Excluding Ice Cream)",
+      "expectedName": "Frozen Desserts (Excluding Ice Cream)",
+      "durationMs": 363,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.75,
+          "durationMs": 175.3000830000001,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "G-3-10",
+          "confidence": 0.94,
+          "durationMs": 186.9683339999999,
+          "promptTokens": 1210,
+          "completionTokens": 386,
+          "costUsd": 0.00005082
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "name": "dairy vanilla gelato",
+      "expected": "A-4-4",
+      "actual": "A-4-4",
+      "actualName": "Ice Cream",
+      "expectedName": "Ice Cream",
+      "durationMs": 367,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.9,
+          "durationMs": 196.43233299999997,
+          "promptTokens": 1148,
+          "completionTokens": 122,
+          "costUsd": 0.000048216
+        },
+        {
+          "status": "ok",
+          "choice": "A-4-4",
+          "confidence": 1,
+          "durationMs": 169.86024999999995,
+          "promptTokens": 1095,
+          "completionTokens": 320,
+          "costUsd": 0.00004599
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "name": "dried item",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 165,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.97,
+          "durationMs": 165.1255410000001,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "name": "something creamy",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 216,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.97,
+          "durationMs": 215.73958300000004,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "name": "a fruit product",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 290,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.61,
+          "durationMs": 289.6778750000001,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        }
+      ]
+    }
+  ]
+}

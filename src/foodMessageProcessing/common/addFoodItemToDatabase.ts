@@ -1,13 +1,10 @@
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { vectorToSql } from "@/utils/pgvectorHelper"
-import { LinkIconsOrCreateIfNeeded } from "../foodIconsProcess"
 import { Tables } from "types/supabase"
-import { assignDefaultServingAmount } from "@/foodMessageProcessing/legacy/FoodAddFunctions/handleServingAmount"
+import { assignDefaultServingAmount } from "@/foodMessageProcessing/common/assignDefaultServingAmount"
 import { completeMissingFoodInfo } from "../completeMissingFoodInfo/completeMissingFoodInfo"
-import { classifyFoodItemToCategoryGPT } from "../classifyFoodItemInCategory/classifyFoodItemInCategory"
-import { getUserByEmail } from "./debugHelper"
-import { getFoodEmbedding } from "@/utils/foodEmbedding"
+import { classifyFoodCategoryQueue } from "@/app/api/queues/classify-food-category/classify-food-category"
 
 function compareFoodItemsByName(
   item1: FoodItemWithNutrientsAndServing | null,
@@ -194,8 +191,6 @@ export async function addFoodItemToDatabase(
     return existingFoodItemByExternalId
   }
 
-  let foodClassificationResult = classifyFoodItemToCategoryGPT(food, user)
-
   // Check for missing fields and complete them if necessary
   if (
     !food.defaultServingWeightGram ||
@@ -204,7 +199,11 @@ export async function addFoodItemToDatabase(
     hasMissingServingInfo(food)
   ) {
     console.log("Trying to complete missing fields")
-    food = (await completeMissingFoodInfo(food, user)) || food
+    const completed = await completeMissingFoodInfo(food, user)
+    if (!completed && (!food.defaultServingWeightGram || food.weightUnknown || hasMissingServingInfo(food))) {
+      throw new Error("Required serving weight could not be sourced")
+    }
+    food = completed || food
   }
 
   // Format the servings using assignDefaultServingAmount
@@ -222,18 +221,6 @@ export async function addFoodItemToDatabase(
   const embeddingArray = new Float32Array(bgeBaseEmbedding)
   const embeddingSql = vectorToSql(Array.from(embeddingArray))
 
-  // await foodClassificationResult that returns a promise of { foodItemCategoryID: string; foodItemCategoryName: string, foodItemId: number }
-  // handle the result of the promise if it returns an error else
-  let foodItemCategoryID = ""
-  let foodItemCategoryName = ""
-
-  try {
-    const { foodItemCategoryID: catID, foodItemCategoryName: catName } = await foodClassificationResult
-    foodItemCategoryID = catID
-    foodItemCategoryName = catName
-  } catch (error) {
-    console.error("Error classifying food item", error)
-  }
   // Insert the food item
   const { data: newFood, error: insertError } = (await supabase
     .from("FoodItem")
@@ -241,8 +228,8 @@ export async function addFoodItemToDatabase(
       ...foodWithoutId,
       messageId: messageId,
       bgeBaseEmbedding: embeddingSql,
-      foodItemCategoryID,
-      foodItemCategoryName
+      foodItemCategoryID: null,
+      foodItemCategoryName: null
     })
     .select()
     .single()) as { data: Tables<"FoodItem">; error: any }
@@ -254,7 +241,6 @@ export async function addFoodItemToDatabase(
   // console.log("Insert FoodItem result error:", insertError)
 
   if (newFood) {
-    await LinkIconsOrCreateIfNeeded(newFood.id)
     const { error: addNutrientsError } = await supabase.from("Nutrient").insert(
       food.Nutrient.map((nutrient: any) => ({
         foodItemId: newFood.id,
@@ -296,96 +282,12 @@ export async function addFoodItemToDatabase(
     throw selectError
   }
 
+  // Enrich after the food and its servings exist. Failure to enqueue cannot
+  // turn an otherwise valid food insertion into a failed meal log.
+  try { await classifyFoodCategoryQueue.enqueue(String(newFood.id)) }
+  catch { console.error("Food saved, but category enrichment could not be queued", {foodId:newFood.id}) }
+
   // Optionally handle the Nutrient and Serving insertions here if they are not part of the initial creation
 
   return newFoodWithServings as FoodItemWithNutrientsAndServing
 }
-
-async function testAddToDatabase() {
-  const user = await getUserByEmail("seb.grubb@gmail.com")
-  const food = {
-    id: 0,
-    createdAtDateTime: "2024-04-01T20:11:15.552Z",
-    knownAs: [],
-    description: null,
-    lastUpdated: "2024-04-01T20:11:15.552Z",
-    verified: true,
-    userId: null,
-    foodInfoSource: "USDA",
-    messageId: null,
-    name: "Intense Dark 72% Cacao Dark Chocolate, Intense Dark",
-    brand: "Ghirardelli",
-    weightUnknown: false,
-    defaultServingWeightGram: 32,
-    defaultServingLiquidMl: null,
-    isLiquid: false,
-    foodItemCategoryID: null,
-    foodItemCategoryName: null,
-    Serving: [
-      {
-        id: 0,
-        foodItemId: 0,
-        defaultServingAmount: null,
-        servingWeightGram: 32,
-        servingAlternateAmount: null,
-        servingAlternateUnit: null,
-        servingName: "3 squares"
-      }
-    ],
-    UPC: 747599414190,
-    externalId: "2214660",
-    Nutrient: [
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "cholesterol",
-        nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: 0
-      },
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "sodium",
-        nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: 0
-      },
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "calcium",
-        nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: 19.8
-      },
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "iron",
-        nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: 1.2
-      },
-      {
-        id: 0,
-        foodItemId: 0,
-        nutrientName: "potassium",
-        nutrientUnit: "mg",
-        nutrientAmountPerDefaultServing: 200
-      }
-    ],
-    kcalPerServing: 170,
-    proteinPerServing: 2,
-    totalFatPerServing: 15,
-    carbPerServing: 14,
-    fiberPerServing: 3.01,
-    sugarPerServing: 8,
-    satFatPerServing: 9,
-    transFatPerServing: 0,
-    addedSugarPerServing: 8,
-    adaEmbedding: null,
-    bgeBaseEmbedding: null
-  } as FoodItemWithNutrientsAndServing
-
-  let result = await addFoodItemToDatabase(food, await getFoodEmbedding(food), 1, user!)
-  console.dir(result, { depth: null })
-}
-
-// testAddToDatabase()

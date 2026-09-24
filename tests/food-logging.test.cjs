@@ -59,7 +59,7 @@ test('explicit grams bypass the serving provider entirely', async () => {
     './explicitMassServing': {explicitMassServing},
     '@/foodResolution/model': {foodCompletion(){throw Error('must not call model')}}
   })
-  const result = await api.findBestServingMatchChatGemini({full_item_user_message_including_serving:'100 g cooked white rice'}, {}, {})
+  const result = await api.findBestServingMatch({full_item_user_message_including_serving:'100 g cooked white rice'}, {}, {})
   assert.equal(result.serving.total_serving_g_or_ml, 100)
 })
 test('message updates honor zero resets and do not resolve empty/failed requests', async () => {
@@ -101,7 +101,7 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
     './common/claimFoodMessage':load('foodMessageProcessing/common/claimFoodMessage.ts',{'@/utils/supabase/serverAdmin':mem.admin}),
     './common/refreshFoodMessageProgress':{refreshFoodMessageProgress:refresh},
     './messageTime/extractMessageTime':{getMessageTimeChat:async()=>{if(timeFails)throw Error('provider unavailable');return null}},
-    '@/foodMessageProcessing/logFoodItemExtract/logFoodItemStreamChat':{logFoodItemStream:async()=>{
+    './logFoodItemExtract/logFoodItemStreamChat':{logFoodItemStream:async()=>{
       if(extractionFails)throw Error('stream unavailable')
       return {foodItemsToLog:extracted??[{food_database_search_name:'cooked white rice'}],isBadFoodLogRequest:false}
     }},
@@ -140,23 +140,24 @@ for(const [body,status] of [['{',400],[JSON.stringify({messageId:1,consumedOn:'b
  })
 }
 
-test('Gemini 3.8 request uses low thinking and usage logging cannot spoil a response',async()=>{
+test('Flash request uses OpenRouter low reasoning and usage logging cannot spoil a response',async()=>{
   let sent
   const api=load('languageModelProviders/gemini/foodCompletion.ts',{
+    '@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'},
     '../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{throw Error('usage db down')}}
-  },{process:{env:{GEMINI_API_KEY:'fake',FOOD_REASONING_MODEL:'gemini-3.8-flash'}},AbortSignal,fetch:async(url,options)=>{
+  },{process:{env:{OPENROUTER_API_KEY:'fake'}},AbortSignal,fetch:async(url,options)=>{
     sent={url,...JSON.parse(options.body)}
-    return Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'{"grams":100}'}]}}],usageMetadata:{totalTokenCount:10}})
+    return Response.json({choices:[{finish_reason:'stop',message:{content:'{"grams":100}'}}],usage:{total_tokens:10}})
   }})
   const result=await api.foodCompletion({systemPrompt:'food',userMessage:'100g rice'}, {})
   assert.equal(JSON.parse(result).grams,100)
-  assert.match(sent.url,/gemini-3.8-flash/)
-  assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel,'low')
-  assert.equal(sent.generationConfig.thinkingConfig.thinkingBudget,undefined)
+  assert.equal(sent.url,'https://openrouter.ai/api/v1/chat/completions')
+  assert.equal(sent.model,'google/gemini-3.8-flash')
+  assert.equal(sent.reasoning.effort,'low')
 })
-test('truncated Gemini JSON is rejected instead of being logged as a valid serving',async()=>{
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{},
-    {process:{env:{GEMINI_API_KEY:'fake',FOOD_REASONING_MODEL:'gemini-3.8-flash'}},AbortSignal,fetch:async()=>Response.json({candidates:[{finishReason:'MAX_TOKENS',content:{parts:[{text:'{"grams":'}]}}]})})
+test('truncated Flash JSON is rejected instead of being logged as a valid serving',async()=>{
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}},
+    {process:{env:{OPENROUTER_API_KEY:'fake'}},AbortSignal,fetch:async()=>Response.json({choices:[{finish_reason:'length',message:{content:'{"grams":'}}]})})
   await assert.rejects(api.foodCompletion({systemPrompt:'food',userMessage:'rice'},{}),/finish/)
 })
 test('exact match requires an unambiguous name and brand',async()=>{
@@ -170,12 +171,12 @@ test('exact match requires an unambiguous name and brand',async()=>{
   assert.equal(await findExactLocalFood(food),null)
 })
 test('rice worker uses exact food and grams without embeddings; icon failure preserves success',async()=>{
-  const {findBestServingMatchChatGemini}=load('foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem.ts',{'./explicitMassServing':{explicitMassServing}})
+  const {findBestServingMatch}=load('foodMessageProcessing/getServingSizeFromFoodItem/getServingSizeFromFoodItem.ts',{'./explicitMassServing':{explicitMassServing}})
   let saved,refreshed=0
   const api=load('foodMessageProcessing/processAndMatchLoggedFoodItem.ts',{
     './findExactLocalFood':{findExactLocalFood:async()=>({id:387,name:'cooked white rice',brand:'',defaultServingWeightGram:158,kcalPerServing:205.4,Nutrient:[]})},
     '@/database/GetMessagesForUser':{GetMessageById:async()=>({id:1,content:'100 g cooked white rice'})},
-    './getServingSizeFromFoodItem/getServingSizeFromFoodItem':{findBestServingMatchChatGemini},
+    './getServingSizeFromFoodItem/getServingSizeFromFoodItem':{findBestServingMatch},
     './common/calculateNutrientData':{calculateNutrientData},
     './common/updateLoggedFoodItemData':{updateLoggedFoodItemWithData:async(id,data)=>{saved=data;return data}},
     './common/refreshFoodMessageProgress':{refreshFoodMessageProgress:async()=>{refreshed++}},
@@ -190,7 +191,7 @@ test('meal is marked complete before slow icon decoration finishes', async () =>
   const api = load('foodMessageProcessing/processAndMatchLoggedFoodItem.ts', {
     './findExactLocalFood': { findExactLocalFood: async () => ({ id: 387, name: 'rice', defaultServingWeightGram: 100, kcalPerServing: 130, Nutrient: [] }) },
     '@/database/GetMessagesForUser': { GetMessageById: async () => ({ id: 1, content: '100 g rice' }) },
-    './getServingSizeFromFoodItem/getServingSizeFromFoodItem': { findBestServingMatchChatGemini: async item => ({ ...item, serving: explicitMassServing('100 g rice') }) },
+    './getServingSizeFromFoodItem/getServingSizeFromFoodItem': { findBestServingMatch: async item => ({ ...item, serving: explicitMassServing('100 g rice') }) },
     './common/calculateNutrientData': { calculateNutrientData },
     './common/updateLoggedFoodItemData': { updateLoggedFoodItemWithData: async (_id, data) => (saved = data) },
     './common/refreshFoodMessageProgress': { refreshFoodMessageProgress: async () => { assert.equal(saved.status, 'Processed'); refreshed = true } },
@@ -212,21 +213,21 @@ test('enqueue inserts immediately using database timestamp defaults, without a c
   await api.AddLoggedFoodItemToQueue({ id: 'user' }, { id: 1 }, { timeEaten: '2026-09-23T12:00:00Z' }, 0);
   assert.equal(inserted.status, 'Needs Processing'); assert.equal(inserted.createdAt, undefined); assert.equal(inserted.updatedAt, undefined); assert.equal(queued, '10');
 })
-test('Gemini access denial falls back once to the working OpenAI provider',async()=>{
+test('Flash access denial does not fall back to a retired provider',async()=>{
   const urls=[]
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{}, {
-    process:{env:{GEMINI_API_KEY:'fake',OPENAI_API_KEY:'fake',FOOD_REASONING_MODEL:'gemini-3.8-flash'}},AbortSignal,
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
+    process:{env:{OPENROUTER_API_KEY:'router-test',OPENAI_API_KEY:'fake'}},AbortSignal,
     fetch:async(url)=>{
       urls.push(url)
-      return urls.length===1 ? new Response('',{status:403}) : Response.json({choices:[{finish_reason:'stop',message:{content:'{"grams":100}'}}]})
+      return new Response('',{status:403})
     }
   })
-  assert.equal(JSON.parse(await api.foodCompletion({systemPrompt:'food',userMessage:'rice'},{})).grams,100)
-  assert.equal(urls.length,2);assert.match(urls[1],/api.openai.com/)
+  await assert.rejects(api.foodCompletion({systemPrompt:'food',userMessage:'rice'},{}),/403/)
+  assert.deepEqual(urls,['https://openrouter.ai/api/v1/chat/completions'])
 })
 test('OpenRouter accepts the configured key alias and routes Gemini with JSON and low reasoning',async()=>{
   let request
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{}, {
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
     process:{env:{OPEN_ROUTER_API_KEY:'router-test',FOOD_REASONING_MODEL:'google/gemini-3.8-flash'}},AbortSignal,
     fetch:async(url,options)=>{
       request={url,...options,body:JSON.parse(options.body)}
@@ -240,20 +241,18 @@ test('OpenRouter accepts the configured key alias and routes Gemini with JSON an
   assert.equal(request.body.reasoning.effort,'low')
   assert.equal(request.body.response_format.type,'json_object')
 })
-test('OpenRouter insufficient credits falls back without forwarding the router key',async()=>{
+test('OpenRouter insufficient credits fails without using another provider key',async()=>{
   const requests=[]
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{}, {
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
     process:{env:{OPENROUTER_API_KEY:'router-test',OPENAI_API_KEY:'openai-test',FOOD_REASONING_MODEL:'google/gemini-3.8-flash'}},AbortSignal,
     fetch:async(url,options)=>{
       requests.push({url,auth:options.headers.Authorization})
-      return requests.length===1 ? new Response('',{status:402}) : Response.json({choices:[{finish_reason:'stop',message:{content:'{"grams":100}'}}]})
+      return new Response('',{status:402})
     }
   })
-  await api.foodCompletion({systemPrompt:'food',userMessage:'rice'}, {})
-  assert.equal(requests.length,2)
+  await assert.rejects(api.foodCompletion({systemPrompt:'food',userMessage:'rice'}, {}),/402/)
+  assert.equal(requests.length,1)
   assert.equal(requests[0].auth,'Bearer router-test')
-  assert.equal(requests[1].auth,'Bearer openai-test')
-  assert.match(requests[1].url,/api.openai.com/)
 })
 
 test('simultaneous initial submissions enqueue a meal only once', async()=>{
@@ -343,7 +342,7 @@ function agentWorkerHarness({image=false,upc,exact=false,failed=false,refreshFai
     '@/utils/foodEmbedding':{foodToLogEmbedding:async()=>({embedding_cache_id:4})},
     './getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches':{getBestFoodEmbeddingMatches:async()=>[{id:387,name:'cooked white rice'},{externalId:'usda',name:'external rice'}]},
     './findBestLoggedFoodItemMatchToFood':{findBestLoggedFoodItemMatchToFood:async()=>{if(liveResult)assert.fail('Live match must skip legacy matching');if(failed)throw Error('matcher failed');return [food,null]}},
-    './getServingSizeFromFoodItem/getServingSizeFromFoodItem':{findBestServingMatchChatGemini:async item=>{if(liveResult)assert.fail('Live match must skip model serving');return {...item,serving:explicitMassServing(item.full_item_user_message_including_serving)}}},
+    './getServingSizeFromFoodItem/getServingSizeFromFoodItem':{findBestServingMatch:async item=>{if(liveResult)assert.fail('Live match must skip model serving');return {...item,serving:explicitMassServing(item.full_item_user_message_including_serving)}}},
     './common/calculateNutrientData':{calculateNutrientData},
     './common/updateLoggedFoodItemData':{updateLoggedFoodItemWithData:async(id,data)=>{events.push(['save']);saved=data;return data}},
     './common/refreshFoodMessageProgress':{refreshFoodMessageProgress:async()=>{events.push(['progress']);if(refreshFailed)throw Error('refresh failed')}},
@@ -419,11 +418,12 @@ test('a combined branded coffee queues independent components and preserves part
  }
 })
 
-test('legacy similarity shortcut filters a conflicting milk variant before selection',async()=>{
+test('semantic matcher filters a conflicting milk variant before selection',async()=>{
  const sources=[{id:11,name:'Whole Milk',cosine_similarity:.999},{id:65,name:'2% Milk',cosine_similarity:.99}]
  const api=load('foodMessageProcessing/findBestLoggedFoodItemMatchToFood.ts',{
   '@/utils/supabase/serverAdmin':{createAdminSupabase:()=>({from(){let id;const q={select(){return q},eq(_key,value){id=value;return q},single:async()=>({data:sources.find(f=>f.id===id),error:null})};return q}})},
-  './common/foodProcessingConstants':{COSINE_THRESHOLD:.97,COSINE_THRESHOLD_LOW_QUALITY:.7}
+  './common/foodProcessingConstants':{COSINE_THRESHOLD_LOW_QUALITY:.7},
+  './localDbFoodMatch/matchFoodItemToLocalDb':{findBestFoodMatchtoLocalDb:async candidates=>{assert.deepEqual(candidates.map(c=>c.id),[65]);return [candidates[0],null]}}
  })
  const [match]=await api.findBestLoggedFoodItemMatchToFood(sources,{food_database_search_name:'Fairlife milk',full_item_user_message_including_serving:'one cup Fairlife 2% milk'}, {},{},1)
  assert.equal(match.id,65)

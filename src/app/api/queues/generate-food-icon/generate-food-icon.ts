@@ -1,23 +1,20 @@
 // Constants
 export const MAX_DURATION = 300
-const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY
 
 // Importing dependencies and initializing the Supabase client
 import { createClient } from "@supabase/supabase-js"
 import { Database } from "types/supabase-generated.types"
 import { Queue } from "quirrel/next-app"
 import { createHash } from "crypto"
-import fetch from "node-fetch"
-import FormData from "form-data"
+import sharp from "sharp"
 
 // Importing local utility functions
 import { SupabaseURL, SupabaseServiceKey } from "@/utils/auth-keys"
-import { openai } from "@/utils/openaiFunctionSchemas"
+import { IMAGE_MODEL } from "@/ai/models"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 
 const BUCKET_NAME = "foodimages"
-const COSINE_THRESHOLD = 0.85
 
 // Initialize Supabase client outside of the queue to avoid reinitializing it every time
 const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
@@ -84,7 +81,7 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   // if there's a brand name we should append it to the food name
   const foodName = foodItem.brand ? `${foodItem.brand} ${foodItem.name}` : foodItem.name
   // Generate the icon and upload it to storage
-  const foodImageId = await generateAndUploadIcon(foodName, foodItem.id)
+  await generateAndUploadIcon(foodName, foodItem.id)
 
   console.log("Done generating food icon for:", foodItem.name)
 })
@@ -102,7 +99,7 @@ export const forceGenerateNewFoodIconQueue = Queue(
     if (!foodItem) throw new Error("No Food Item with that ID")
 
     // Generate the icon and upload it to storage
-    const foodImageId = await generateAndUploadIcon(foodItem.name, foodItem.id)
+    await generateAndUploadIcon(foodItem.name, foodItem.id)
 
     console.log("Done generating food icon for:", foodItem.name)
   }
@@ -121,50 +118,37 @@ async function getFoodItem(foodId: number) {
 
 // Generates an icon for the food item and uploads it to storage
 async function generateAndUploadIcon(foodName: string, foodId: number) {
-  // Generate the image using OpenAI's model
-  const imageUrl = await generateImageWithOpenAI(foodName)
-
-  // Download the image and process it with ClipDrop API
-  const processedImageBuffer = await processImageWithClipDrop(imageUrl!)
-
-  // Upload the processed image to Supabase storage and insert a record in the FoodImage table
-  const foodImageId = await uploadImageAndGetId(foodName, foodId, processedImageBuffer)
+  const imageBuffer = await generateImageWithOpenAI(foodName)
+  const foodImageId = await uploadImageAndGetId(foodName, foodId, imageBuffer)
 
   return foodImageId
 }
 
-// Generates an image using OpenAI's DALL-E model
+// A current image model returns PNG bytes with an alpha channel directly.
 async function generateImageWithOpenAI(foodName: string) {
-  const openAiResponse = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: `Create a clean vector isometric 3D render of ${foodName}, suitable for an icon. The image should showcase the food item in its most recognizable form, emphasizing its unique textures and colors. The render should be centered on a white background with no shadows or additional elements, emphasizing a minimalist and elegant design.`,
-    n: 1,
-    size: "1024x1024"
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) throw new Error("Image API key is not configured")
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method:"POST",
+    headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},
+    signal:AbortSignal.timeout(90000),
+    body:JSON.stringify({
+      model:IMAGE_MODEL,
+      prompt:`Create one clean, centered isometric food app icon of ${foodName}. Show only the food or its natural container. Every pixel outside the food silhouette must be fully transparent. Keep the silhouette crisp, with no ground, gradient, glow, bloom, vignette, drop shadow, reflection, text or border.`,
+      n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
+    })
   })
-
-  if (!openAiResponse) throw new Error("Error generating image with OpenAI")
-  return openAiResponse.data[0].url
-}
-
-// Processes the image using the ClipDrop API to remove the background
-async function processImageWithClipDrop(imageUrl: string) {
-  const imageResponse = await fetch(imageUrl)
-  const imageBuffer = await imageResponse.buffer()
-
-  const form = new FormData()
-  form.append("image_file", imageBuffer, {
-    filename: "image.png",
-    contentType: "image/png"
-  })
-
-  const clipDropResponse = await fetch("https://clipdrop-api.co/remove-background/v1", {
-    method: "POST",
-    headers: { "x-api-key": CLIPDROP_API_KEY! },
-    body: form
-  })
-
-  if (!clipDropResponse.ok) throw new Error("Error in removing background")
-  return await clipDropResponse.buffer()
+  if (!response.ok) {await response.body?.cancel();throw new Error(`Image generation failed (${response.status})`)}
+  const result=await response.json()
+  const encoded=result.data?.[0]?.b64_json
+  if(typeof encoded!=="string"||!encoded.length)throw new Error("Image generation returned no PNG")
+  const buffer=Buffer.from(encoded,"base64")
+  if(buffer.length>12_000_000)throw new Error("Generated icon exceeds size limit")
+  const metadata=await sharp(buffer).metadata()
+  if(metadata.format!=="png"||!metadata.hasAlpha)throw new Error("Generated icon is not a transparent PNG")
+  const alpha=(await sharp(buffer).stats()).channels[3]
+  if(!alpha||alpha.min===255)throw new Error("Generated icon has no transparent pixels")
+  return buffer
 }
 
 // Uploads the image to Supabase storage and inserts a record into the FoodImage table
@@ -237,22 +221,3 @@ async function insertFoodImageRecord(foodName: string, foodId: number, filePath:
   if (errorFoodItemImages) throw errorFoodItemImages
   return createdFoodImage.id
 }
-
-async function testIconGeneration() {
-  const foodName = "banana"
-  const foodId = 123124 // Example ID
-  try {
-    console.log(`Testing icon generation for: ${foodName}`)
-    const foodImageId = await generateAndUploadIcon(foodName, foodId)
-  } catch (error) {
-    console.error("Error during test icon generation:", error)
-  }
-}
-
-// test food icon queue generation
-async function testFoodIconQueueGeneration() {
-  await generateFoodIconQueue.enqueue(`2`)
-  await generateFoodIconQueue.enqueue(`3`)
-}
-
-//testFoodIconQueueGeneration()

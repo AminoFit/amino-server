@@ -23,7 +23,7 @@ import { re } from "mathjs"
 import { GetMessageById } from "@/database/GetMessagesForUser"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getBestFoodEmbeddingMatches } from "./getBestFoodEmbeddingMatches/getBestFoodEmbeddingMatches"
-import { findBestServingMatchChatGemini } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
+import { findBestServingMatch } from "./getServingSizeFromFoodItem/getServingSizeFromFoodItem"
 import { findFoodByUPC } from "./findFoodByUPC/findFoodByUPC"
 import { calculateNutrientData } from "./common/calculateNutrientData"
 import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
@@ -94,7 +94,7 @@ async function processLogFoodItemInternal(
     console.log("bestMatch", bestMatch.brand ? `${bestMatch.name} - ${bestMatch.brand}` : bestMatch.name)
 
     try {
-      if (!live) loggedFoodItemInfo = await findBestServingMatchChatGemini(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
+      if (!live) loggedFoodItemInfo = await findBestServingMatch(loggedFoodItemInfo, bestMatch as FoodItemWithNutrientsAndServing, user)
     } catch (err1) {
       console.log("Error processing food item for serving:", err1)
       foodMetric("item_result", 0, "error", { status: "Matching Failed" })
