@@ -10,7 +10,8 @@ type Metrics = { status?: string; itemsProcessed?: number; itemsToProcess?: numb
   matchedFoodId?: number; matchedGrams?: number; agentSteps?: number; agentToolCalls?: number; agentToolErrors?: number;
   agentComparison?: string; agentFoodId?: number; agentGrams?: number;
   agentStrategy?:string;agentRoute?:string;agentFallbackReason?:string;selectorModel?:string;selectorStatus?:string;
-  selectorConfidence?:number;selectorDurationMs?:number;prefetchDurationMs?:number;candidateCount?:number;validOptionCount?:number }
+  selectorConfidence?:number;selectorDurationMs?:number;prefetchDurationMs?:number;candidateCount?:number;validOptionCount?:number;
+  nutritionClaimCount?:number;nutritionIdentityCount?:number;nutritionPortionCount?:number;nutritionGroupCount?:number }
 
 // Deliberate allowlist: never serialize prompts, user objects, responses, keys or errors.
 export function foodMetric(stage: string, durationMs: number | null, outcome: "ok" | "error", metrics: Metrics = {}) {
@@ -31,7 +32,9 @@ export function foodMetric(stage: string, durationMs: number | null, outcome: "o
       agentStrategy:metrics.agentStrategy,agentRoute:metrics.agentRoute,agentFallbackReason:metrics.agentFallbackReason,
       selectorModel:metrics.selectorModel,selectorStatus:metrics.selectorStatus,selectorConfidence:metrics.selectorConfidence,
       selectorDurationMs:metrics.selectorDurationMs,prefetchDurationMs:metrics.prefetchDurationMs,
-      candidateCount:metrics.candidateCount,validOptionCount:metrics.validOptionCount }))
+      candidateCount:metrics.candidateCount,validOptionCount:metrics.validOptionCount,
+      nutritionClaimCount:metrics.nutritionClaimCount,nutritionIdentityCount:metrics.nutritionIdentityCount,
+      nutritionPortionCount:metrics.nutritionPortionCount,nutritionGroupCount:metrics.nutritionGroupCount }))
   } catch { /* Observability must not affect food processing. */ }
 }
 

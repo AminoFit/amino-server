@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto"
 
-export const FOOD_FEATURES = ["history_search", "history_reuse", "agent_text", "fast_selector", "agent_fallback", "agent_image", "grounded_search", "grounded_import"] as const
+export const FOOD_FEATURES = ["history_search", "history_reuse", "agent_text", "fast_selector", "agent_fallback", "nutrition_constraints", "agent_image", "grounded_search", "grounded_import"] as const
 export type FoodFeature = typeof FOOD_FEATURES[number]
 export type FoodMode = "off" | "shadow" | "on"
 
 // Live reuse has its own opt-in cohort; shadow search cannot change saved foods.
-const IMPLEMENTED: Partial<Record<FoodFeature, readonly FoodMode[]>> = { history_search: ["shadow"], history_reuse: ["on"], agent_text: ["shadow"], fast_selector:["shadow","on"], agent_fallback:["shadow","on"] }
+const IMPLEMENTED: Partial<Record<FoodFeature, readonly FoodMode[]>> = { history_search: ["shadow"], history_reuse: ["on"], agent_text: ["shadow"], fast_selector:["shadow","on"], agent_fallback:["shadow","on"], nutrition_constraints:["shadow"] }
 export function foodConfig(userId: string, env: NodeJS.ProcessEnv = process.env,
   capabilities: Partial<Record<FoodFeature, readonly FoodMode[]>> = IMPLEMENTED) {
   const features = {} as Record<FoodFeature, FoodMode>

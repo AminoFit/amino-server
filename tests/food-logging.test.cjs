@@ -12,6 +12,7 @@ function load(file, stubs = {}, globals = {}) {
     if (name in stubs) return stubs[name]
     if (name === '@/foodResolution/nutrition') return load('foodResolution/nutrition.ts')
     if (name === '@/foodResolution/composition') return load('foodResolution/composition.ts')
+    if (name === '@/foodResolution/constraints/shadow') return {shadowNutritionConstraints:async()=>{}}
     if (name === '@/foodResolution/agent/shadow') return {startFoodAgentShadow:()=>Promise.resolve(null),finishFoodAgentShadow:async()=>{}}
     if (name === '@/foodResolution/agent/live') return {tryFoodAgentLive:async()=>null}
     if (name === '@/foodResolution/history/reuse') return {reuseFoodHistory:async()=>null,isHistoryReference:()=>false}

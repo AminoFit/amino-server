@@ -9,3 +9,11 @@ Shared coverage validation also blocks a plain food when its item description st
 Unspecified side portions still use the existing serving estimator. The added component retains its source text and whether a portion was specified, rather than fabricating a precise portion in the decomposition code. Generic compound foods requiring more semantic interpretation may fail matching instead of losing calories silently. No new global foods or retroactive user-record changes are made by this fix.
 
 Validation: 162 tests pass, including the reported extraction shape, text/image worker coverage, exact-path behaviour, explicit quantities, duplicate-side prevention, exclusions, packaged products, calorie-total preservation and agent proposals with valid numbers but missing oil. The complete queue regression verifies the corrected two-item count is published before dispatch. Production verification is appended after deployment.
+
+## Production verification — 23 September 2026
+
+Release `273ca89` was built successfully on Vercel and promoted as `dpl_C5Jr4bUDS2VSvj3R1C39qwStBSut` (https://amino-gtz52jck1-hedge.vercel.app).
+
+A synthetic hosted API request for “200 g chicken breast with 1 tbsp olive oil” returned HTTP 200 and finished RESOLVED 2/2. Chicken food 55 saved 200 g / 291.0053 kcal through Gemini. Olive oil food 87 saved 13.5 g / 119.34 kcal / 13.5 g fat through Jev. The oil calories were therefore preserved as a separate item. Test message 30287 and both food rows were soft-deleted after the check. Existing user meals were not modified.
+
+This HTTP smoke covers the text route. The image regression is exercised locally using the exact erroneous extracted shape and the image worker path; no user's photo was resubmitted to a model.

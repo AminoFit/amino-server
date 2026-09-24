@@ -4,6 +4,7 @@ import { foodTrace, foodStage, currentFoodConfig } from "@/foodResolution/teleme
 import { claimFoodMessage } from "./common/claimFoodMessage"
 import { AddLoggedFoodItemToQueue } from "./addLogFoodItemToQueue"
 import { preserveExplicitAdditions } from "@/foodResolution/composition"
+import { shadowNutritionConstraints } from "@/foodResolution/constraints/shadow"
 import { refreshFoodMessageProgress } from "./common/refreshFoodMessageProgress"
 // Database related imports
 import { GetMessageById, GetMessagesForUser } from "@/database/GetMessagesForUser"
@@ -250,6 +251,7 @@ export async function GenerateResponseForQuickLog(
     // edited "yesterday" against the original message's creation date.
     const historyPromise = isMessageBeingEdited ? Promise.resolve() : shadowFoodHistory(user, { text: loadedMessage.content,
       referenceTime: loadedMessage.createdAt, excludeMessageId: inputMessageId })
+    let nutritionPromise:Promise<void>|undefined
     try {
       // Attach the rejection handler immediately, even if extraction later fails.
       // Time inference is optional; the caller already supplied a valid timestamp.
@@ -268,6 +270,7 @@ export async function GenerateResponseForQuickLog(
           : await logFoodItemStream(user, loadedMessage, new Date(consumedOn)))
         ;({ foodItemsToLog, isBadFoodLogRequest } = result)
         foodItemsToLog=preserveExplicitAdditions(foodItemsToLog)
+        nutritionPromise=shadowNutritionConstraints(loadedMessage.content,foodItemsToLog)
       } catch (error) {
         await UpdateMessage({ id: inputMessageId, status: "FAILED", resolvedAt: new Date() })
         throw error
@@ -299,6 +302,6 @@ export async function GenerateResponseForQuickLog(
         itemsToProcess: progress.itemsToProcess ?? 0,
         ...(warning ? { warning } : {})
       }
-    } finally { await historyPromise }
+    } finally { await Promise.all([historyPromise,nutritionPromise]) }
   })
 }

@@ -1,0 +1,33 @@
+{
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "case": "kefir_target",
+      "passed": true,
+      "status": "valid",
+      "durationMs": 1843.354416,
+      "model": "google/gemini-3.8-flash",
+      "plan": {
+        "claims": [
+          {
+            "id": "c1",
+            "sourceText": "250cals of kefire",
+            "nutrient": "kcal",
+            "value": 250,
+            "purpose": "portion",
+            "relation": "eq",
+            "basis": "consumed",
+            "servingUnit": null,
+            "itemIndexes": [
+              0
+            ]
+          }
+        ]
+      },
+      "promptTokens": 550,
+      "completionTokens": 53,
+      "costUsd": 0.0006051375
+    }
+  ]
+}

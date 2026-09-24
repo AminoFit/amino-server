@@ -1,0 +1,13 @@
+{
+  "passed": 0,
+  "failed": 1,
+  "results": [
+    {
+      "case": "kefir_target",
+      "passed": false,
+      "status": "unavailable",
+      "durationMs": 1242.623708,
+      "model": "google/gemini-3.8-flash"
+    }
+  ]
+}
