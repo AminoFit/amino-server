@@ -93,7 +93,7 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
   const mem = memoryDb({status:'RECEIVED',userId:owner,content:'100 g cooked white rice',itemsToProcess:0})
   const update = load('database/UpdateMessage.ts',{'@/utils/supabase/serverAdmin':mem.admin}).default
   const refresh = load('foodMessageProcessing/common/refreshFoodMessageProgress.ts',{'@/utils/supabase/serverAdmin':mem.admin}).refreshFoodMessageProgress
-  let queued=0
+  let queued=0;const queuedFoods=[]
   const api=load('foodMessageProcessing/RespondToMessage.ts', {
     '@/database/GetMessagesForUser':{GetMessageById:async()=>({...mem.state.message})},
     '@/database/UpdateMessage':{default:update},
@@ -105,12 +105,12 @@ function quickLogHarness({ timeFails=false, foodStatus='Processed', owner='user'
       if(extractionFails)throw Error('stream unavailable')
       return {foodItemsToLog:extracted??[{food_database_search_name:'cooked white rice'}],isBadFoodLogRequest:false}
     }},
-    './addLogFoodItemToQueue':{AddLoggedFoodItemToQueue:async()=>{
+    './addLogFoodItemToQueue':{AddLoggedFoodItemToQueue:async(_user,_message,food,index)=>{
       assert.equal(mem.state.message.itemsToProcess,expectedCount,'final expected count is published before dispatch')
-      queued++;mem.state.foods.push({status:foodStatus});await refresh(1);return {loggedFoodItemId:10,index:0}
+      queued++;queuedFoods.push(food);mem.state.foods.push({status:typeof foodStatus==='function'?foodStatus(food,index):foodStatus});await refresh(1);return {loggedFoodItemId:10,index:0}
     }}
   })
-  return { ...mem, run:()=>api.GenerateResponseForQuickLog({id:'user'},1,'2026-09-23T12:00:00Z'), queued:()=>queued }
+  return { ...mem, run:()=>api.GenerateResponseForQuickLog({id:'user'},1,'2026-09-23T12:00:00Z'), queued:()=>queued,queuedFoods }
 }
 test('time-provider rejection still allows the meal to be logged successfully', async()=>{
   const h=quickLogHarness({timeFails:true}); const result=await h.run()
@@ -406,4 +406,15 @@ test('valid catalogue calories preserve unknown macros instead of writing zeros'
 test('complete pre-existing nutrition cannot bypass the shared plausibility checks',async()=>{
   const h=agentWorkerHarness({exact:true,existingNutrients:{kcal:1800,proteinG:0,carbG:0,totalFatG:0}})
   await h.run();assert.equal(h.saved().status,'Matching Failed')
+})
+
+test('a combined branded coffee queues independent components and preserves partial success',async()=>{
+ for(const milkStatus of ['Processed','Matching Failed']){
+  const h=quickLogHarness({expectedCount:2,extracted:[{food_database_search_name:'coffee with Fairlife milk',full_item_user_message_including_serving:'coffee with Fairlife milk cup',brand:'Fairlife',branded:true}],foodStatus:(_food,index)=>index===0?'Processed':milkStatus})
+  const result=await h.run()
+  assert.equal(h.queued(),2);assert.equal(result.itemsToProcess,2)
+  assert.equal(h.queuedFoods[0].branded,false);assert.equal(h.queuedFoods[1].brand,'Fairlife')
+  assert.equal(result.itemsProcessed,milkStatus==='Processed'?2:1)
+  assert.equal(result.status,milkStatus==='Processed'?'RESOLVED':'FAILED')
+ }
 })

@@ -343,7 +343,7 @@ Your output should be in a JSON format. This format should consist only of the e
 Beginning of JSON output:`
   },
   "gpt-4o-mini": {
-    systemPrompt: "You are a helpful assistant that only replies in english and valid JSON. Preserve every explicitly mentioned oil, dressing, butter, sauce and topping. Separate a chicken breast from its olive oil-and-vinegar dressing; keep that dressing as one item, and remove it from the chicken description. Each addition must appear exactly once. Never copy the base food's weight or a meal's calorie total onto a side. Do not omit an addition because its portion is uncertain.",
+    systemPrompt: "You are a helpful assistant that only replies in english and valid JSON. Preserve every explicitly mentioned oil, dressing, butter, sauce and topping. Separate a chicken breast from its olive oil-and-vinegar dressing; keep that dressing as one item, and remove it from the chicken description. Each addition must appear exactly once. Never copy the base food's weight or a meal's calorie total onto a side. Do not omit an addition because its portion is uncertain. Decide whether each phrase describes one established product or separate database foods combined by the user. Coffee with Fairlife milk is TWO foods: unbranded coffee and Fairlife milk; Fairlife is the milk brand, not a coffee brand. Likewise split tea with Oatly milk, toast with Kerrygold butter, or oatmeal with a separately named branded topping. Keep a packaged/barcoded product or named cafe drink intact; do not decompose a Starbucks latte into invented ingredients. A component brand must attach only to that component. Do not invent a milk fat percentage or flavour when unspecified. Keep quantities with the component they describe, including postfix wording: coffee with Fairlife milk cup means coffee plus one cup of Fairlife milk; do not copy that cup onto the coffee. Conversely, a cup of coffee with a splash of milk keeps the cup on coffee and the splash on milk.",
     prompt: `<input_to_process>
 INPUT_HERE
 </input_to_process>
@@ -370,6 +370,29 @@ Your task is to analyze a sentence provided by a user (contained within the inpu
 9. If nutritional information is available, include it in the nutritional_information field. DO NOT include fields you don't know the exact value of or are null.
 9a. If a calculation is required you can use an equation string instead of a number. An equation string can only contain + - * / and numbers.</instructions>
 <examples>
+  <example>
+    <input>"Coffee with fairlife milk cup"</input>
+    <output>
+      {
+        "food_items": [
+          {
+            "full_single_food_database_search_name": "coffee",
+            "full_single_item_user_message_including_serving_or_quantity": "coffee, quantity unspecified",
+            "branded": false,
+            "brand": ""
+          },
+          {
+            "full_single_food_database_search_name": "Fairlife milk",
+            "full_single_item_user_message_including_serving_or_quantity": "one cup of Fairlife milk",
+            "branded": true,
+            "brand": "Fairlife"
+          }
+        ],
+        "contains_valid_food_items": true
+      }
+    </output>
+  </example>
+
   <example>
     <input>"I like dancing"</input>
     <output>

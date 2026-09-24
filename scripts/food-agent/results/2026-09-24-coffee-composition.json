@@ -1,0 +1,72 @@
+[
+  {
+    "text": "Coffee with fairlife milk cup",
+    "passed": true,
+    "durationMs": 1829.285333,
+    "items": [
+      {
+        "food_database_search_name": "coffee",
+        "full_item_user_message_including_serving": "coffee, quantity unspecified",
+        "branded": false,
+        "brand": ""
+      },
+      {
+        "food_database_search_name": "Fairlife milk",
+        "full_item_user_message_including_serving": "one cup of Fairlife milk",
+        "branded": true,
+        "brand": "Fairlife"
+      }
+    ]
+  },
+  {
+    "text": "One cup of coffee with 2 tbsp Fairlife 2% milk",
+    "passed": true,
+    "durationMs": 1726.7793749999998,
+    "items": [
+      {
+        "food_database_search_name": "coffee",
+        "full_item_user_message_including_serving": "one cup of coffee",
+        "branded": false,
+        "brand": ""
+      },
+      {
+        "food_database_search_name": "Fairlife 2% milk",
+        "full_item_user_message_including_serving": "2 tbsp of Fairlife 2% milk",
+        "branded": true,
+        "brand": "Fairlife"
+      }
+    ]
+  },
+  {
+    "text": "Toast with 10 g Kerrygold butter",
+    "passed": true,
+    "durationMs": 1845.5006659999995,
+    "items": [
+      {
+        "food_database_search_name": "toast",
+        "full_item_user_message_including_serving": "toast, quantity unspecified",
+        "branded": false,
+        "brand": ""
+      },
+      {
+        "food_database_search_name": "Kerrygold butter",
+        "full_item_user_message_including_serving": "10 g of Kerrygold butter",
+        "branded": true,
+        "brand": "Kerrygold"
+      }
+    ]
+  },
+  {
+    "text": "Starbucks 2% milk latte",
+    "passed": true,
+    "durationMs": 1363.3180839999995,
+    "items": [
+      {
+        "food_database_search_name": "2% milk latte",
+        "full_item_user_message_including_serving": "Starbucks 2% milk latte",
+        "branded": true,
+        "brand": "Starbucks"
+      }
+    ]
+  }
+]

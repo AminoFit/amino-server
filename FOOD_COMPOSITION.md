@@ -17,3 +17,15 @@ Release `273ca89` was built successfully on Vercel and promoted as `dpl_C5Jr4bUD
 A synthetic hosted API request for “200 g chicken breast with 1 tbsp olive oil” returned HTTP 200 and finished RESOLVED 2/2. Chicken food 55 saved 200 g / 291.0053 kcal through Gemini. Olive oil food 87 saved 13.5 g / 119.34 kcal / 13.5 g fat through Jev. The oil calories were therefore preserved as a separate item. Test message 30287 and both food rows were soft-deleted after the check. Existing user meals were not modified.
 
 This HTTP smoke covers the text route. The image regression is exercised locally using the exact erroneous extracted shape and the image worker path; no user's photo was resubmitted to a model.
+
+## Branded additions — 24 September 2026
+
+A later reported coffee failure exposed an overly broad exclusion: the composition backstop skipped every branded item. When extraction returned one “coffee with Fairlife milk” row with brand Fairlife, the brand incorrectly applied to coffee and the entire combined item failed.
+
+The shared text/image instructions now distinguish independently named additions from established packaged or café products. The deterministic backstop can split a common base plus an explicit addition when the supplied brand occurs only in the addition. It transfers that brand to the addition, clears it from the base, and preserves component quantities—including postfix “milk cup.” The search name omits quantity units while the source description retains them. It also handles shortened extraction queries and reuses an already extracted matching branded side. Packaged/barcoded products, complete named drinks, unresolved brand attribution and nutrition totals retain their conservative exclusions.
+
+This is a general brand-location rule, not a Fairlife lookup or a new web-search step. It adds no model call to the current pipeline. Unspecified milk fat percentage is not invented during extraction; resolving that ambiguity and asking clarification questions remain separate work. Unknown portions still use the existing downstream estimator.
+
+Regression cases cover Fairlife, Oatly, Kerrygold and Skippy additions; independent coffee/milk queueing; quantity placement; packaged drinks; and a milk failure preserving the successful coffee with truthful 1/2 counters. Four synthetic requests to the actual extraction model verified the reported wording, explicit separate quantities, another branded addition and an intact Starbucks latte. The first prompt-only trial still copied the cup onto coffee; an explicit example corrected this in the final trial, which also checked for that duplication. These smoke cases do not establish general extraction accuracy.
+
+Validation for this update: 184 tests, TypeScript and the production build pass. Re-run the optional real-provider extraction check with `node scripts/food-agent/composition-smoke.cjs --live`; the final observed responses are stored in `scripts/food-agent/results/2026-09-24-coffee-composition.json`.
