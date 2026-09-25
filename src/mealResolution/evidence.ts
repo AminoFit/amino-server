@@ -28,6 +28,8 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
   const events = new Map<number,MealEvent>()
   return {
     foods,events,
+    /** Foods created or matched by the source tools become readable evidence. */
+    discover(id:number) {if (Number.isSafeInteger(id)&&id>0) discovered.add(id)},
     async searchFoods(query:string,cursor=0) {
       const text=query.trim().slice(0,100)
       if (!text) return {status:"empty" as const,candidates:[],nextCursor:null}

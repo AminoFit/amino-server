@@ -5,7 +5,7 @@ import type { Tables } from "types/supabase"
 export type ModelUsage={prompt_tokens?:number;completion_tokens?:number;total_tokens?:number;cost?:number}
 
 export async function LogOpenAiUsage(
-  user:Tables<"User">,usage:ModelUsage,modelName:string,provider:string,
+  user:Pick<Tables<"User">,"id">,usage:ModelUsage,modelName:string,provider:string,
   completionTimeMs:number|null=null
 ):Promise<void>{
   foodMetric("model_usage",completionTimeMs,"ok",{

@@ -1,5 +1,5 @@
 import { decisionModel } from "@/ai/models"
-import { selectWithJev } from "@/foodResolution/agent/jev"
+import { selectWithJev } from "@/ai/jev"
 import { foodItemCategoriesList } from "./foodItemCategories"
 
 export type Category = { id:string; name:string; family:string; group:string }

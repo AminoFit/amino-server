@@ -19,7 +19,7 @@ function load(file,stubs={},globals={}){
 const taxonomy=load('foodMessageProcessing/classifyFoodItemInCategory/foodItemCategories.ts')
 const categories=load('foodMessageProcessing/classifyFoodItemInCategory/classifyFoodItemInCategory.ts',{
   '@/ai/models':{decisionModel:()=> 'typesafe/jev-1.13'},
-  '@/foodResolution/agent/jev':{},'./foodItemCategories':taxonomy
+  '@/ai/jev':{},'./foodItemCategories':taxonomy
 })
 
 test('category taxonomy has unique IDs and keeps Celery and Tomatoes distinct',()=>{

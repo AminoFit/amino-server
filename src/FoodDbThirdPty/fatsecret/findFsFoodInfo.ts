@@ -1,4 +1,4 @@
-import { cosineSimilarity } from "../../languageModelProviders/openai/utils/embeddingsHelper"
+import { cosineSimilarity } from "@/utils/cosineSimilarity"
 import { getCachedOrFetchEmbeddings } from "../../utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { findFatSecretFoodInfo, FatSecretFindFoodParams } from "./searchFsFood"
 import { FsFoodInfo, convertFsToFoodItem, FoodItemWithServings } from "./fsInterfaceHelper"

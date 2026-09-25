@@ -1,7 +1,7 @@
 import type { foodSearchResultsWithSimilarityAndEmbedding } from "@/FoodDbThirdPty/common/commonFoodInterface"
 import type { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import type { Tables } from "types/supabase"
-import { selectWithJev } from "@/foodResolution/agent/jev"
+import { selectWithJev } from "@/ai/jev"
 
 const normalize = (value?:string|null) => (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()
 

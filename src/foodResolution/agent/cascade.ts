@@ -1,7 +1,7 @@
 import { createAgentEvidence } from "./evidence"
 import { resolveFoodAgent, AGENT_LIMITS } from "./resolve"
 import { fallbackAgentModel } from "./model"
-import { selectWithJev } from "./jev"
+import { selectWithJev } from "@/ai/jev"
 import { selectionTask, unsupportedNutritionInput } from "./selection"
 import { validateProposal } from "./validate"
 import { foodNutrition } from "../nutrition"

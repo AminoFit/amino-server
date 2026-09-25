@@ -3,7 +3,7 @@ require('ts-node').register({transpileOnly:true,compilerOptions:{module:'CommonJ
 const {resolveFoodCascade}=require('../src/foodResolution/agent/cascade.ts')
 const {resolveFoodAgent}=require('../src/foodResolution/agent/resolve.ts')
 const {selectionTask,unsupportedNutritionInput}=require('../src/foodResolution/agent/selection.ts')
-const {selectWithJev}=require('../src/foodResolution/agent/jev.ts')
+const {selectWithJev}=require('../src/ai/jev.ts')
 const {createAgentEvidence}=require('../src/foodResolution/agent/evidence.ts')
 const {foodConfig}=require('../src/foodResolution/config.ts')
 const {MockLanguageModelV3}=require('ai/test')

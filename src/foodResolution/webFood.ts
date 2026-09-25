@@ -19,7 +19,7 @@ export function parseWebFoodResponse(body: any): WebFoodResult {
   return {data,sourceUrls,searches:body.usage?.server_tool_use_details?.web_search_requests ?? 0}
 }
 
-export async function resolveWebFood(system:string,prompt:string,user:Tables<"User">):Promise<WebFoodResult> {
+export async function resolveWebFood(system:string,prompt:string,user:Pick<Tables<"User">,"id">):Promise<WebFoodResult> {
   const model=foodModel()
   const key=process.env.OPENROUTER_API_KEY||process.env.OPEN_ROUTER_API_KEY
   if(!key)throw new Error("OpenRouter unavailable")

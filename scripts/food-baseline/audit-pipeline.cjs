@@ -18,7 +18,7 @@ const stubs = {
   '@/foodResolution/model': {FOOD_REASONING_MODEL: 'offline', foodCompletion: unexpected},
   '@/languageModelProviders/openai/customFunctions/chatCompletion': {chatCompletion: unexpected},
   '@/foodMessageProcessing/common/debugHelper': {getUserByEmail: unexpected},
-  '@/foodResolution/agent/jev': {selectWithJev: unexpected},
+  '@/ai/jev': {selectWithJev: unexpected},
   '../userId/accountScope': {accountScope: () => ({assertCurrent() {}})},
 };
 function load(file) {
