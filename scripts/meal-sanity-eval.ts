@@ -56,7 +56,7 @@ async function evaluate(item:typeof cases[number]) {
     async getFoodsAndServings(ids:number[]){const found=ids.flatMap(id=>byId.has(id)?[byId.get(id)!]:[]);
       for (const f of found) foods.set(f.id,f);return {status:"ok",foods:found,missingIds:ids.filter(id=>!byId.has(id))}}}
   const noSources={sources:new Map(),async searchFoodSources(){return {status:"empty",candidates:[]}},
-    proposeEstimatedFood(){throw new Error("not_available_in_eval")},async createFoodFromSource(){throw new Error("not_available_in_eval")}}
+    proposeEstimatedFood(){throw new Error("not_available_in_eval")},proposeLabelFood(){throw new Error("not_available_in_eval")},async createFoodFromSource(){throw new Error("not_available_in_eval")}}
   const input={userId:"00000000-0000-4000-8000-000000000001",operationId:"00000000-0000-4000-8000-000000000002",
     messageId:1,originalText:item.text,consumedOn:"2026-09-25T12:00:00Z",submittedAt:"2026-09-25T12:00:00Z",
     timezone:"UTC",locale:null,attachmentIds:[]}

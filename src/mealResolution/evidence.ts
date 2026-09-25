@@ -51,6 +51,15 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       return {status:candidates.length?"ok" as const:"empty" as const,candidates,
         foods:details.foods.map(foodSummary),nextCursor:candidates.length===20?cursor+20:null}
     },
+    /** Catalogue foods carrying a barcode decoded from this meal's photos. */
+    async findFoodsByGtin(gtins:string[]) {
+      if (!gtins.length) return []
+      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).order("id").limit(10).abortSignal(signal)
+      if (result.error) throw new Error("catalogue_unavailable")
+      const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
+      for (const id of ids) discovered.add(id)
+      return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
+    },
     /** Semantic catalogue neighbours of the whole meal text, read before the first model turn. */
     async prefetchFoods(text:string,limit=15) {
       const query=text.trim().slice(0,500)

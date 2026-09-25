@@ -19,18 +19,21 @@ export function parseWebFoodResponse(body: any): WebFoodResult {
   return {data,sourceUrls,searches:body.usage?.server_tool_use_details?.web_search_requests ?? 0}
 }
 
-export async function resolveWebFood(system:string,prompt:string,user:Pick<Tables<"User">,"id">):Promise<WebFoodResult> {
-  const model=foodModel()
+export async function resolveWebFood(system:string,prompt:string,user:Pick<Tables<"User">,"id">,
+  options:{model?:string}={}):Promise<WebFoodResult> {
+  const model=options.model??foodModel()
   const key=process.env.OPENROUTER_API_KEY||process.env.OPEN_ROUTER_API_KEY
   if(!key)throw new Error("OpenRouter unavailable")
   const started=Date.now(),signal=AbortSignal.timeout(45000)
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
     method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${key}`},signal,
     body:JSON.stringify({model,messages:[{role:"system",content:system},{role:"user",content:prompt}],
-      response_format:{type:"json_object"},max_tokens:3000,temperature:1,
+      // No sampling parameters: current Claude models reject them, and
+      // require_parameters would then leave no provider.
+      response_format:{type:"json_object"},max_tokens:4000,
       reasoning:{effort:"low",exclude:true},provider:{require_parameters:true},
-      tools:[{type:"openrouter:web_search",parameters:{engine:"exa",mode:"fast",max_uses:2,
-        max_results:5,max_total_results:10,max_characters:4000}}],max_tool_calls:2})
+      tools:[{type:"openrouter:web_search",parameters:{engine:"exa",max_uses:3,
+        max_results:5,max_total_results:12,max_characters:4000}}],max_tool_calls:3})
   })
   if(!response.ok){await response.body?.cancel();throw new Error(`Web food request failed (${response.status})`)}
   const body=await response.json(),parsed=parseWebFoodResponse(body)
