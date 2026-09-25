@@ -2,7 +2,7 @@ import { generateText, jsonSchema, Output, stepCountIs, tool, zodSchema } from "
 import { z } from "zod"
 import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
-import { createMealEvidence } from "./evidence"
+import { createMealEvidence, foodSummary } from "./evidence"
 import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood } from "./foodSources"
 
@@ -31,7 +31,10 @@ possible_duplicates, read those foods and use the matching one, or ask. Only whe
 (for example a homemade dish) call proposeEstimatedFood with per-100 g values and a clear basis,
 then createFoodFromSource with its sourceId. Prefer logging recognisable components separately
 over inventing a composite. Never create a food that the catalogue already has.
-For each new catalogue item you MUST call getFoodsAndServings before selecting it. For a copied
+prefetchedFoods and recentMeals were read before this turn. When prefetchedFoods cover every food with
+the right identity, preparation and variant, answer immediately without tools. Otherwise request all
+missing searches in one turn (parallel calls); searchFoods already returns details for its best hits.
+Every selected catalogue food must come from prefetchedFoods, searchFoods foods or getFoodsAndServings. For a copied
 historical item you MUST call getMealEvent first, then use its exact logged food ID. Avoid retyping
 historical nutrients. Choose the complete referenced group by returning each component item.
 Quantity kinds: mass for an explicit mass, serving for a known labelled serving and amount,
@@ -110,13 +113,20 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const withCount=<T>(work:()=>Promise<T>)=>{toolCalls++;return work()}
   const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??30000)
   try {
-    const photos=await (deps.loadPhotos??loadMealPhotos)(input.userId,input.messageId,
-      input.attachmentIds,input.useExistingPhotos??false)
+    // Photos, likely foods and recent meals load in parallel before the first turn.
+    const now=Date.parse(input.submittedAt)
+    const [photos,prefetched,recent]=await Promise.all([
+      (deps.loadPhotos??loadMealPhotos)(input.userId,input.messageId,input.attachmentIds,input.useExistingPhotos??false),
+      Promise.resolve().then(()=>evidence.prefetchFoods(input.originalText)).catch(()=>[]),
+      // Prefetch is an optimisation: any failure just means the agent searches.
+      Promise.resolve().then(()=>evidence.listMealEvents(new Date(now-3*86400000).toISOString(),
+        new Date(now+60000).toISOString())).then(result=>result.events).catch(()=>[])])
     controller.signal.throwIfAborted()
     const prompt=JSON.stringify({originalText:input.originalText,consumedOn:input.consumedOn,
       submittedAt:input.submittedAt,timezone:input.timezone,locale:input.locale,
       attachmentIds:photos.map(photo=>photo.id),answers:input.answers??[],previousMeal:input.previousMeal,
-      validationErrorCode:input.validationErrorCode,outputGuide})
+      validationErrorCode:input.validationErrorCode,prefetchedFoods:prefetched.map(foodSummary),
+      recentMeals:recent,outputGuide})
     const result=await (deps.generate??generateText)({
       model:selected.model,system,
       output:proposalOutput,

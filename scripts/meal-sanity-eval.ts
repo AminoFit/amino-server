@@ -1,10 +1,11 @@
 // Live Flash evaluation of meal matching sanity: every mentioned food exactly once,
 // nothing invented or doubled, and the right energy-density variant, in several
 // languages and with typos. Uses a fixture catalogue; makes no database writes.
+// EVAL_PREFETCH=0 measures the search-only path.
 // Run: npx ts-node -r tsconfig-paths/register scripts/meal-sanity-eval.ts [caseId...]  (EVAL_CONCURRENCY=2)
 import { compileMealPlan } from "@/mealResolution/compile"
 import { resolveMeal } from "@/mealResolution/resolve"
-import type { CatalogFood } from "@/mealResolution/evidence"
+import { foodSummary, type CatalogFood } from "@/mealResolution/evidence"
 
 const food=(id:number,name:string,kcal:number,protein:number,carb:number,fat:number,servings:[string,number][]=[]):CatalogFood=>({
   id,name,brand:null,lastUpdated:"2026-09-01T00:00:00Z",defaultServingWeightGram:100,weightUnknown:false,
@@ -49,7 +50,9 @@ async function evaluate(item:typeof cases[number]) {
   const evidence={foods,events:new Map(),discover(){},
     async listMealEvents(){return {status:"ok",events:[],nextCursor:null}},
     async getMealEvent(){return {status:"unavailable"}},
-    async searchFoods(){return {status:"ok",candidates:catalogue.map(({id,name,brand})=>({id,name,brand,knownAs:[]})),nextCursor:null}},
+    async searchFoods(){for (const f of catalogue) foods.set(f.id,f)
+      return {status:"ok",candidates:catalogue.map(({id,name,brand})=>({id,name,brand,knownAs:[]})),foods:catalogue.map(foodSummary),nextCursor:null}},
+    async prefetchFoods(){if (process.env.EVAL_PREFETCH==="0") return [];for (const f of catalogue) foods.set(f.id,f);return catalogue},
     async getFoodsAndServings(ids:number[]){const found=ids.flatMap(id=>byId.has(id)?[byId.get(id)!]:[]);
       for (const f of found) foods.set(f.id,f);return {status:"ok",foods:found,missingIds:ids.filter(id=>!byId.has(id))}}}
   const noSources={sources:new Map(),async searchFoodSources(){return {status:"empty",candidates:[]}},

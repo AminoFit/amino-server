@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
+import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 
 export type CatalogFood = {
   id:number;name:string;brand:string|null;lastUpdated:string;
@@ -21,6 +22,12 @@ export type MealEvent = {messageId:number;revision:number;originalText:string;co
 const catalogColumns = "id,name,brand,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
+/** Compact, authoritative view of a read food: enough to select it and its serving. */
+export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:food.brand,
+  servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing,proteinG:food.proteinPerServing,
+  carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
+  servings:food.Serving.map(s=>({id:s.id,name:s.servingName,grams:s.servingWeightGram,amount:s.defaultServingAmount}))})
+
 export function createMealEvidence(userId:string, signal:AbortSignal,
   db = createAdminSupabase()) {
   const discovered = new Set<number>()
@@ -39,8 +46,21 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const candidates=((result.data??[]) as {id:number;name:string;brand:string|null;knownAs:string[]|null}[])
         .map(row=>({id:row.id,name:row.name,brand:row.brand,knownAs:row.knownAs}))
       for (const candidate of candidates) discovered.add(candidate.id)
+      // Hydrate the best hits so the agent can select without another turn.
+      const details=candidates.length?await this.getFoodsAndServings(candidates.slice(0,8).map(c=>c.id)):{foods:[]}
       return {status:candidates.length?"ok" as const:"empty" as const,candidates,
-        nextCursor:candidates.length===20?cursor+20:null}
+        foods:details.foods.map(foodSummary),nextCursor:candidates.length===20?cursor+20:null}
+    },
+    /** Semantic catalogue neighbours of the whole meal text, read before the first model turn. */
+    async prefetchFoods(text:string,limit=15) {
+      const query=text.trim().slice(0,500)
+      if (!query) return []
+      const [vector]=await getCachedOrFetchEmbeddings("BGE_BASE",[query])
+      const near=await db.rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:limit}).abortSignal(signal)
+      if (near.error) throw new Error("catalogue_unavailable")
+      const ids=((near.data??[]) as {id:number}[]).map(row=>row.id)
+      for (const id of ids) discovered.add(id)
+      return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
     },
     async getFoodsAndServings(ids:number[]) {
       const allowed=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&discovered.has(id)).slice(0,20)
