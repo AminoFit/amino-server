@@ -8,7 +8,7 @@ Updated 2026-09-24. Server branch `codex/meal-agent-rebuild` started from deploy
 - Authenticated operation/status/answer/cancel/snapshot routes, immediate Quirrel dispatch with durable outbox recovery, and a minute recovery cron. `MEAL_OPERATIONS_ENABLED` remains off by default.
 - Meal-level agent with read-only owned history, complete meal group evidence, catalogue aliases/servings, typed schema output, generic plan validation, bounded error-code-only repair, and direct structured portion/move/delete actions. No food-name or English keyword routing is used by the new operation path.
 - Mobile account-scoped MMKV operation outbox, local-first create/edit/portion/move/delete entry points, clarification and retry UI, versioned Watermelon fields, and targeted revision-coherent refresh without a network-held global lock. `EXPO_PUBLIC_MEAL_OPERATIONS_ENABLED` remains off by default. Previous unrelated mobile modifications were preserved.
-- Acceptance now awaits the short queue handoff before the serverless response; the durable outbox still recovers a failed enqueue. The app checks active operations at one-second intervals, retries a failed local refresh before calling an operation complete, and preserves structured action type on manual retry.
+- Acceptance now awaits the short queue handoff before the serverless response; the durable outbox recovers a failed enqueue or a dispatched job never claimed by a worker. The app checks active operations at one-second intervals, retries a failed local refresh before calling an operation complete, and preserves structured action type on manual retry.
 
 ## Verification
 

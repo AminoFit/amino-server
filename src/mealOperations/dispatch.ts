@@ -18,12 +18,24 @@ export async function dispatchMealOperation(operationId:string) {
 
 export async function dispatchPendingMeals(limit=30) {
   const db=admin()
+  // An enqueue acknowledgement is not proof that a worker received the job.
+  // Re-drive old queued operations; duplicate deliveries are fenced by claim.
+  const stranded=await db.from("MealOperation").select("id")
+    .eq("state","queued").lt("updatedAt",new Date(Date.now()-15_000).toISOString()).limit(limit)
+  if(stranded.error) throw stranded.error
+  if(stranded.data?.length) {
+    const queued=await db.from("MealOutbox").update({state:"pending",availableAt:new Date().toISOString()})
+      .in("operationId",stranded.data.map((row:{id:string})=>row.id))
+      .eq("kind","resolve").eq("state","dispatched")
+    if(queued.error) throw queued.error
+  }
   const expired=await db.from("MealOperation").select("id")
     .eq("state","running").lt("leaseUntil",new Date().toISOString()).limit(limit)
   if(expired.error) throw expired.error
-  for(const row of expired.data??[]) {
+  if(expired.data?.length) {
     const queued=await db.from("MealOutbox").update({state:"pending",availableAt:new Date().toISOString()})
-      .eq("operationId",row.id).eq("kind","resolve").eq("state","dispatched")
+      .in("operationId",expired.data.map((row:{id:string})=>row.id))
+      .eq("kind","resolve").eq("state","dispatched")
     if(queued.error) throw queued.error
   }
   const due=await db.from("MealOutbox").select("operationId").eq("kind","resolve")
