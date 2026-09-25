@@ -145,6 +145,10 @@ BEGIN
     SELECT * INTO target FROM public."Message" WHERE id=p_message_id FOR UPDATE;
     IF target.id IS NULL OR target."userId" IS DISTINCT FROM p_user_id OR target."deletedAt" IS NOT NULL
     THEN RAISE EXCEPTION 'Meal unavailable' USING ERRCODE='42501'; END IF;
+    IF target."messageType"<>'FOOD_LOG_REQUEST' OR target.role<>'User' OR
+      (p_action='replace' AND target.status NOT IN ('RESOLVED','FAILED')) OR
+      (p_action<>'replace' AND target.status<>'RESOLVED')
+    THEN RAISE EXCEPTION 'Not a published food log' USING ERRCODE='22023'; END IF;
     IF target."publishedRevision" <> p_expected_revision
     THEN RAISE EXCEPTION 'Meal revision changed' USING ERRCODE='40001'; END IF;
     IF target."activeOperationId" IS NOT NULL
@@ -248,6 +252,11 @@ BEGIN
     target."operationGeneration" IS DISTINCT FROM op.generation OR
     (op.action <> 'create' AND target."publishedRevision" IS DISTINCT FROM op."expectedPublishedRevision")
   THEN RAISE EXCEPTION 'Meal revision changed' USING ERRCODE='40001'; END IF;
+  IF op.action IN ('create','replace') AND p_plan->>'originalText' IS DISTINCT FROM op.input->>'originalText'
+    OR op.action IN ('portion','move','delete') AND p_plan->>'originalText' IS DISTINCT FROM target.content
+    OR op.action='move' AND (p_plan->>'consumedOn')::timestamp IS DISTINCT FROM (op.input->>'consumedOn')::timestamp
+    OR op.action IN ('portion','delete') AND (p_plan->>'consumedOn')::timestamp IS DISTINCT FROM target."consumedOn"
+  THEN RAISE EXCEPTION 'Plan input changed' USING ERRCODE='40001'; END IF;
   item_count:=jsonb_array_length(p_plan->'items');
   IF op.action='delete' AND op.input->>'targetLogicalItemId' IS NULL THEN
     IF item_count<>0 THEN RAISE EXCEPTION 'Deleted meal must have no foods' USING ERRCODE='22023'; END IF;
@@ -415,6 +424,10 @@ BEGIN
   THEN RAISE EXCEPTION 'Operation version changed' USING ERRCODE='40001'; END IF;
   UPDATE public."Message" SET "activeOperationId"=NULL,"operationGeneration"="operationGeneration"+1
     WHERE id=op."messageId" AND "activeOperationId"=op.id;
+  IF op.action='create' THEN
+    UPDATE public."Message" SET status='FAILED',"deletedAt"=clock_timestamp() AT TIME ZONE 'UTC'
+      WHERE id=op."messageId" AND "publishedRevision"=0;
+  END IF;
   UPDATE public."MealOperation" SET state='cancelled',version=version+1,
     "workerToken"=NULL,"leaseUntil"=NULL,"updatedAt"=now(),"completedAt"=now()
     WHERE id=op.id;
@@ -442,10 +455,9 @@ CREATE TRIGGER guard_meal_message_write BEFORE UPDATE OR DELETE ON public."Messa
 
 CREATE OR REPLACE FUNCTION public.guard_meal_food_write() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $function$
-DECLARE target_id integer;
 BEGIN
-  target_id:=CASE WHEN TG_OP='DELETE' THEN OLD."messageId" ELSE NEW."messageId" END;
-  IF target_id IS NOT NULL AND EXISTS (SELECT 1 FROM public."Message" m WHERE m.id=target_id
+  IF EXISTS (SELECT 1 FROM public."Message" m
+      WHERE (m.id=OLD."messageId" OR m.id=NEW."messageId")
       AND (m."publishedRevision">0 OR m."activeOperationId" IS NOT NULL)) AND
      pg_catalog.current_setting('app.meal_operation_write',true) IS DISTINCT FROM 'true'
   THEN RAISE EXCEPTION 'Meal foods are owned by the operation protocol' USING ERRCODE='55000'; END IF;

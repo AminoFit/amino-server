@@ -33,6 +33,13 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
       await assert.rejects(call(a,acceptSql,[...request.slice(0,7),'b'.repeat(64)]),/Operation key reused/);
       await assert.rejects(call(a,acceptSql,[other,...request.slice(1)]),/Operation key reused/);
       await assert.rejects(call(a,acceptSql,[owner,randomUUID(),clientMealId,null,null,'create',input,hash]),/duplicate key/);
+      const cancelledCreateId=randomUUID();
+      const cancelledCreate=await call(a,acceptSql,[owner,cancelledCreateId,randomUUID(),null,null,'create',input,'9'.repeat(64)]);
+      assert.equal((await call(a,cancelSql,[owner,cancelledCreateId,cancelledCreate.operationVersion])).state,'cancelled');
+      const cancelledMessage=await a.query('select status,"deletedAt" from public."Message" where id=$1',[cancelledCreate.messageId]);
+      assert.equal(cancelledMessage.rows[0].status,'FAILED');
+      assert.ok(cancelledMessage.rows[0].deletedAt);
+      assert.equal(await call(b,claimSql,[cancelledCreateId,randomUUID(),45]),null);
       const token = randomUUID();
       const claimed = await call(a,claimSql,[createId,token,45]);
       assert.equal(claimed.messageId,first.messageId);
@@ -53,6 +60,7 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
       assert.deepEqual([copied.rows[0].fiberG,copied.rows[0].vitaminCMg],[4,12]);
       await assert.rejects(a.query('update public."Message" set content=$2 where id=$1',[first.messageId,'legacy overwrite']),/owned by the operation protocol/);
       await assert.rejects(a.query('update public."LoggedFoodItem" set grams=200 where "messageId"=$1',[first.messageId]),/owned by the operation protocol/);
+      await assert.rejects(a.query('update public."LoggedFoodItem" set "messageId"=null where "messageId"=$1',[first.messageId]),/owned by the operation protocol/);
       const editId = randomUUID(), editMealId=randomUUID();
       const editInput = {originalText:'two cups rice',consumedOn:input.consumedOn};
       const edit = await call(a,acceptSql,[owner,editId,editMealId,first.messageId,1,'replace',editInput,'c'.repeat(64)]);
