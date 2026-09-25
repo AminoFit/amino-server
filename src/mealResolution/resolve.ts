@@ -64,8 +64,6 @@ export type MealResolutionInput = {
 export type MealResolutionResult = {proposal:MealProposal;
   evidence:ReturnType<typeof createMealEvidence>;model:string;provider:string;
   photoIds:number[];durationMs:number;steps:number;toolCalls:number}
-const mealAgentModel=()=>agentModel({...process.env,
-  FOOD_REASONING_MODEL:process.env.MEAL_REASONING_MODEL??"gpt-4o"})
 
 export async function resolveMeal(input:MealResolutionInput,deps:{
   evidence?:ReturnType<typeof createMealEvidence>;
@@ -75,7 +73,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const started=performance.now()
   const controller=new AbortController()
   const evidence=deps.evidence??createMealEvidence(input.userId,controller.signal)
-  const selected=(deps.model??mealAgentModel)()
+  const selected=(deps.model??agentModel)()
   let steps=0,toolCalls=0
   const withCount=<T>(work:()=>Promise<T>)=>{toolCalls++;return work()}
   const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??30000)

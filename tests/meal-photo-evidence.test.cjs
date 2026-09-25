@@ -61,3 +61,17 @@ test('resolver sends photos as image parts and retains only stable IDs',async()=
   assert.ok(!generated.messages[0].content[0].text.includes(signedUrl));
   assert.ok(!JSON.stringify(result).includes('token=secret'));
 });
+
+test('the meal resolver uses the central food model policy by default',async()=>{
+  const saved={key:process.env.OPENROUTER_API_KEY,model:process.env.FOOD_REASONING_MODEL}
+  process.env.OPENROUTER_API_KEY='test-key';delete process.env.FOOD_REASONING_MODEL
+  try {
+    await assert.rejects(resolveMeal({userId:owner,operationId:'00000000-0000-4000-8000-000000000009',
+      messageId:1,originalText:'100 g rice',consumedOn:'2026-09-24T18:00:00Z',submittedAt:'2026-09-24T18:00:00Z',
+      timezone:'America/New_York',locale:'en-US',attachmentIds:[]},
+      {evidence:{},loadPhotos:async()=>[],generate:async()=>{throw new Error('model_reached')}}),/model_reached/)
+  } finally {
+    if(saved.key===undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY=saved.key
+    if(saved.model!==undefined) process.env.FOOD_REASONING_MODEL=saved.model
+  }
+})

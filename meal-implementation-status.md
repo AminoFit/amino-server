@@ -21,6 +21,8 @@ Updated 2026-09-24. Server branch `codex/meal-agent-rebuild` started from deploy
 
 ## Open release gates
 
+- After merging with the model cleanup (25 Sep), the meal resolver uses the central `google/gemini-3.8-flash` policy. Its `gpt-4o` default would have made every operation throw `Unsupported food model`. The 12/12 multilingual smoke result above was measured on `gpt-4o` and must be re-run on Flash before enabling `MEAL_OPERATIONS_ENABLED`. `CRON_SECRET` is not set in Vercel production, so the minute outbox-recovery cron returns 401 until it is added.
+
 - The user explicitly authorized photo logging and signed-URL delivery to the configured model provider. The new photo path has mocked ownership/handoff tests and a synthetic live-model check, but no real uploaded-photo end-to-end test or physical iPhone timing yet.
 - External source import/barcode evidence, voice integration, and complete old-client compatibility matrix are not done. New-protocol catalogue resolution currently requires an existing catalogue food.
 - The 12-case synthetic smoke check is not the plan's 320-variant multilingual evaluation or 12-family held-out set. No real-account end-to-end test or physical iPhone latency measurement has been run.
