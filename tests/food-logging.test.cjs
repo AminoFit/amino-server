@@ -17,6 +17,7 @@ function load(file, stubs = {}, globals = {}) {
     if (name === '@/foodResolution/agent/live') return {tryFoodAgentLive:async()=>null}
     if (name === '@/foodResolution/history/reuse') return {reuseFoodHistory:async()=>null,isHistoryReference:()=>false}
     if (name === '@/foodResolution/history/shadow') return {shadowFoodHistory:async()=>{}}
+    if (name === '@/mealOperations/takeover') return {shouldTakeOver:()=>false,takeOverMessage:async()=>{throw Error('legacy path under test')}}
     if (name === '@/foodResolution/telemetry') return { foodTrace: (u,m,c,fn)=>fn(), foodStage:(s,fn)=>fn(), foodMetric(){}, setFoodInputClass(){}, currentFoodConfig:()=>undefined }
     // Unused legacy imports have no live side effects in this isolated harness.
     return {}

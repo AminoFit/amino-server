@@ -60,11 +60,13 @@ export async function cancelMealOperation(userId:string,operationId:string,expec
 export async function getMealSnapshot(userId:string,messageId:number) {
   const db=admin()
   const {data:message,error}=await db.from("Message").select(
-    "id,userId,content,consumedOn,deletedAt,publishedRevision,activeOperationId")
+    "id,userId,content,consumedOn,deletedAt,publishedRevision,activeOperationId,operationOwned")
     .eq("id",messageId).eq("userId",userId).maybeSingle()
   if(error) throw error
   if(!message||message.deletedAt) throw new Error("meal_unavailable")
-  if(!message.publishedRevision) return {message,snapshot:null}
+  // The current app may have edited a taken-over meal's rows since its last
+  // revision, so only protocol-owned meals trust the revision snapshot.
+  if(!message.publishedRevision||!message.operationOwned) return {message,snapshot:null}
   const revision=await db.from("MealRevision").select("snapshot")
     .eq("messageId",messageId).eq("revision",message.publishedRevision).maybeSingle()
   if(revision.error) throw revision.error

@@ -22,7 +22,7 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "legacy_meal_nutrition_unavailable","structured_action_requires_published_snapshot",
   "meal_item_unavailable","meal_food_changed","food_evidence_unavailable",
   "serving_evidence_unavailable","unsupported_structured_action",
-  "delete_last_item_requires_meal_delete","missing_meal_coverage","duplicate_meal_mention",
+  "delete_last_item_requires_meal_delete","clarification_unavailable","missing_meal_coverage","duplicate_meal_mention",
   "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
 const sourcePlan=(value:unknown):PublishedPlan|null=>value&&typeof value==="object"&&
@@ -136,9 +136,14 @@ export async function processMealOperation(operationId:string) {
         locale:typeof raw.locale==="string"?raw.locale:null,
         attachmentIds:Array.isArray(raw.attachmentIds)?raw.attachmentIds as number[]:[],
         useExistingPhotos:claim.action==="replace",
-        answers:claim.answers,previousMeal:snapshot??message}
-      const result=await resolveMeal(input)
+        answers:claim.answers,previousMeal:snapshot??message,
+        // The current app cannot show questions: taken-over meals resolve with assumptions.
+        clarificationAllowed:raw.takeover!==true}
+      let result=await resolveMeal(input)
+      if(result.proposal.outcome==="needs_clarification"&&!input.clarificationAllowed)
+        result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"})
       if(result.proposal.outcome==="needs_clarification") {
+        if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
         await finishMealOperation(operationId,workerToken,"needs_clarification",
           "ambiguous_meal",null,{question:result.proposal.clarification})
         return {state:"needs_clarification"}
@@ -149,6 +154,7 @@ export async function processMealOperation(operationId:string) {
         if(!safeErrorCodes.has(code)) throw error
         const repaired=await resolveMeal({...input,validationErrorCode:code})
         if(repaired.proposal.outcome==="needs_clarification") {
+          if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
           await finishMealOperation(operationId,workerToken,"needs_clarification",
             "ambiguous_meal",null,{question:repaired.proposal.clarification})
           return {state:"needs_clarification"}

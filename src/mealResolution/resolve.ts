@@ -53,6 +53,8 @@ The claims array is ONLY for explicit numeric nutrient assertions in the current
 Do not turn nutrient values found in history or the catalogue into user claims. For a simple
 historical reference with no explicit nutrient assertion, return claims: []. Historical nutrients
 are copied through source IDs and validated by the backend.
+If clarificationAllowed is false, never ask: resolve with explicit assumptions (estimated_mass with a clear
+basis for uncertain portions, the most likely variant for identity) instead of needs_clarification.
 If validationErrorCode is present, it is a fixed backend validation result from a prior attempt.
 Reinspect evidence and return a corrected plan or a focused clarification.
 Return exactly one JSON object matching the provided schema, with no markdown or prose outside it.
@@ -91,7 +93,7 @@ export type MealResolutionInput = {
   consumedOn:string;submittedAt:string;timezone:string;locale:string|null;
   attachmentIds:number[];useExistingPhotos?:boolean;
   answers?:{text:string;at:string}[];previousMeal?:unknown;
-  validationErrorCode?:string
+  validationErrorCode?:string;clarificationAllowed?:boolean
 }
 export type MealResolutionResult = {proposal:MealProposal;
   evidence:ReturnType<typeof createMealEvidence>;model:string;provider:string;
@@ -125,7 +127,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const prompt=JSON.stringify({originalText:input.originalText,consumedOn:input.consumedOn,
       submittedAt:input.submittedAt,timezone:input.timezone,locale:input.locale,
       attachmentIds:photos.map(photo=>photo.id),answers:input.answers??[],previousMeal:input.previousMeal,
-      validationErrorCode:input.validationErrorCode,prefetchedFoods:prefetched.map(foodSummary),
+      validationErrorCode:input.validationErrorCode,clarificationAllowed:input.clarificationAllowed??true,prefetchedFoods:prefetched.map(foodSummary),
       recentMeals:recent,outputGuide})
     const result=await (deps.generate??generateText)({
       model:selected.model,system,
