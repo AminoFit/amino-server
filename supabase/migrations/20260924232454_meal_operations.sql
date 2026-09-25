@@ -231,6 +231,7 @@ DECLARE
   item_count integer;
   inserted_count integer := 0;
   next_food_id integer;
+  image_id integer;
   grams_value double precision;
   kcal_value double precision;
   nutrient jsonb;
@@ -257,6 +258,16 @@ BEGIN
     OR op.action='move' AND (p_plan->>'consumedOn')::timestamp IS DISTINCT FROM (op.input->>'consumedOn')::timestamp
     OR op.action IN ('portion','delete') AND (p_plan->>'consumedOn')::timestamp IS DISTINCT FROM target."consumedOn"
   THEN RAISE EXCEPTION 'Plan input changed' USING ERRCODE='40001'; END IF;
+  IF p_plan->'input'->'attachmentIds' IS NOT NULL THEN
+    IF jsonb_typeof(p_plan->'input'->'attachmentIds')<>'array' OR
+      jsonb_array_length(p_plan->'input'->'attachmentIds')>10
+    THEN RAISE EXCEPTION 'Invalid plan attachments' USING ERRCODE='22023'; END IF;
+    FOR image_id IN SELECT value::integer FROM jsonb_array_elements_text(p_plan->'input'->'attachmentIds') LOOP
+      IF NOT EXISTS (SELECT 1 FROM public."UserMessageImages" image WHERE image.id=image_id
+        AND image."userId"=op."userId" AND image."messageId"=target.id)
+      THEN RAISE EXCEPTION 'Photo evidence changed' USING ERRCODE='40001'; END IF;
+    END LOOP;
+  END IF;
   item_count:=jsonb_array_length(p_plan->'items');
   IF op.action='delete' AND op.input->>'targetLogicalItemId' IS NULL THEN
     IF item_count<>0 THEN RAISE EXCEPTION 'Deleted meal must have no foods' USING ERRCODE='22023'; END IF;
@@ -333,6 +344,8 @@ BEGIN
     status='RESOLVED',
     "itemsProcessed"=inserted_count,"itemsToProcess"=inserted_count,
     "resolvedAt"=clock_timestamp() AT TIME ZONE 'UTC',
+    hasimages=EXISTS (SELECT 1 FROM public."UserMessageImages" image WHERE image."messageId"=target.id
+      AND image."userId"=op."userId"),
     "deletedAt"=CASE WHEN op.action='delete' AND op.input->>'targetLogicalItemId' IS NULL
       THEN clock_timestamp() AT TIME ZONE 'UTC' ELSE "deletedAt" END,
     "publishedRevision"=new_revision,"activeOperationId"=NULL

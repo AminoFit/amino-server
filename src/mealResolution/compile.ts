@@ -13,7 +13,8 @@ export type PublishedItem = {logicalItemId:string;foodId:number;grams:number;
   sourceItemId?:{messageId:number;loggedFoodItemId:number;updatedAt:string;revision:number}}
 export type PublishedPlan = {schemaVersion:1;originalText:string;consumedOn:string;
   groups:{id:string;label:string|null}[];items:PublishedItem[];claims:MealProposal["claims"];
-  model:{id:string;provider:string};input:{operationId:string;submittedAt:string;timezone:string;locale:string|null}}
+  model:{id:string;provider:string};input:{operationId:string;submittedAt:string;timezone:string;
+    locale:string|null;attachmentIds:number[]}}
 
 const positive=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)&&value>0
 
@@ -134,5 +135,6 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
   return {schemaVersion:1,originalText:input.originalText,consumedOn:proposal.consumedOn,
     groups:[...groups].map(([id,label])=>({id,label})),items,claims:proposal.claims,
     model:{id:result.model,provider:result.provider},input:{operationId:input.operationId,
-      submittedAt:input.submittedAt,timezone:input.timezone,locale:input.locale}}
+      submittedAt:input.submittedAt,timezone:input.timezone,locale:input.locale,
+      attachmentIds:result.photoIds??input.attachmentIds}}
 }

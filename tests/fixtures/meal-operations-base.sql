@@ -14,7 +14,8 @@ CREATE TABLE public."UserMessageImages" (id integer PRIMARY KEY,"userId" uuid,
 ALTER TABLE public."Message"
   ADD COLUMN role public."Role" NOT NULL DEFAULT 'User',
   ADD COLUMN "messageType" public."MessageType" NOT NULL DEFAULT 'FOOD_LOG_REQUEST',
-  ADD COLUMN local_id text;
+  ADD COLUMN local_id text,
+  ADD COLUMN hasimages boolean NOT NULL DEFAULT false;
 CREATE SEQUENCE public."Message_meal_test_seq";
 SELECT setval('public."Message_meal_test_seq"',coalesce((SELECT max(id) FROM public."Message"),0)+1,false);
 ALTER TABLE public."Message" ALTER COLUMN id SET DEFAULT nextval('public."Message_meal_test_seq"');

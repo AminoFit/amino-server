@@ -7,7 +7,8 @@ import { claimMealOperation, finishMealOperation, getMealSnapshot, publishMealOp
 import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
 
 const transientCodes=new Set(["catalogue_unavailable","food_details_unavailable",
-  "history_unavailable","history_revision_unavailable","fetch failed","AbortError"])
+  "history_unavailable","history_revision_unavailable","media_evidence_unavailable",
+  "fetch failed","AbortError"])
 const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable",
   "history_unavailable","history_revision_unavailable","invalid_history_window",
   "invalid_history_id","unread_history_food","unread_history_group",
@@ -17,7 +18,7 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "unsupported_nutrition_claim","invalid_label_scope","label_source_unavailable",
   "invalid_nutrition_scope","nutrient_basis_unavailable",
   "nutrition_claim_conflicts_with_food","meal_needs_clarification",
-  "media_evidence_not_supported","legacy_meal_unavailable",
+  "media_evidence_unavailable","legacy_meal_unavailable",
   "legacy_meal_nutrition_unavailable","structured_action_requires_published_snapshot",
   "meal_item_unavailable","meal_food_changed","food_evidence_unavailable",
   "serving_evidence_unavailable","unsupported_structured_action",
@@ -33,10 +34,15 @@ async function legacySnapshot(claim:NonNullable<Awaited<ReturnType<typeof claimM
   message:{content:string;consumedOn:string;publishedRevision:number}):Promise<PublishedPlan> {
   const db=createAdminSupabase()
   const columns=`id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData`
-  const response=await db.from("LoggedFoodItem").select(columns)
-    .eq("messageId",claim.messageId).eq("userId",claim.userId).eq("status","Processed")
-    .is("deletedAt",null).order("id").limit(31)
+  const [response,photos]=await Promise.all([
+    db.from("LoggedFoodItem").select(columns)
+      .eq("messageId",claim.messageId).eq("userId",claim.userId).eq("status","Processed")
+      .is("deletedAt",null).order("id").limit(31),
+    db.from("UserMessageImages").select("id").eq("messageId",claim.messageId)
+      .eq("userId",claim.userId).order("id").limit(11)
+  ])
   if(response.error) throw response.error
+  if(photos.error||!photos.data||photos.data.length>10) throw new Error("media_evidence_unavailable")
   const rows=(response.data??[]) as any[]
   if(!rows.length||rows.length>30) throw new Error("legacy_meal_unavailable")
   const items=rows.map(row=>{
@@ -53,7 +59,8 @@ async function legacySnapshot(claim:NonNullable<Awaited<ReturnType<typeof claimM
   return {schemaVersion:1,originalText:message.content,consumedOn:message.consumedOn,
     groups:[],items,claims:[],model:{id:"legacy-snapshot",provider:"server"},
     input:{operationId:claim.operationId,submittedAt:String(claim.input.submittedAt),
-      timezone:String(claim.input.timezone),locale:typeof claim.input.locale==="string"?claim.input.locale:null}}
+      timezone:String(claim.input.timezone),locale:typeof claim.input.locale==="string"?claim.input.locale:null,
+      attachmentIds:photos.data.map(photo=>photo.id)}}
 }
 
 async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimMealOperation>>>) {
@@ -65,7 +72,8 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
   const copied:PublishedPlan=structuredClone(previous)
   if(published) copied.items=copied.items.map(item=>({...item,sourceItemId:undefined,catalogueUpdatedAt:undefined}))
   copied.input={operationId:claim.operationId,submittedAt:String(input.submittedAt),
-    timezone:String(input.timezone),locale:typeof input.locale==="string"?input.locale:null}
+    timezone:String(input.timezone),locale:typeof input.locale==="string"?input.locale:null,
+    attachmentIds:previous.input.attachmentIds??[]}
   copied.model={id:"structured-action",provider:"server"}
   if(claim.action==="delete") {
     if(input.targetLogicalItemId) {
@@ -125,8 +133,8 @@ export async function processMealOperation(operationId:string) {
         submittedAt:String(raw.submittedAt),timezone:String(raw.timezone),
         locale:typeof raw.locale==="string"?raw.locale:null,
         attachmentIds:Array.isArray(raw.attachmentIds)?raw.attachmentIds as number[]:[],
+        useExistingPhotos:claim.action==="replace",
         answers:claim.answers,previousMeal:snapshot??message}
-      if(input.attachmentIds.length) throw new Error("media_evidence_not_supported")
       const result=await resolveMeal(input)
       if(result.proposal.outcome==="needs_clarification") {
         await finishMealOperation(operationId,workerToken,"needs_clarification",

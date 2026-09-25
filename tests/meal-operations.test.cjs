@@ -20,21 +20,29 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
       const owner = randomUUID(), other = randomUUID(), createId = randomUUID(), clientMealId = randomUUID();
       const foodId = 10000000 + Math.floor(Math.random()*1000000);
       const servingId = foodId;
+      const photoId=foodId+1000000,foreignPhotoId=photoId+1;
       await a.query('insert into public."User"(id) values($1),($2)',[owner,other]);
+      await a.query('insert into public."UserMessageImages"(id,"userId","imagePath") values($1,$2,$3),($4,$5,$6)',
+        [photoId,owner,`${owner}/meal.jpg`,foreignPhotoId,other,`${other}/other.jpg`]);
       await a.query('insert into public."FoodItem"(id,"userId",name,"defaultServingWeightGram","kcalPerServing") values($1,null,$2,100,100)',[foodId,'rice']);
       await a.query('insert into public."Serving"(id,"foodItemId","servingName","servingWeightGram","defaultServingAmount") values($1,$2,$3,100,1)',[servingId,foodId,'cup']);
-      const input = {originalText:'one cup rice',consumedOn:'2026-09-24T18:00:00Z'};
+      const input = {originalText:'one cup rice',consumedOn:'2026-09-24T18:00:00Z',attachmentIds:[photoId]};
       const hash = 'a'.repeat(64);
+      await assert.rejects(call(a,acceptSql,[owner,randomUUID(),randomUUID(),null,null,'create',
+        {...input,attachmentIds:[foreignPhotoId]},'8'.repeat(64)]),/Meal attachment unavailable/);
       const request = [owner,createId,clientMealId,null,null,'create',input,hash];
       const [first,retry] = await Promise.all([call(a,acceptSql,request),call(b,acceptSql,request)]);
       assert.equal(first.messageId,retry.messageId);
       assert.equal(first.operationId,retry.operationId);
       assert.equal(first.state,'queued');
+      assert.equal((await a.query('select "messageId" from public."UserMessageImages" where id=$1',[photoId])).rows[0].messageId,first.messageId);
       await assert.rejects(call(a,acceptSql,[...request.slice(0,7),'b'.repeat(64)]),/Operation key reused/);
       await assert.rejects(call(a,acceptSql,[other,...request.slice(1)]),/Operation key reused/);
-      await assert.rejects(call(a,acceptSql,[owner,randomUUID(),clientMealId,null,null,'create',input,hash]),/duplicate key/);
+      await assert.rejects(call(a,acceptSql,[owner,randomUUID(),clientMealId,null,null,'create',
+        {...input,attachmentIds:[]},hash]),/duplicate key/);
       const cancelledCreateId=randomUUID();
-      const cancelledCreate=await call(a,acceptSql,[owner,cancelledCreateId,randomUUID(),null,null,'create',input,'9'.repeat(64)]);
+      const cancelledCreate=await call(a,acceptSql,[owner,cancelledCreateId,randomUUID(),null,null,'create',
+        {...input,attachmentIds:[]},'9'.repeat(64)]);
       assert.equal((await call(a,cancelSql,[owner,cancelledCreateId,cancelledCreate.operationVersion])).state,'cancelled');
       const cancelledMessage=await a.query('select status,"deletedAt" from public."Message" where id=$1',[cancelledCreate.messageId]);
       assert.equal(cancelledMessage.rows[0].status,'FAILED');
@@ -45,9 +53,11 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
       assert.equal(claimed.messageId,first.messageId);
       assert.equal(await call(b,claimSql,[createId,randomUUID(),45]),null);
       const plan = {schemaVersion:1,originalText:input.originalText,consumedOn:input.consumedOn,
+        input:{attachmentIds:[photoId]},
         items:[{logicalItemId:randomUUID(),foodId,servingId,servingAmount:1,loggedUnit:'cup',grams:100,
           nutrition:{kcal:100,proteinG:2,carbG:20,totalFatG:1,fiberG:4,vitaminCMg:12}}]};
       await assert.rejects(call(b,publishSql,[createId,randomUUID(),plan]),/claim changed/);
+      await assert.rejects(call(a,publishSql,[createId,token,{...plan,input:{attachmentIds:[foreignPhotoId]}}]),/Photo evidence changed/);
       await assert.rejects(call(a,publishSql,[createId,token,{...plan,items:[{
         ...plan.items[0],origin:'catalogue',grams:101}]}]),/Serving quantity changed/);
       await assert.rejects(call(a,publishSql,[createId,token,{...plan,items:[{
@@ -118,6 +128,7 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
       const copyToken=randomUUID();
       await call(b,claimSql,[copyId,copyToken,45]);
       const copiedPlan={...replacement,originalText:copyInput.originalText,consumedOn:copyInput.consumedOn,
+        input:{attachmentIds:[]},
         items:[{...replacement.items[0],logicalItemId:randomUUID(),
           sourceItemId:{messageId:first.messageId,loggedFoodItemId:source.rows[0].id,
             updatedAt:source.rows[0].updatedAt,revision:2}}]};

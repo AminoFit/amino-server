@@ -19,10 +19,6 @@ export async function POST(request:NextRequest) {
   const parsed=operationRequest.safeParse(raw)
   if(!parsed.success) return NextResponse.json({error:"invalid_operation",issues:parsed.error.issues},{status:422})
   const input=parsed.data
-  // Media requires stable, owned attachment capabilities. This route cannot
-  // truthfully resolve them until that evidence adapter is installed.
-  if((input.action==="create"||input.action==="replace")&&input.input.attachmentIds.length)
-    return NextResponse.json({error:"media_evidence_unavailable"},{status:422})
   const isSubscribed=aminoUser.subscriptionExpiryDate&&
     new Date(aminoUser.subscriptionExpiryDate).getTime()>Date.now() ||
     await checkAndUpdateUserIsSubscribed(aminoUser.id)

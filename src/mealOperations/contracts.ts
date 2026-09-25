@@ -9,7 +9,7 @@ const base = z.object({
   submittedAt:instant,timezone:z.string().min(1).max(80),
   locale:z.string().min(2).max(35).nullable().optional()
 })
-const languageInput = z.object({originalText:z.string().trim().min(1).max(8000),
+const languageInput = z.object({originalText:z.string().trim().max(8000),
   consumedOn:instant,localId:z.string().min(8).max(64).optional(),
   attachmentIds:z.array(z.number().int().positive()).max(10).default([])}).strict()
 const structuredInput = z.object({originalText:z.string().max(8000),consumedOn:instant,
@@ -28,6 +28,9 @@ export const operationRequest = z.discriminatedUnion("action",[
   base.extend({action:z.literal("delete"),messageId:z.number().int().positive(),
     expectedPublishedRevision:z.number().int().nonnegative(),input:structuredInput}).strict()
 ]).superRefine((request,ctx)=>{
+  if(request.action==="create"&&!request.input.originalText&&
+    !request.input.attachmentIds.length)
+    ctx.addIssue({code:"custom",path:["input"],message:"Food text or a photo is required"})
   try {new Intl.DateTimeFormat("en",{timeZone:request.timezone})}
   catch {ctx.addIssue({code:"custom",path:["timezone"],message:"Valid IANA timezone required"})}
   if(request.action==="portion") {
