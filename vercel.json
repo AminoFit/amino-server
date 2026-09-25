@@ -11,6 +11,10 @@
     {
       "path": "/api/push-notifications-cron",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/meal-outbox-cron",
+      "schedule": "* * * * *"
     }
   ]
 }
