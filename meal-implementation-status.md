@@ -16,7 +16,7 @@ Updated 2026-09-24. Server branch `codex/meal-agent-rebuild` started from deploy
 - Compiler tests passed for a complete structured dish group, omission, micronutrient preservation, and nutrient-claim scope.
 - Synthetic live `gpt-4o` resolver smoke check passed 8/8 final cases across English, Spanish, Chinese, Arabic, French, Portuguese, German and Japanese. Cases cover smoothie/soup references, side-dish exclusion and explicit omission. Durations in the final run were 2.8–3.3 seconds for resolver/model/tool time, not tap-to-render.
 - Server and mobile TypeScript checks passed. Mobile `npm run typecheck` also passed theme checks. The final clean `npm run ios:prod` build exited 0, with zero errors and five warnings, and installed on the iPhone 15 Pro simulator. No physical iPhone install was performed.
-- Server `next build` compiled and passed type/lint phases but page-data collection was blocked by missing legacy build-time environment variables in the isolated worktree (`OPENAI_API_KEY`, `PROMPT_CACHE_REDIS_URL`, `BULL_MQ_REDIS_URL`, `BULL_MQ_PLATFORM` on successive attempts). No production build/deployment was claimed.
+- Server `next build` compiled and passed type/lint phases but page-data collection failed in the existing `/api/queues/process-food-item` route: first because the isolated worktree lacks legacy build-time environment variables, then with a bundled legacy dependency `TypeError` when placeholder variables were supplied. No production build/deployment was claimed.
 
 ## Open release gates
 
