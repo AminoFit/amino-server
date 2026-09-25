@@ -27,6 +27,8 @@ const soupEvent:MealEvent={messageId:42,revision:1,
     grams:100,kcal:100,nutrition:{kcal:100,proteinG:5,carbG:10,totalFatG:2,
       fiberG:2,vitaminCMg:4},servingId:null,servingAmount:null,loggedUnit:"g"})),
   groups:[{id:"soup",label:"Soup"},{id:"side",label:"Side dish"}]}
+const legacyEvent:MealEvent={...event,revision:0,groups:[],
+  foods:event.foods.map(food=>({...food,groupId:null}))}
 const cases=[
   {locale:"en-US",text:"Same smoothie as yesterday",source:event,expected:[101,102,103,104]},
   {locale:"es-ES",text:"El mismo batido de ayer",source:event,expected:[101,102,103,104]},
@@ -35,7 +37,11 @@ const cases=[
   {locale:"fr-FR",text:"Le même smoothie qu'hier, sans graines de chia",source:event,expected:[101,102,103]},
   {locale:"pt-BR",text:"O mesmo smoothie de ontem, sem chia",source:event,expected:[101,102,103]},
   {locale:"de-DE",text:"Die gleiche Linsensuppe wie gestern",source:soupEvent,expected:[201,202,203]},
-  {locale:"ja-JP",text:"昨日と同じレンズ豆のスープ",source:soupEvent,expected:[201,202,203]}
+  {locale:"ja-JP",text:"昨日と同じレンズ豆のスープ",source:soupEvent,expected:[201,202,203]},
+  {locale:"en-US",text:"Same smoothie as yesterday",source:legacyEvent,expected:[101,102,103,104]},
+  {locale:"es-ES",text:"El mismo batido de ayer",source:legacyEvent,expected:[101,102,103,104]},
+  {locale:"zh-CN",text:"和昨天一样的奶昔",source:legacyEvent,expected:[101,102,103,104]},
+  {locale:"ar-SA",text:"نفس السموذي الذي شربته أمس",source:legacyEvent,expected:[101,102,103,104]}
 ]
 
 async function evaluate(locale:string,originalText:string,source:MealEvent,expected:number[]) {
@@ -43,7 +49,7 @@ async function evaluate(locale:string,originalText:string,source:MealEvent,expec
   let historyReads=0
   const evidence={events,foods:new Map(),
     async listMealEvents(){return {status:"ok",events:[{messageId:42,
-      originalText:source.originalText,consumedOn:source.consumedOn,foodCount:source.foods.length,revision:1}],nextCursor:null}},
+      originalText:source.originalText,consumedOn:source.consumedOn,foodCount:source.foods.length,revision:source.revision}],nextCursor:null}},
     async getMealEvent(id:number){historyReads++;if(id===42){events.set(42,source);return {status:"ok",event:source}}
       return {status:"unavailable"}},
     async searchFoods(){return {status:"empty",candidates:[],nextCursor:null}},
