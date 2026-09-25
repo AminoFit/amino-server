@@ -1,0 +1,190 @@
+{
+  "sourceRoot": "/private/tmp/amino-smoothie-server",
+  "nature": "offline real-function characterization; no model/database calls",
+  "observations": [
+    {
+      "case": "same smoothie as yesterday",
+      "actual": {
+        "interceptedBeforeAgent": true,
+        "target": "smoothie"
+      }
+    },
+    {
+      "case": "same smoothie as yesterday without honey",
+      "actual": {
+        "interceptedBeforeAgent": true,
+        "target": null
+      }
+    },
+    {
+      "case": "le même smoothie qu’hier",
+      "actual": {
+        "interceptedBeforeAgent": false,
+        "target": null
+      }
+    },
+    {
+      "case": "el mismo batido de ayer",
+      "actual": {
+        "interceptedBeforeAgent": false,
+        "target": null
+      }
+    },
+    {
+      "case": "和昨天一样的奶昔",
+      "actual": {
+        "interceptedBeforeAgent": false,
+        "target": null
+      }
+    },
+    {
+      "case": "my usual breakfast",
+      "actual": {
+        "interceptedBeforeAgent": true,
+        "target": null
+      }
+    },
+    {
+      "case": "two cups rice",
+      "actual": {
+        "agentAccepted": true,
+        "grams": 316
+      }
+    },
+    {
+      "case": "deux tasses de riz",
+      "actual": {
+        "agentAccepted": false,
+        "grams": null
+      }
+    },
+    {
+      "case": "dos tazas de arroz",
+      "actual": {
+        "agentAccepted": false,
+        "grams": null
+      }
+    },
+    {
+      "case": "半杯米饭",
+      "actual": {
+        "agentAccepted": false,
+        "grams": null
+      }
+    },
+    {
+      "case": "1/2 cup rice",
+      "actual": {
+        "agentAccepted": false,
+        "grams": null
+      }
+    },
+    {
+      "case": "half a cup rice",
+      "actual": {
+        "agentAccepted": true,
+        "grams": 79
+      }
+    },
+    {
+      "case": "one cup regular rice",
+      "actual": {
+        "agentAccepted": false,
+        "grams": null
+      }
+    },
+    {
+      "case": "one bowl rice, with authoritative bowl weight available",
+      "actual": {
+        "agentAccepted": false
+      }
+    },
+    {
+      "case": "chicken with butter",
+      "actual": {
+        "rewrittenItems": [
+          "chicken",
+          "butter"
+        ],
+        "vetoPlainBase": [
+          "butter"
+        ]
+      }
+    },
+    {
+      "case": "poulet avec du beurre",
+      "actual": {
+        "rewrittenItems": [
+          "poulet"
+        ],
+        "vetoPlainBase": []
+      }
+    },
+    {
+      "case": "model selects 1 cup; converter changes serving ID to teaspoon",
+      "actual": {
+        "serving_amount": 1,
+        "serving_name": "cup",
+        "serving_g_or_ml": "g",
+        "total_serving_g_or_ml": 100,
+        "serving_id": 101,
+        "full_serving_string": "1 cup"
+      }
+    },
+    {
+      "case": "model returns unknown serving ID",
+      "actual": {
+        "serving_amount": 1,
+        "serving_name": "piece",
+        "serving_g_or_ml": "g",
+        "total_serving_g_or_ml": 37,
+        "serving_id": 99999,
+        "full_serving_string": "1 piece"
+      }
+    },
+    {
+      "case": "shortened extraction searchName rice; description cooked rice; catalogue rice",
+      "actual": {
+        "exactShortcutAccepted": true
+      }
+    },
+    {
+      "case": "100 g 2% milk validates, then live serving reconstruction rejects it",
+      "actual": {
+        "proposalAccepted": true,
+        "liveAccepted": false
+      }
+    },
+    {
+      "case": "20 g protein",
+      "actual": {
+        "shadowNutritionRecognized": true
+      }
+    },
+    {
+      "case": "20 g de protéines",
+      "actual": {
+        "shadowNutritionRecognized": false
+      }
+    },
+    {
+      "case": "20 g de proteína",
+      "actual": {
+        "shadowNutritionRecognized": false
+      }
+    },
+    {
+      "case": "20克蛋白质",
+      "actual": {
+        "shadowNutritionRecognized": false
+      }
+    },
+    {
+      "case": "all four embedding RPCs return errors",
+      "actual": {
+        "searchReturnedNormally": true,
+        "matches": 0
+      }
+    }
+  ]
+}
