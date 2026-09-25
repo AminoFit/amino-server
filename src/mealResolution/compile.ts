@@ -18,12 +18,41 @@ export type PublishedPlan = {schemaVersion:1;originalText:string;consumedOn:stri
 
 const positive=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)&&value>0
 
+/** Every distinct food the user mentioned (or a photo shows) maps to its items or
+ * an explicit omission. Nothing is dropped, invented or counted twice. */
+function checkCoverage(input:MealResolutionInput,result:MealResolutionResult) {
+  const {proposal}=result,components=proposal.components??[]
+  if (!components.length) throw new Error("missing_meal_coverage")
+  const items=new Set<number>(),selections=new Set<number>(),mentions=new Set<string>()
+  const hasPhotos=(result.photoIds??input.attachmentIds).length>0
+  for (const component of components) {
+    const text=component.sourceText.trim(),mention=text.toLocaleLowerCase()
+    if (mentions.has(mention)) throw new Error("duplicate_meal_mention")
+    mentions.add(mention)
+    const observed=text.startsWith("photo:")
+    if (observed ? !hasPhotos||text.length<9 : !input.originalText.includes(text)) throw new Error("unsupported_meal_mention")
+    const covered=component.itemIndexes.length+component.historySelectionIndexes.length
+    if (component.omitted ? covered>0 : covered===0) throw new Error(component.omitted?"omitted_mention_has_food":"dropped_meal_mention")
+    for (const index of component.itemIndexes) {
+      if (index>=proposal.items.length||items.has(index)) throw new Error("item_coverage_conflict")
+      items.add(index)
+    }
+    for (const index of component.historySelectionIndexes) {
+      if (index>=(proposal.historyGroupSelections??[]).length||selections.has(index)) throw new Error("item_coverage_conflict")
+      selections.add(index)
+    }
+  }
+  if (items.size!==proposal.items.length||selections.size!==(proposal.historyGroupSelections??[]).length)
+    throw new Error("uncovered_meal_item")
+}
+
 /** A proposal names evidence and meaning. This code only checks ownership,
  * source membership, serving arithmetic and numeric consistency. */
 export function compileMealPlan(input:MealResolutionInput,result:MealResolutionResult):PublishedPlan {
   const {proposal,evidence}=result
   if (proposal.outcome!=="resolved") throw new Error("meal_needs_clarification")
   if (!Number.isFinite(Date.parse(proposal.consumedOn))) throw new Error("invalid_meal_time")
+  checkCoverage(input,result)
   const grouped:MealProposal["items"]=(proposal.historyGroupSelections??[]).flatMap(selection=>{
     const event=evidence.events.get(selection.sourceMessageId)
     if(!event) throw new Error("unread_history_group")
@@ -106,6 +135,12 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
       ...(quantity.kind==="estimated_mass"?{assumption:quantity.basis}:{}),
       ...(sourceItemId?{sourceItemId}:{})}
   })
+  const perGroup=new Set<string>()
+  for (const item of items) {
+    const key=`${item.groupId??""}:${item.foodId}`
+    if (perGroup.has(key)) throw new Error("duplicate_food_in_group")
+    perGroup.add(key)
+  }
   for (const claim of proposal.claims) {
     if (!input.originalText.includes(claim.sourceText)||!claim.itemIndexes.length||
       claim.itemIndexes.some(index=>index>=items.length)) throw new Error("unsupported_nutrition_claim")

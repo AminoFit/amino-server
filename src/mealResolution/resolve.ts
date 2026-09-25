@@ -1,4 +1,4 @@
-import { generateText, Output, stepCountIs, tool } from "ai"
+import { generateText, jsonSchema, Output, stepCountIs, tool, zodSchema } from "ai"
 import { z } from "zod"
 import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
@@ -40,6 +40,12 @@ estimate with a clear basis. Never invent a branded label, food ID, serving ID o
 Preserve explicit nutrient facts and their scope. Use sourceText copied from the original wording,
 including non-English text. If a real ambiguity could change the foods/amounts, ask a concise
 clarification in the user's language. If a retrieval tool errors, do not treat it as no food.
+List every distinct food the user mentions (or a photo shows) once in components. Use sourceText
+copied verbatim from originalText, or "photo: <what is visible>" for photo-only foods. Map each to the
+item and/or history selection indexes that account for it. A mention covered by a composite food or a
+referenced dish maps to that one item or selection. Mark explicit omissions ("without X") omitted with
+no indexes. Every item and selection must appear in exactly one component: never drop a mentioned food,
+never add an unmentioned one, and never log the same food twice in one dish; combine its quantity.
 The claims array is ONLY for explicit numeric nutrient assertions in the current originalText.
 Do not turn nutrient values found in history or the catalogue into user claims. For a simple
 historical reference with no explicit nutrient assertion, return claims: []. Historical nutrients
@@ -57,10 +63,25 @@ const outputGuide={schemaVersion:1,outcome:"resolved | needs_clarification",cons
     grams:"number for mass",basis:"text for estimate",servingId:"number for serving",amount:"number for serving",
     sourceMessageId:"number for history",sourceLoggedFoodItemId:"number for history",scale:"number for history"},
     groupId:"string or null",groupLabel:"string or null",evidence:["observed source identifiers"]}],
+  components:[{sourceText:"verbatim food mention or photo: observation",itemIndexes:[0],
+    historySelectionIndexes:[],omitted:false}],
   claims:[{sourceText:"verbatim input excerpt",nutrient:"kcal | proteinG | carbG | totalFatG",
     value:"number",role:"label_identity | portion_target | group_total",
     basis:"consumed | per_serving | per_100g",relation:"equal | approximate | minimum | maximum",
     itemIndexes:[0]}],clarification:"question or null"}
+
+// Gemini rejects the full proposal schema as too complex for constrained decoding.
+// Array bounds are dropped from the provider schema only; the Zod parse below
+// still enforces every bound and refinement.
+const withoutArrayBounds=(node:unknown):unknown=>Array.isArray(node)?node.map(withoutArrayBounds):
+  node&&typeof node==="object"?Object.fromEntries(Object.entries(node)
+    .filter(([key])=>key!=="maxItems"&&key!=="minItems").map(([key,value])=>[key,withoutArrayBounds(value)])):node
+const proposalOutput=Output.object({schema:jsonSchema<MealProposal>(
+  withoutArrayBounds(zodSchema(mealProposal).jsonSchema) as Parameters<typeof jsonSchema>[0],
+  {validate:value=>{const parsed=mealProposal.safeParse(value)
+    return parsed.success?{success:true,value:parsed.data}:{success:false,error:parsed.error}}})})
+
+const MAX_STEPS=6
 
 export type MealResolutionInput = {
   userId:string;operationId:string;messageId:number;originalText:string;
@@ -98,7 +119,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       validationErrorCode:input.validationErrorCode,outputGuide})
     const result=await (deps.generate??generateText)({
       model:selected.model,system,
-      output:Output.object({schema:mealProposal}),
+      output:proposalOutput,
       ...(photos.length?{messages:[{role:"user" as const,content:[
         {type:"text" as const,text:prompt},
         ...photos.map(photo=>({type:"image" as const,image:photo.url}))]}]}:{prompt}),
@@ -126,7 +147,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           inputSchema:z.object({sourceId:z.string().min(1).max(60)}).strict(),
           execute:({sourceId})=>withCount(()=>sources.createFoodFromSource(sourceId))})
       },
-      toolChoice:"auto",stopWhen:stepCountIs(6),maxOutputTokens:3000,maxRetries:0,
+      toolChoice:"auto",stopWhen:stepCountIs(MAX_STEPS),
+      // The last step must answer; a model still searching would otherwise return nothing.
+      prepareStep:({stepNumber})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:3000,maxRetries:0,
       abortSignal:controller.signal,onStepFinish:()=>{steps++}
     })
     controller.signal.throwIfAborted()

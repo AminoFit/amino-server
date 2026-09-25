@@ -22,7 +22,9 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "legacy_meal_nutrition_unavailable","structured_action_requires_published_snapshot",
   "meal_item_unavailable","meal_food_changed","food_evidence_unavailable",
   "serving_evidence_unavailable","unsupported_structured_action",
-  "delete_last_item_requires_meal_delete"])
+  "delete_last_item_requires_meal_delete","missing_meal_coverage","duplicate_meal_mention",
+  "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
+  "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
 const sourcePlan=(value:unknown):PublishedPlan|null=>value&&typeof value==="object"&&
   Array.isArray((value as PublishedPlan).items)?value as PublishedPlan:null
 const stableItemId=(messageId:number,itemId:number)=>{

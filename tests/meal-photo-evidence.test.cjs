@@ -51,7 +51,7 @@ test('resolver sends photos as image parts and retains only stable IDs',async()=
     generate:async options=>{
       generated=options;
       return {output:{schemaVersion:1,outcome:'needs_clarification',
-        consumedOn:input.consumedOn,historyGroupSelections:[],items:[],claims:[],
+        consumedOn:input.consumedOn,historyGroupSelections:[],items:[],components:[],claims:[],
         clarification:'What food is shown?'}};
     }
   });

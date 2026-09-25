@@ -21,7 +21,7 @@ test('a referenced dish publishes each chosen component and preserves every hist
     submittedAt:'2026-09-24T08:00:00Z',timezone:'America/New_York',locale:'en-US',attachmentIds:[]};
   const proposal={schemaVersion:1,outcome:'resolved',consumedOn:input.consumedOn,
     historyGroupSelections:[{sourceMessageId:42,groupId:'smoothie',scale:1,excludeLoggedFoodItemIds:[]}],
-    items:[],
+    items:[],components:[{sourceText:'Same smoothie',itemIndexes:[],historySelectionIndexes:[0],omitted:false}],
     claims:[],clarification:null};
   const compiled=compileMealPlan(input,{proposal,evidence:{events:new Map([[42,event]]),foods:new Map()},
     model:'fixture',provider:'test',durationMs:0,steps:0,toolCalls:1});
@@ -49,7 +49,8 @@ test('nutrition claims keep label basis separate from consumed portion',()=>{
   const item={foodId:2,quantity:{kind:'serving',servingId:9,amount:2},
     groupId:null,groupLabel:null,evidence:['food:2','serving:9']};
   const base={proposal:{schemaVersion:1,outcome:'resolved',consumedOn:input.consumedOn,
-    items:[item],claims:[{sourceText:'每杯含20克蛋白质',nutrient:'proteinG',value:20,
+    items:[item],components:[{sourceText:'两杯酸奶',itemIndexes:[0],historySelectionIndexes:[],omitted:false}],
+    claims:[{sourceText:'每杯含20克蛋白质',nutrient:'proteinG',value:20,
       role:'label_identity',basis:'per_serving',relation:'equal',itemIndexes:[0]}],clarification:null},
     evidence:{events:new Map(),foods:new Map([[2,food]])},model:'fixture',provider:'test',
     durationMs:0,steps:0,toolCalls:1};
