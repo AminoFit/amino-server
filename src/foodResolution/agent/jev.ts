@@ -1,17 +1,18 @@
-import type { SelectionTask } from "./selection"
+import { decisionModel } from "@/ai/models"
+export type DecisionTask = {options:Record<string,unknown>;state:unknown;questions:{selection:{type:"choice";instructions:string;criteria:Record<string,string>}}}
 export type JevResult = {status:"ok" | "unavailable" | "invalid_response"; choice?: string; confidence?: number;
   model:string; durationMs:number; promptTokens:number; completionTokens:number; costUsd?:number}
 const number = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0
-export async function selectWithJev(task: SelectionTask, signal: AbortSignal,
+export async function selectWithJev(task: DecisionTask, signal: AbortSignal,
   dependencies: {env?:NodeJS.ProcessEnv; fetch?:typeof fetch; timeoutMs?:number} = {}): Promise<JevResult> {
-  const env = dependencies.env ?? process.env, model = env.FOOD_SELECTOR_MODEL ?? "typesafe/jev-1.13"
+  const env = dependencies.env ?? process.env, model = decisionModel(env)
   const start = performance.now(), controller = new AbortController()
   const result: JevResult = {status:"unavailable",model,durationMs:0,promptTokens:0,completionTokens:0}
   let timer: ReturnType<typeof setTimeout> | undefined
   const abort = () => controller.abort()
   try {
     const key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
-    if (!key || !model.startsWith("typesafe/jev-")) return result
+    if (!key) return result
     signal.addEventListener("abort",abort,{once:true})
     if (signal.aborted) controller.abort()
     controller.signal.throwIfAborted()

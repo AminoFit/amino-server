@@ -2,11 +2,9 @@ import { explicitMassServing } from "./explicitMassServing"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
-import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import * as math from "mathjs"
 import { extractAndParseLastJSON } from "../common/extractJSON"
-import { getUserByEmail } from "../common/debugHelper"
-import { foodCompletion as vertexChatCompletion, FOOD_REASONING_MODEL } from "@/foodResolution/model"
+import { foodCompletion, FOOD_REASONING_MODEL } from "@/foodResolution/model"
 
 const serving_assignement_prompt = `<user_message>
 USER_SERVING_INPUT
@@ -159,7 +157,7 @@ Output:
 </output_format>`
 
 const systemPrompt = `You are a helpful food serving matching assistant. You accurately and precisely determine how much a user ate in grams. You reply in a perfect JSON.`
-const SERVING_MATCH_MODEL = process.env.VERTEX_SERVING_MATCH_MODEL ?? FOOD_REASONING_MODEL
+const SERVING_MATCH_MODEL = FOOD_REASONING_MODEL
 const DEFAULT_MAX_TOKENS = 1256
 const MIN_VALID_SERVING_GRAMS = 1
 const SERVING_MATCH_TEMPERATURES = [0, 0.1, 0.2]
@@ -268,7 +266,7 @@ async function requestServingMatchCompletion(
   { temperature = 0, maxTokens = DEFAULT_MAX_TOKENS }: ServingMatchRequestOptions = {}
 ) {
   try {
-    const response = await vertexChatCompletion(
+    const response = await foodCompletion(
       {
         model: SERVING_MATCH_MODEL,
         systemPrompt,
@@ -282,12 +280,12 @@ async function requestServingMatchCompletion(
 
     return response?.trim()
   } catch (error) {
-    console.error("Error requesting serving match completion from Vertex:", error)
+    console.error("Error requesting serving match completion:", error)
     throw error
   }
 }
 
-export async function findBestServingMatchChatGemini(
+export async function findBestServingMatch(
   food_item_to_log: FoodItemToLog,
   food_item: FoodItemWithNutrientsAndServing,
   user: Tables<"User">
@@ -319,7 +317,7 @@ export async function findBestServingMatchChatGemini(
       if (temperature === SERVING_MATCH_TEMPERATURES[0]) {
         throw error
       }
-      console.warn("Retrying serving match after Vertex error", error)
+      console.warn("Retrying serving match after model error", error)
       continue
     }
 
@@ -328,7 +326,7 @@ export async function findBestServingMatchChatGemini(
     }
 
     if (!extractAndParseLastJSON(response)) {
-      console.warn("Vertex completion did not return valid JSON for serving match. Retrying with next temperature.")
+      console.warn("Serving match completion did not return valid JSON. Retrying with next temperature.")
       continue
     }
 
@@ -345,54 +343,3 @@ export async function findBestServingMatchChatGemini(
   }
   return updatedFoodItem
 }
-
-export const findBestServingMatchChatVertex = findBestServingMatchChatGemini
-export const findBestServingMatchChatLlama = findBestServingMatchChatGemini
-
-async function getFoodItem(id: number) {
-  const supabase = createAdminSupabase()
-  const { data, error } = await supabase.from("FoodItem").select("*, Serving(*)").eq("id", id).single()
-
-  if (error) {
-    console.error(error)
-    return null
-  }
-
-  return data
-}
-
-async function testServingMatchRequest() {
-  const user = (await getUserByEmail("seb.grubb@gmail.com"))! as Tables<"User">
-
-  const food_serving_request = {
-    brand: "Coca Cola",
-    branded: true,
-    serving: {
-      serving_id: 0,
-      serving_name: "can",
-      serving_amount: 1,
-      serving_g_or_ml: "g",
-      full_serving_string: "1 can",
-      total_serving_g_or_ml: 355
-    },
-    timeEaten: "2024-06-17T19:33:17.174Z",
-    second_best_match: null,
-    nutritional_information: { kcal: 160, carbG: 43, sugarG: 43, proteinG: 0, sodiumMg: 35, totalFatG: 0 },
-    food_database_search_name: "Coca-Cola Classic",
-    full_item_user_message_including_serving: "One can of Coca-Cola Classic (355ml, 160 calories)"
-  } as FoodItemToLog
-  const food_item = (await getFoodItem(700)) as FoodItemWithNutrientsAndServing
-
-  // console.log(food_item)
-
-  // Print everything in the object except for the bgeBaseEmbedding field
-  // const { bgeBaseEmbedding, ...rest } = food_item
-  // console.log(rest)
-  // console.log(food_item)
-  const serving_result = await findBestServingMatchChatGemini(food_serving_request, food_item, user)
-  console.log("serving_result:")
-  console.log(serving_result)
-  return
-}
-
-// testServingMatchRequest()

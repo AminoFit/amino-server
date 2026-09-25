@@ -10,6 +10,7 @@ function load(file,stubs={},env={},globals={}) {
  console:{log(){},warn(){},error(){}},process:{env},Date,performance,AbortController,AbortSignal,setTimeout,clearTimeout,...globals})
  return module.exports
 }
+const models=load('ai/models.ts')
 const mass=load('foodMessageProcessing/getServingSizeFromFoodItem/explicitMassServing.ts')
 const validate=load('foodResolution/agent/validate.ts',{'@/foodMessageProcessing/getServingSizeFromFoodItem/explicitMassServing':mass,
  '../nutrition':load('foodResolution/nutrition.ts'),'../composition':load('foodResolution/composition.ts')}).validateProposal
@@ -22,7 +23,7 @@ function inMemoryDb(foods) {
 }
 async function standard(c,{request,signal,model}) {
  const env={FOOD_REASONING_MODEL:model,OPENROUTER_API_KEY:'benchmark-transport-supplies-key'}
- const provider=load('languageModelProviders/gemini/foodCompletion.ts',{'../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{}}},env,
+ const provider=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{FOOD_MODEL:models.FOOD_MODEL,foodModel:()=>model},'../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{}}},env,
  {fetch:async(url,opts)=>{
    // Keep production payload/defaults intact. Network and key owned by harness.
    if(url!=='https://openrouter.ai/api/v1/chat/completions')throw Error('Unexpected fallback provider')
@@ -30,12 +31,12 @@ async function standard(c,{request,signal,model}) {
    return {ok:true,status:200,json:async()=>body}
  }})
  const boundary={...provider}
- const matcher=load('foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDbLlama.ts',{'@/foodResolution/model':boundary,'../common/extractJSON':json})
+ const matcher=load('foodMessageProcessing/localDbFoodMatch/matchFoodItemToLocalDb.ts',{'@/foodResolution/model':boundary})
  const admin={createAdminSupabase:()=>inMemoryDb(c.foods)}
  const exact=load('foodMessageProcessing/findExactLocalFood.ts',{'@/utils/supabase/serverAdmin':admin,'@/foodResolution/composition':load('foodResolution/composition.ts')})
  const match=load('foodMessageProcessing/findBestLoggedFoodItemMatchToFood.ts',{
   '@/foodResolution/composition':load('foodResolution/composition.ts'),
-  './localDbFoodMatch/matchFoodItemToLocalDbLlama':matcher,'@/utils/supabase/serverAdmin':admin,
+  './localDbFoodMatch/matchFoodItemToLocalDb':matcher,'@/utils/supabase/serverAdmin':admin,
   './common/foodProcessingConstants':{COSINE_THRESHOLD:.975,COSINE_THRESHOLD_LOW_QUALITY:.7},
   './findAndAddFoodFromExternalDb':{findAndAddFoodItemInExternalDatabase:async()=>{throw Error('external_required')}},
   // These functions are only used for external records; no external IDs in fixture.
@@ -50,7 +51,7 @@ async function standard(c,{request,signal,model}) {
  if(!food){try{[food]=await match.findBestLoggedFoodItemMatchToFood(c.foods.map(f=>({...f,brand:f.brand??'',cosine_similarity:.85})),item,{},user,0)}
  catch(e){if(e.message==='external_required')return {status:'external_required',pathway};throw e}}
  signal.throwIfAborted()
- const resolved=await serving.findBestServingMatchChatGemini(item,food,user),grams=resolved.serving.total_serving_g_or_ml
+ const resolved=await serving.findBestServingMatch(item,food,user),grams=resolved.serving.total_serving_g_or_ml
  return {status:'matched',pathway,resolution:{foodId:food.id,servingId:resolved.serving.serving_id??null,grams,...nutrients.calculateNutrientData(grams,food)}}
 }
 function prepareLoop() {
@@ -69,4 +70,4 @@ async function loop(c,{signal,apiKey,requestFetch,model}) {
   getFoodAndServings:async(id)=>{const f=c.foods.find(f=>f.id===id);if(f)foods.set(id,f);return f??null},
   searchUserFoodHistory:async()=>({disposition:c.history.length?'ranked_foods':'none',truncated:false,candidates:c.history.map((f,i)=>({messageId:i+1,occurrenceDays:f.occurrenceDays,foods:[f]}))})}}})
 }
-module.exports={load,validate,standard,loop,mass}
+module.exports={load,validate,standard,loop,mass,models}

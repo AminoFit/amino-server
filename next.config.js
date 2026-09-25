@@ -13,24 +13,14 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@zxing/library'],
   },
-  webpack: (config, { isServer }) => {
-    // Create alias for the `html-to-text` module if needed
-    config.resolve.alias['html-to-text'] = require.resolve('html-to-text');
-
-    // Handle the issue with ES module exports
+  webpack: (config) => {
+    // Allow extensionless imports from mixed ESM dependencies.
     config.module.rules.push({
       test: /\.m?js/,
       resolve: {
-        fullySpecified: false, // disable the behavior
+        fullySpecified: false,
       },
     });
-
-    // Simplify externals configuration if not necessary
-    if (!isServer) {
-      config.externals = config.externals || [];
-      config.externals.push('html-to-text');
-    }
-
     return config;
   },
 };

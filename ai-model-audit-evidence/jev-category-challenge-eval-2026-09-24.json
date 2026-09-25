@@ -1,0 +1,1350 @@
+{
+  "summary": {
+    "total": 44,
+    "thresholds": [
+      {
+        "threshold": 0,
+        "correct": 39,
+        "wrong": 1,
+        "abstained": 4,
+        "correctAbstention": 4
+      },
+      {
+        "threshold": 0.5,
+        "correct": 39,
+        "wrong": 1,
+        "abstained": 4,
+        "correctAbstention": 4
+      },
+      {
+        "threshold": 0.7,
+        "correct": 38,
+        "wrong": 0,
+        "abstained": 6,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.8,
+        "correct": 36,
+        "wrong": 0,
+        "abstained": 8,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.9,
+        "correct": 33,
+        "wrong": 0,
+        "abstained": 11,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.95,
+        "correct": 29,
+        "wrong": 0,
+        "abstained": 15,
+        "correctAbstention": 5
+      },
+      {
+        "threshold": 0.99,
+        "correct": 21,
+        "wrong": 0,
+        "abstained": 23,
+        "correctAbstention": 5
+      }
+    ],
+    "p50Ms": 430,
+    "p95Ms": 533,
+    "unavailable": 0,
+    "costUsd": 0.004183284000000001
+  },
+  "rows": [
+    {
+      "index": 0,
+      "name": "Barista Edition Oatmilk",
+      "brand": "Oatly",
+      "expected": "H-5-1",
+      "actual": "H-5-1",
+      "actualName": "Oat milk",
+      "expectedName": "Oat milk",
+      "durationMs": 468,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 237.19166700000002,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-1",
+          "confidence": 1,
+          "durationMs": 230.19874999999996,
+          "promptTokens": 1499,
+          "completionTokens": 501,
+          "costUsd": 0.000062958
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "unsweetened soy milk beverage",
+      "brand": "Silk",
+      "expected": "H-5-2",
+      "actual": "H-5-2",
+      "actualName": "Soy Milk",
+      "expectedName": "Soy Milk",
+      "durationMs": 519,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 354.70175000000006,
+          "promptTokens": 1153,
+          "completionTokens": 122,
+          "costUsd": 0.000048426
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-2",
+          "confidence": 1,
+          "durationMs": 164.45375,
+          "promptTokens": 1500,
+          "completionTokens": 501,
+          "costUsd": 0.000063
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "almond milk beverage vanilla",
+      "brand": "North Fork",
+      "expected": "H-5-3",
+      "actual": "H-5-3",
+      "actualName": "Almond Milk",
+      "expectedName": "Almond Milk",
+      "durationMs": 459,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 262.151625,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-3",
+          "confidence": 1,
+          "durationMs": 196.61450000000002,
+          "promptTokens": 1498,
+          "completionTokens": 501,
+          "costUsd": 0.000062916
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "coconut milk beverage",
+      "brand": "North Fork",
+      "expected": "H-5-O",
+      "actual": "H-5-O",
+      "actualName": "Other Dairy Drink Alternatives",
+      "expectedName": "Other Dairy Drink Alternatives",
+      "durationMs": 486,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 235.20175,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-O",
+          "confidence": 0.99,
+          "durationMs": 250.41449999999998,
+          "promptTokens": 1498,
+          "completionTokens": 500,
+          "costUsd": 0.000062916
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "plant based Greek style yogurt",
+      "brand": "North Fork",
+      "expected": "A-5-2",
+      "actual": "A-5-2",
+      "actualName": "Plant-Based Yogurt",
+      "expectedName": "Plant-Based Yogurt",
+      "durationMs": 430,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 1,
+          "durationMs": 266.3173750000001,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "A-5-2",
+          "confidence": 0.96,
+          "durationMs": 163.249417,
+          "promptTokens": 1098,
+          "completionTokens": 320,
+          "costUsd": 0.000046116
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "vegan mozzarella cheese",
+      "brand": "North Fork",
+      "expected": "A-5-1",
+      "actual": "A-5-1",
+      "actualName": "Plant-Based Cheese",
+      "expectedName": "Plant-Based Cheese",
+      "durationMs": 504,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 1,
+          "durationMs": 329.17166599999996,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "A-5-1",
+          "confidence": 0.97,
+          "durationMs": 174.14395899999988,
+          "promptTokens": 1099,
+          "completionTokens": 320,
+          "costUsd": 0.000046158
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Whey Isolate Protein Powder",
+      "brand": "Acme",
+      "expected": "A-4-6",
+      "actual": "A-4-6",
+      "actualName": "Whey based protein powders",
+      "expectedName": "Whey based protein powders",
+      "durationMs": 392,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.92,
+          "durationMs": 236.69554100000005,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "A-4-6",
+          "confidence": 1,
+          "durationMs": 154.59808399999997,
+          "promptTokens": 1099,
+          "completionTokens": 320,
+          "costUsd": 0.000046158
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Pea Protein Isolate Powder",
+      "brand": "Acme",
+      "expected": "D-6-1",
+      "actual": "D-6-1",
+      "actualName": "Protein Powders (excluding whey based)",
+      "expectedName": "Protein Powders (excluding whey based)",
+      "durationMs": 442,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.69,
+          "durationMs": 237.81224999999995,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "D-6-1",
+          "confidence": 0.84,
+          "durationMs": 203.81695899999988,
+          "promptTokens": 1362,
+          "completionTokens": 479,
+          "costUsd": 0.000057204
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "name": "Chocolate Protein Shake",
+      "brand": "Acme",
+      "expected": "D-6-2",
+      "actual": "D-6-2",
+      "actualName": "Protein Drinks",
+      "expectedName": "Protein Drinks",
+      "durationMs": 468,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.81,
+          "durationMs": 173.207625,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "D-6-2",
+          "confidence": 0.98,
+          "durationMs": 294.39712499999996,
+          "promptTokens": 1359,
+          "completionTokens": 479,
+          "costUsd": 0.000057078
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Chocolate Dairy Milkshake",
+      "brand": "Acme",
+      "expected": "A-4-1",
+      "actual": "A-4-1",
+      "actualName": "Milk Shakes",
+      "expectedName": "Milk Shakes",
+      "durationMs": 428,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.98,
+          "durationMs": 181.51158299999997,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "A-4-1",
+          "confidence": 1,
+          "durationMs": 245.7745,
+          "promptTokens": 1098,
+          "completionTokens": 320,
+          "costUsd": 0.000046116
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Hazelnut Butter Spread",
+      "brand": "Bera",
+      "expected": "J-2-7",
+      "actual": "J-2-7",
+      "actualName": "Other Nut Butters",
+      "expectedName": "Other Nut Butters",
+      "durationMs": 447,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 0.99,
+          "durationMs": 275.861042,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "J-2-7",
+          "confidence": 0.99,
+          "durationMs": 170.51537499999995,
+          "promptTokens": 1021,
+          "completionTokens": 304,
+          "costUsd": 0.000042882
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Roasted Whole Hazelnuts",
+      "brand": "Bera",
+      "expected": "C-2-5",
+      "actual": "C-2-5",
+      "actualName": "Hazelnuts",
+      "expectedName": "Hazelnuts",
+      "durationMs": 522,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "C",
+          "confidence": 1,
+          "durationMs": 272.57670800000005,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "C-2-5",
+          "confidence": 1,
+          "durationMs": 249.57050000000004,
+          "promptTokens": 746,
+          "completionTokens": 203,
+          "costUsd": 0.000031332
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Tahini Sesame Paste",
+      "brand": "Bera",
+      "expected": "J-1-13",
+      "actual": "J-1-13",
+      "actualName": "Sesame based condiments",
+      "expectedName": "Sesame based condiments",
+      "durationMs": 451,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 1,
+          "durationMs": 171.27999999999997,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "J-1-13",
+          "confidence": 0.81,
+          "durationMs": 279.2510830000001,
+          "promptTokens": 1021,
+          "completionTokens": 305,
+          "costUsd": 0.000042882
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Whole Sesame Seeds",
+      "brand": "Bera",
+      "expected": "C-1-4",
+      "actual": "C-1-4",
+      "actualName": "Sesame Seeds",
+      "expectedName": "Sesame Seeds",
+      "durationMs": 419,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "C",
+          "confidence": 1,
+          "durationMs": 203.62854199999992,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "C-1-4",
+          "confidence": 1,
+          "durationMs": 214.77491600000008,
+          "promptTokens": 744,
+          "completionTokens": 203,
+          "costUsd": 0.000031248
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Chocolate Chip Protein Bar",
+      "brand": "Quest",
+      "expected": "D-6-3",
+      "actual": "D-6-3",
+      "actualName": "Protein Bars",
+      "expectedName": "Protein Bars",
+      "durationMs": 358,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.79,
+          "durationMs": 159.40750000000003,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "D-6-3",
+          "confidence": 1,
+          "durationMs": 198.34420799999998,
+          "promptTokens": 1359,
+          "completionTokens": 479,
+          "costUsd": 0.000057078
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Chewy Granola Cereal Bar",
+      "brand": "Acme",
+      "expected": "G-2-1",
+      "actual": "G-2-1",
+      "actualName": "Cereal Bars",
+      "expectedName": "Cereal Bars",
+      "durationMs": 373,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 1,
+          "durationMs": 176.09479199999987,
+          "promptTokens": 1153,
+          "completionTokens": 122,
+          "costUsd": 0.000048426
+        },
+        {
+          "status": "ok",
+          "choice": "G-2-1",
+          "confidence": 1,
+          "durationMs": 197.05408300000022,
+          "promptTokens": 1213,
+          "completionTokens": 385,
+          "costUsd": 0.000050946
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Meal Replacement Bar",
+      "brand": "Acme",
+      "expected": "M-1-3",
+      "actual": "M-1-3",
+      "actualName": "Meal replacements bars",
+      "expectedName": "Meal replacements bars",
+      "durationMs": 338,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "M",
+          "confidence": 0.92,
+          "durationMs": 156.47295899999995,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "M-1-3",
+          "confidence": 1,
+          "durationMs": 181.1113330000003,
+          "promptTokens": 768,
+          "completionTokens": 190,
+          "costUsd": 0.000032256
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Plant Based Burger Patty",
+      "brand": "Acme",
+      "expected": "D-5-5",
+      "actual": "D-5-5",
+      "actualName": "Plant based meat alternatives",
+      "expectedName": "Plant based meat alternatives",
+      "durationMs": 650,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 0.9,
+          "durationMs": 296.89429199999995,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "D-5-5",
+          "confidence": 0.99,
+          "durationMs": 352.42608299999984,
+          "promptTokens": 1360,
+          "completionTokens": 479,
+          "costUsd": 0.00005712
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "name": "Prepared Plant Based Burger Sandwich",
+      "brand": "Acme",
+      "expected": "K-4-1",
+      "actual": "K-4-1",
+      "actualName": "Burger",
+      "expectedName": "Burger",
+      "durationMs": 353,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.97,
+          "durationMs": 166.734375,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "K-4-1",
+          "confidence": 0.9,
+          "durationMs": 186.3944580000002,
+          "promptTokens": 1441,
+          "completionTokens": 471,
+          "costUsd": 0.000060522
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "name": "Raw Red Tomatoes",
+      "brand": "Acme",
+      "expected": "F-8-11",
+      "actual": "F-8-11",
+      "actualName": "Tomatoes",
+      "expectedName": "Tomatoes",
+      "durationMs": 536,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 1,
+          "durationMs": 198.79437499999995,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "F-8-11",
+          "confidence": 0.99,
+          "durationMs": 337.156125,
+          "promptTokens": 1553,
+          "completionTokens": 520,
+          "costUsd": 0.000065226
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "name": "Tomato Marinara Sauce",
+      "brand": "Acme",
+      "expected": "J-1-1",
+      "actual": "J-1-1",
+      "actualName": "Tomato-based (Ketchup, Marinara, Salsa)",
+      "expectedName": "Tomato-based (Ketchup, Marinara, Salsa)",
+      "durationMs": 396,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 0.99,
+          "durationMs": 184.28991700000006,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "J-1-1",
+          "confidence": 1,
+          "durationMs": 211.7202910000001,
+          "promptTokens": 1021,
+          "completionTokens": 304,
+          "costUsd": 0.000042882
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "name": "Pickled Ginger Slices",
+      "brand": "Acme",
+      "expected": "K-5-4",
+      "actual": "K-5-4",
+      "actualName": "Pickled Ginger",
+      "expectedName": "Pickled Ginger",
+      "durationMs": 437,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.97,
+          "durationMs": 249.40662500000008,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "K-5-4",
+          "confidence": 1,
+          "durationMs": 187.425792,
+          "promptTokens": 1440,
+          "completionTokens": 471,
+          "costUsd": 0.00006048
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "name": "Fresh Ginger Root",
+      "brand": "Acme",
+      "expected": "F-5-4",
+      "actual": "F-5-4",
+      "actualName": "Ginger (fresh)",
+      "expectedName": "Ginger (fresh)",
+      "durationMs": 425,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 0.99,
+          "durationMs": 178.96000000000004,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "F-5-4",
+          "confidence": 1,
+          "durationMs": 245.33275000000003,
+          "promptTokens": 1551,
+          "completionTokens": 519,
+          "costUsd": 0.000065142
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "name": "Ground Dried Ginger Spice",
+      "brand": "Acme",
+      "expected": "N-3-7",
+      "actual": "N-3-7",
+      "actualName": "Ginger (Dried)",
+      "expectedName": "Ginger (Dried)",
+      "durationMs": 403,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 198.38141599999972,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "N-3-7",
+          "confidence": 1,
+          "durationMs": 204.69537500000024,
+          "promptTokens": 980,
+          "completionTokens": 300,
+          "costUsd": 0.00004116
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Black Pepper Spice",
+      "brand": "Acme",
+      "expected": "N-3-1",
+      "actual": "N-3-1",
+      "actualName": "Black Pepper",
+      "expectedName": "Black Pepper",
+      "durationMs": 443,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "N",
+          "confidence": 1,
+          "durationMs": 210.0135839999998,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "N-3-1",
+          "confidence": 1,
+          "durationMs": 232.60233299999982,
+          "promptTokens": 978,
+          "completionTokens": 300,
+          "costUsd": 0.000041076
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Fresh Bell Pepper",
+      "brand": "Acme",
+      "expected": "F-8-5",
+      "actual": "F-8-5",
+      "actualName": "Peppers",
+      "expectedName": "Peppers",
+      "durationMs": 435,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "F",
+          "confidence": 1,
+          "durationMs": 258.38208399999985,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "F-8-5",
+          "confidence": 1,
+          "durationMs": 175.82395799999995,
+          "promptTokens": 1551,
+          "completionTokens": 519,
+          "costUsd": 0.000065142
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Baby Apple and Pear Puree",
+      "brand": "Acme",
+      "expected": "L-1-2",
+      "actual": "L-1-2",
+      "actualName": "Combinations (fruits/vegetables, or with grains)",
+      "expectedName": "Combinations (fruits/vegetables, or with grains)",
+      "durationMs": 533,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 1,
+          "durationMs": 338.4029580000001,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "L-1-2",
+          "confidence": 0.97,
+          "durationMs": 194.31137500000023,
+          "promptTokens": 671,
+          "completionTokens": 138,
+          "costUsd": 0.000028182
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Infant Soy Formula Powder",
+      "brand": "Acme",
+      "expected": "L-2-4",
+      "actual": "L-2-4",
+      "actualName": "Specialty Formulas (soy-based, hypoallergenic, etc.)",
+      "expectedName": "Specialty Formulas (soy-based, hypoallergenic, etc.)",
+      "durationMs": 528,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 1,
+          "durationMs": 237.45091699999966,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "L-2-4",
+          "confidence": 0.72,
+          "durationMs": 290.2506659999999,
+          "promptTokens": 670,
+          "completionTokens": 138,
+          "costUsd": 0.00002814
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "name": "Powdered Dairy Milk",
+      "brand": "Acme",
+      "expected": "A-1-6",
+      "actual": "A-1-6",
+      "actualName": "Powdered Milks",
+      "expectedName": "Powdered Milks",
+      "durationMs": 409,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 1,
+          "durationMs": 181.53420800000004,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "A-1-6",
+          "confidence": 0.99,
+          "durationMs": 227.05720800000017,
+          "promptTokens": 1098,
+          "completionTokens": 320,
+          "costUsd": 0.000046116
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "name": "Chocolate Soy Milk Beverage",
+      "brand": "Acme",
+      "expected": "H-5-2",
+      "actual": "H-5-2",
+      "actualName": "Soy Milk",
+      "expectedName": "Soy Milk",
+      "durationMs": 451,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "H",
+          "confidence": 1,
+          "durationMs": 199.59662499999968,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "H-5-2",
+          "confidence": 0.99,
+          "durationMs": 251.57770900000014,
+          "promptTokens": 1497,
+          "completionTokens": 501,
+          "costUsd": 0.000062874
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "name": "Mixed Chicken and Vegetable Salad Meal",
+      "brand": "Acme",
+      "expected": "K-1-15",
+      "actual": "K-1-15",
+      "actualName": "Salads (substantial mixed salads as main dishes)",
+      "expectedName": "Salads (substantial mixed salads as main dishes)",
+      "durationMs": 373,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 1,
+          "durationMs": 205.93270799999982,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-15",
+          "confidence": 0.95,
+          "durationMs": 167.0510419999996,
+          "promptTokens": 1441,
+          "completionTokens": 472,
+          "costUsd": 0.000060522
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "name": "Raw Chicken Breast",
+      "brand": "Acme",
+      "expected": "D-1-4",
+      "actual": "D-1-4",
+      "actualName": "Poultry (Chicken, Turkey, Duck)",
+      "expectedName": "Poultry (Chicken, Turkey, Duck)",
+      "durationMs": 396,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "D",
+          "confidence": 1,
+          "durationMs": 182.6205829999999,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "D-1-4",
+          "confidence": 1,
+          "durationMs": 213.21675000000005,
+          "promptTokens": 1359,
+          "completionTokens": 479,
+          "costUsd": 0.000057078
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "name": "Chicken Salad Sandwich",
+      "brand": "Acme",
+      "expected": "K-1-12",
+      "actual": "K-1-12",
+      "actualName": "Sandwiches",
+      "expectedName": "Sandwiches",
+      "durationMs": 396,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.99,
+          "durationMs": 204.86929199999986,
+          "promptTokens": 1149,
+          "completionTokens": 122,
+          "costUsd": 0.000048258
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-12",
+          "confidence": 0.96,
+          "durationMs": 190.5756669999996,
+          "promptTokens": 1438,
+          "completionTokens": 472,
+          "costUsd": 0.000060396
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "name": "Freeze Dried Strawberries",
+      "brand": "Acme",
+      "expected": "E-6-6",
+      "actual": "E-6-6",
+      "actualName": "Dried Fruits",
+      "expectedName": "Dried Fruits",
+      "durationMs": 420,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "E",
+          "confidence": 0.99,
+          "durationMs": 177.4481249999999,
+          "promptTokens": 1153,
+          "completionTokens": 122,
+          "costUsd": 0.000048426
+        },
+        {
+          "status": "ok",
+          "choice": "E-6-6",
+          "confidence": 1,
+          "durationMs": 241.9100000000003,
+          "promptTokens": 1549,
+          "completionTokens": 541,
+          "costUsd": 0.000065058
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "name": "Strawberry Sorbet",
+      "brand": "Acme",
+      "expected": "G-3-8",
+      "actual": "G-3-8",
+      "actualName": "Fruit Sorbets",
+      "expectedName": "Fruit Sorbets",
+      "durationMs": 374,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 0.98,
+          "durationMs": 174.58524999999963,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "G-3-8",
+          "confidence": 1,
+          "durationMs": 199.48170800000025,
+          "promptTokens": 1212,
+          "completionTokens": 385,
+          "costUsd": 0.000050904
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "name": "Dairy Vanilla Ice Cream",
+      "brand": "Acme",
+      "expected": "A-4-4",
+      "actual": "A-4-4",
+      "actualName": "Ice Cream",
+      "expectedName": "Ice Cream",
+      "durationMs": 323,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "A",
+          "confidence": 0.99,
+          "durationMs": 157.15220799999997,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "A-4-4",
+          "confidence": 1,
+          "durationMs": 166.09912500000064,
+          "promptTokens": 1098,
+          "completionTokens": 320,
+          "costUsd": 0.000046116
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "name": "Ready To Feed Infant Formula",
+      "brand": "Acme",
+      "expected": "L-2-1",
+      "actual": "L-2-1",
+      "actualName": "Ready-to-Feed",
+      "expectedName": "Ready-to-Feed",
+      "durationMs": 503,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "L",
+          "confidence": 1,
+          "durationMs": 310.7152500000002,
+          "promptTokens": 1151,
+          "completionTokens": 122,
+          "costUsd": 0.000048342
+        },
+        {
+          "status": "ok",
+          "choice": "L-2-1",
+          "confidence": 0.99,
+          "durationMs": 191.95958299999984,
+          "promptTokens": 670,
+          "completionTokens": 138,
+          "costUsd": 0.00002814
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "name": "Vitamin C Gummy Supplement",
+      "brand": "Acme",
+      "expected": "M-2-3",
+      "actual": "M-2-3",
+      "actualName": "Gummy based supplements",
+      "expectedName": "Gummy based supplements",
+      "durationMs": 371,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "M",
+          "confidence": 1,
+          "durationMs": 216.46658299999945,
+          "promptTokens": 1152,
+          "completionTokens": 122,
+          "costUsd": 0.000048384
+        },
+        {
+          "status": "ok",
+          "choice": "M-2-3",
+          "confidence": 0.87,
+          "durationMs": 154.7887499999997,
+          "promptTokens": 771,
+          "completionTokens": 190,
+          "costUsd": 0.000032382
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "name": "Gummy Bear Candy",
+      "brand": "Acme",
+      "expected": "G-2-8",
+      "actual": "G-2-8",
+      "actualName": "Gummy sweets (bear shaped)",
+      "expectedName": "Gummy sweets (bear shaped)",
+      "durationMs": 491,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "G",
+          "confidence": 1,
+          "durationMs": 314.13545799999974,
+          "promptTokens": 1150,
+          "completionTokens": 122,
+          "costUsd": 0.0000483
+        },
+        {
+          "status": "ok",
+          "choice": "G-2-8",
+          "confidence": 0.99,
+          "durationMs": 176.4262920000001,
+          "promptTokens": 1210,
+          "completionTokens": 385,
+          "costUsd": 0.00005082
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "name": "nothing edible",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 287,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 1,
+          "durationMs": 286.863875,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "name": "a random food",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 263,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 1,
+          "durationMs": 262.9982909999999,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "name": "some sauce",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 509,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "J",
+          "confidence": 0.79,
+          "durationMs": 266.18625000000065,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        },
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.97,
+          "durationMs": 242.88437500000055,
+          "promptTokens": 1015,
+          "completionTokens": 300,
+          "costUsd": 0.00004263
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "name": "a salad",
+      "expected": null,
+      "actual": "K-1-15",
+      "actualName": "Salads (substantial mixed salads as main dishes)",
+      "expectedName": null,
+      "durationMs": 343,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "K",
+          "confidence": 0.83,
+          "durationMs": 151.70199999999932,
+          "promptTokens": 1145,
+          "completionTokens": 122,
+          "costUsd": 0.00004809
+        },
+        {
+          "status": "ok",
+          "choice": "K-1-15",
+          "confidence": 0.66,
+          "durationMs": 190.99325000000044,
+          "promptTokens": 1434,
+          "completionTokens": 472,
+          "costUsd": 0.000060228
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "name": "something with milk",
+      "expected": null,
+      "actual": null,
+      "actualName": null,
+      "expectedName": null,
+      "durationMs": 236,
+      "decisions": [
+        {
+          "status": "ok",
+          "choice": "none",
+          "confidence": 0.87,
+          "durationMs": 236.04904200000055,
+          "promptTokens": 1146,
+          "completionTokens": 122,
+          "costUsd": 0.000048132
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,3 @@
-// OpenAI
-import { findBestFoodMatchtoLocalDb } from "./localDbFoodMatch/matchFoodItemToLocalDbOpenAI"
 import { matchesExplicitMilkVariant } from "@/foodResolution/composition"
 import { FoodItemIdAndEmbedding } from "@/database/OpenAiFunctions/utils/foodLoggingTypes"
 
@@ -14,12 +12,10 @@ import { findAndAddFoodItemInExternalDatabase } from "./findAndAddFoodFromExtern
 
 import { Tables } from "types/supabase"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { COSINE_THRESHOLD, COSINE_THRESHOLD_LOW_QUALITY } from "./common/foodProcessingConstants"
-import { re } from "mathjs"
+import { COSINE_THRESHOLD_LOW_QUALITY } from "./common/foodProcessingConstants"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { addFoodItemToDatabase } from "./common/addFoodItemToDatabase"
-import { getUserByEmail } from "./common/debugHelper"
-import { findBestFoodMatchtoLocalDbLlama } from "./localDbFoodMatch/matchFoodItemToLocalDbLlama"
+import { findBestFoodMatchtoLocalDb as findBestFoodMatchtoLocalDbCurrent } from "./localDbFoodMatch/matchFoodItemToLocalDb"
 import { getFullFoodInformationOnline } from "./getFullFoodInformationOnline/getFullFoodInformationOnline"
 
 async function fallbackToOnlineSearch(
@@ -34,7 +30,8 @@ async function fallbackToOnlineSearch(
     branded: foodItem.brand !== "",
     brand: foodItem.brand || ""
   }
-  const llmFoodItemToSave = (await getFullFoodInformationOnline(foodItemToLog, "", user))!
+  const llmFoodItemToSave = await getFullFoodInformationOnline(foodItemToLog, "", user)
+  if (!llmFoodItemToSave) throw new Error("No sourced nutrition found for online food")
   const newFood = await addFoodItemToDatabase(
     llmFoodItemToSave,
     await getFoodEmbedding(llmFoodItemToSave),
@@ -107,25 +104,13 @@ export async function findBestLoggedFoodItemMatchToFood(
 ): Promise<[FoodItemWithNutrientsAndServing, number | null]> {
   console.log("Finding best match for logged food item")
   cosineSearchResults = cosineSearchResults.filter(candidate=>matchesExplicitMilkVariant(food,candidate.name))
-  // Filter items above the COSINE_THRESHOLD
-  const bestMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD)
-
-  if (bestMatches.length) {
-    // Return the highest match instantly
-
-    let match = await getFoodItemFromDbOrExternal(bestMatches[0], user, messageId, food)
-
-    if (match) return [match as FoodItemWithNutrientsAndServing, null]
-    throw new Error(`Failed to find FoodItem with id ${bestMatches[0].id}`)
-  }
-
-  // No items above COSINE_THRESHOLD, filter for items above COSINE_THRESHOLD_LOW_QUALITY
+  // Even a high vector score does not establish brand or preparation identity.
   const lowQualityMatches = cosineSearchResults.filter((item) => item.cosine_similarity >= COSINE_THRESHOLD_LOW_QUALITY)
 
   if (lowQualityMatches.length) {
     const topMatches = lowQualityMatches.slice(0, 20)
     console.log("Trying to find best match in local db")
-    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDbLlama(topMatches, food, user)
+    const [localDbMatch, secondBestMatch] = await findBestFoodMatchtoLocalDbCurrent(topMatches, food, user)
     console.log("localDbMatch", localDbMatch?.name, localDbMatch?.brand)
     console.log("secondBestMatch", secondBestMatch?.name, secondBestMatch?.brand)
     if (localDbMatch) {
@@ -147,27 +132,3 @@ export async function findBestLoggedFoodItemMatchToFood(
   // Fetch from external databases
   return [await findAndAddFoodItemInExternalDatabase(food, userQueryVectorCache, user, messageId), null]
 }
-
-async function testGetFoodOrAdd() {
-  const user = await getUserByEmail("seb.grubb@gmail.com")
-  let fooditem = {
-    name: "Peanut Butter Banana With Dark Chocolate Energy Bar, Peanut Butter Banana With Dark Chocolate",
-    brand: "Clif",
-    cosine_similarity: 0.907056764819736,
-    embedding: null,
-    foodInfoSource: "USDA",
-    externalId: "2104488"
-  } as FoodItemIdAndEmbedding
-
-  const food: FoodItemToLog = {
-    food_database_search_name: "Peanut Butter Banana With Dark Chocolate Energy Bar, Peanut Butter Banana With Dark Chocolate",
-    full_item_user_message_including_serving: "Peanut Butter Banana With Dark Chocolate Energy Bar, Peanut Butter Banana With Dark Chocolate",
-    branded: true,
-    brand: "Clif"
-  }
-
-  let result = await getFoodItemFromDbOrExternal(fooditem, user!, 1, food)
-  console.log(result)
-}
-
-// testGetFoodOrAdd()

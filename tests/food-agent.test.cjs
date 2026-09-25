@@ -106,11 +106,11 @@ test('agent is independently gated, shadow-only, default-off and kill-switchable
   assert.equal(foodConfig('a',{...env,FOOD_AGENT_TEXT:'on'}).features.agent_text,'off')
   assert.equal(foodConfig('a',{...env,FOOD_KILL_SWITCH:'true'}).features.agent_text,'off')
 })
-test('model backend selection preserves existing configuration and key aliases',()=>{
-  assert.equal(agentModel({FOOD_REASONING_MODEL:'google/gemini-test',OPEN_ROUTER_API_KEY:'fake'}).provider,'openrouter')
-  assert.equal(agentModel({FOOD_REASONING_MODEL:'gemini-test',GEMINI_API_KEY:'fake'}).provider,'google')
-  assert.equal(agentModel({OPENAI_API_KEY:'fake'}).id,'gpt-4o-mini')
-  assert.throws(()=>agentModel({FOOD_REASONING_MODEL:'google/gemini-test'}),/unavailable/)
+test('agent uses only the approved Flash model through OpenRouter',()=>{
+  assert.equal(agentModel({OPENROUTER_API_KEY:'fake'}).id,'google/gemini-3.8-flash')
+  assert.equal(agentModel({OPEN_ROUTER_API_KEY:'fake'}).provider,'openrouter')
+  assert.throws(()=>agentModel({OPENAI_API_KEY:'fake'}),/OpenRouter unavailable/)
+  assert.throws(()=>agentModel({FOOD_REASONING_MODEL:'google/gemini-test',OPENROUTER_API_KEY:'fake'}),/Unsupported food model/)
 })
 test('evidence reads only: search bounds, discovered IDs and server-bound history owner',async()=>{
   const calls=[]
