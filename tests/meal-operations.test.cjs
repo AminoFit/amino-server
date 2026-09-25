@@ -58,6 +58,9 @@ test('meal operations are idempotent, revision fenced, and preserve published fo
           nutrition:{kcal:100,proteinG:2,carbG:20,totalFatG:1,fiberG:4,vitaminCMg:12}}]};
       await assert.rejects(call(b,publishSql,[createId,randomUUID(),plan]),/claim changed/);
       await assert.rejects(call(a,publishSql,[createId,token,{...plan,input:{attachmentIds:[foreignPhotoId]}}]),/Photo evidence changed/);
+      await a.query('update public."UserMessageImages" set "messageId"=null where id=$1',[photoId]);
+      await assert.rejects(call(a,publishSql,[createId,token,plan]),/Photo evidence changed/);
+      await a.query('update public."UserMessageImages" set "messageId"=$2 where id=$1',[photoId,first.messageId]);
       await assert.rejects(call(a,publishSql,[createId,token,{...plan,items:[{
         ...plan.items[0],origin:'catalogue',grams:101}]}]),/Serving quantity changed/);
       await assert.rejects(call(a,publishSql,[createId,token,{...plan,items:[{
