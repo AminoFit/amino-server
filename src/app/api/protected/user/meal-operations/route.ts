@@ -30,11 +30,11 @@ export async function POST(request:NextRequest) {
   try {
     const accepted=await acceptMealOperation(aminoUser.id,input)
     if(accepted.state==="queued") {
-      // The committed outbox remains recoverable if this fast enqueue times out.
-      const enqueue=dispatchMealOperation(input.operationId).catch(error=>{
+      // Finish the queue handoff before returning from a serverless request.
+      // The committed outbox recovers dispatch failures independently.
+      try {await dispatchMealOperation(input.operationId)} catch(error) {
         console.error("meal_initial_dispatch_failed",{operationId:input.operationId,error})
-      })
-      await Promise.race([enqueue,new Promise(resolve=>setTimeout(resolve,400))])
+      }
     }
     return NextResponse.json({...accepted,statusUrl:`/api/protected/user/meal-operations/${input.operationId}`},
       {status:["succeeded","failed","cancelled","conflicted"].includes(accepted.state)?200:202})

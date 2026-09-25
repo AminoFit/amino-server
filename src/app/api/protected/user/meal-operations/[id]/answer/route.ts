@@ -16,8 +16,8 @@ export async function POST(request:NextRequest,{params}:{params:{id:string}}) {
   if(!parsed.success) return NextResponse.json({error:"invalid_answer"},{status:422})
   try {
     const updated=await answerMealOperation(userId,params.id,parsed.data.expectedOperationVersion,parsed.data.answer)
-    const enqueue=dispatchMealOperation(params.id).catch(error=>console.error("meal_answer_dispatch_failed",error))
-    await Promise.race([enqueue,new Promise(resolve=>setTimeout(resolve,400))])
+    try {await dispatchMealOperation(params.id)}
+    catch(error) {console.error("meal_answer_dispatch_failed",error)}
     return NextResponse.json(updated,{status:202})
   } catch(error) {return mealOperationError(error)}
 }
