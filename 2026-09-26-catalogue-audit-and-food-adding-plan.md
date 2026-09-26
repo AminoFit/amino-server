@@ -136,15 +136,35 @@ The ceviche that motivated this has consistent macros (122 vs 120 kcal), so this
 - Reject the source, or mark the food as needing review.
 - Tests: the calorie-density guards (dry vs cooked rice, tuna in oil vs water).
 
-### B3. Web extraction accuracy
+### B3. Web extraction accuracy (tried 2026-09-26, not shipped)
 
-- **Last eval:** Sonnet 5 was correct on 13 of 19 branded products, wrong on 5 and declined 1.
-- **Improvements:**
-  - Prefer the manufacturer's page or label images.
-  - Ask for both per-serving and per-100 g values and require them to agree.
-  - Cross-check against USDA by name when a record exists.
-- **Target:** at least 17 of 19 correct, and wrong only when the source itself is wrong.
-- `scripts/food-creation-eval.ts` must pass `web: true` now that USDA comes first.
+**Model choice:** Sonnet 5 stays. On the 17-product creation eval, after dropping two USDA references that list 0 kcal:
+
+| Model | Calories right (per 100 g) | Exact | Declined | Median time | Cost per run |
+|---|---|---|---|---|---|
+| Sonnet 5 | 16/17 | 13 | 0 | 7.0s | $0.37 |
+| Opus 5.5 | 14/17 | 11 | 1 | 10.0s | $0.76 |
+| Opus 5 | — | 11 | 1 | 10.2s | $1.37 |
+
+The Opus models made the same two sibling-variant mistakes: DiGiorno Rising Crust instead of Classic Crust, and Light+Fit Greek Crunch.
+
+**What B3 tried:**
+- Rules against sibling variants and a preference for the manufacturer's page, in the prompt.
+- A check that the page's per-100 g calories agree with its per-serving values.
+- A Jev check that the page is exactly the requested variant, with one more search naming the rejected products.
+
+**Result over three runs each:**
+
+| | Calories right | Exact | Declined | Median time |
+|---|---|---|---|---|
+| Current code | 16, 15, 16 | 13, 11, 13 | 0 | ~7.3s |
+| B3 | 14, 14, 16 | 11, 10, 13 | 1, 2, 0 | ~8.7s |
+
+- B3 fixed the one repeated sibling error: Special K High Protein Chocolate Almond picked instead of plain Chocolate Almond, fixed in 3 of 3 runs.
+- It declined vague requests ("Protein Bar" with no flavour).
+- It disagreed with a doubtful reference: Light+Fit "with cookie pieces & dark chocolate" listed at 70 kcal and 0 g fat.
+
+**Next step:** a better creation eval before tuning further. About 40 products with verified references (the owner's label-sourced foods and barcoded USDA records), queried the way the agent writes them, with the variant words it reads from the photo. Then decide whether a wrong-variant food, which is saved and reused, is worse than a decline, which leads the agent to use the label or an estimate. The B3 code is recoverable from this session.
 
 ### B4. Sanity-check estimated foods (implemented 2026-09-26)
 
