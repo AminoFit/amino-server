@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import path from "node:path"
 import sharp from "sharp"
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from "zxing-wasm/reader"
 
@@ -32,8 +33,10 @@ function expandUpcE(code: string): string {
 let prepared = false
 function ensureReader() {
   if (prepared) return
-  // Load the WASM from disk (bundled with the function) instead of a CDN.
-  const wasm = readFileSync(require.resolve("zxing-wasm/reader/zxing_reader.wasm"))
+  // Load the WASM from disk (traced into the function) instead of a CDN. The path is
+  // resolved at runtime so webpack does not try to bundle the binary as a module.
+  const traced = path.join(process.cwd(), "node_modules", "zxing-wasm", "dist", "reader", "zxing_reader.wasm")
+  const wasm = readFileSync(existsSync(traced) ? traced : (0, eval)("require").resolve("zxing-wasm/reader/zxing_reader.wasm"))
   prepareZXingModule({ overrides: { wasmBinary: wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength) as ArrayBuffer } })
   prepared = true
 }
