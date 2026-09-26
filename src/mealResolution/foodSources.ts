@@ -59,6 +59,11 @@ brand, flavour, variant, form (for example a drink vs a cup of yogurt, a bar vs 
 Use the serving units and sizes and the per-100 g energy and protein as evidence: very different values mean a
 different product. Choose none when no candidate is the same food.`
 
+const BARCODE_POLICY=`A barcode library decoded a retail barcode from the user's photo of a package. Decide whether the
+package, described by the agent from the photo, is exactly this catalogue food: same brand, product, flavour, variant
+and form. Names may differ in language, spelling or word order. A sibling variant (another flavour, fat level, sugar
+free, protein version) or a different form (drink vs cup) is NOT the same food.`
+
 // Canonical mass/volume units are a nutrition basis, not a serving: the food's gram
 // basis already covers them and the agent logs by mass.
 const BASIS_UNITS=new Set(["g","gram","grams","gr","kg","mg","ml","milliliter","milliliters","millilitre","millilitres","l","liter","litre","oz","ounce","ounces","fl oz","floz","fluid ounce","fluid ounces","lb"])
@@ -202,21 +207,49 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
 
   return {
     sources,
-    /** Barcode first (USDA record with the same GTIN); otherwise cited web search and USDA
-     * by name together. With a label candidate, each result says whether it matches the label. */
-    async searchFoodSources(query:string,options:{gtin?:string|null;labelSourceId?:string|null}={}) {
+    /** Sources in order of cost; the catalogue was already searched. A barcode's USDA record first. A label is
+     * already a complete source, so it never triggers web search. Without a barcode, USDA by name; cited web
+     * search only when asked for (web), the last resort after USDA had nothing matching. A decoded barcode
+     * that neither the catalogue nor USDA knows, with no label, goes to the web. */
+    async searchFoodSources(query:string,options:{gtin?:string|null;labelSourceId?:string|null;web?:boolean}={}) {
       const text=query.trim().slice(0,100),gtin=barcode(options.gtin)
       const label=options.labelSourceId?sources.get(options.labelSourceId):undefined
       if (!text&&!gtin) return {status:"empty" as const,candidates:[]}
       let found=gtin?await usdaByGtin(gtin).catch(()=>[]):[]
-      if (!found.length) {
-        // Name search always returns neighbours, so it cannot say "not found": run the
-        // cited web search alongside it and let the agent choose.
-        const [web,byName]=await Promise.all([webCandidates(text||gtin!,gtin),text?usdaByName(text).catch(()=>[]):[]])
-        found=[...web,...byName]
-      } else if (label&&!found.some(food=>matchesLabel(food,label))) found=[...found,...await webCandidates(text,gtin)]
+      if (!found.length&&!label) {
+        found=gtin||options.web?await webCandidates(text||gtin!,gtin):await usdaByName(text).catch(()=>[])
+      }
       const candidates=[...found.map(food=>summary(food,label)),...(label?[summary(label)]:[])]
       return {status:candidates.length?"ok" as const:"empty" as const,candidates}
+    },
+    /** Attaches a barcode decoded from this meal's photo to the catalogue food the package is, so the next
+     * scan is a catalogue hit. Refuses foods that carry another barcode (another product or size) and asks
+     * Jev to confirm the package description names this food. */
+    async attachBarcode(foodId:number,gtinValue:string,packageName:string) {
+      const gtin=barcode(gtinValue)
+      if (!gtin) return {status:"refused" as const,reason:"barcode_not_decoded"}
+      const owner=await db().from("FoodItem").select("id").eq("gtin",gtin).limit(1).abortSignal(ctx.signal)
+      if (owner.error) throw new Error("catalogue_unavailable")
+      const already=(owner.data??[])[0] as {id:number}|undefined
+      if (already) {ctx.discover(already.id);return {status:already.id===foodId?"attached" as const:"other_food" as const,foodId:already.id}}
+      const read=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
+        .eq("id",foodId).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
+      const food=((read.data??[]) as unknown as Facts[])[0]
+      if (read.error||!food) throw new Error("catalogue_unavailable")
+      if (food.gtin) return {status:"refused" as const,reason:"food_has_another_barcode: a different product or size; findFood with includeSources"}
+      const decision=await (deps.jev??selectWithJev)({options:{same:true,different:false},state:{
+        package:{description:packageName.slice(0,160),barcode:gtin},
+        catalogue:describe({name:food.name,brand:food.brand,gtin:null,kcal:food.kcalPerServing,protein:food.proteinPerServing,grams:food.defaultServingWeightGram,
+          servings:(food.Serving??[]).map(s=>({unit:s.servingName,amount:Number(s.defaultServingAmount)||1,grams:s.servingWeightGram}))})},
+        questions:{selection:{type:"choice",instructions:BARCODE_POLICY,
+          criteria:{same:"The package is exactly this catalogue food.",different:"The package is a different product or variant."}}}},ctx.signal)
+      if (!(decision.status==="ok"&&decision.choice==="same"&&(decision.confidence??0)>=0.9))
+        return {status:"refused" as const,reason:"not_the_same_product: findFood with includeSources for this barcode"}
+      const enriched=await (db() as any).rpc("enrich_catalogue_food",{p_food_id:foodId,
+        p_food:{gtin,name:packageName.slice(0,120),source:"Barcode in the user's photo"},p_servings:[]}).abortSignal(ctx.signal)
+      if (enriched.error||!(enriched.data?.added??[]).includes("gtin")) return {status:"refused" as const,reason:"barcode_not_attached"}
+      ctx.discover(foodId)
+      return {status:"attached" as const,foodId}
     },
     /** Nutrition facts read from a label in the photo become a source the agent can create. */
     proposeLabelFood(value:unknown) {

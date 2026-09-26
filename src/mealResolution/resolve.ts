@@ -29,11 +29,13 @@ the new meal to the past; use the captured submittedAt and IANA timezone for rel
 barcodes lists retail barcodes that a barcode library decoded from the photos; never read barcode digits
 yourself. Each decoded barcode is a product in the meal, and one item must be the catalogue food carrying that
 exact gtin. A barcodeMatches food is that product: use it. For a barcode with no catalogue match, call
-findFood with its gtin and addFood the matching source (it keeps the barcode); never substitute a similar
-catalogue food without the barcode. When a photo shows a nutrition label, call proposeLabelFood with the facts
-exactly as printed for one serving (and the decoded gtin if one belongs to this product), then findFood with its
-labelSourceId. addFood a source with matchesLabel true when one exists (a fuller record of the same product),
-otherwise the label source itself.
+findFood with its gtin. If a catalogue food is exactly the scanned product (same brand, product, flavour, variant
+and form), call attachBarcode so the catalogue remembers the barcode, then log that food. Otherwise call findFood
+again with includeSources and addFood the matching source (it keeps the barcode); never substitute a similar
+catalogue food. When a photo shows a nutrition label, call proposeLabelFood with the facts exactly as printed
+for one serving (and the decoded gtin if one belongs to this product), then findFood with its labelSourceId.
+Use a catalogue food that is this product; otherwise addFood a source with matchesLabel true, or the label
+source itself (it is complete; never search the web for a product whose label you have).
 Identify the exact product variant (flavour, line, size) from everything visible: packaging colours,
 the food itself, labels and text. When the photo does not name the variant, search for the variant the
 visual evidence indicates; never settle for a sibling variant merely because it exists in the catalogue.
@@ -44,8 +46,10 @@ description that resembles a recent meal is not a reference: identify what this 
 For a packaged product with no stated amount: a single-serve package (a bottle, can or bar meant for one
 person) is the whole package; a multi-serve package (a carton, large bottle or box) is one labelled serving.
 Every logged item must reference a catalogue food. findFood searches the catalogue (any language or spelling;
-details included). When no catalogue food has the same identity, call findFood with includeSources true (it also
-does this for an unmatched barcode) and addFood the best source. addFood may return an existing food instead:
+details included); the catalogue is the cache of every food found before, so use it whenever it has the food.
+When no catalogue food has the same identity, call findFood again for that food with includeSources true: it
+returns USDA records. Only if none is the same food, call it once more with includeSources for a cited web search
+(slow, the last resort). addFood the best source. addFood may return an existing food instead:
 use it; if it returns possible_duplicates, use the matching one or ask. Only when no source exists (for example
 a homemade dish) call proposeEstimatedFood with per-100 g values and a clear basis, then addFood its sourceId.
 Prefer logging recognisable components separately over inventing a composite. Never add a food the catalogue has.
@@ -154,6 +158,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const selected=(deps.model??agentModel)()
   let steps=0,toolCalls=0
   const withCount=<T>(work:()=>Promise<T>)=>{toolCalls++;return work()}
+  // What findFood has shown per query: the catalogue, then USDA; the web comes only after both.
+  const searched=new Map<string,"catalogue"|"usda">()
   // Where the time goes: prefetch, each model step, each tool call and the backend check.
   const timeline:{stage:string;ms:number}[]=[]
   const mark=(stage:string,since:number)=>{timeline.push({stage,ms:Math.round(performance.now()-since)})}
@@ -197,7 +203,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         getMealEvent:tool({description:"Read the complete owned historical event, its original wording, foods, and component groups.",
           inputSchema:z.object({messageId:z.number().int().positive()}).strict(),
           execute:({messageId})=>withCount(()=>evidence.getMealEvent(messageId))}),
-        findFood:tool({description:"Find a food. Searches the catalogue by name (any language or spelling) and by a decoded barcode, with details. With includeSources true, or for a decoded barcode the catalogue lacks, also searches the barcode's USDA record, USDA by name and cited web pages for sources to add (with labelSourceId each says whether it matches the label). Results are hints, not identity proof.",
+        findFood:tool({description:"Find a food. Searches the catalogue by name (any language or spelling) and by a decoded barcode, with details. Sources to add are searched only when the catalogue has nothing, or when you call again for the same food with includeSources true: first USDA (the barcode's record, else by name), then on a further call cited web pages. With labelSourceId each source says whether it matches the label. Results are hints, not identity proof.",
           inputSchema:z.object({query:z.string().trim().min(1).max(100),gtin:z.string().max(20).nullable(),
             includeSources:z.boolean(),labelSourceId:z.string().max(60).nullable()}).strict(),
           execute:({query,gtin,includeSources,labelSourceId})=>withCount(async()=>{
@@ -206,9 +212,32 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
               decoded?evidence.findFoodsByGtin([decoded]).catch(()=>[]):Promise.resolve([]),
               evidence.searchFoods(query).catch(()=>({candidates:[],foods:[]}) as {candidates:unknown[];foods?:ReturnType<typeof foodSummary>[]})])
             const seen=new Set<number>(), catalogue=[...byBarcode.map(foodSummary),...(byName.foods??[])].filter(food=>!seen.has(food.id)&&seen.add(food.id))
-            const needSources=includeSources||(decoded&&!byBarcode.length)||!catalogue.length
-            const found=needSources?await sources.searchFoodSources(query,{gtin:decoded,labelSourceId}):{candidates:[]}
+            // The catalogue is the cache: sources only when it has nothing, or when asked again after seeing it;
+            // USDA before the web.
+            const key=query.trim().toLowerCase(),stage=searched.get(key)
+            if (catalogue.length&&!(includeSources&&stage)) {
+              searched.set(key,stage??"catalogue")
+              const unmatched=decoded&&!byBarcode.length
+              return {catalogue,barcodeMatched:byBarcode.length>0,sources:[],
+                note:unmatched?"No catalogue food carries this barcode yet. If one is exactly the scanned product, attachBarcode; otherwise call again with includeSources."
+                  :includeSources?"Catalogue results first. If none is the same food, call again with includeSources.":undefined}
+            }
+            const found=await sources.searchFoodSources(query,{gtin:decoded,labelSourceId,web:stage==="usda"})
+            searched.set(key,"usda")
             return {catalogue,barcodeMatched:byBarcode.length>0,sources:found.candidates}
+          })}),
+        attachBarcode:tool({description:"Attach a decoded barcode to the existing catalogue food that is exactly the scanned product, so future scans find it. packageName is the brand, product, flavour and size as printed on the package. Returns attached, other_food (another food already carries it: use that one) or refused.",
+          inputSchema:z.object({foodId:z.number().int().positive(),gtin:z.string().max(20),packageName:z.string().trim().min(2).max(160)}).strict(),
+          execute:({foodId,gtin,packageName})=>withCount(async()=>{
+            const code=normalizeGtin(gtin)
+            if (!code||!barcodes.includes(code)) return {status:"refused",reason:"barcode_not_decoded"}
+            const attached=await sources.attachBarcode(foodId,code,packageName)
+            if (attached.status==="refused") return attached
+            const {foods}=await evidence.getFoodsAndServings([attached.foodId]).catch(()=>({foods:[]}))
+            // The published plan is checked against these facts; the catalogue now carries the barcode.
+            const food=foods[0]??evidence.foods.get(attached.foodId)
+            if (food&&attached.status==="attached") evidence.foods.set(food.id,{...food,gtin:code})
+            return {...attached,food:food?foodSummary({...food,gtin:attached.status==="attached"?code:food.gtin}):null}
           })}),
         getFoodsAndServings:tool({description:"Read authoritative details for previously discovered catalogue food IDs, including serving weights and nutrients.",
           inputSchema:z.object({foodIds:z.array(z.number().int().positive()).min(1).max(20)}).strict(),

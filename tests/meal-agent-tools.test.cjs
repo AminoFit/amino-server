@@ -45,18 +45,39 @@ test('a plan that passes the check needs no extra model call',async()=>{
   assert.equal(result.checked,true);
 });
 
-test('findFood searches the catalogue first and only asks sources when asked or empty',async()=>{
+test('findFood: the catalogue is the cache; sources only when it is empty or asked again, USDA before the web',async()=>{
   const searched=[],calls=[];
-  const sources={...noSources,async searchFoodSources(q){calls.push(q);return noSources.searchFoodSources(q)}};
+  const sources={...noSources,async searchFoodSources(q,options){calls.push([q,options.web]);return noSources.searchFoodSources(q)}};
   const generate=async options=>{
-    const hit=await options.tools.findFood.execute({query:'rice',gtin:null,includeSources:false,labelSourceId:null},{});
+    const find=args=>options.tools.findFood.execute({gtin:null,includeSources:false,labelSourceId:null,...args},{});
+    const hit=await find({query:'rice'});
     assert.equal(hit.catalogue[0].id,3);
     assert.deepEqual(hit.sources,[]);
-    const wider=await options.tools.findFood.execute({query:'banana',gtin:null,includeSources:true,labelSourceId:null},{});
-    assert.equal(wider.sources[0].name,'Banana');
+    const first=await find({query:'banana',includeSources:true});
+    assert.deepEqual(first.sources,[],'catalogue results come first even when sources are requested');
+    assert.match(first.note,/call again/);
+    const usda=await find({query:'Banana ',includeSources:true});
+    assert.equal(usda.sources[0].name,'Banana');
+    await find({query:'banana',includeSources:true});
     return {output:plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false}])};
   };
   await resolveMeal(input,{evidence:evidence(searched),sources,generate,loadPhotos:async()=>[],model:()=>({id:'test',provider:'test',model:{}})});
-  assert.deepEqual(searched,['rice','banana']);
-  assert.deepEqual(calls,['banana']);
+  assert.deepEqual(searched,['rice','banana','Banana ','banana']);
+  assert.deepEqual(calls,[['Banana ',false],['banana',true]],'USDA first, the web only after USDA was shown');
+});
+
+test('attachBarcode only accepts barcodes decoded from this meal, and the attached food then covers the barcode',async()=>{
+  const attached=[];
+  const sources={...noSources,async attachBarcode(foodId,gtin,name){attached.push([foodId,gtin,name]);return {status:'attached',foodId}}};
+  const generate=async options=>{
+    const refused=await options.tools.attachBarcode.execute({foodId:3,gtin:'016000229969',packageName:'Rice'},{});
+    assert.equal(refused.reason,'barcode_not_decoded');
+    const ok=await options.tools.attachBarcode.execute({foodId:3,gtin:'7501020548440',packageName:'Rice 1kg'},{});
+    assert.equal(ok.food.gtin,'07501020548440');
+    return {output:plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false}])};
+  };
+  const result=await resolveMeal({...input,originalText:'150 g rice'},{evidence:evidence(),sources,generate,barcodes:['07501020548440'],
+    loadPhotos:async()=>[],model:()=>({id:'test',provider:'test',model:{}})});
+  assert.deepEqual(attached,[[3,'07501020548440','Rice 1kg']]);
+  assert.equal(result.checked,true,'the barcode check passes once the food carries the barcode');
 });

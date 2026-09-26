@@ -45,7 +45,7 @@ async function evaluate(model: string, truth: Truth) {
       return parsed
     } })
   const started = Date.now()
-  const { candidates } = await sources.searchFoodSources(truth.brand ? `${truth.brand} ${truth.name}` : truth.name)
+  const { candidates } = await sources.searchFoodSources(truth.brand ? `${truth.brand} ${truth.name}` : truth.name, { web: true })
   const foods = candidates.map(c => sources.sources.get(c.sourceId)!).filter(Boolean)
   const outcome = !foods.length ? "declined" : matches(foods[0], truth) ? "correct" :
     foods.some(food => matches(food, truth)) ? "correct_not_first" : "wrong"

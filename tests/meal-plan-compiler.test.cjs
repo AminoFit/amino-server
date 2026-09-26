@@ -59,3 +59,15 @@ test('nutrition claims keep label basis separate from consumed portion',()=>{
     claims:[{...base.proposal.claims[0],role:'portion_target',basis:'consumed'}]}}),
     /nutrition_claim_conflicts_with_food/);
 });
+
+test('servings whose stored amount restates their size (about a gram per unit) are never offered to the agent',()=>{
+  const {usableServing}=require('../src/mealResolution/evidence');
+  const serving=(servingName,servingWeightGram,defaultServingAmount)=>({id:1,foodItemId:1,servingName,servingWeightGram,defaultServingAmount});
+  assert.equal(usableServing(serving('355 ml',355,355)),false,'Spindrift: "1 x 355 ml" would log 1 g');
+  assert.equal(usableServing(serving('1 cup',240,240)),false,'Lifeway kefir: "1 cup" would log 1 g');
+  assert.equal(usableServing(serving('cup',null,1)),false,'no weight');
+  assert.equal(usableServing(serving('bottle',207,1)),true);
+  assert.equal(usableServing(serving('2 tbsp.',31,2)),true,'2 tbsp = 31 g is sound: 15.5 g per tbsp');
+  assert.equal(usableServing(serving('ml',355,355)),true,'1 g per ml is right for a gram unit');
+  assert.equal(usableServing(serving('pieces',30,4)),true);
+});

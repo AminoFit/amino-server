@@ -22,6 +22,20 @@ export type MealEvent = {messageId:number;revision:number;originalText:string;co
 const catalogColumns = "id,name,brand,gtin,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
+// Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one
+// unit weigh about a gram. Until the catalogue audit repairs them, such servings are never offered: the agent
+// logs by mass or by a sound serving instead.
+const GRAM_UNITS=new Set(["g","gram","grams","gr","ml","milliliter","milliliters","millilitre","millilitres"])
+export function usableServing(serving:CatalogFood["Serving"][number]) {
+  const grams=serving.servingWeightGram??0,amount=Number(serving.defaultServingAmount??0)
+  if (!(grams>0)||!(amount>0)) return false
+  const leading=/^\s*(\d+(?:\.\d+)?)\s*(.*)$/.exec(serving.servingName??"")
+  const unit=(leading?leading[2]:serving.servingName??"").trim().toLowerCase().replace(/\.$/,"")
+  // "2 tbsp." x2 = 31 g is 15.5 g per tbsp; "355 ml" x355 reads as one can but is 1 g per unit.
+  const restated=leading&&amount>1&&Number(leading[1])===amount
+  return restated?!GRAM_UNITS.has(unit)&&grams/amount>=2:grams/amount>=2||GRAM_UNITS.has(unit)
+}
+
 /** Compact, authoritative view of a read food: enough to select it and its serving. */
 export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:food.brand,gtin:food.gtin??null,
   servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing,proteinG:food.proteinPerServing,
@@ -80,7 +94,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
         if (result.error) throw new Error("food_details_unavailable")
         for (const row of result.data??[]) {
           const food=row as unknown as CatalogFood
-          foods.set(food.id,{...food,Serving:food.Serving.slice(0,30)})
+          foods.set(food.id,{...food,Serving:food.Serving.filter(usableServing).slice(0,30)})
         }
       }
       return {status:"ok" as const,foods:allowed.flatMap(id=>foods.has(id)?[foods.get(id)!]:[]),

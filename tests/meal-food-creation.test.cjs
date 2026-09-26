@@ -84,10 +84,11 @@ test('web facts need a citation the search actually returned',async()=>{
     {name:'Cafe Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://cafe.example/menu'},
     {name:'Other Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://invented.example/x'}]},
     sourceUrls:['https://cafe.example/menu'],searches:1});
-  const {sources}=harness({usda:[],web,jev:{status:'ok',choice:'none',confidence:0.95}});
-  const {candidates}=await sources.searchFoodSources('cafe bowl');
+  const {sources,calls}=harness({usda:[],web,jev:{status:'ok',choice:'none',confidence:0.95}});
+  const {candidates}=await sources.searchFoodSources('cafe bowl',{web:true});
   assert.deepEqual(candidates.map(c=>c.name),['Cafe Bowl']);
   assert.equal(candidates[0].source,'https://cafe.example/menu');
+  assert.equal(calls.web[0][3].model,'anthropic/claude-sonnet-5','web extraction uses the creation model');
 });
 
 test('implausible source nutrition is discarded before it can become a food',async()=>{
@@ -131,20 +132,30 @@ test('a barcode the library did not decode from this meal is ignored',async()=>{
   assert.equal(label.gtin,null);
 });
 
-test('the label is always offered, and web results say whether they match it',async()=>{
-  const web=async()=>({data:{foods:[
-    {name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:37,kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'},
-    {name:'Cheerios Protein Oats & Honey',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:55,kcal:210,proteinG:11,carbG:44,totalFatG:3,sourceUrl:'https://cheerios.example/oats'}]},
-    sourceUrls:['https://cheerios.example/protein','https://cheerios.example/oats'],searches:1});
-  const {sources,calls}=harness({usda:[],web,barcodes:['00016000229969']});
+test('a label is a complete source: it is offered without any web search, and USDA records say whether they match it',async()=>{
+  const {sources,calls}=harness({usda:[],barcodes:['00016000229969']});
   const label=sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingUnit:'cup',servingAmount:1,servingGrams:37,
     kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969'});
   assert.equal(label.kind,'Label');
   assert.equal(label.gtin,'00016000229969');
-  const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{labelSourceId:label.sourceId});
-  assert.deepEqual(candidates.map(c=>[c.name,c.matchesLabel]),[
-    ['Cheerios Protein Cookies & Creme',true],['Cheerios Protein Oats & Honey',false],['Cheerios Protein Cookies & Creme',undefined]]);
-  assert.equal(calls.web[0][3].model,'anthropic/claude-sonnet-5','web extraction uses the creation model');
+  const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{labelSourceId:label.sourceId,web:true});
+  assert.deepEqual(candidates.map(c=>c.kind),['Label']);
+  assert.equal(calls.web.length,0,'never search the web for a product whose label is in the photo');
+  const withUsda=harness({usda:[cheerios,{...cheerios,externalId:'9',name:'Cheerios Protein Oats & Honey',defaultServingWeightGram:55,kcalPerServing:210}],
+    barcodes:['00016000229969'],usdaSearch:async()=>[{fdcId:2745373,gtinUpc:'016000229969'}]});
+  const own=withUsda.sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingUnit:'cup',servingAmount:1,servingGrams:37,
+    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969'});
+  const matched=await withUsda.sources.searchFoodSources('Cheerios',{gtin:'016000229969',labelSourceId:own.sourceId});
+  assert.deepEqual(matched.candidates.map(c=>[c.kind,c.matchesLabel]),[['USDA',true],['USDA',false],['Label',undefined]]);
+});
+
+test('without a barcode, sources come from USDA by name; the web only when asked for',async()=>{
+  const {sources,calls}=harness({});
+  const {candidates}=await sources.searchFoodSources('tuna ceviche');
+  assert.deepEqual(candidates.map(c=>c.kind),['USDA']);
+  assert.equal(calls.web.length,0);
+  await sources.searchFoodSources('tuna ceviche',{web:true});
+  assert.ok(calls.web.length>0);
 });
 
 test('web search retries once when the first pass abstains',async()=>{
@@ -153,17 +164,17 @@ test('web search retries once when the first pass abstains',async()=>{
     {data:{foods:[{name:'Cafe Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,
       sourceUrl:'https://cafe.example/menu'}]},sourceUrls:['https://cafe.example/menu'],searches:1}};
   const {sources}=harness({usda:[],web});
-  assert.equal((await sources.searchFoodSources('cafe bowl')).candidates.length,1);
+  assert.equal((await sources.searchFoodSources('cafe bowl',{web:true})).candidates.length,1);
   assert.equal(attempts,2);
 });
 
-test('name-search neighbours never suppress the web search when the barcode has no exact record',async()=>{
+test('a decoded barcode that neither the catalogue nor USDA knows, with no label, goes to the web',async()=>{
   const web=async()=>({data:{foods:[{name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:37,
     kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'}]},sourceUrls:['https://cheerios.example/protein'],searches:1});
   const {sources,calls}=harness({usda:[usdaFood],web,barcodes:['00016000229969'],usdaSearch:async()=>[]});
   const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{gtin:'00016000229969'});
   assert.equal(calls.web.length,1);
-  assert.deepEqual(candidates.map(c=>c.kind),['Online','USDA']);
+  assert.deepEqual(candidates.map(c=>c.kind),['Online'],'name-search neighbours are not the scanned product');
   assert.equal(candidates[0].gtin,'00016000229969');
 });
 
@@ -171,7 +182,7 @@ test('servings keep the unit separate from its amount, so the app never shows "1
   const web=async()=>({data:{foods:[{name:'Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
     kcal:110,proteinG:15,carbG:8,totalFatG:2,sourceUrl:'https://chobani.example/drink'}]},sourceUrls:['https://chobani.example/drink'],searches:1});
   const {sources,calls}=harness({usda:[],web,jev:{status:'ok',choice:'none',confidence:0.95}});
-  const [candidate]=(await sources.searchFoodSources('Chobani protein drink')).candidates;
+  const [candidate]=(await sources.searchFoodSources('Chobani protein drink',{web:true})).candidates;
   assert.deepEqual(candidate.servings,[{name:'bottle',grams:207,amount:1}]);
   await sources.createFoodFromSource(candidate.sourceId);
   assert.deepEqual(calls.create[0].p_servings,[{name:'bottle',grams:207,amount:1}]);
@@ -213,4 +224,41 @@ test('barcodes decide duplicates outright, and Jev sees the facts that separate 
   assert.equal(state.newFood.barcode,'00818290015617');
   assert.deepEqual(state.catalogue[0].servings,[{unit:'container',amount:1,grams:150}]);
   assert.equal(state.catalogue[0].kcalPer100g,40);
+});
+
+function attachHarness({food={id:15295,name:'Lala 100 +Proteina Leche 1% Grasa',brand:'Lala',gtin:null},owner=null,jev={status:'ok',choice:'same',confidence:0.96}}={}){
+  const calls={enrich:[],jev:[],discovered:[]};
+  const db={from:()=>{let byGtin=false;const q={select:()=>q,limit:()=>q,eq:column=>{byGtin=column==='gtin';return q},
+    abortSignal:async()=>({data:byGtin?(owner?[owner]:[]):[{defaultServingWeightGram:250,kcalPerServing:130,proteinPerServing:15,Serving:[],...food}],error:null})};return q},
+    rpc:(name,args)=>{calls.enrich.push(args);return {abortSignal:async()=>({data:{foodId:args.p_food_id,added:args.p_food.gtin?['gtin','alias']:[],conflict:false},error:null})}}};
+  const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes:['07501020548440'],
+    signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
+    {db,embed:async()=>[],jev:async task=>{calls.jev.push(task);return jev}});
+  return {sources,calls};
+}
+
+test('a decoded barcode is attached to the catalogue food the package is, so the next scan is a catalogue hit',async()=>{
+  const {sources,calls}=attachHarness();
+  assert.deepEqual(await sources.attachBarcode(15295,'7501020548440','Lala 100 +Proteína Leche Ultrafiltrada 1% Grasa 1L'),{status:'attached',foodId:15295});
+  assert.equal(calls.enrich[0].p_food.gtin,'07501020548440');
+  assert.deepEqual(calls.enrich[0].p_servings,[]);
+  assert.equal(calls.jev[0].state.package.barcode,'07501020548440');
+});
+
+test('attaching a barcode refuses other products: another barcode, a sibling variant, or an undecoded code',async()=>{
+  let h=attachHarness({food:{id:15295,name:'Lala Light',brand:'Lala',gtin:'07501020500001'}});
+  assert.match((await h.sources.attachBarcode(15295,'07501020548440','Lala 100 1%')).reason,/another_barcode/);
+  h=attachHarness({jev:{status:'ok',choice:'different',confidence:0.95}});
+  assert.equal((await h.sources.attachBarcode(15295,'07501020548440','Lala Deslactosada')).status,'refused');
+  h=attachHarness({jev:{status:'ok',choice:'same',confidence:0.6}});
+  assert.equal((await h.sources.attachBarcode(15295,'07501020548440','Lala 100')).status,'refused','an unsure decision never attaches');
+  h=attachHarness();
+  assert.equal((await h.sources.attachBarcode(15295,'00016000229969','Cheerios')).reason,'barcode_not_decoded');
+  for (const run of [h]) assert.equal(run.calls.enrich.length,0);
+});
+
+test('a barcode another food already carries points to that food instead of moving it',async()=>{
+  const {sources,calls}=attachHarness({owner:{id:777}});
+  assert.deepEqual(await sources.attachBarcode(15295,'07501020548440','Lala 100'),{status:'other_food',foodId:777});
+  assert.equal(calls.enrich.length,0);
 });
