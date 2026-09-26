@@ -23,8 +23,8 @@ const catalogColumns = "id,name,brand,gtin,description,lastUpdated,defaultServin
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 // Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one
-// unit weigh about a gram. Until the catalogue audit repairs them, such servings are never offered: the agent
-// logs by mass or by a sound serving instead.
+// unit weigh about a gram. The catalogue audit (A1) repaired the existing rows; any such serving is still never
+// offered, so the agent logs by mass or by a sound serving instead.
 const GRAM_UNITS=new Set(["g","gram","grams","gr","ml","milliliter","milliliters","millilitre","millilitres"])
 export function usableServing(serving:CatalogFood["Serving"][number]) {
   const grams=serving.servingWeightGram??0,amount=Number(serving.defaultServingAmount??0)
@@ -33,7 +33,9 @@ export function usableServing(serving:CatalogFood["Serving"][number]) {
   const unit=(leading?leading[2]:serving.servingName??"").trim().toLowerCase().replace(/\.$/,"")
   // "2 tbsp." x2 = 31 g is 15.5 g per tbsp; "355 ml" x355 reads as one can but is 1 g per unit.
   const restated=leading&&amount>1&&Number(leading[1])===amount
-  return restated?!GRAM_UNITS.has(unit)&&grams/amount>=2:grams/amount>=2||GRAM_UNITS.has(unit)
+  // A single small unit is real (a tsp of spice, one berry); about a gram per unit only signals the size stored
+  // as the amount when the amount is above 1.
+  return restated?!GRAM_UNITS.has(unit)&&grams/amount>=2:amount===1||grams/amount>=2||GRAM_UNITS.has(unit)
 }
 
 /** Compact, authoritative view of a read food: enough to select it and its serving. */

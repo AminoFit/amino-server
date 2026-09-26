@@ -12,7 +12,15 @@ The counts below come from a read-only pass over production on 2026-09-26. Re-ru
 
 ## Part A: data problems to fix in the audit
 
-### A1. Servings that weigh about a gram per unit (1,328 servings)
+### A1. Servings that weigh about a gram per unit (done 2026-09-26: 1,039 repaired)
+
+**Done:** migration `20260926050000_audit_a1_serving_amounts`. Each repaired serving is now one unit of its named portion (amount 1, weight unchanged): "240 ml" = 240 g, "1 cup" = 240 g, "8 OZA" = 240 g. None remain.
+
+- Old rows are in `CatalogueAuditBackup` (audit `A1_serving_amounts`), so the step can be reversed.
+- 970 past logs reference these servings. They keep their stored grams: the app shows a log's own fields and re-matches servings by grams when editing.
+- The earlier count of 1,328 included 283 legitimate small single units (a tsp of spice at 0.8 g, one berry, one cashew). The guard no longer hides these.
+
+Original finding:
 
 Legacy imports stored a serving's size as its amount, in two forms:
 

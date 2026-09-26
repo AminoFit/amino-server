@@ -70,6 +70,8 @@ test('servings whose stored amount restates their size (about a gram per unit) a
   assert.equal(usableServing(serving('2 tbsp.',31,2)),true,'2 tbsp = 31 g is sound: 15.5 g per tbsp');
   assert.equal(usableServing(serving('ml',355,355)),true,'1 g per ml is right for a gram unit');
   assert.equal(usableServing(serving('pieces',30,4)),true);
+  assert.equal(usableServing(serving('tsp',0.83,1)),true,'a teaspoon of a spice is a real small unit');
+  assert.equal(usableServing(serving('2 Tbsp',30,30)),false,'30 g stored as 30 units');
 });
 
 test('the agent sees each serving as a unit with its weight per unit, so counts are amounts',()=>{
