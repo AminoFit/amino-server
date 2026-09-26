@@ -168,15 +168,19 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
 
   return {
     sources,
-    /** Barcode first (USDA record with the same GTIN), then USDA by name, then cited web
-     * search. With a label candidate, each result says whether it matches the label. */
+    /** Barcode first (USDA record with the same GTIN); otherwise cited web search and USDA
+     * by name together. With a label candidate, each result says whether it matches the label. */
     async searchFoodSources(query:string,options:{gtin?:string|null;labelSourceId?:string|null}={}) {
       const text=query.trim().slice(0,100),gtin=barcode(options.gtin)
       const label=options.labelSourceId?sources.get(options.labelSourceId):undefined
       if (!text&&!gtin) return {status:"empty" as const,candidates:[]}
       let found=gtin?await usdaByGtin(gtin).catch(()=>[]):[]
-      if (!found.length&&text) found=await usdaByName(text)
-      if (!found.length||(label&&!found.some(food=>matchesLabel(food,label)))) found=[...found,...await webCandidates(text,gtin)]
+      if (!found.length) {
+        // Name search always returns neighbours, so it cannot say "not found": run the
+        // cited web search alongside it and let the agent choose.
+        const [web,byName]=await Promise.all([webCandidates(text||gtin!,gtin),text?usdaByName(text).catch(()=>[]):[]])
+        found=[...web,...byName]
+      } else if (label&&!found.some(food=>matchesLabel(food,label))) found=[...found,...await webCandidates(text,gtin)]
       const candidates=[...found.map(food=>summary(food,label)),...(label?[summary(label)]:[])]
       return {status:candidates.length?"ok" as const:"empty" as const,candidates}
     },

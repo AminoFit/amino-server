@@ -31,6 +31,9 @@ catalogue match, call searchFoodSources with its gtin. When a photo shows a nutr
 proposeLabelFood with the facts exactly as printed for one serving (and the decoded gtin if one belongs to
 this product), then searchFoodSources with its labelSourceId. Create a candidate with matchesLabel true when
 one exists (a fuller record of the same product), otherwise the label candidate itself.
+Identify the exact product variant (flavour, line, size) from everything visible: packaging colours,
+the food itself, labels and text. When the photo does not name the variant, search for the variant the
+visual evidence indicates; never settle for a sibling variant merely because it exists in the catalogue.
 Every logged item must reference a catalogue food. When searchFoods (try several phrasings and
 languages) finds no food with the same identity, call searchFoodSources, then createFoodFromSource
 with the best candidate. It may return an existing food instead; use that food. If it returns
@@ -127,7 +130,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const selected=(deps.model??agentModel)()
   let steps=0,toolCalls=0
   const withCount=<T>(work:()=>Promise<T>)=>{toolCalls++;return work()}
-  const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??30000)
+  // Most meals finish in one or two turns; creating a missing food needs web search
+  // (6-20 s). The worker's lease is 120 s.
+  const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??90000)
   try {
     // Photos, likely foods and recent meals load in parallel before the first turn.
     const now=Date.parse(input.submittedAt)
@@ -186,7 +191,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       },
       toolChoice:"auto",stopWhen:stepCountIs(MAX_STEPS),
       // The last step must answer; a model still searching would otherwise return nothing.
-      prepareStep:({stepNumber})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:3000,maxRetries:0,
+      prepareStep:({stepNumber})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:3000,
+      // Shared Gemini capacity sometimes aborts upstream; retry with backoff before failing the meal.
+      maxRetries:2,
       abortSignal:controller.signal,onStepFinish:()=>{steps++}
     })
     controller.signal.throwIfAborted()

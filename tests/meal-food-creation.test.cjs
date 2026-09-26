@@ -154,3 +154,13 @@ test('web search retries once when the first pass abstains',async()=>{
   assert.equal((await sources.searchFoodSources('cafe bowl')).candidates.length,1);
   assert.equal(attempts,2);
 });
+
+test('name-search neighbours never suppress the web search when the barcode has no exact record',async()=>{
+  const web=async()=>({data:{foods:[{name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingName:'cup',servingGrams:37,
+    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'}]},sourceUrls:['https://cheerios.example/protein'],searches:1});
+  const {sources,calls}=harness({usda:[usdaFood],web,barcodes:['00016000229969'],usdaSearch:async()=>[]});
+  const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{gtin:'00016000229969'});
+  assert.equal(calls.web.length,1);
+  assert.deepEqual(candidates.map(c=>c.kind),['Online','USDA']);
+  assert.equal(candidates[0].gtin,'00016000229969');
+});

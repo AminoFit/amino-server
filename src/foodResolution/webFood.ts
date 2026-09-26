@@ -35,7 +35,7 @@ export async function resolveWebFood(system:string,prompt:string,user:Pick<Table
 export async function requestWebFood(system:string,prompt:string,model:string=foodModel()) {
   const key=process.env.OPENROUTER_API_KEY||process.env.OPEN_ROUTER_API_KEY
   if(!key)throw new Error("OpenRouter unavailable")
-  const signal=AbortSignal.timeout(60000)
+  const signal=AbortSignal.timeout(40000)
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
     method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${key}`},signal,
     body:JSON.stringify({model,messages:[{role:"system",content:system},{role:"user",content:prompt}],
