@@ -32,3 +32,11 @@ export function creationModel(env: NodeJS.ProcessEnv = process.env): CreationMod
   if (!(CREATION_MODELS as readonly string[]).includes(configured)) throw new Error(`Unsupported creation model: ${configured}`)
   return configured as CreationModel
 }
+
+/** OpenRouter routing: Gemini prefers Google Vertex (the account's higher limits,
+ * including a bring-your-own Vertex key) and falls back to Google AI Studio. */
+export function providerPreferences(model: string) {
+  return model.startsWith("google/")
+    ? { order: ["google-vertex", "google-ai-studio"], allow_fallbacks: true, require_parameters: true }
+    : { require_parameters: true }
+}

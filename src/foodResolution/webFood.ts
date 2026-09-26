@@ -1,4 +1,4 @@
-import { foodModel } from "@/ai/models"
+import { foodModel, providerPreferences } from "@/ai/models"
 import { LogOpenAiUsage } from "@/languageModelProviders/openai/utils/openAiHelper"
 import type { Tables } from "types/supabase"
 
@@ -42,7 +42,7 @@ export async function requestWebFood(system:string,prompt:string,model:string=fo
       // No sampling parameters: current Claude models reject them, and
       // require_parameters would then leave no provider.
       response_format:{type:"json_object"},max_tokens:4000,
-      reasoning:{effort:"low",exclude:true},provider:{require_parameters:true},
+      reasoning:{effort:"low",exclude:true},provider:providerPreferences(model),
       tools:[{type:"openrouter:web_search",parameters:{engine:"exa",max_uses:3,
         max_results:5,max_total_results:12,max_characters:4000}}],max_tool_calls:3})
   })

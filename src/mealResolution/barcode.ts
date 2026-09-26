@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import sharp from "sharp"
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from "zxing-wasm/reader"
+import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 
 // Barcode digits come only from ZXing. A model may help locate a barcode, never read it.
 
@@ -113,8 +114,8 @@ export async function locateBarcodesWithFlash(jpeg: Buffer, width: number, heigh
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(6000),
-    body: JSON.stringify({ model: deps.model ?? "google/gemini-3.8-flash", temperature: 0, reasoning: { effort: "minimal", exclude: true },
-      provider: { require_parameters: true }, max_tokens: 400,
+    body: JSON.stringify({ model: deps.model ?? FOOD_MODEL, temperature: 0, reasoning: { effort: "minimal", exclude: true },
+      provider: providerPreferences(deps.model ?? FOOD_MODEL), max_tokens: 400,
       response_format: { type: "json_schema", json_schema: { name: "barcodes", strict: true, schema: { type: "object", additionalProperties: false,
         required: ["boxes"], properties: { boxes: { type: "array", items: { type: "object", additionalProperties: false, required: ["box_2d"],
           properties: { box_2d: { type: "array", items: { type: "integer" } } } } } } } } },

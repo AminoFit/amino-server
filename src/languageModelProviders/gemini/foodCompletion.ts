@@ -1,5 +1,5 @@
 import { Tables } from "types/supabase"
-import { FOOD_MODEL, foodModel } from "@/ai/models"
+import { FOOD_MODEL, foodModel, providerPreferences } from "@/ai/models"
 import { LogOpenAiUsage } from "../openai/utils/openAiHelper"
 
 export const FOOD_REASONING_MODEL = FOOD_MODEL
@@ -35,7 +35,7 @@ export async function foodCompletion(options: {
         {role:"system",content:options.systemPrompt},
         {role:"user",content:userContent}
       ],response_format:{type:"json_object"},max_tokens:options.max_tokens ?? 4096,
-      temperature:1,reasoning:{effort:"low",exclude:true},provider:{require_parameters:true}})
+      temperature:1,reasoning:{effort:"low",exclude:true},provider:providerPreferences(model)})
     })
     if (!response.ok) {
       await response.body?.cancel()
