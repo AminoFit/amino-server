@@ -118,7 +118,7 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
         const serving=food.Serving.find(row=>row.id===quantity.servingId&&row.foodItemId===food.id)
         if (!serving||!positive(serving.servingWeightGram)||!positive(serving.defaultServingAmount))
           throw fail("invalid_food_serving",`serving ${quantity.servingId} is not a usable serving of food ${food.id}; its servings: ${
-            food.Serving.map(row=>`${row.id} (${row.defaultServingAmount} ${row.servingName} = ${row.servingWeightGram} g)`).join(", ")||"none (log by mass)"}`)
+            food.Serving.map(row=>`${row.id} (${row.servingName}: ${Math.round(Number(row.servingWeightGram)/Number(row.defaultServingAmount)*10)/10} g per unit)`).join(", ")||"none (log by mass)"}`)
         servingId=serving.id;servingAmount=quantity.amount;loggedUnit=serving.servingName
         grams=quantity.amount*serving.servingWeightGram/serving.defaultServingAmount
       } else {

@@ -7,13 +7,13 @@ import { compileMealPlan } from "@/mealResolution/compile"
 import { resolveMeal } from "@/mealResolution/resolve"
 import { foodSummary, type CatalogFood } from "@/mealResolution/evidence"
 
-const food=(id:number,name:string,kcal:number,protein:number,carb:number,fat:number,servings:[string,number][]=[]):CatalogFood=>({
+const food=(id:number,name:string,kcal:number,protein:number,carb:number,fat:number,servings:[string,number,number?][]=[]):CatalogFood=>({
   id,name,brand:null,lastUpdated:"2026-09-01T00:00:00Z",defaultServingWeightGram:100,weightUnknown:false,
   kcalPerServing:kcal,proteinPerServing:protein,carbPerServing:carb,totalFatPerServing:fat,satFatPerServing:null,
   transFatPerServing:null,fiberPerServing:null,sugarPerServing:null,addedSugarPerServing:null,
-  Serving:servings.map(([servingName,grams],i)=>({id:id*10+i,foodItemId:id,servingName,servingWeightGram:grams,defaultServingAmount:1}))})
+  Serving:servings.map(([servingName,grams,amount],i)=>({id:id*10+i,foodItemId:id,servingName,servingWeightGram:grams,defaultServingAmount:amount??1}))})
 const C={chicken:1,oil:2,riceCooked:3,riceDry:4,egg:5,bread:6,butter:7,coffee:8,milk:9,oatMilk:10,banana:11,
-  yogurt:12,honey:13,walnuts:14,pastaDry:15,pastaCooked:16,tunaOil:17,tunaWater:18,lettuce:19,ranch:20}
+  yogurt:12,honey:13,walnuts:14,pastaDry:15,pastaCooked:16,tunaOil:17,tunaWater:18,lettuce:19,ranch:20,potstickers:21}
 const catalogue=[food(C.chicken,"Chicken breast, cooked",165,31,0,3.6),food(C.oil,"Olive oil",884,0,0,100,[["tbsp",13.5]]),
   food(C.riceCooked,"White rice, cooked",130,2.7,28,0.3,[["cup",158]]),food(C.riceDry,"White rice, dry (uncooked)",360,6.6,79,0.6),
   food(C.egg,"Egg, boiled",155,13,1.1,11,[["egg",50]]),food(C.bread,"Toast, white bread",265,9,49,3.2,[["slice",30]]),
@@ -23,10 +23,12 @@ const catalogue=[food(C.chicken,"Chicken breast, cooked",165,31,0,3.6),food(C.oi
   food(C.honey,"Honey",304,0.3,82,0,[["tbsp",21]]),food(C.walnuts,"Walnuts",654,15,14,65,[["oz",28]]),
   food(C.pastaDry,"Pasta, dry",371,13,75,1.5),food(C.pastaCooked,"Pasta, cooked",158,5.8,31,0.9),
   food(C.tunaOil,"Tuna, canned in oil, drained",198,29,0,8.2),food(C.tunaWater,"Tuna, canned in water, drained",116,26,0,0.8),
-  food(C.lettuce,"Lettuce, romaine",17,1.2,3.3,0.3,[["cup",47]]),food(C.ranch,"Ranch dressing",430,1,6,45,[["tbsp",15]])]
+  food(C.lettuce,"Lettuce, romaine",17,1.2,3.3,0.3,[["cup",47]]),food(C.ranch,"Ranch dressing",430,1,6,45,[["tbsp",15]]),
+  // A catalogue serving stored as a group: "pieces" 76 g for 4, so one piece is 19 g.
+  food(C.potstickers,"Chicken & vegetable potstickers",184,8,22,7,[["pieces",76,4]])]
 const byId=new Map(catalogue.map(f=>[f.id,f]))
 
-const cases:{id:string;text:string;expected:number[]}[]=[
+const cases:{id:string;text:string;expected:number[];grams?:[number,number]}[]=[
   {id:"en_meal",text:"200 g chicken breast with 1 tbsp olive oil and 150 g rice",expected:[C.chicken,C.oil,C.riceCooked]},
   {id:"es_meal",text:"200 g de pechuga de pollo con una cucharada de aceite de oliva y 150 g de arroz cocido",expected:[C.chicken,C.oil,C.riceCooked]},
   {id:"typo_meal",text:"200g chiken brest w/ 1 tbsp olive oyl + 150g cookd rice",expected:[C.chicken,C.oil,C.riceCooked]},
@@ -42,7 +44,8 @@ const cases:{id:string;text:string;expected:number[]}[]=[
   {id:"pt_cooked_pasta",text:"200 g de macarrão cozido",expected:[C.pastaCooked]},
   {id:"tuna_oil",text:"a can of tuna in olive oil, 120 g drained",expected:[C.tunaOil]},
   {id:"tuna_water",text:"atún al natural 120 g",expected:[C.tunaWater]},
-  {id:"salad",text:"romaine salad with grilled chicken and ranch",expected:[C.lettuce,C.chicken,C.ranch]}
+  {id:"salad",text:"romaine salad with grilled chicken and ranch",expected:[C.lettuce,C.chicken,C.ranch]},
+  {id:"potstickers_count",text:"5 chicken potstickers",expected:[C.potstickers],grams:[85,105]}
 ]
 
 async function evaluate(item:typeof cases[number]) {
@@ -65,7 +68,9 @@ async function evaluate(item:typeof cases[number]) {
   let plan,error:string|undefined
   try {plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null} catch(e) {error=e instanceof Error?e.message:"invalid"}
   const ids=plan?.items.map(i=>i.foodId)??[]
-  const pass=!error&&JSON.stringify([...ids].sort((a,b)=>a-b))===JSON.stringify([...item.expected].sort((a,b)=>a-b))
+  const total=plan?.items.reduce((sum,i)=>sum+i.grams,0)??0
+  const pass=!error&&JSON.stringify([...ids].sort((a,b)=>a-b))===JSON.stringify([...item.expected].sort((a,b)=>a-b))&&
+    (!item.grams||total>=item.grams[0]&&total<=item.grams[1])
   return {id:item.id,pass,foodIds:ids,expected:item.expected,error,outcome:resolved.proposal.outcome,
     grams:plan?.items.map(i=>Math.round(i.grams)),kcal:plan?Math.round(plan.items.reduce((s,i)=>s+i.nutrition.kcal,0)):null,
     steps:resolved.steps,ms:Date.now()-started,clarification:resolved.proposal.clarification}

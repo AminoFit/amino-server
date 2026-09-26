@@ -81,3 +81,16 @@ test('attachBarcode only accepts barcodes decoded from this meal, and the attach
   assert.deepEqual(attached,[[3,'07501020548440','Rice 1kg']]);
   assert.equal(result.checked,true,'the barcode check passes once the food carries the barcode');
 });
+
+test('an unparseable model answer is retried once instead of failing the meal',async()=>{
+  const {NoObjectGeneratedError}=require('ai');
+  let calls=0;
+  const good=plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false},
+    {sourceText:'a banana',itemIndexes:[],historySelectionIndexes:[],omitted:true}]);
+  const result=await resolveMeal(input,{evidence:evidence(),sources:noSources,loadPhotos:async()=>[],model:()=>({id:'test',provider:'test',model:{}}),
+    generate:async()=>{calls++;if (calls===1) throw new NoObjectGeneratedError({message:'No object generated: could not parse the response.',text:'{',
+      response:{id:'x',timestamp:new Date(),modelId:'m'},usage:{inputTokens:1,outputTokens:1,totalTokens:2},finishReason:'stop'});
+      return {output:good,response:{messages:[]}}}});
+  assert.equal(calls,2);
+  assert.equal(result.checked,true);
+});

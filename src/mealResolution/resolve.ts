@@ -1,4 +1,4 @@
-import { generateText, jsonSchema, Output, stepCountIs, tool, zodSchema, type ModelMessage } from "ai"
+import { generateText, jsonSchema, NoObjectGeneratedError, Output, stepCountIs, tool, zodSchema, type ModelMessage } from "ai"
 import { z } from "zod"
 import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
@@ -60,7 +60,8 @@ at the photos); if it reports a problem, fix it with the tools as needed and ret
 Every selected catalogue food must come from prefetchedFoods, findFood, addFood or getFoodsAndServings. For a copied
 historical item you MUST call getMealEvent first, then use its exact logged food ID. Avoid retyping
 historical nutrients. Choose the complete referenced group by returning each component item.
-Quantity kinds: mass for an explicit mass, serving for a known labelled serving and amount,
+Quantity kinds: mass for an explicit mass, serving for a catalogue serving where amount counts that serving's
+units (5 pieces is amount 5 of the "pieces" serving; grams = amount x gramsPerUnit),
 history for scaling a recorded portion, estimated_mass for a reasonable supported food-log
 estimate with a clear basis. Never invent a branded label, food ID, serving ID or source fact.
 Preserve explicit nutrient facts and their scope. Use sourceText copied from the original wording,
@@ -93,7 +94,7 @@ const outputGuide={schemaVersion:1,outcome:"resolved | needs_clarification",cons
   historyGroupSelections:[{sourceMessageId:"number",groupId:"observed group ID",scale:"number",
     excludeLoggedFoodItemIds:["observed item IDs explicitly omitted"]}],
   items:[{foodId:"catalogue ID or null for history",quantity:{kind:"mass | estimated_mass | serving | history",
-    grams:"number for mass",basis:"text for estimate",servingId:"number for serving",amount:"number for serving",
+    grams:"number for mass",basis:"text for estimate",servingId:"number for serving",amount:"number of the serving's units",
     sourceMessageId:"number for history",sourceLoggedFoodItemId:"number for history",scale:"number for history"},
     groupId:"string or null",groupLabel:"string or null",evidence:["observed source identifiers"]}],
   components:[{sourceText:"verbatim food mention or photo: observation",itemIndexes:[0],
@@ -241,16 +242,16 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           })}),
         getFoodsAndServings:tool({description:"Read authoritative details for previously discovered catalogue food IDs, including serving weights and nutrients.",
           inputSchema:z.object({foodIds:z.array(z.number().int().positive()).min(1).max(20)}).strict(),
-          execute:({foodIds})=>withCount(()=>evidence.getFoodsAndServings(foodIds))}),
+          execute:({foodIds})=>withCount(async()=>{const read=await evidence.getFoodsAndServings(foodIds);return {...read,foods:read.foods.map(foodSummary)}})}),
         proposeLabelFood:tool({description:"Register the nutrition facts printed on a label in the photo (one serving, in grams) as a source. Returns a sourceId.",
           inputSchema:labelFood,execute:async value=>sources.proposeLabelFood(value)}),
         proposeEstimatedFood:tool({description:"Last resort when no source exists: register an estimated food (per 100 g) with its basis. Returns a sourceId.",
           inputSchema:estimatedFood,execute:async value=>sources.proposeEstimatedFood(value)}),
-        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log, or possible duplicates to choose from.",
+        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log, possible duplicates to choose from, or recheck_estimate when an estimate's energy density is far from similar foods.",
           inputSchema:z.object({sourceId:z.string().min(1).max(60)}).strict(),
           execute:({sourceId})=>withCount(async()=>{
             const created=await sources.createFoodFromSource(sourceId)
-            if (!("foodId" in created)) return created
+            if (created.status!=="created"&&created.status!=="existing") return created
             // Return the food's details so the agent can log it without another turn.
             const {foods}=await evidence.getFoodsAndServings([created.foodId]).catch(()=>({foods:[]}))
             return {...created,food:foods[0]?foodSummary(foods[0]):null}
@@ -275,7 +276,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // intact) instead of restarting; a passing answer costs no extra turn.
     for (let attempt=0;attempt<3;attempt++) {
       stepStarted=performance.now()
-      const result=await (deps.generate??generateText)({...request,messages} as Parameters<typeof generateText>[0])
+      const call=()=>(deps.generate??generateText)({...request,messages} as Parameters<typeof generateText>[0])
+      // The model occasionally returns output that does not parse; one fresh attempt usually succeeds.
+      const result=await call().catch((error:unknown)=>NoObjectGeneratedError.isInstance(error)?call():Promise.reject(error))
       controller.signal.throwIfAborted()
       proposal=mealProposal.parse(result.output)
       if (proposal.outcome!=="resolved") break

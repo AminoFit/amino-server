@@ -40,7 +40,10 @@ export function usableServing(serving:CatalogFood["Serving"][number]) {
 export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:food.brand,gtin:food.gtin??null,
   servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing,proteinG:food.proteinPerServing,
   carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
-  servings:food.Serving.map(s=>({id:s.id,name:s.servingName,grams:s.servingWeightGram,amount:s.defaultServingAmount}))})
+  // Each serving is a unit and the weight of one unit: "pieces" 76 g for 4 is 19 g per piece, so 5 pieces is
+  // amount 5. Showing the stored group ("76 g, amount 4") made the model log 5 pieces as 1.25 x 19 g.
+  servings:food.Serving.map(s=>({id:s.id,unit:s.servingName,
+    gramsPerUnit:s.servingWeightGram&&s.defaultServingAmount?Math.round(s.servingWeightGram/Number(s.defaultServingAmount)*10)/10:null}))})
 
 export function createMealEvidence(userId:string, signal:AbortSignal,
   db = createAdminSupabase()) {

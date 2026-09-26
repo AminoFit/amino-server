@@ -71,3 +71,10 @@ test('servings whose stored amount restates their size (about a gram per unit) a
   assert.equal(usableServing(serving('ml',355,355)),true,'1 g per ml is right for a gram unit');
   assert.equal(usableServing(serving('pieces',30,4)),true);
 });
+
+test('the agent sees each serving as a unit with its weight per unit, so counts are amounts',()=>{
+  const {foodSummary}=require('../src/mealResolution/evidence');
+  const summary=foodSummary({id:161,name:'Chicken & Vegetable Potstickers',brand:'Aplenty',gtin:null,defaultServingWeightGram:76,
+    kcalPerServing:140,proteinPerServing:6,carbPerServing:17,totalFatPerServing:5,Serving:[{id:7,foodItemId:161,servingName:'pieces',servingWeightGram:76,defaultServingAmount:4}]});
+  assert.deepEqual(summary.servings,[{id:7,unit:'pieces',gramsPerUnit:19}],'5 pieces is amount 5 (95 g), never 1.25 servings');
+});

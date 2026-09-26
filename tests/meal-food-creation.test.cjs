@@ -9,12 +9,14 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({jev=null,usda=[usdaFood],near=nearby,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
+function harness({jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
   const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[]};
-  const facts=near.map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
-  const db={from:()=>{const q={select:()=>q,in:()=>q,limit:()=>q,abortSignal:async()=>({data:facts,error:null})};return q},
+  const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
+  const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,eq:(c,v)=>{column=c;value=v;return q},
+    abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
     rpc:(name,args)=>{
     const result=name==='search_usda_database'?{data:[{fdcId:2345}],error:null}:
+      name==='search_meal_food_catalogue'&&byName?{data:byName,error:null}:
       name==='get_cosine_results'?{data:near,error:null}:
       name==='create_catalogue_food'?(calls.create.push(args),{data:[createRow],error:null}):
       name==='enrich_catalogue_food'?(calls.enrich.push(args),{data:{foodId:args.p_food_id,added:['serving:cup'],conflict:false},error:null}):
@@ -261,4 +263,36 @@ test('a barcode another food already carries points to that food instead of movi
   const {sources,calls}=attachHarness({owner:{id:777}});
   assert.deepEqual(await sources.attachBarcode(15295,'07501020548440','Lala 100'),{status:'other_food',foodId:777});
   assert.equal(calls.enrich.length,0);
+});
+
+test('the duplicate check finds a food by its barcode even when embeddings miss it',async()=>{
+  const {sources,calls}=harness({near:[],catalogue:[{id:15295,name:'Leche Lala 100 Proteina',brand:'Lala',gtin:'07501020548440'}],
+    barcodes:['07501020548440'],usda:[{...usdaFood,name:'Lala 100 Protein Milk',brand:'Lala'}],usdaSearch:async()=>[{fdcId:2345,gtinUpc:'7501020548440'}]});
+  const [candidate]=(await sources.searchFoodSources('Lala 100',{gtin:'07501020548440'})).candidates;
+  const result=await sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual([result.status,result.foodId],['existing',15295]);
+  assert.equal(calls.create.length,0,'no duplicate for a product named differently in another language');
+});
+
+test('the duplicate check also sees the catalogue name search (any language or spelling)',async()=>{
+  const {sources,calls}=harness({near:[],byName:[{id:50}],catalogue:[{id:50,name:'Ceviche de atun',brand:null}],
+    jev:task=>({status:'ok',choice:Object.keys(task.options).find(k=>k!=='none'),confidence:0.95})});
+  const [candidate]=(await sources.searchFoodSources('tuna ceviche')).candidates;
+  const result=await sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual([result.status,result.foodId],['existing',50]);
+  assert.deepEqual(calls.jev[0].state.catalogue.map(c=>c.id),[50]);
+});
+
+test('an estimate far from similar foods\' energy density goes back once to be re-checked',async()=>{
+  const similar=[{id:1,name:'Ceviche',kcalPerServing:120},{id:2,name:'Fish ceviche',kcalPerServing:110},{id:3,name:'Shrimp ceviche',kcalPerServing:130}];
+  const {sources,calls}=harness({near:similar,jev:{status:'ok',choice:'none',confidence:0.95}});
+  const estimate=(kcal)=>sources.proposeEstimatedFood({name:'Tuna ceviche bowl',brand:null,per100g:{kcal,proteinG:15,carbG:8,totalFatG:3},
+    servings:[{unit:'bowl',amount:1,grams:350}],basis:'Raw tuna, lime, onion, cucumber, avocado in typical proportions'});
+  const high=estimate(317);
+  const first=await sources.createFoodFromSource(high.sourceId);
+  assert.equal(first.status,'recheck_estimate');
+  assert.match(first.reason,/317 kcal\/100 g.*about 120/);
+  assert.equal(calls.create.length,0);
+  assert.equal((await sources.createFoodFromSource(high.sourceId)).status,'created','resubmitting the same source accepts it');
+  assert.equal((await sources.createFoodFromSource(estimate(125).sourceId)).status,'created','a plausible estimate goes straight through');
 });

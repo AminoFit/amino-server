@@ -166,18 +166,27 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     servings:{unit:string;amount:number;grams:number|null}[]})=>({name:f.name,brand:f.brand,barcode:f.gtin,
     kcalPer100g:per100(f.kcal,f.grams),proteinPer100g:per100(f.protein,f.grams),servings:f.servings.slice(0,3)})
 
-  async function duplicateOf(food:SourceFood):Promise<{status:"none"}|{status:"existing";foodId:number}|
-    {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null}[]}> {
+  /** Catalogue foods that could be this food: the same barcode, the agent's own name search (any language or
+   * spelling, aliases) and the nearest embeddings, hydrated with the facts that separate siblings. */
+  async function nearbyFacts(food:SourceFood):Promise<Facts[]> {
     const label=food.brand?`${food.name} - ${food.brand}`:food.name
-    const [vector]=await embed("BGE_BASE",[label])
+    const [[vector],byName,byGtin]=await Promise.all([embed("BGE_BASE",[label]),
+      (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0}).abortSignal(ctx.signal),
+      food.gtin?db().from("FoodItem").select("id").eq("gtin",food.gtin).limit(1).abortSignal(ctx.signal):Promise.resolve({data:[],error:null})])
     const near=await db().rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8}).abortSignal(ctx.signal)
-    if (near.error) throw new Error("catalogue_unavailable")
-    const ids=((near.data??[]) as {id:number}[]).map(row=>row.id)
-    if (!ids.length) return {status:"none"}
+    if (near.error||byGtin.error) throw new Error("catalogue_unavailable")
+    const ids=[...new Set([...(byGtin.data??[]),...(byName.error?[]:byName.data??[]),...(near.data??[])]
+      .map(row=>(row as {id:number}).id))].slice(0,14)
+    if (!ids.length) return []
     const hydrated=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
       .in("id",ids).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
     if (hydrated.error) throw new Error("catalogue_unavailable")
-    const facts=(hydrated.data??[]) as unknown as Facts[]
+    return (hydrated.data??[]) as unknown as Facts[]
+  }
+
+  async function duplicateOf(food:SourceFood,facts:Facts[]):Promise<{status:"none"}|{status:"existing";foodId:number}|
+    {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null}[]}> {
+    if (!facts.length) return {status:"none"}
     // Barcodes decide outright: the same GTIN is this food; a different GTIN is another product.
     const sameBarcode=food.gtin?facts.find(f=>f.gtin===food.gtin):undefined
     if (sameBarcode) return {status:"existing",foodId:sameBarcode.id}
@@ -196,6 +205,16 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     if (confident&&decision.choice==="none") return {status:"none"}
     // Uncertain or unavailable: never create. The agent must pick one or ask.
     return {status:"possible_duplicates",candidates:candidates.map(({id,name,brand})=>({id,name,brand}))}
+  }
+
+  const rechecked=new Set<string>()
+  function densityOutlier(food:SourceFood,facts:Facts[]) {
+    const densities=facts.flatMap(f=>f.defaultServingWeightGram&&f.defaultServingWeightGram>0&&f.kcalPerServing!=null
+      ?[f.kcalPerServing/f.defaultServingWeightGram*100]:[]).sort((a,b)=>a-b)
+    if (densities.length<3) return null
+    const median=densities[Math.floor(densities.length/2)],density=food.kcal/food.defaultServingWeightGram*100
+    if (density<=median*1.8+20&&density>=median/1.8-20) return null
+    return `${Math.round(density)} kcal/100 g, while similar catalogue foods are about ${Math.round(median)} kcal/100 g. Re-check the basis and the per-100 g values, then propose again (or addFood this source again if it is right).`
   }
 
   const payload=async(food:SourceFood,withEmbedding:boolean)=>{
@@ -275,7 +294,12 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     async createFoodFromSource(sourceId:string) {
       const food=sources.get(sourceId)
       if (!food) throw new Error("unknown_food_source")
-      const duplicate=await duplicateOf(food)
+      const facts=await nearbyFacts(food)
+      // An estimate far from similar foods' energy density usually has a wrong basis (a GPT-era "tuna ceviche"
+      // at 317 kcal/100 g vs ~120). It goes back once to be re-checked; resubmitting the same source accepts it.
+      const outlier=food.foodInfoSource==="AgentEstimate"&&!rechecked.has(sourceId)?densityOutlier(food,facts):null
+      if (outlier) {rechecked.add(sourceId);return {status:"recheck_estimate" as const,reason:outlier}}
+      const duplicate=await duplicateOf(food,facts)
       if (duplicate.status==="existing") {
         const enriched=await (db() as any).rpc("enrich_catalogue_food",{p_food_id:duplicate.foodId,
           p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)

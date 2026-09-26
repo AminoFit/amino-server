@@ -128,7 +128,9 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
 - Reject implausible grams per unit, for example 1 tbsp outside 5–25 g or 1 cup outside 30–400 g.
 - Tests: the Spindrift and "1 Cup (37g)" shapes.
 
-### B2. Check energy against macros when creating
+### B2. Check energy against macros when creating (deprioritised)
+
+The ceviche that motivated this has consistent macros (122 vs 120 kcal), so this check wouldn't have caught it. A hard rule would also reject alcoholic drinks. B4 covers the real failure. Keep this only as a warning in the audit report (A3).
 
 - Add a check to `validNutrition` that stated kcal roughly matches protein×4 + carbs×4 + fat×9, with a tolerance for alcohol, fibre and sugar alcohols.
 - Reject the source, or mark the food as needing review.
@@ -144,10 +146,11 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
 - **Target:** at least 17 of 19 correct, and wrong only when the source itself is wrong.
 - `scripts/food-creation-eval.ts` must pass `web: true` now that USDA comes first.
 
-### B4. Sanity-check estimated foods
+### B4. Sanity-check estimated foods (implemented 2026-09-26)
 
 - Compare an `AgentEstimate` source's energy density with the median of its nearest catalogue neighbours.
 - Flag outliers before creating. For example, 317 kcal/100 g ceviche against about 120 would have been caught.
+- As built: `addFood` returns `recheck_estimate` once when the density is more than 1.8× (+20 kcal) away from the median of at least 3 similar foods. Resubmitting the same source accepts it.
 - Keep the `AgentEstimate` source label so the audit can upgrade these foods later.
 
 ### B5. Supersede estimate-grade foods
@@ -156,12 +159,12 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
 - Log the old values to `FoodItemConflict`.
 - Needs decision 1.
 
-### B6. Stronger duplicate candidates
+### B6. Stronger duplicate candidates (implemented 2026-09-26)
 
 - `duplicateOf` only looks at the 8 nearest foods by embedding.
 - Add the trigram name search, `knownAs` aliases and a barcode lookup to the candidate set, the same search the agent uses. A Spanish or misspelt name then finds the existing food before a duplicate is created.
 
-### B7. Retry an unparseable model response
+### B7. Retry an unparseable model response (implemented 2026-09-26)
 
 - Retry once on `NoObjectGeneratedError`. One ceviche run failed this way in the model comparison.
 
