@@ -7,7 +7,7 @@ const {Client}=require('pg');
 // Runs the real migrations against a disposable Postgres (pgvector is stubbed).
 const connectionString=process.env.AMINO_FOOD_TEST_DATABASE_URL;
 const migrations=['20260925205900_agent_estimate_food_source.sql','20260925210000_catalogue_food_creation.sql',
-  '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql']
+  '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql','20260926020000_serving_units.sql','20260926030000_serving_dedupe.sql']
   .map(file=>fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
 const fixture=`
 CREATE SCHEMA IF NOT EXISTS extensions;
@@ -74,7 +74,10 @@ test('catalogue food creation never duplicates an existing identity or source',
 
       // The same barcode under another name is the existing food, enriched rather than duplicated.
       const cereal=await create(a,food(`Cheerios Protein Cookies Creme ${tag}`,'Cheerios',
-        {gtin:'00016000229969',defaultServingWeightGram:37,kcal:150,proteinG:8,carbG:24,totalFatG:2.5}),[{name:'cup',grams:37}]);
+        {gtin:'00016000229969',defaultServingWeightGram:37,kcal:150,proteinG:8,carbG:24,totalFatG:2.5}),[{name:'cup',grams:37,amount:1}]);
+      const half=await create(a,food(`Oat Flakes ${tag}`,null,{defaultServingWeightGram:20}),[{name:'cup',grams:20,amount:0.5}]);
+      assert.deepEqual((await a.query('select "servingName","defaultServingAmount"::float8 amount from public."Serving" where "foodItemId"=$1',[half.food_id])).rows,
+        [{servingName:'cup',amount:0.5}],'the unit and its amount are stored separately');
       const again=await createFull(a,food(`General Mills Protein Cookies & Creme Cereal ${tag}`,'General Mills',
         {gtin:'16000229969',defaultServingWeightGram:55,kcal:223,proteinG:11.9,carbG:35.7,totalFatG:3.7,fiberG:3}),
         [{name:'Cup',grams:37},{name:'bowl',grams:55}]);
@@ -86,6 +89,10 @@ test('catalogue food creation never duplicates an existing identity or source',
       assert.equal(enriched.knownAs.length,1);
       assert.equal((await a.query('select count(*)::int n from public."Serving" where "foodItemId"=$1',[cereal.food_id])).rows[0].n,2);
 
+      // The same weight under another name is a serving the food already has.
+      const renamed=await a.query('select public.enrich_catalogue_food($1,$2,$3) r',[cereal.food_id,
+        JSON.stringify(food('x',null,{defaultServingWeightGram:37,kcal:150})),JSON.stringify([{name:'1 cup (37 g)',grams:37,amount:1}])]);
+      assert.ok(!renamed.rows[0].r.added.some(entry=>entry.startsWith('serving:')));
       // A disagreeing energy density records a conflict and changes nothing.
       const conflict=await createFull(a,food(`Cheerios Protein Cookies Creme ${tag}`,'Cheerios',
         {defaultServingWeightGram:37,kcal:250,proteinG:8,carbG:24,totalFatG:2.5,sugarG:12}),[{name:'box',grams:500}]);

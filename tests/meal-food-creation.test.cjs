@@ -79,8 +79,8 @@ test('only server-held source candidates can be created, so a model cannot inven
 
 test('web facts need a citation the search actually returned',async()=>{
   const web=async()=>({data:{foods:[
-    {name:'Cafe Bowl',brand:'Cafe',servingName:'bowl',servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://cafe.example/menu'},
-    {name:'Other Bowl',brand:'Cafe',servingName:'bowl',servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://invented.example/x'}]},
+    {name:'Cafe Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://cafe.example/menu'},
+    {name:'Other Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,sourceUrl:'https://invented.example/x'}]},
     sourceUrls:['https://cafe.example/menu'],searches:1});
   const {sources}=harness({usda:[],web,jev:{status:'ok',choice:'none',confidence:0.95}});
   const {candidates}=await sources.searchFoodSources('cafe bowl');
@@ -96,7 +96,7 @@ test('implausible source nutrition is discarded before it can become a food',asy
 test('estimated foods are a marked last resort that still pass the same duplicate guard',async()=>{
   const {sources,calls}=harness({near:[],jev:{status:'unavailable'}});
   const estimate=sources.proposeEstimatedFood({name:"Grandma's lasagna",brand:null,
-    per100g:{kcal:160,proteinG:9,carbG:14,totalFatG:7},servings:[{name:'slice',grams:250}],
+    per100g:{kcal:160,proteinG:9,carbG:14,totalFatG:7},servings:[{unit:'slice',amount:1,grams:250}],
     basis:'Beef, pasta, ricotta and tomato sauce in typical home-recipe proportions'});
   assert.equal(estimate.kind,'AgentEstimate');
   assert.equal((await sources.createFoodFromSource(estimate.sourceId)).status,'created');
@@ -124,18 +124,18 @@ test('a barcode the library did not decode from this meal is ignored',async()=>{
   const {sources}=harness({usda:[],barcodes:[],usdaSearch:async q=>{searched.push(q);return []}});
   await sources.searchFoodSources('cereal',{gtin:'016000229969'});
   assert.deepEqual(searched,[],'a model-supplied barcode is not trusted');
-  const label=sources.proposeLabelFood({name:'Cereal',brand:null,servingName:'cup',servingGrams:37,kcal:150,proteinG:8,carbG:24,
+  const label=sources.proposeLabelFood({name:'Cereal',brand:null,servingUnit:'cup',servingAmount:1,servingGrams:37,kcal:150,proteinG:8,carbG:24,
     totalFatG:2.5,fiberG:null,sugarG:null,satFatG:null,gtin:'016000229969'});
   assert.equal(label.gtin,null);
 });
 
 test('the label is always offered, and web results say whether they match it',async()=>{
   const web=async()=>({data:{foods:[
-    {name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingName:'cup',servingGrams:37,kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'},
-    {name:'Cheerios Protein Oats & Honey',brand:'General Mills',servingName:'cup',servingGrams:55,kcal:210,proteinG:11,carbG:44,totalFatG:3,sourceUrl:'https://cheerios.example/oats'}]},
+    {name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:37,kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'},
+    {name:'Cheerios Protein Oats & Honey',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:55,kcal:210,proteinG:11,carbG:44,totalFatG:3,sourceUrl:'https://cheerios.example/oats'}]},
     sourceUrls:['https://cheerios.example/protein','https://cheerios.example/oats'],searches:1});
   const {sources,calls}=harness({usda:[],web,barcodes:['00016000229969']});
-  const label=sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingName:'1 cup',servingGrams:37,
+  const label=sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingUnit:'cup',servingAmount:1,servingGrams:37,
     kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969'});
   assert.equal(label.kind,'Label');
   assert.equal(label.gtin,'00016000229969');
@@ -148,7 +148,7 @@ test('the label is always offered, and web results say whether they match it',as
 test('web search retries once when the first pass abstains',async()=>{
   let attempts=0;
   const web=async()=>{attempts++;return attempts===1?{data:{foods:[]},sourceUrls:[],searches:1}:
-    {data:{foods:[{name:'Cafe Bowl',brand:'Cafe',servingName:'bowl',servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,
+    {data:{foods:[{name:'Cafe Bowl',brand:'Cafe',servingUnit:'bowl',servingAmount:1,servingGrams:300,kcal:450,proteinG:30,carbG:40,totalFatG:18,
       sourceUrl:'https://cafe.example/menu'}]},sourceUrls:['https://cafe.example/menu'],searches:1}};
   const {sources}=harness({usda:[],web});
   assert.equal((await sources.searchFoodSources('cafe bowl')).candidates.length,1);
@@ -156,11 +156,31 @@ test('web search retries once when the first pass abstains',async()=>{
 });
 
 test('name-search neighbours never suppress the web search when the barcode has no exact record',async()=>{
-  const web=async()=>({data:{foods:[{name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingName:'cup',servingGrams:37,
+  const web=async()=>({data:{foods:[{name:'Cheerios Protein Cookies & Creme',brand:'General Mills',servingUnit:'cup',servingAmount:1,servingGrams:37,
     kcal:150,proteinG:8,carbG:24,totalFatG:2.5,sourceUrl:'https://cheerios.example/protein'}]},sourceUrls:['https://cheerios.example/protein'],searches:1});
   const {sources,calls}=harness({usda:[usdaFood],web,barcodes:['00016000229969'],usdaSearch:async()=>[]});
   const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{gtin:'00016000229969'});
   assert.equal(calls.web.length,1);
   assert.deepEqual(candidates.map(c=>c.kind),['Online','USDA']);
   assert.equal(candidates[0].gtin,'00016000229969');
+});
+
+test('servings keep the unit separate from its amount, so the app never shows "1 1 cup (37g)"',async()=>{
+  const web=async()=>({data:{foods:[{name:'Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
+    kcal:110,proteinG:15,carbG:8,totalFatG:2,sourceUrl:'https://chobani.example/drink'}]},sourceUrls:['https://chobani.example/drink'],searches:1});
+  const {sources,calls}=harness({usda:[],web,jev:{status:'ok',choice:'none',confidence:0.95}});
+  const [candidate]=(await sources.searchFoodSources('Chobani protein drink')).candidates;
+  assert.deepEqual(candidate.servings,[{name:'bottle',grams:207,amount:1}]);
+  await sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual(calls.create[0].p_servings,[{name:'bottle',grams:207,amount:1}]);
+});
+
+test('a per-100 mL label basis is not stored as a serving',()=>{
+  const {sources}=harness({});
+  const label=sources.proposeLabelFood({name:'Leche Ultrafiltrada',brand:'Lala',servingUnit:'ml',servingAmount:100,servingGrams:100,
+    kcal:44,proteinG:5.4,carbG:3.5,totalFatG:1,fiberG:null,sugarG:null,satFatG:null,gtin:null});
+  assert.deepEqual(label.servings,[]);
+  const bottle=sources.proposeLabelFood({name:'Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
+    kcal:120,proteinG:15,carbG:9,totalFatG:2,fiberG:null,sugarG:null,satFatG:null,gtin:null});
+  assert.deepEqual(bottle.servings,[{name:'bottle',grams:207,amount:1}]);
 });

@@ -135,6 +135,11 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
       ...(quantity.kind==="estimated_mass"?{assumption:quantity.basis}:{}),
       ...(sourceItemId?{sourceItemId}:{})}
   })
+  // A barcode decoded from the photos is a product in the meal: some item must be the
+  // catalogue food that carries it, never a similar food without the barcode.
+  for (const gtin of result.barcodes??[]) {
+    if (!items.some(item=>result.evidence.foods.get(item.foodId)?.gtin===gtin)) throw new Error("barcode_not_covered")
+  }
   const perGroup=new Set<string>()
   for (const item of items) {
     const key=`${item.groupId??""}:${item.foodId}`

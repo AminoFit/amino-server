@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
-import { compileMealPlan, type PublishedPlan } from "@/mealResolution/compile"
+import { type PublishedPlan } from "@/mealResolution/compile"
+import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
 import { resolveMeal } from "@/mealResolution/resolve"
 import { claimMealOperation, finishMealOperation, getMealSnapshot, publishMealOperation } from "./service"
 import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
@@ -22,7 +23,7 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "legacy_meal_nutrition_unavailable","structured_action_requires_published_snapshot",
   "meal_item_unavailable","meal_food_changed","food_evidence_unavailable",
   "serving_evidence_unavailable","unsupported_structured_action",
-  "delete_last_item_requires_meal_delete","clarification_unavailable","missing_meal_coverage","duplicate_meal_mention",
+  "delete_last_item_requires_meal_delete","clarification_unavailable","barcode_not_covered","history_not_referenced","missing_meal_coverage","duplicate_meal_mention",
   "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
 const sourcePlan=(value:unknown):PublishedPlan|null=>value&&typeof value==="object"&&
@@ -148,7 +149,7 @@ export async function processMealOperation(operationId:string) {
           "ambiguous_meal",null,{question:result.proposal.clarification})
         return {state:"needs_clarification"}
       }
-      try {plan=compileMealPlan(input,result)}
+      try {plan=await compileCheckedMealPlan(input,result)}
       catch(error) {
         const code=error instanceof Error?error.message:"invalid_plan"
         if(!safeErrorCodes.has(code)) throw error
@@ -159,7 +160,7 @@ export async function processMealOperation(operationId:string) {
             "ambiguous_meal",null,{question:repaired.proposal.clarification})
           return {state:"needs_clarification"}
         }
-        plan=compileMealPlan(input,repaired)
+        plan=await compileCheckedMealPlan(input,repaired)
       }
     } else plan=await structuredPlan(claim)
     const published=await publishMealOperation(operationId,workerToken,plan)

@@ -26,14 +26,22 @@ conflict materially, use the user's explicit correction or ask a focused clarifi
 The requested consumedOn is the default new-meal time. A past meal reference does not itself move
 the new meal to the past; use the captured submittedAt and IANA timezone for relative dates.
 barcodes lists retail barcodes that a barcode library decoded from the photos; never read barcode digits
-yourself. A barcodeMatches food carries that exact barcode: it is the product, use it. For a barcode with no
-catalogue match, call searchFoodSources with its gtin. When a photo shows a nutrition label, call
+yourself. Each decoded barcode is a product in the meal, and one item must be the catalogue food carrying that
+exact gtin. A barcodeMatches food is that product: use it. For a barcode with no catalogue match, call
+searchFoodSources with its gtin and create the matching candidate (it keeps the barcode); never substitute a
+similar catalogue food without the barcode. When a photo shows a nutrition label, call
 proposeLabelFood with the facts exactly as printed for one serving (and the decoded gtin if one belongs to
 this product), then searchFoodSources with its labelSourceId. Create a candidate with matchesLabel true when
 one exists (a fuller record of the same product), otherwise the label candidate itself.
 Identify the exact product variant (flavour, line, size) from everything visible: packaging colours,
 the food itself, labels and text. When the photo does not name the variant, search for the variant the
 visual evidence indicates; never settle for a sibling variant merely because it exists in the catalogue.
+A dish with visible extras served on or with it (a topping, side or sauce) is the dish plus each extra as its
+own item, unless the dish's catalogue food already includes that extra. Small visible amounts still count.
+Copy items from a past meal only when the user refers to one (for example "same as yesterday"). A photo or
+description that resembles a recent meal is not a reference: identify what this meal actually contains.
+For a packaged product with no stated amount: a single-serve package (a bottle, can or bar meant for one
+person) is the whole package; a multi-serve package (a carton, large bottle or box) is one labelled serving.
 Every logged item must reference a catalogue food. When searchFoods (try several phrasings and
 languages) finds no food with the same identity, call searchFoodSources, then createFoodFromSource
 with the best candidate. It may return an existing food instead; use that food. If it returns
@@ -66,6 +74,9 @@ are copied through source IDs and validated by the backend.
 If clarificationAllowed is false, never ask: resolve with explicit assumptions (estimated_mass with a clear
 basis for uncertain portions, the most likely variant for identity) instead of needs_clarification.
 If validationErrorCode is present, it is a fixed backend validation result from a prior attempt.
+history_not_referenced means the user's words do not refer to a past meal: resolve this meal from what the
+photos and text show, without copying historical items. barcode_not_covered means a decoded barcode's
+product is missing: log the food that carries that gtin.
 Reinspect evidence and return a corrected plan or a focused clarification.
 Return exactly one JSON object matching the provided schema, with no markdown or prose outside it.
 The groupId/groupLabel can be null for standalone foods. For all items provide evidence identifiers
@@ -96,7 +107,7 @@ const proposalOutput=Output.object({schema:jsonSchema<MealProposal>(
   {validate:value=>{const parsed=mealProposal.safeParse(value)
     return parsed.success?{success:true,value:parsed.data}:{success:false,error:parsed.error}}})})
 
-const MAX_STEPS=6
+const MAX_STEPS=8
 
 async function readPhotoBarcode(url:URL):Promise<string|null> {
   const response=await fetch(url,{signal:AbortSignal.timeout(8000)})
@@ -113,18 +124,22 @@ export type MealResolutionInput = {
 }
 export type MealResolutionResult = {proposal:MealProposal;
   evidence:ReturnType<typeof createMealEvidence>;model:string;provider:string;
-  photoIds:number[];durationMs:number;steps:number;toolCalls:number}
+  photoIds:number[];durationMs:number;steps:number;toolCalls:number;
+  /** GTINs the barcode library decoded from this meal's photos. */
+  barcodes?:string[]}
 
 export async function resolveMeal(input:MealResolutionInput,deps:{
   evidence?:ReturnType<typeof createMealEvidence>;
   generate?:typeof generateText;model?:typeof agentModel;
   loadPhotos?:typeof loadMealPhotos;deadlineMs?:number;
-  sources?:ReturnType<typeof createFoodSources>;readBarcode?:(url:URL)=>Promise<string|null>
+  sources?:ReturnType<typeof createFoodSources>;readBarcode?:(url:URL)=>Promise<string|null>;
+  /** Decoded GTINs are pushed here; pass the same array to injected sources. */
+  barcodes?:string[]
 }={}):Promise<MealResolutionResult> {
   const started=performance.now()
   const controller=new AbortController()
   const evidence=deps.evidence??createMealEvidence(input.userId,controller.signal)
-  const barcodes:string[]=[]
+  const barcodes:string[]=deps.barcodes??[]
   const sources=deps.sources??createFoodSources({userId:input.userId,messageId:input.messageId,barcodes,
     signal:controller.signal,discover:id=>evidence.discover(id)})
   const selected=(deps.model??agentModel)()
@@ -185,13 +200,19 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           inputSchema:labelFood,execute:async value=>sources.proposeLabelFood(value)}),
         proposeEstimatedFood:tool({description:"Last resort when no source exists: register an estimated food (per 100 g) with its basis. Returns a sourceId.",
           inputSchema:estimatedFood,execute:async value=>sources.proposeEstimatedFood(value)}),
-        createFoodFromSource:tool({description:"Add a source candidate to the catalogue after duplicate checks. May return an existing food or possible duplicates instead.",
+        createFoodFromSource:tool({description:"Add a source candidate to the catalogue after duplicate checks. Returns the catalogue food (with servings) to log, which may be an existing food, or possible duplicates to choose from.",
           inputSchema:z.object({sourceId:z.string().min(1).max(60)}).strict(),
-          execute:({sourceId})=>withCount(()=>sources.createFoodFromSource(sourceId))})
+          execute:({sourceId})=>withCount(async()=>{
+            const created=await sources.createFoodFromSource(sourceId)
+            if (!("foodId" in created)) return created
+            // Return the food's details so the agent can log it without another turn.
+            const {foods}=await evidence.getFoodsAndServings([created.foodId]).catch(()=>({foods:[]}))
+            return {...created,food:foods[0]?foodSummary(foods[0]):null}
+          })})
       },
       toolChoice:"auto",stopWhen:stepCountIs(MAX_STEPS),
       // The last step must answer; a model still searching would otherwise return nothing.
-      prepareStep:({stepNumber})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:3000,
+      prepareStep:({stepNumber})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:6000,
       // Shared Gemini capacity sometimes aborts upstream; retry with backoff before failing the meal.
       maxRetries:2,
       abortSignal:controller.signal,onStepFinish:()=>{steps++}
@@ -199,6 +220,6 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     controller.signal.throwIfAborted()
     const proposal=mealProposal.parse(result.output)
     return {proposal,evidence,photoIds:photos.map(photo=>photo.id),model:selected.id,provider:selected.provider,
-      durationMs:performance.now()-started,steps,toolCalls}
+      durationMs:performance.now()-started,steps,toolCalls,barcodes:[...barcodes]}
   } finally {clearTimeout(timer);controller.abort()}
 }

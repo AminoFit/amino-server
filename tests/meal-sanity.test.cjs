@@ -17,10 +17,10 @@ const mention=(sourceText,itemIndexes,extra={})=>({sourceText,itemIndexes,histor
 const text='200 g chicken breast with 1 tbsp olive oil and 150 g rice';
 const input=(originalText=text,attachmentIds=[])=>({userId:'u',operationId:'o',messageId:1,originalText,
   consumedOn:'2026-09-25T12:00:00Z',submittedAt:'2026-09-25T12:00:00Z',timezone:'UTC',locale:null,attachmentIds});
-const compile=(items,components,{originalText,photoIds=[],historyGroupSelections=[],events=new Map()}={})=>
+const compile=(items,components,{originalText,photoIds=[],historyGroupSelections=[],events=new Map(),barcodes=[]}={})=>
   compileMealPlan(input(originalText),{proposal:{schemaVersion:1,outcome:'resolved',consumedOn:'2026-09-25T12:00:00Z',
     historyGroupSelections,items,components,claims:[],clarification:null},
-    evidence:{foods:catalogue,events},photoIds,model:'fixture',provider:'test',durationMs:0,steps:1,toolCalls:1});
+    evidence:{foods:catalogue,events},photoIds,barcodes,model:'fixture',provider:'test',durationMs:0,steps:1,toolCalls:1});
 const complete=[mass(1,200),mass(2,13.5),mass(3,150)];
 const covered=[mention('chicken breast',[0]),mention('olive oil',[1]),mention('rice',[2])];
 
@@ -89,4 +89,16 @@ test('a referenced dish is covered by its history selection, not by retyped item
   assert.throws(()=>compile([{...mass(1,200,'bowl'),groupLabel:'Bowl'}],[mention('same bowl',[0],{historySelectionIndexes:[0]})],
     {originalText,historyGroupSelections,events}),/duplicate_food_in_group/);
   assert.throws(()=>compile([],[mention('same bowl',[])],{originalText,historyGroupSelections,events}),/dropped_meal_mention/);
+});
+
+test('a decoded barcode must be logged as the food that carries it, not a similar food',()=>{
+  catalogue.set(30,{...food(30,'Protein Drink, Tropical Punch',53,7.2,3.9,1),gtin:'00818290015617'});
+  catalogue.set(31,food(31,'Zero Sugar Greek Yogurt',40,7.3,2.7,0));
+  const originalText='';
+  const drink=[{foodId:30,quantity:{kind:'mass',grams:207},groupId:null,groupLabel:null,evidence:['gtin:00818290015617']}];
+  const cup=[{foodId:31,quantity:{kind:'mass',grams:150},groupId:null,groupLabel:null,evidence:['gtin:00818290015617']}];
+  const components=[mention('photo: Chobani drink',[0])];
+  assert.equal(compile(drink,components,{originalText,photoIds:[1],barcodes:['00818290015617']}).items[0].foodId,30);
+  assert.throws(()=>compile(cup,components,{originalText,photoIds:[1],barcodes:['00818290015617']}),/barcode_not_covered/);
+  assert.equal(compile(cup,components,{originalText,photoIds:[1]}).items[0].foodId,31,'no barcode, no constraint');
 });
