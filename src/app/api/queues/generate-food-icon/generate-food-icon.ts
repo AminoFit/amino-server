@@ -118,7 +118,7 @@ async function getFoodItem(foodId: number) {
 
 // Generates an icon for the food item and uploads it to storage
 export async function generateAndUploadIcon(foodName: string, foodId: number) {
-  const imageBuffer = await generateImageWithOpenAI(foodName)
+  const imageBuffer = await generateIcon(foodName)
   const foodImageId = await uploadImageAndGetId(foodName, foodId, imageBuffer)
 
   return foodImageId
@@ -133,7 +133,8 @@ export const iconPrompt = (foodName: string) =>
   `for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so ` +
   `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`
 
-const requestIcon = (apiKey: string, foodName: string) => fetch("https://api.openai.com/v1/images/generations", {
+// Icons go through OpenRouter's image endpoint like every other model call (same model, same transparent PNG).
+const requestIcon = (apiKey: string, foodName: string) => fetch("https://openrouter.ai/api/v1/images", {
   method:"POST",
   headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},
   signal:AbortSignal.timeout(90000),
@@ -144,24 +145,18 @@ const requestIcon = (apiKey: string, foodName: string) => fetch("https://api.ope
   })
 })
 
-// A current image model returns PNG bytes with an alpha channel directly.
-async function generateImageWithOpenAI(foodName: string) {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) throw new Error("Image API key is not configured")
-  // The image API rate-limits bursts (429); wait and try again before failing the icon. An exhausted credit
-  // balance also answers 429 and will not recover by waiting.
+// The image model returns PNG bytes with an alpha channel directly.
+async function generateIcon(foodName: string) {
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY
+  if (!apiKey) throw new Error("OpenRouter is not configured")
+  // Bursts are rate-limited (429): wait and try again. Missing credits (402) will not recover by waiting.
   let response = await requestIcon(apiKey, foodName)
   for (let attempt = 1; response.status === 429 && attempt <= 3; attempt++) {
-    const code = await response.clone().json().then((body: any) => body?.error?.code, () => null)
-    if (code === "insufficient_quota" || code === "credit_balance_exhausted") break
     await response.body?.cancel()
     await new Promise(resolve => setTimeout(resolve, 15000 * attempt))
     response = await requestIcon(apiKey, foodName)
   }
-  if (!response.ok) {
-    const code = await response.json().then((body: any) => body?.error?.code, () => null)
-    throw new Error(`Image generation failed (${response.status}${code ? ` ${code}` : ""})`)
-  }
+  if (!response.ok) {await response.body?.cancel();throw new Error(`Image generation failed (${response.status})`)}
   const result=await response.json()
   const encoded=result.data?.[0]?.b64_json
   if(typeof encoded!=="string"||!encoded.length)throw new Error("Image generation returned no PNG")

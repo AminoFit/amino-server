@@ -2,7 +2,7 @@
 // revive a retired provider through an environment override.
 export const FOOD_MODEL = "google/gemini-3.8-flash"
 export const DECISION_MODEL = "typesafe/jev-1.13"
-export const IMAGE_MODEL = "gpt-image-2.5-sunburst"
+export const IMAGE_MODEL = "openai/gpt-image-2.5-sunburst"
 export const EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 // The one exception to Flash/Jev: turning web or label evidence into a new
 // catalogue food. Creation is rare, so a stronger model costs little.

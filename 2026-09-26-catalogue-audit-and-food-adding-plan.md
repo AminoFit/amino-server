@@ -152,7 +152,9 @@ Original finding:
 - A Flash vision check of the first 263 found 28 with extras. All were helpful identity cues, so all were kept.
 - Old links are backed up (`A7_icon_link`).
 
-**Blocked:** the OpenAI account ran out of credits (`credit_balance_exhausted`, returned as 429). 352 ranked foods kept their old icons, and the icon queue for new foods fails until credits are added. The generator now fails fast on exhausted credits and backs off on real rate limits.
+**Moved to OpenRouter (2026-09-26):** icons now use OpenRouter's `/api/v1/images` endpoint with `openai/gpt-image-2.5-sunburst`. It's the same model, the same transparent PNG, and the same price ($0.0139), so no OpenAI account is needed any more.
+
+**Earlier block:** the OpenAI account ran out of credits (`credit_balance_exhausted`, returned as 429). 352 ranked foods kept their old icons, and the icon queue for new foods fails until credits are added. The generator now fails fast on exhausted credits and backs off on real rate limits.
 
 **Resume:** `scripts/regenerate-icons.ts 1200 1010 progress.jsonl 3` retries the failed foods. About $5.60 of the $15 remains.
 
