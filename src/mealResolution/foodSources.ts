@@ -54,8 +54,10 @@ page lacks a gram or mL weight.
 Never estimate. Return {"foods":[]} when nothing authoritative is found.`
 
 const DUPLICATE_POLICY=`Decide whether the new food is the SAME food as an existing catalogue food: same identity,
-brand, flavour, variant and preparation state (for example dry vs cooked, in oil vs in water, 2% vs whole).
-Names may differ in language, spelling, word order or punctuation. Choose none only when no candidate is the same food.`
+brand, flavour, variant, form (for example a drink vs a cup of yogurt, a bar vs a powder) and preparation state
+(dry vs cooked, in oil vs in water, 2% vs whole). Names may differ in language, spelling, word order or punctuation.
+Use the serving units and sizes and the per-100 g energy and protein as evidence: very different values mean a
+different product. Choose none when no candidate is the same food.`
 
 // Canonical mass/volume units are a nutrition basis, not a serving: the food's gram
 // basis already covers them and the agent logs by mass.
@@ -152,24 +154,43 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     return []
   }
 
+  type Facts={id:number;name:string;brand:string|null;gtin:string|null;defaultServingWeightGram:number|null;
+    kcalPerServing:number|null;proteinPerServing:number|null;Serving:{servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}[]}
+  const per100=(value:number|null,grams:number|null)=>value!=null&&grams?Math.round(value*1000/grams)/10:null
+  const describe=(f:{name:string;brand:string|null;gtin:string|null;kcal:number|null;protein:number|null;grams:number|null;
+    servings:{unit:string;amount:number;grams:number|null}[]})=>({name:f.name,brand:f.brand,barcode:f.gtin,
+    kcalPer100g:per100(f.kcal,f.grams),proteinPer100g:per100(f.protein,f.grams),servings:f.servings.slice(0,3)})
+
   async function duplicateOf(food:SourceFood):Promise<{status:"none"}|{status:"existing";foodId:number}|
     {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null}[]}> {
     const label=food.brand?`${food.name} - ${food.brand}`:food.name
     const [vector]=await embed("BGE_BASE",[label])
     const near=await db().rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8}).abortSignal(ctx.signal)
     if (near.error) throw new Error("catalogue_unavailable")
-    const candidates=((near.data??[]) as {id:number;name:string;brand:string|null}[]).map(({id,name,brand})=>({id,name,brand}))
+    const ids=((near.data??[]) as {id:number}[]).map(row=>row.id)
+    if (!ids.length) return {status:"none"}
+    const hydrated=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
+      .in("id",ids).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
+    if (hydrated.error) throw new Error("catalogue_unavailable")
+    const facts=(hydrated.data??[]) as unknown as Facts[]
+    // Barcodes decide outright: the same GTIN is this food; a different GTIN is another product.
+    const sameBarcode=food.gtin?facts.find(f=>f.gtin===food.gtin):undefined
+    if (sameBarcode) return {status:"existing",foodId:sameBarcode.id}
+    const candidates=facts.filter(f=>!(food.gtin&&f.gtin&&f.gtin!==food.gtin))
     if (!candidates.length) return {status:"none"}
     const options:Record<string,unknown>={none:null},criteria:Record<string,string>={none:"No candidate is the same food."}
     for (const c of candidates) {options[`food_${c.id}`]=c.id;criteria[`food_${c.id}`]=`Catalogue food ${c.id}.`}
-    const decision=await (deps.jev??selectWithJev)({options,state:{newFood:{name:food.name,brand:food.brand,
-      kcalPer100g:food.kcal*100/food.defaultServingWeightGram},catalogue:candidates},
+    const decision=await (deps.jev??selectWithJev)({options,state:{
+      newFood:describe({name:food.name,brand:food.brand,gtin:food.gtin,kcal:food.kcal,protein:food.proteinG,grams:food.defaultServingWeightGram,
+        servings:food.servings.map(s=>({unit:s.name,amount:s.amount,grams:s.grams}))}),
+      catalogue:candidates.map(c=>({id:c.id,...describe({name:c.name,brand:c.brand,gtin:c.gtin,kcal:c.kcalPerServing,protein:c.proteinPerServing,
+        grams:c.defaultServingWeightGram,servings:(c.Serving??[]).map(s=>({unit:s.servingName,amount:Number(s.defaultServingAmount)||1,grams:s.servingWeightGram}))})}))},
       questions:{selection:{type:"choice",instructions:DUPLICATE_POLICY,criteria}}},ctx.signal)
     const confident=decision.status==="ok"&&(decision.confidence??0)>=0.9
     if (confident&&decision.choice?.startsWith("food_")) return {status:"existing",foodId:Number(decision.choice.slice(5))}
     if (confident&&decision.choice==="none") return {status:"none"}
     // Uncertain or unavailable: never create. The agent must pick one or ask.
-    return {status:"possible_duplicates",candidates}
+    return {status:"possible_duplicates",candidates:candidates.map(({id,name,brand})=>({id,name,brand}))}
   }
 
   const payload=async(food:SourceFood,withEmbedding:boolean)=>{

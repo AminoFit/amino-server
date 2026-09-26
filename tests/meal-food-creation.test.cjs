@@ -9,9 +9,11 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({jev,usda=[usdaFood],near=nearby,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
-  const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[]};
-  const db={rpc:(name,args)=>{
+function harness({jev=null,usda=[usdaFood],near=nearby,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
+  const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[]};
+  const facts=near.map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
+  const db={from:()=>{const q={select:()=>q,in:()=>q,limit:()=>q,abortSignal:async()=>({data:facts,error:null})};return q},
+    rpc:(name,args)=>{
     const result=name==='search_usda_database'?{data:[{fdcId:2345}],error:null}:
       name==='get_cosine_results'?{data:near,error:null}:
       name==='create_catalogue_food'?(calls.create.push(args),{data:[createRow],error:null}):
@@ -24,7 +26,7 @@ function harness({jev,usda=[usdaFood],near=nearby,createRow={food_id:99001,creat
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
       usdaSearch:usdaSearch??(async()=>[]),model:'anthropic/claude-sonnet-5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
-      jev:async()=>jev,enqueue:async id=>calls.enqueued.push(id)});
+      jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id)});
   return {sources,calls};
 }
 
@@ -183,4 +185,32 @@ test('a per-100 mL label basis is not stored as a serving',()=>{
   const bottle=sources.proposeLabelFood({name:'Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
     kcal:120,proteinG:15,carbG:9,totalFatG:2,fiberG:null,sugarG:null,satFatG:null,gtin:null});
   assert.deepEqual(bottle.servings,[{name:'bottle',grams:207,amount:1}]);
+});
+
+test('barcodes decide duplicates outright, and Jev sees the facts that separate sibling products',async()=>{
+  const drink={name:'Chobani Protein Drink Tropical Punch',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
+    kcal:120,proteinG:15,carbG:9,totalFatG:2,sourceUrl:'https://chobani.example/drink'};
+  const web=async()=>({data:{foods:[drink]},sourceUrls:['https://chobani.example/drink'],searches:1});
+  // Same barcode already in the catalogue: that food, no model decision.
+  let h=harness({usda:[],web,barcodes:['00818290015617'],near:[{id:77,name:'Chobani Drink',brand:'Chobani',gtin:'00818290015617'}],
+    jev:{status:'ok',choice:'none',confidence:0.99}});
+  let [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  const same=await h.sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual([same.status,same.foodId,h.calls.jev.length],['existing',77,0]);
+  // A candidate with another barcode is another product and is never offered as a duplicate.
+  h=harness({usda:[],web,barcodes:['00818290015617'],near:[{id:78,name:'Zero Sugar Greek Yogurt',brand:'Chobani',gtin:'00818290099999'}]});
+  [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  assert.equal((await h.sources.createFoodFromSource(candidate.sourceId)).status,'created');
+  assert.equal(h.calls.jev.length,0);
+  // Without barcodes on the candidate, Jev decides with serving and density facts.
+  h=harness({usda:[],web,barcodes:['00818290015617'],near:[{id:7923,name:'Zero Sugar Greek Yogurt',brand:'Chobani',defaultServingWeightGram:150,
+    kcalPerServing:60,proteinPerServing:11,Serving:[{servingName:'container',servingWeightGram:150,defaultServingAmount:1}]}],
+    jev:{status:'ok',choice:'none',confidence:0.95}});
+  [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  assert.equal((await h.sources.createFoodFromSource(candidate.sourceId)).status,'created');
+  const state=h.calls.jev[0].state;
+  assert.deepEqual(state.newFood.servings,[{unit:'bottle',amount:1,grams:207}]);
+  assert.equal(state.newFood.barcode,'00818290015617');
+  assert.deepEqual(state.catalogue[0].servings,[{unit:'container',amount:1,grams:150}]);
+  assert.equal(state.catalogue[0].kcalPer100g,40);
 });
