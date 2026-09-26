@@ -16,6 +16,9 @@ export type PublishedPlan = {schemaVersion:1;originalText:string;consumedOn:stri
   model:{id:string;provider:string};input:{operationId:string;submittedAt:string;timezone:string;
     locale:string|null;attachmentIds:number[]}}
 
+/** A fixed code for the worker plus a detail that tells the agent exactly what to fix. */
+const fail=(code:string,detail:string)=>Object.assign(new Error(code),{detail})
+
 const positive=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)&&value>0
 
 /** Every distinct food the user mentioned (or a photo shows) maps to its items or
@@ -30,9 +33,11 @@ function checkCoverage(input:MealResolutionInput,result:MealResolutionResult) {
     if (mentions.has(mention)) throw new Error("duplicate_meal_mention")
     mentions.add(mention)
     const observed=text.startsWith("photo:")
-    if (observed ? !hasPhotos||text.length<9 : !input.originalText.includes(text)) throw new Error("unsupported_meal_mention")
+    if (observed ? !hasPhotos||text.length<9 : !input.originalText.includes(text))
+      throw fail("unsupported_meal_mention",`"${text}" is not verbatim in the user text${observed?" (and there is no photo)":""}`)
     const covered=component.itemIndexes.length+component.historySelectionIndexes.length
-    if (component.omitted ? covered>0 : covered===0) throw new Error(component.omitted?"omitted_mention_has_food":"dropped_meal_mention")
+    if (component.omitted ? covered>0 : covered===0) throw fail(component.omitted?"omitted_mention_has_food":"dropped_meal_mention",
+      component.omitted?`omitted "${text}" must have no items`:`"${text}" has no item or history selection`)
     for (const index of component.itemIndexes) {
       if (index>=proposal.items.length||items.has(index)) throw new Error("item_coverage_conflict")
       items.add(index)
@@ -43,7 +48,8 @@ function checkCoverage(input:MealResolutionInput,result:MealResolutionResult) {
     }
   }
   if (items.size!==proposal.items.length||selections.size!==(proposal.historyGroupSelections??[]).length)
-    throw new Error("uncovered_meal_item")
+    throw fail("uncovered_meal_item",`items ${proposal.items.map((_,i)=>i).filter(i=>!items.has(i)).join(", ")||"none"} and selections ${
+      (proposal.historyGroupSelections??[]).map((_,i)=>i).filter(i=>!selections.has(i)).join(", ")||"none"} are in no component`)
 }
 
 /** A proposal names evidence and meaning. This code only checks ownership,
@@ -55,13 +61,15 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
   checkCoverage(input,result)
   const grouped:MealProposal["items"]=(proposal.historyGroupSelections??[]).flatMap(selection=>{
     const event=evidence.events.get(selection.sourceMessageId)
-    if(!event) throw new Error("unread_history_group")
+    if(!event) throw fail("unread_history_group",`event ${selection.sourceMessageId} was not read: call getMealEvent first`)
     const group=(event.groups as {id:string;label:string|null}[]).find(row=>row.id===selection.groupId)
-    if(!group) throw new Error("unread_history_group")
+    if(!group) throw fail("unread_history_group",`event ${event.messageId} has no group "${selection.groupId}"; its groups: ${
+      (event.groups as {id:string}[]).map(row=>row.id).join(", ")||"none (select its logged items individually)"}`)
     const members=event.foods.filter(food=>food.groupId===selection.groupId)
     const excluded=new Set(selection.excludeLoggedFoodItemIds)
     if(!members.length||[...excluded].some(id=>!members.some(food=>food.id===id)))
-      throw new Error("invalid_group_exclusion")
+      throw fail("invalid_group_exclusion",`excludeLoggedFoodItemIds must be logged item IDs of group "${group.id}": ${
+        members.map(food=>`${food.id} (${food.name})`).join(", ")}`)
     return members.filter(food=>!excluded.has(food.id)).map(food=>({
       foodId:food.foodItemId,
       quantity:{kind:"history" as const,sourceMessageId:event.messageId,
@@ -87,8 +95,11 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
     if (quantity.kind==="history") {
       const event=evidence.events.get(quantity.sourceMessageId)
       const row=event?.foods.find(food=>food.id===quantity.sourceLoggedFoodItemId)
-      if (!event||!row||!positive(quantity.scale)||proposed.foodId!==null&&proposed.foodId!==row.foodItemId)
-        throw new Error("unread_history_food")
+      if (!event) throw fail("unread_history_food",`event ${quantity.sourceMessageId} was not read: call getMealEvent first`)
+      if (!row) throw fail("unread_history_food",`logged item ${quantity.sourceLoggedFoodItemId} is not in event ${event.messageId}; its logged items: ${
+        event.foods.map(food=>`${food.id} (${food.name})`).join(", ")}`)
+      if (!positive(quantity.scale)||proposed.foodId!==null&&proposed.foodId!==row.foodItemId)
+        throw fail("unread_history_food",`for logged item ${row.id} use foodId null (or ${row.foodItemId}) and a positive scale`)
       foodId=row.foodItemId
       grams=row.grams*quantity.scale
       nutrition=Object.fromEntries(HISTORY_NUTRIENTS.map(key=>[key,
@@ -100,13 +111,14 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
     } else {
       if (!proposed.foodId) throw new Error("missing_catalogue_food")
       const food=evidence.foods.get(proposed.foodId)
-      if (!food) throw new Error("unread_catalogue_food")
+      if (!food) throw fail("unread_catalogue_food",`food ${proposed.foodId} was not read: use a food returned by findFood, addFood or getFoodsAndServings`)
       foodId=food.id
       catalogueUpdatedAt=food.lastUpdated
       if (quantity.kind==="serving") {
         const serving=food.Serving.find(row=>row.id===quantity.servingId&&row.foodItemId===food.id)
         if (!serving||!positive(serving.servingWeightGram)||!positive(serving.defaultServingAmount))
-          throw new Error("invalid_food_serving")
+          throw fail("invalid_food_serving",`serving ${quantity.servingId} is not a usable serving of food ${food.id}; its servings: ${
+            food.Serving.map(row=>`${row.id} (${row.defaultServingAmount} ${row.servingName} = ${row.servingWeightGram} g)`).join(", ")||"none (log by mass)"}`)
         servingId=serving.id;servingAmount=quantity.amount;loggedUnit=serving.servingName
         grams=quantity.amount*serving.servingWeightGram/serving.defaultServingAmount
       } else {
@@ -138,12 +150,13 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
   // A barcode decoded from the photos is a product in the meal: some item must be the
   // catalogue food that carries it, never a similar food without the barcode.
   for (const gtin of result.barcodes??[]) {
-    if (!items.some(item=>result.evidence.foods.get(item.foodId)?.gtin===gtin)) throw new Error("barcode_not_covered")
+    if (!items.some(item=>result.evidence.foods.get(item.foodId)?.gtin===gtin))
+      throw fail("barcode_not_covered",`no item is the food carrying barcode ${gtin}: findFood with that gtin, then addFood the matching source`)
   }
   const perGroup=new Set<string>()
   for (const item of items) {
     const key=`${item.groupId??""}:${item.foodId}`
-    if (perGroup.has(key)) throw new Error("duplicate_food_in_group")
+    if (perGroup.has(key)) throw fail("duplicate_food_in_group",`food ${item.foodId} appears twice in one dish: combine the quantities into one item`)
     perGroup.add(key)
   }
   for (const claim of proposal.claims) {

@@ -26,6 +26,9 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "delete_last_item_requires_meal_delete","clarification_unavailable","barcode_not_covered","history_not_referenced","missing_meal_coverage","duplicate_meal_mention",
   "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
+/** Total ms and count per stage, e.g. {"tool:findFood":{ms:7400,n:2}}. */
+const summariseTimeline=(timeline:{stage:string;ms:number}[])=>timeline.reduce<Record<string,{ms:number;n:number}>>((sum,{stage,ms})=>
+  ({...sum,[stage]:{ms:(sum[stage]?.ms??0)+ms,n:(sum[stage]?.n??0)+1}}),{})
 const sourcePlan=(value:unknown):PublishedPlan|null=>value&&typeof value==="object"&&
   Array.isArray((value as PublishedPlan).items)?value as PublishedPlan:null
 const stableItemId=(messageId:number,itemId:number)=>{
@@ -125,6 +128,7 @@ export async function processMealOperation(operationId:string) {
   const claim=await claimMealOperation(operationId,workerToken)
   if(!claim) return {state:"ignored"}
   const started=performance.now()
+  let timeline:{stage:string;ms:number}[]=[]
   try {
     let plan:PublishedPlan
     if(claim.action==="create"||claim.action==="replace") {
@@ -141,6 +145,7 @@ export async function processMealOperation(operationId:string) {
         // The current app cannot show questions: taken-over meals resolve with assumptions.
         clarificationAllowed:raw.takeover!==true}
       let result=await resolveMeal(input)
+      timeline=result.timeline??[]
       if(result.proposal.outcome==="needs_clarification"&&!input.clarificationAllowed)
         result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"})
       if(result.proposal.outcome==="needs_clarification") {
@@ -149,7 +154,7 @@ export async function processMealOperation(operationId:string) {
           "ambiguous_meal",null,{question:result.proposal.clarification})
         return {state:"needs_clarification"}
       }
-      try {plan=await compileCheckedMealPlan(input,result)}
+      try {plan=await compileCheckedMealPlan(input,result,{secondLook:!result.checked})}
       catch(error) {
         const code=error instanceof Error?error.message:"invalid_plan"
         // missing_visible_food carries the names the second look found.
@@ -166,7 +171,8 @@ export async function processMealOperation(operationId:string) {
       }
     } else plan=await structuredPlan(claim)
     const published=await publishMealOperation(operationId,workerToken,plan)
-    console.info("meal_operation_complete",{operationId,state:"succeeded",durationMs:Math.round(performance.now()-started)})
+    console.info("meal_operation_complete",{operationId,state:"succeeded",durationMs:Math.round(performance.now()-started),
+      stages:summariseTimeline(timeline)})
     return {state:"succeeded",published}
   } catch(error) {
     const raw=error instanceof Error?error.message:"unknown_error"

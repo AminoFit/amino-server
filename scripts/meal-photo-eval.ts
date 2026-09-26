@@ -34,38 +34,43 @@ async function run(test: Case) {
   const { data: photos } = await db.from("UserMessageImages").select("id").eq("messageId", test.messageId).order("id")
   const controller = new AbortController(), created: string[] = []
   const evidence = createMealEvidence(message!.userId, controller.signal), barcodes: string[] = []
-  const real = createFoodSources({ userId: message!.userId, messageId: test.messageId, signal: controller.signal, barcodes,
-    discover: id => evidence.discover(id) })
+  // Real sources and duplicate check (Jev); only the database writes are simulated.
+  const realDb = db as any
   let fakeId = 900000001 // simulated foods use IDs far above the catalogue's
-  const sources = { ...real, async createFoodFromSource(sourceId: string) {
-    const food = real.sources.get(sourceId)
-    if (!food) throw new Error("unknown_food_source")
-    const id = fakeId++
-    created.push(`${food.foodInfoSource}:${food.name} ${food.defaultServingWeightGram}g ${food.kcal}kcal gtin=${food.gtin}`)
-    evidence.foods.set(id, { id, name: food.name, brand: food.brand, gtin: food.gtin, lastUpdated: new Date().toISOString(),
-      defaultServingWeightGram: food.defaultServingWeightGram, weightUnknown: false, kcalPerServing: food.kcal,
-      proteinPerServing: food.proteinG, carbPerServing: food.carbG, totalFatPerServing: food.totalFatG, satFatPerServing: food.satFatG,
-      transFatPerServing: null, fiberPerServing: food.fiberG, sugarPerServing: food.sugarG, addedSugarPerServing: null,
-      Serving: food.servings.map((s, i) => ({ id: id * 10 + i, foodItemId: id, servingName: s.name, servingWeightGram: s.grams, defaultServingAmount: s.amount })) })
-    evidence.discover(id) // as the real creation path does, so the agent can read it back
-    return { status: "created" as const, foodId: id, enrichment: null }
+  const guardedDb = { from: (table: string) => realDb.from(table), rpc: (name: string, args: any) => {
+    if (name === "create_catalogue_food") {
+      const food = args.p_food, id = fakeId++
+      created.push(`${food.foodInfoSource}:${food.name} ${food.defaultServingWeightGram}g ${food.kcal}kcal gtin=${food.gtin}`)
+      evidence.foods.set(id, { id, name: food.name, brand: food.brand, gtin: food.gtin, description: food.source, lastUpdated: new Date().toISOString(),
+        defaultServingWeightGram: food.defaultServingWeightGram, weightUnknown: false, kcalPerServing: food.kcal, proteinPerServing: food.proteinG,
+        carbPerServing: food.carbG, totalFatPerServing: food.totalFatG, satFatPerServing: food.satFatG ?? null, transFatPerServing: null,
+        fiberPerServing: food.fiberG ?? null, sugarPerServing: food.sugarG ?? null, addedSugarPerServing: null,
+        Serving: (args.p_servings as { name: string; grams: number; amount: number }[]).map((s, i) => ({ id: id * 10 + i, foodItemId: id,
+          servingName: s.name, servingWeightGram: s.grams, defaultServingAmount: s.amount })) })
+      return { abortSignal: async () => ({ data: [{ food_id: id, created: true, enrichment: null }], error: null }) }
+    }
+    if (name === "enrich_catalogue_food") return { abortSignal: async () => ({ data: { foodId: args.p_food_id, added: [], conflict: false }, error: null }) }
+    return realDb.rpc(name, args)
   } }
+  const sources = createFoodSources({ userId: message!.userId, messageId: test.messageId, signal: controller.signal, barcodes,
+    discover: id => evidence.discover(id) }, { db: guardedDb as never, enqueue: async () => {} })
   const input = { userId: message!.userId, operationId: "00000000-0000-4000-8000-00000000e000", messageId: test.messageId,
     originalText: message!.content ?? "", consumedOn: new Date(`${message!.consumedOn}Z`).toISOString(),
     submittedAt: new Date(`${message!.createdAt}Z`).toISOString(), timezone: "America/New_York", locale: null,
     attachmentIds: (photos ?? []).map(photo => photo.id), clarificationAllowed: false }
   const started = Date.now()
-  let result = await resolveMeal(input, { evidence, sources: sources as never, barcodes })
+  let result = await resolveMeal(input, { evidence, sources, barcodes })
   let plan: Plan
-  try { plan = await compileCheckedMealPlan(input, result) }
+  try { plan = await compileCheckedMealPlan(input, result, { secondLook: !result.checked }) }
   catch (error) {
     console.error(`  [${test.messageId}] first plan rejected: ${error instanceof Error ? error.message : error} after ${Date.now() - started} ms`)
     // The worker's single repair turn, with the validator's code.
-    result = await resolveMeal({ ...input, validationErrorCode: error instanceof Error ? error.message : "invalid_plan" }, { evidence, sources: sources as never, barcodes })
+    result = await resolveMeal({ ...input, validationErrorCode: error instanceof Error ? error.message : "invalid_plan" }, { evidence, sources, barcodes })
     plan = await compileCheckedMealPlan(input, result, { secondLook: false })
   }
   const problems = test.expect(plan, evidence.foods)
-  return { messageId: test.messageId, pass: problems.length === 0, problems, ms: Date.now() - started, barcodes: result.barcodes,
+  return { messageId: test.messageId, pass: problems.length === 0, problems, ms: Date.now() - started, steps: result.steps, checked: result.checked,
+    stages: Object.fromEntries(Object.entries((result.timeline ?? []).reduce<Record<string, number>>((sum, t) => ({ ...sum, [t.stage]: (sum[t.stage] ?? 0) + t.ms }), {}))), barcodes: result.barcodes,
     created, items: named(plan, evidence.foods).map(item => `${item.food?.name} ${Math.round(item.grams)}g ${item.loggedUnit} (${item.origin})`) }
 }
 
