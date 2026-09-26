@@ -78,8 +78,8 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
     return
   }
 
-  // if there's a brand name we should append it to the food name
-  const foodName = foodItem.brand ? `${foodItem.brand} ${foodItem.name}` : foodItem.name
+  // The food, not its brand: brands add packaging and logos, and a generic icon suits the food's variants.
+  const foodName = foodItem.name
   // Generate the icon and upload it to storage
   await generateAndUploadIcon(foodName, foodItem.id)
 
@@ -134,7 +134,7 @@ async function generateImageWithOpenAI(foodName: string) {
     signal:AbortSignal.timeout(90000),
     body:JSON.stringify({
       model:IMAGE_MODEL,
-      prompt:`Create one clean, centered isometric food app icon of ${foodName}. Show only the food or its natural container. Every pixel outside the food silhouette must be fully transparent. Keep the silhouette crisp, with no ground, gradient, glow, bloom, vignette, drop shadow, reflection, text or border.`,
+      prompt:`Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. Keep it simple, without too many other ingredients, so it stays useful for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`,
       n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
     })
   })

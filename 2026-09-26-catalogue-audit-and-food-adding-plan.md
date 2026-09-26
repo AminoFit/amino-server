@@ -67,7 +67,20 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
 - These foods have the same name and brand after ignoring accents, case and punctuation. That's the same identity key `create_catalogue_food` now enforces for new foods.
 - **Fix:** use the same merge process as A4. A Jev check with facts (serving sizes and density) confirms each group is really one food before merging.
 
-### A6. Serving hygiene
+### A6. Serving hygiene (done 2026-09-26)
+
+**Done:** migration `20260926060000_audit_a6_serving_hygiene`. Servings went from 27,686 to 22,208. Every changed or deleted row is in `CatalogueAuditBackup` (audits `A6_*`).
+
+- **Deleted, only where no log or favourite references the serving:**
+  - 4,110 "g"/"oz" servings that duplicate the app's built-in units.
+  - 1,343 servings with no weight or amount.
+  - 26 servings with the same name and weight as another on the same food.
+- **Unit multiples (355):** "oz" = 85 g became 3 × oz, and "g" = 100 g became 100 × g. One unit is an ounce or a gram again, so "2 oz" no longer logs 170 g.
+- **Names (278):** a "(N g)" that matches the weight was removed ("serving (61 g)" → "serving").
+- **Why deletes skip referenced servings:** deleting a serving cascades to `UserFavoriteFoodItem`, so referenced servings are never deleted. 69 unusable servings are referenced by logs, and many "g"/"oz" servings are logged; these remain, and the app and agent hide the unusable ones.
+- **Left for a source check:** 495 foods that have the same serving name with different weights (for example "cup" 150 g and 240 g). The app keeps the smaller one.
+
+Original finding:
 
 | Problem | Count | Fix |
 |---|---|---|
