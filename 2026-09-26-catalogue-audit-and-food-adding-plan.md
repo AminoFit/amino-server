@@ -67,13 +67,36 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
   - Where it disagrees on energy density by more than 10%, the food needs replacing. The enrich function records the disagreement and never overwrites macros, so replacing needs a new supersede function (see B5 and decision 1).
 - **Check:** every GPT4 food in the top 500 by usage is verified, superseded or retired.
 
-### A3. Implausible nutrition (256 energy mismatches, 145 impossible densities)
+### A3. Implausible nutrition (done 2026-09-26: 36 corrected, 4 merged)
+
+**Done:** `scripts/audit-implausible.ts` (backup `A3_implausible`, plus a `FoodItemConflict` row).
+- **Scope:** "impossible" means more than 950 kcal/100 g, or macros more than 15% heavier than the food. That tolerance allows for label rounding on pure fats, and zero-calorie foods count as valid. 83 foods qualified.
+- **Pattern:** most had the right nutrients on a wrong serving weight. A McDouble "serving" was 45 g with 400 kcal, and crinkle-cut fries were 10 g.
+- **Fix:** each was corrected from a matched source (USDA first, then cited web; Jev 0.8 or higher, names only), including the source's serving weight. Servings that repeated the wrong weight moved with it.
+- **Examples:**
+  - Ensure Max Protein: 4,500 → 150 kcal.
+  - Starbucks Frappuccino: 6,000 → 290.
+  - Chicken Quesadilla: 31 g → 310 g.
+- **Merged:** 4 whose source was already a catalogue food. Past logs stay as logged.
+- **Left for review:** 43 foods with no plausible source, mostly GPT-era dishes with a 1 g "serving" (for example "Brownie Batter Blizzard – Large", 1 g / 1,390 kcal).
+- **Not done:** the 256 calorie-vs-macro mismatches (mostly USDA; often alcohol, fibre or sugar alcohols) were not changed.
+
+Original finding (256 energy mismatches, 145 impossible densities):
 
 - **Energy mismatch:** stated kcal differs by more than 25% (and more than 25 kcal) from protein×4 + carbs×4 + fat×9. By source: USDA 150, GPT4 42, Nutritionix 39, FatSecret 25.
 - **Impossible density:** more than 902 kcal/100 g, or macros heavier than the food itself.
 - **Fix:** alcohol, fibre and sugar alcohols explain some of these legitimately. Classify each with Jev or Flash using the food's facts, re-fetch the source for the rest, and supersede or retire.
 
-### A4. Barcodes (280 GTINs shared by 2+ foods, 161 invalid UPCs)
+### A4. Barcodes (done 2026-09-26: 266 merged)
+
+**Done:** migration `20260926070000_audit_a4_a5_merge_duplicates` added the reusable `merge_catalogue_food(keep, drop, audit)`.
+- **What a merge does:** repoints logs, favourites, bug reports, conflict records and icon requests. Servings move, or join the kept food's identical serving (logs and favourites follow, so no favourite cascades away). Detailed nutrients are backed up and dropped. The barcode and name carry over as an alias.
+- **Indexes added:** `LoggedFoodItem(foodItemId)`, `LoggedFoodItem(servingId)`, `Nutrient(foodItemId)` and `UserFavoriteFoodItem(foodItemId)`.
+- **Result:** 266 foods sharing a barcode were merged into the most-logged one, only where calories per 100 g were within 15%.
+- **Left:** 19 barcodes are still shared by foods whose calories disagree. The barcode is on the wrong product and needs a source check before clearing.
+- **Still to do:** a unique index on `gtin`. The 161 invalid UPCs are unchanged.
+
+Original finding (280 GTINs shared by 2+ foods, 161 invalid UPCs):
 
 - 575 foods share a UPC with another food. Sometimes it's the same product imported twice, sometimes the wrong size or variant.
 - 161 `UPC` values aren't valid GTINs (bad check digit or length), so `gtin` stayed empty.
@@ -83,7 +106,13 @@ These were created by the retired gpt-4o pipeline from model estimates, with no 
   - Then add a unique index on `FoodItem.gtin`. Barcodes should identify exactly one food; that was the earlier note about enforcing this at the food level.
 - An existing spawned task covers the duplicate-UPC merge.
 
-### A5. Duplicate foods by identity (195 groups, 505 foods)
+### A5. Duplicate foods by identity (done 2026-09-26: 260 merged)
+
+**Done:** in the same migration, 260 foods with the same name and brand (ignoring accents, case and punctuation) were merged into the most-logged one, only within 15% on calories. Examples: "Sugar"/"sugar", "Lo Carb"/"Lo-Carb Energy Drink", "tuna" ×2.
+
+**Exceptions to "most used":** five duplicates whose own values were wrong merged into the correct food. Espresso with crema went into Coffee, Espresso, and the four from A3. The catalogue went from 15,060 to 14,529 foods; favourites are intact and no log points at a missing food.
+
+Original finding (195 groups, 505 foods):
 
 - These foods have the same name and brand after ignoring accents, case and punctuation. That's the same identity key `create_catalogue_food` now enforces for new foods.
 - **Fix:** use the same merge process as A4. A Jev check with facts (serving sizes and density) confirms each group is really one food before merging.
@@ -110,18 +139,47 @@ Original finding:
 | Same name twice on one food | 687 | Dedupe, keeping the referenced serving. |
 | Amount doubled in the name (`1 Cup (37g)`) | 286 | Clean the name (same class of bug as the "1 1 Cup (37g) (37g)" portion label). |
 
-### A7. Icons (10,731 weak links)
+### A7. Icons (in progress 2026-09-26: 848 foods redone, stopped by OpenAI credits)
+
+**Decision:** redo icons with the owner's prompt, on OpenAI's best model, at most $15, recent and popular foods first.
+
+**Model:** gpt-image-2.5-sunburst at medium quality ($0.0135 per icon; high costs $0.053 and looks the same at app size).
+
+**Prompt:** transparent, square, isometric, simple 3D, vibrant, with an outline for light and dark mode. Show the food alone: no sides, sauces, dips, garnishes, drinks or utensils, and a plate or bowl only when the food is eaten from one. One small ingredient cue is allowed for a plain drink, oil, spread or powder (almonds for almond milk). No text, logos or brand packaging. The queue uses the same prompt for new foods, without the brand in the subject.
+
+**Done:** `scripts/regenerate-icons.ts` ranks foods by recency-weighted logs.
+- 598 icons generated (about $8.10) and 250 foods reused a near-duplicate new icon (similarity 0.9 or higher).
+- A Flash vision check of the first 263 found 28 with extras. All were helpful identity cues, so all were kept.
+- Old links are backed up (`A7_icon_link`).
+
+**Blocked:** the OpenAI account ran out of credits (`credit_balance_exhausted`, returned as 429). 352 ranked foods kept their old icons, and the icon queue for new foods fails until credits are added. The generator now fails fast on exhausted credits and backs off on real rate limits.
+
+**Resume:** `scripts/regenerate-icons.ts 1200 1010 progress.jsonl 3` retries the failed foods. About $5.60 of the $15 remains.
+
+Original finding (10,731 weak links):
 
 - The old icon queue linked the nearest existing icon whatever the similarity, for example milk → lasagna (0.70).
 - 10,731 links score below 0.8, and 5,760 below 0.75. 11 foods have no icon.
 - The queue now reuses an icon only at similarity ≥ 0.8.
 - **Fix:** re-check low-scoring links, most-logged foods first, with a cheap Flash vision check ("does this icon show <food>?"). Regenerate icons where it says no. The generation cost per icon needs estimating first (decision 3).
 
-### A8. Foods that can't be logged by mass (319 weight unknown, 26 with no serving weight)
+### A8. Foods that can't be logged by mass (done 2026-09-26: 291 fixed)
+
+**Done:** migration `20260926080000_audit_a8_serving_weights` (backup `A8_weight`).
+- **Why it mattered:** the meal agent computes no nutrition for `weightUnknown` foods, which blocked popular items.
+- **Flag cleared:** `weightUnknown` was removed where the serving weight gives plausible nutrition. Examples: Protein Shake (24 logs), Hot Dog, Coffee.
+- **Weight filled:** foods with no default weight but exactly one weighed single-unit serving took that weight. Examples: Big Mac 200 g, 10-piece McNuggets 163 g, Farmers Wrap 275 g.
+- **Left:** 17 still flagged and 12 with no weight at all (for example Spicy McCrispy, "The Box Combo"). They need a source, as in A3.
+
+Original finding (319 weight unknown, 26 with no serving weight):
 
 - **Fix:** fill from the source, or retire the food if nothing references it.
 
-### A9. Brand repeated in icon descriptions
+### A9. Brand repeated in icon descriptions (done 2026-09-26)
+
+Only one description was affected (the Lala icon), and it was fixed (backup `A9_icon_description`). The icon queue no longer adds the brand to the subject.
+
+Original finding:
 
 - Example: "Lala Lala 100 +Proteína …". The icon queue prepends the brand even when the name already contains it.
 - **Fix:** a one-line code change, plus a data update to the affected descriptions.

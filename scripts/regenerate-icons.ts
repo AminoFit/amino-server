@@ -2,14 +2,13 @@
 // foods, within an image budget. A new icon is reused for later foods that are near-duplicates of it.
 // Old links are copied to CatalogueAuditBackup (audit A7_icon_link) and restored if a generation fails.
 // Run with production credentials:
-// npx ts-node -T -r tsconfig-paths/register scripts/regenerate-icons.ts <maxFoods> <maxGenerations> <progress.jsonl>
+// npx ts-node -T -r tsconfig-paths/register scripts/regenerate-icons.ts <maxFoods> <maxGenerations> <progress.jsonl> [concurrency=6]
 import { appendFileSync, existsSync, readFileSync } from "fs"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { generateAndUploadIcon } from "@/app/api/queues/generate-food-icon/generate-food-icon"
 
 const REUSE_SIMILARITY = 0.9
-const CONCURRENCY = 6
 const db = createAdminSupabase() as any
 
 /** Each log counts less the older it is (half-life about eight months), so recent and popular foods rank first. */
@@ -89,7 +88,8 @@ void (async () => {
   const log = console.log; console.log = () => {}
   const queue = (await rankedFoods(maxFoods)).filter(food => !finished.has(food.id))
   log(`${queue.length} foods to process, ${budget.left} generations left`)
-  await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+  // The image API rate-limits bursts; lower concurrency when many requests come back 429.
+  await Promise.all(Array.from({ length: Number(process.argv[5] ?? 6) }, async () => {
     for (let food = queue.shift(); food; food = queue.shift()) {
       const row = await replaceIcon(food, batchImages, budget).catch(failure => ({ id: food!.id, name: food!.name, status: "failed",
         error: failure instanceof Error ? failure.message.slice(0, 160) : "unknown" }))

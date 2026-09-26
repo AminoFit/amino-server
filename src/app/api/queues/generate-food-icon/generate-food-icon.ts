@@ -133,21 +133,35 @@ export const iconPrompt = (foodName: string) =>
   `for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so ` +
   `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`
 
+const requestIcon = (apiKey: string, foodName: string) => fetch("https://api.openai.com/v1/images/generations", {
+  method:"POST",
+  headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},
+  signal:AbortSignal.timeout(90000),
+  body:JSON.stringify({
+    model:IMAGE_MODEL,
+    prompt:iconPrompt(foodName),
+    n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
+  })
+})
+
 // A current image model returns PNG bytes with an alpha channel directly.
 async function generateImageWithOpenAI(foodName: string) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) throw new Error("Image API key is not configured")
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method:"POST",
-    headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},
-    signal:AbortSignal.timeout(90000),
-    body:JSON.stringify({
-      model:IMAGE_MODEL,
-      prompt:iconPrompt(foodName),
-      n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
-    })
-  })
-  if (!response.ok) {await response.body?.cancel();throw new Error(`Image generation failed (${response.status})`)}
+  // The image API rate-limits bursts (429); wait and try again before failing the icon. An exhausted credit
+  // balance also answers 429 and will not recover by waiting.
+  let response = await requestIcon(apiKey, foodName)
+  for (let attempt = 1; response.status === 429 && attempt <= 3; attempt++) {
+    const code = await response.clone().json().then((body: any) => body?.error?.code, () => null)
+    if (code === "insufficient_quota" || code === "credit_balance_exhausted") break
+    await response.body?.cancel()
+    await new Promise(resolve => setTimeout(resolve, 15000 * attempt))
+    response = await requestIcon(apiKey, foodName)
+  }
+  if (!response.ok) {
+    const code = await response.json().then((body: any) => body?.error?.code, () => null)
+    throw new Error(`Image generation failed (${response.status}${code ? ` ${code}` : ""})`)
+  }
   const result=await response.json()
   const encoded=result.data?.[0]?.b64_json
   if(typeof encoded!=="string"||!encoded.length)throw new Error("Image generation returned no PNG")
