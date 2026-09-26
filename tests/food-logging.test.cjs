@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const ts = require('typescript')
+const realModels=()=>load('ai/models.ts')
 function load(file, stubs = {}, globals = {}) {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8')
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
@@ -144,7 +145,7 @@ for(const [body,status] of [['{',400],[JSON.stringify({messageId:1,consumedOn:'b
 test('Flash request uses OpenRouter low reasoning and usage logging cannot spoil a response',async()=>{
   let sent
   const api=load('languageModelProviders/gemini/foodCompletion.ts',{
-    '@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'},
+    '@/ai/models':realModels(),
     '../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{throw Error('usage db down')}}
   },{process:{env:{OPENROUTER_API_KEY:'fake'}},AbortSignal,fetch:async(url,options)=>{
     sent={url,...JSON.parse(options.body)}
@@ -157,7 +158,7 @@ test('Flash request uses OpenRouter low reasoning and usage logging cannot spoil
   assert.equal(sent.reasoning.effort,'low')
 })
 test('truncated Flash JSON is rejected instead of being logged as a valid serving',async()=>{
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}},
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':realModels()},
     {process:{env:{OPENROUTER_API_KEY:'fake'}},AbortSignal,fetch:async()=>Response.json({choices:[{finish_reason:'length',message:{content:'{"grams":'}}]})})
   await assert.rejects(api.foodCompletion({systemPrompt:'food',userMessage:'rice'},{}),/finish/)
 })
@@ -216,7 +217,7 @@ test('enqueue inserts immediately using database timestamp defaults, without a c
 })
 test('Flash access denial does not fall back to a retired provider',async()=>{
   const urls=[]
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':realModels()}, {
     process:{env:{OPENROUTER_API_KEY:'router-test',OPENAI_API_KEY:'fake'}},AbortSignal,
     fetch:async(url)=>{
       urls.push(url)
@@ -228,7 +229,7 @@ test('Flash access denial does not fall back to a retired provider',async()=>{
 })
 test('OpenRouter accepts the configured key alias and routes Gemini with JSON and low reasoning',async()=>{
   let request
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':realModels()}, {
     process:{env:{OPEN_ROUTER_API_KEY:'router-test',FOOD_REASONING_MODEL:'google/gemini-3.8-flash'}},AbortSignal,
     fetch:async(url,options)=>{
       request={url,...options,body:JSON.parse(options.body)}
@@ -244,7 +245,7 @@ test('OpenRouter accepts the configured key alias and routes Gemini with JSON an
 })
 test('OpenRouter insufficient credits fails without using another provider key',async()=>{
   const requests=[]
-  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{foodModel:()=> 'google/gemini-3.8-flash',FOOD_MODEL:'google/gemini-3.8-flash'}}, {
+  const api=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':realModels()}, {
     process:{env:{OPENROUTER_API_KEY:'router-test',OPENAI_API_KEY:'openai-test',FOOD_REASONING_MODEL:'google/gemini-3.8-flash'}},AbortSignal,
     fetch:async(url,options)=>{
       requests.push({url,auth:options.headers.Authorization})

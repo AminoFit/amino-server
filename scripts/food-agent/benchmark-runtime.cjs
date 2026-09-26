@@ -23,7 +23,7 @@ function inMemoryDb(foods) {
 }
 async function standard(c,{request,signal,model}) {
  const env={FOOD_REASONING_MODEL:model,OPENROUTER_API_KEY:'benchmark-transport-supplies-key'}
- const provider=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{FOOD_MODEL:models.FOOD_MODEL,foodModel:()=>model},'../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{}}},env,
+ const provider=load('languageModelProviders/gemini/foodCompletion.ts',{'@/ai/models':{FOOD_MODEL:models.FOOD_MODEL,foodModel:()=>model,providerPreferences:models.providerPreferences},'../openai/utils/openAiHelper':{LogOpenAiUsage:async()=>{}}},env,
  {fetch:async(url,opts)=>{
    // Keep production payload/defaults intact. Network and key owned by harness.
    if(url!=='https://openrouter.ai/api/v1/chat/completions')throw Error('Unexpected fallback provider')
