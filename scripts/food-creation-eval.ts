@@ -31,6 +31,8 @@ async function truths(): Promise<Truth[]> {
   return [...details.flatMap(food => food.defaultServingWeightGram && !food.weightUnknown ? [{ name: food.name, brand: food.brand || null,
     grams: food.defaultServingWeightGram, kcal: food.kcalPerServing, proteinG: food.proteinPerServing, carbG: food.carbPerServing,
     totalFatG: food.totalFatPerServing }] : []), ...EXTRA]
+    // Some USDA records carry 0 kcal for foods that plainly have energy (e.g. fruit yogurts): not usable truth.
+    .filter(truth => truth.kcal > 0)
 }
 
 async function evaluate(model: string, truth: Truth) {
@@ -49,8 +51,14 @@ async function evaluate(model: string, truth: Truth) {
   const foods = candidates.map(c => sources.sources.get(c.sourceId)!).filter(Boolean)
   const outcome = !foods.length ? "declined" : matches(foods[0], truth) ? "correct" :
     foods.some(food => matches(food, truth)) ? "correct_not_first" : "wrong"
+  // Energy density is what a log's calories depend on; macros can differ by label rounding or reformulation.
+  const density = (kcal: number, grams: number) => kcal * 100 / grams
+  const kcalOk = !!foods[0] && Math.abs(density(foods[0].kcal, foods[0].defaultServingWeightGram) - density(truth.kcal, truth.grams)) <=
+    Math.max(10, 0.08 * density(truth.kcal, truth.grams))
+  const macros = (f: { proteinG: number; carbG: number; totalFatG: number }) => `P${f.proteinG} C${f.carbG} F${f.totalFatG}`
   return { model, product: truth.name.slice(0, 50), outcome, ms: Date.now() - started, costUsd: Math.round(cost * 10000) / 10000,
-    got: foods[0] ? `${foods[0].defaultServingWeightGram}g ${foods[0].kcal}kcal` : null, want: `${truth.grams}g ${truth.kcal}kcal`,
+    kcalOk, got: foods[0] ? `${foods[0].defaultServingWeightGram}g ${foods[0].kcal}kcal ${macros(foods[0])}` : null,
+    want: `${truth.grams}g ${truth.kcal}kcal ${macros(truth)}`,
     source: foods[0]?.source ?? null }
 }
 
@@ -62,7 +70,7 @@ async function main() {
   await Promise.all(Array.from({ length: 3 }, async () => {
     for (let job = queue.shift(); job; job = queue.shift()) {
       try { rows.push(await evaluate(job.model, job.truth)) }
-      catch (error) { rows.push({ model: job.model, product: job.truth.name.slice(0, 50), outcome: "error", ms: 0, costUsd: 0, got: null,
+      catch (error) { rows.push({ model: job.model, product: job.truth.name.slice(0, 50), outcome: "error", ms: 0, costUsd: 0, kcalOk: false, got: null,
         want: "", source: error instanceof Error ? error.message.slice(0, 80) : "unknown" }) }
     }
   }))
@@ -71,7 +79,7 @@ async function main() {
   for (const model of models) {
     const mine = rows.filter(row => row.model === model), ms = mine.map(row => row.ms).filter(Boolean).sort((a, b) => a - b)
     const count = (outcome: string) => mine.filter(row => row.outcome === outcome).length
-    console.log(`${model.padEnd(28)} correct ${count("correct")}  correct_not_first ${count("correct_not_first")}  wrong ${count("wrong")}  declined ${count("declined")}  error ${count("error")}  median ${ms[Math.floor(ms.length / 2)] ?? 0} ms  cost $${mine.reduce((sum, row) => sum + row.costUsd, 0).toFixed(3)}`)
+    console.log(`${model.padEnd(28)} correct ${count("correct")}  correct_not_first ${count("correct_not_first")}  wrong ${count("wrong")}  declined ${count("declined")}  error ${count("error")}  kcal/100g right ${mine.filter(row => row.kcalOk).length}  median ${ms[Math.floor(ms.length / 2)] ?? 0} ms  cost $${mine.reduce((sum, row) => sum + row.costUsd, 0).toFixed(3)}`)
   }
 }
 void main()
