@@ -139,7 +139,9 @@ Original finding:
 | Same name twice on one food | 687 | Dedupe, keeping the referenced serving. |
 | Amount doubled in the name (`1 Cup (37g)`) | 286 | Clean the name (same class of bug as the "1 1 Cup (37g) (37g)" portion label). |
 
-### A7. Icons (in progress 2026-09-26: 848 foods redone, stopped by OpenAI credits)
+### A7. Icons (done 2026-09-26: 1,270 foods in the new style, about $14)
+
+**Final:** 989 icons generated (598 through OpenAI directly, 391 through OpenRouter after the switch) and 281 foods reused one. That's 1,270 recent and popular foods in the new style for about $14 including tests and the vision check. 5 foods hit rate limits and keep their old icons.
 
 **Decision:** redo icons with the owner's prompt, on OpenAI's best model, at most $15, recent and popular foods first.
 
