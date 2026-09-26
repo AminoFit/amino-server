@@ -36,7 +36,28 @@ Legacy imports stored a serving's size as its amount, in two forms:
   - First confirm how the app computes grams per unit (`servingWeightGram / defaultServingAmount`), so the displayed portion stays identical.
 - **Check:** after the fix, none of these 508 servings yield under 5 g per unit when the name has no number.
 
-### A2. Legacy GPT-estimated foods (1,305 foods, `foodInfoSource = GPT4`)
+### A2. Legacy GPT-estimated foods (done 2026-09-26)
+
+**Decision:** overriding nutrients is allowed. Past logs stay as logged.
+
+**Finding:** the GPT-4 estimates are mostly right. Across the 400 most-logged ones, where a trustworthy USDA record matched, 37 agreed within 10% and only a handful were really wrong.
+
+**Automatic replacement from USDA name matches is unsafe.** It proposed:
+- "Apples" at 375 kcal/100 g (dried apple) for Apple, logged 284 times. The current 55 is correct.
+- Powder mixes for smoothies.
+- A broken record at 110 kcal/100 g for Sour Patch Kids.
+
+A two-signal rule (the food is an outlier against trusted neighbours *and* USDA agrees with them) was safe but found almost nothing, because embedding neighbours are noisy (dry vs cooked rice).
+
+**Fixed individually** with `scripts/audit-supersede.ts` (backup `A2_supersede`, plus a `FoodItemConflict` row):
+- Tuna Ceviche (15293): 317 → 101 kcal/100 g, from Allrecipes.
+- Baklava (2029): 856 → 430, from USDA 2343527.
+
+**Espresso with crema (1917)** is a duplicate of the USDA food Coffee, Espresso (8713). It goes to the A5 merge.
+
+**Review list:** `scripts/audit-gpt4-foods.ts` (dry run) lists outliers for review. Sour Patch Kids at 220 is wrong (real is about 360) and needs a cited source.
+
+Original finding (1,305 foods with `foodInfoSource = GPT4`):
 
 These were created by the retired gpt-4o pipeline from model estimates, with no citation.
 

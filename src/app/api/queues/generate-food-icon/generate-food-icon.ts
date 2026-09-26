@@ -124,6 +124,15 @@ export async function generateAndUploadIcon(foodName: string, foodId: number) {
   return foodImageId
 }
 
+/** One simple subject per icon: the food alone, so it suits the food's variants and category. */
+export const iconPrompt = (foodName: string) =>
+  `Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. ` +
+  `Show only ${foodName} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it; ` +
+  `use a plate, bowl, cup or glass only if the food is normally eaten from one. A plain drink, oil, spread or powder ` +
+  `that would look like others may show one small whole ingredient beside it (almonds for almond milk). Keep it simple so it stays useful ` +
+  `for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so ` +
+  `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`
+
 // A current image model returns PNG bytes with an alpha channel directly.
 async function generateImageWithOpenAI(foodName: string) {
   const apiKey = process.env.OPENAI_API_KEY
@@ -134,7 +143,7 @@ async function generateImageWithOpenAI(foodName: string) {
     signal:AbortSignal.timeout(90000),
     body:JSON.stringify({
       model:IMAGE_MODEL,
-      prompt:`Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. Keep it simple, without too many other ingredients, so it stays useful for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`,
+      prompt:iconPrompt(foodName),
       n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
     })
   })
