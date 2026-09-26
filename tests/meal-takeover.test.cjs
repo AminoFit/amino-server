@@ -48,3 +48,12 @@ test('an app edit becomes a replace keyed by revision and content, and an active
   await assert.rejects(takeOverMessage(user,edited,'2026-09-25T23:00:21Z',true,{db,dispatch:async()=>{},
     accept:async()=>{throw new Error('Meal unavailable')}}),/Meal unavailable/);
 });
+
+test('a deliberate reprocess uses a new operation while app retries stay idempotent',async()=>{
+  const requests=[];
+  const accept=async(userId,request)=>{requests.push(request);return {operationId:request.operationId,state:'queued'}};
+  const edited={...message,publishedRevision:1};
+  await takeOverMessage(user,edited,'2026-09-25T23:00:21Z',true,{db,accept,dispatch:async()=>{}});
+  await takeOverMessage(user,edited,'2026-09-25T23:00:21Z',true,{db,accept,dispatch:async()=>{},nonce:'reprocess-1'});
+  assert.notEqual(requests[0].operationId,requests[1].operationId);
+});
