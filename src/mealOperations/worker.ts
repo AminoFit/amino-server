@@ -26,6 +26,17 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "delete_last_item_requires_meal_delete","clarification_unavailable","barcode_not_covered","history_not_referenced","missing_meal_coverage","duplicate_meal_mention",
   "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
+/** Foods without an icon go to the icon queue, which links a close existing icon or generates one. */
+async function queueMissingIcons(foodIds:number[]) {
+  const ids=[...new Set(foodIds)]
+  if(!ids.length) return
+  const {data,error}=await createAdminSupabase().from("FoodItemImages").select("foodItemId").in("foodItemId",ids)
+  if(error) throw error
+  const linked=new Set((data??[]).map(row=>row.foodItemId))
+  const {generateFoodIconQueue}=await import("@/app/api/queues/generate-food-icon/generate-food-icon")
+  for(const id of ids.filter(id=>!linked.has(id))) await generateFoodIconQueue.enqueue(String(id),{id:`icon-${id}`})
+}
+
 /** Total ms and count per stage, e.g. {"tool:findFood":{ms:7400,n:2}}. */
 const summariseTimeline=(timeline:{stage:string;ms:number}[])=>timeline.reduce<Record<string,{ms:number;n:number}>>((sum,{stage,ms})=>
   ({...sum,[stage]:{ms:(sum[stage]?.ms??0)+ms,n:(sum[stage]?.n??0)+1}}),{})
@@ -171,6 +182,9 @@ export async function processMealOperation(operationId:string) {
       }
     } else plan=await structuredPlan(claim)
     const published=await publishMealOperation(operationId,workerToken,plan)
+    // After publication and best-effort: link or generate icons for foods without one.
+    await queueMissingIcons(plan.items.map(item=>item.foodId)).catch(error=>
+      console.error("meal_icons_not_queued",{operationId,error:error instanceof Error?error.message:"unknown"}))
     console.info("meal_operation_complete",{operationId,state:"succeeded",durationMs:Math.round(performance.now()-started),
       stages:summariseTimeline(timeline)})
     return {state:"succeeded",published}

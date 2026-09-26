@@ -1,8 +1,0 @@
-{"case":"protein_bar","passed":false,"status":"unavailable","durationMs":1239.952167,"model":"google/gemini-3.8-flash"}
-{"case":"kefir_target","passed":false,"status":"unavailable","durationMs":1433.0269580000001,"model":"google/gemini-3.8-flash"}
-{"case":"salad_total","passed":false,"status":"unavailable","durationMs":1269.3950829999999,"model":"google/gemini-3.8-flash"}
-{"case":"salad_with_separate_drink","passed":false,"status":"unavailable","durationMs":1161.8198750000001,"model":"google/gemini-3.8-flash"}
-{"case":"per_100g","passed":false,"status":"unavailable","durationMs":1281.2347499999996,"model":"google/gemini-3.8-flash"}
-{"case":"approximate","passed":false,"status":"unavailable","durationMs":1174.1467919999996,"model":"google/gemini-3.8-flash"}
-{"case":"half_labelled_salad","passed":false,"status":"unavailable","durationMs":1335.9871250000006,"model":"google/gemini-3.8-flash"}
-{"case":"portion_protein","passed":false,"status":"unavailable","durationMs":1186.0740409999999,"model":"google/gemini-3.8-flash"}

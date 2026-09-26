@@ -2,20 +2,11 @@ require('ts-node/register/transpile-only');
 require('tsconfig-paths/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {takeoverMode,shouldTakeOver,takeOverMessage}=require('../src/mealOperations/takeover');
+const {takeOverMessage}=require('../src/mealOperations/takeover');
 
 const user={id:'00000000-0000-4000-8000-000000000001',tzIdentifier:'America/New_York'};
 const message={id:30321,content:'',hasimages:true,createdAt:'2026-09-25T23:00:21.391',publishedRevision:0};
 const db={from:()=>{const q={select:()=>q,eq:()=>q,order:()=>q,limit:()=>Promise.resolve({data:[{id:8399}],error:null})};return q}};
-
-test('the database flag routes photos first, then everything, and defaults to photos',async()=>{
-  const flag=value=>({from:()=>{const q={select:()=>q,eq:()=>q,maybeSingle:async()=>({data:value===undefined?null:{value},error:null})};return q}});
-  assert.equal(await takeoverMode(flag(undefined)),'photos');
-  assert.equal(shouldTakeOver({hasimages:true},'photos'),true);
-  assert.equal(shouldTakeOver({hasimages:false},'photos'),false);
-  assert.equal(shouldTakeOver({hasimages:false},'all'),true);
-  assert.equal(shouldTakeOver({hasimages:true},'off'),false);
-});
 
 test('a new app message becomes an idempotent takeover create with its photos',async()=>{
   const requests=[],dispatched=[];

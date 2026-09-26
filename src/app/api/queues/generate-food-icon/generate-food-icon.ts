@@ -1,5 +1,8 @@
 // Constants
 export const MAX_DURATION = 300
+// Reuse an existing icon only when its description is close to the food ("greek yogurt" for a yogurt
+// drink scores ~0.83); weaker matches ("lasagna" for a milk, ~0.70) get a new icon instead.
+const REUSE_SIMILARITY = 0.8
 
 // Importing dependencies and initializing the Supabase client
 import { createClient } from "@supabase/supabase-js"
@@ -43,9 +46,6 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
     return
   }
 
-  // Check for an embedding that is close enough. If we find one, just add the link in the many-to-many table.
-  // SEB. Please do this since Chris is bad at this shit.
-
   // Retrieve embedding ID for the food name
   const embeddingData = await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name])
   const embeddingId = embeddingData[0].id
@@ -57,8 +57,8 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
 
   if (similarityError) throw similarityError
 
-  // Check if any similar image is close enough
-  if (similarImages.length > 0) {
+  // Link the closest existing image when it is close enough
+  if (similarImages.length > 0 && similarImages[0].cosine_similarity >= REUSE_SIMILARITY) {
     // Link the found image to the food item
     const { data: foodItemImages, error: errorFoodItemImages } = await supabase
       .from("FoodItemImages")
@@ -117,7 +117,7 @@ async function getFoodItem(foodId: number) {
 }
 
 // Generates an icon for the food item and uploads it to storage
-async function generateAndUploadIcon(foodName: string, foodId: number) {
+export async function generateAndUploadIcon(foodName: string, foodId: number) {
   const imageBuffer = await generateImageWithOpenAI(foodName)
   const foodImageId = await uploadImageAndGetId(foodName, foodId, imageBuffer)
 
@@ -168,7 +168,9 @@ function generateImageName(foodName: string) {
   const datetime = new Date().toISOString()
   const rawString = `${datetime}${foodName}`
   const hash = createHash("sha256").update(rawString).digest("hex")
-  return hash.slice(0, 12) + "_" + foodName.replace(/\s/g, "_")
+  // Storage keys must be ASCII-safe: "Lala 100 +Proteína 1% Grasa" becomes "Lala_100_Proteina_1_Grasa".
+  const slug = foodName.normalize("NFKD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80)
+  return hash.slice(0, 12) + "_" + slug
 }
 
 // Uploads a file to Supabase storage

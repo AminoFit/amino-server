@@ -11,7 +11,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['@zxing/library', 'zxing-wasm'],
+    serverComponentsExternalPackages: ['zxing-wasm'],
     // The barcode reader loads its WASM from disk; ship it with the meal worker.
     outputFileTracingIncludes: {
       '/api/queues/process-meal-operation': ['./node_modules/zxing-wasm/dist/reader/zxing_reader.wasm'],

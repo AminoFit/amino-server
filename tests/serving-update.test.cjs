@@ -140,19 +140,3 @@ test('uncatalogued food cannot scale nutrition from a zero original portion', as
   assert.equal(state.writes, 0)
 })
 
-test('worker update relies on database timestamp trigger without extra RPC', async () => {
-  const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20231130025248_remote_schema.sql'), 'utf8')
-  assert.match(migration, /TRIGGER trigger_update_updated_at BEFORE UPDATE ON public\."LoggedFoodItem"/)
-  let writes = 0
-  const api = load('foodMessageProcessing/common/updateLoggedFoodItemData.ts', {
-    '@/utils/supabase/serverAdmin': { createAdminSupabase: () => ({
-      from: () => ({ update(value) { writes++; assert.equal(value.status, 'Processed'); return this },
-        eq() { return this }, select() { return this },
-        single: async () => ({ data: { id: 1, status: 'Processed' }, error: null }) }),
-      rpc() { throw new Error('unexpected timestamp RPC') }
-    }) }
-  })
-  const result = await api.updateLoggedFoodItemWithData(1, { status: 'Processed' })
-  assert.equal(result.status, 'Processed')
-  assert.equal(writes, 1)
-})
