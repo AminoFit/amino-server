@@ -20,7 +20,7 @@ export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"
   /** name is the unit ("cup", "bottle"); grams describe `amount` of that unit. */
   servings:{name:string;grams:number;amount:number}[];source:string}
 
-export const estimatedFood = z.object({name:z.string().trim().min(2).max(120),
+export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),
   brand:z.string().trim().max(80).nullable(),per100g:z.object({kcal:z.number().nonnegative().finite(),
     proteinG:z.number().nonnegative().finite(),carbG:z.number().nonnegative().finite(),
     totalFatG:z.number().nonnegative().finite()}).strict(),
@@ -30,7 +30,7 @@ export const estimatedFood = z.object({name:z.string().trim().min(2).max(120),
 
 const amount=z.number().nonnegative().finite()
 /** Nutrition facts transcribed from a label visible in the user's photo. */
-export const labelFood = z.object({name:z.string().trim().min(2).max(120),brand:z.string().trim().max(80).nullable(),
+export const labelFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),brand:z.string().trim().max(80).nullable(),
   servingUnit:z.string().trim().min(1).max(40),servingAmount:z.number().positive().max(1000),
   servingGrams:z.number().positive().max(5000),
   kcal:amount,proteinG:amount,carbG:amount,totalFatG:amount,

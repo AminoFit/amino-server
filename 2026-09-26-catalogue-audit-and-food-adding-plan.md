@@ -188,6 +188,19 @@ Original finding:
 - Example: "Lala Lala 100 +Proteína …". The icon queue prepends the brand even when the name already contains it.
 - **Fix:** a one-line code change, plus a data update to the affected descriptions.
 
+### A10. Foods named with a portion (done 2026-09-26: 24 merged, 31 renamed)
+
+**Problem:** the retired pipeline created foods like "1/2 Cheeseburger", "Two Hard Boiled Eggs", "Three slices of pizza" and "big bowl of Vector cereal", keeping the amount eaten in the name. They also got their own icons: a second cheeseburger icon for "1/2 Cheeseburger".
+
+**Done:** `scripts/audit-portion-names.ts`.
+- A broad pattern preselected 470 names. Flash decided which really carry a portion, because a rule can't tell them apart: "Half & Half", "Three Berry Blend", "Half Chicken" and "2% milk" are products.
+- **Merged (24):** when Jev was at least 90% sure a catalogue food is the food itself, the portion food merged into it (`A10_portion_merge`). Examples: "1/2 Cheeseburger" → cheeseburger, "Half Avocado" → Avocado, "12 oz steak" → steak.
+- **Renamed (31):** otherwise the food was renamed to the food itself (`A10_portion_rename`). Examples: "big bowl of Vector cereal" → Vector cereal, "4.62oz Fritos Honey Bbq" → Fritos Honey Bbq.
+- "large half" was excluded on review.
+- Logs keep their grams.
+
+**Prevented:** the meal agent's prompt and the food tools' name fields now say to name a new food as the food itself; the portion is the quantity.
+
 ### Audit method
 
 1. **Report first:** a read-only report script repeats this pass and lists examples for each problem.
