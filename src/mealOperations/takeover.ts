@@ -6,14 +6,20 @@ import type { OperationRequest } from "./contracts"
 import type { Tables } from "types/supabase"
 
 export type TakeoverMode = "off" | "photos" | "all"
+const parseMode = (value: unknown): TakeoverMode => value === "off" || value === "all" ? value : "photos"
 
-/** Which current-app messages the operation pipeline resolves instead of the legacy matcher. */
-export function takeoverMode(env: NodeJS.ProcessEnv = process.env): TakeoverMode {
-  const mode = env.MEAL_RESOLVER_ADOPT
-  return mode === "photos" || mode === "all" ? mode : "off"
+// A database flag (FeatureFlag.meal_resolver_adopt), cached briefly: flipping it
+// takes effect within 30 s, with no deploy. Photos default to the meal agent.
+let cached: { mode: TakeoverMode; at: number } | undefined
+export async function takeoverMode(db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()): Promise<TakeoverMode> {
+  if (cached && Date.now() - cached.at < 30_000) return cached.mode
+  const { data, error } = await db.from("FeatureFlag" as never).select("value").eq("name", "meal_resolver_adopt").maybeSingle()
+  const mode = error ? cached?.mode ?? "photos" : parseMode((data as { value?: string } | null)?.value)
+  cached = { mode, at: Date.now() }
+  return mode
 }
 
-export function shouldTakeOver(message: Pick<Tables<"Message">, "hasimages">, mode = takeoverMode()) {
+export function shouldTakeOver(message: Pick<Tables<"Message">, "hasimages">, mode: TakeoverMode) {
   return mode === "all" || (mode === "photos" && message.hasimages)
 }
 

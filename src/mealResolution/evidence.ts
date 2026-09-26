@@ -3,7 +3,7 @@ import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/histo
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 
 export type CatalogFood = {
-  id:number;name:string;brand:string|null;lastUpdated:string;gtin?:string|null;
+  id:number;name:string;brand:string|null;lastUpdated:string;gtin?:string|null;description?:string|null;
   defaultServingWeightGram:number|null;weightUnknown:boolean;
   kcalPerServing:number|null;proteinPerServing:number|null;carbPerServing:number|null;totalFatPerServing:number|null;
   satFatPerServing:number|null;transFatPerServing:number|null;fiberPerServing:number|null;
@@ -19,7 +19,7 @@ export type HistoricalFood = {
 export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
-const catalogColumns = "id,name,brand,gtin,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
+const catalogColumns = "id,name,brand,gtin,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 /** Compact, authoritative view of a read food: enough to select it and its serving. */

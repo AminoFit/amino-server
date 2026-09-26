@@ -152,7 +152,8 @@ export async function processMealOperation(operationId:string) {
       try {plan=await compileCheckedMealPlan(input,result)}
       catch(error) {
         const code=error instanceof Error?error.message:"invalid_plan"
-        if(!safeErrorCodes.has(code)) throw error
+        // missing_visible_food carries the names the second look found.
+        if(!safeErrorCodes.has(code)&&!code.startsWith("missing_visible_food:")) throw error
         const repaired=await resolveMeal({...input,validationErrorCode:code})
         if(repaired.proposal.outcome==="needs_clarification") {
           if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
@@ -160,7 +161,8 @@ export async function processMealOperation(operationId:string) {
             "ambiguous_meal",null,{question:repaired.proposal.clarification})
           return {state:"needs_clarification"}
         }
-        plan=await compileCheckedMealPlan(input,repaired)
+        // No second look on the repair: a minor omission never fails the meal.
+        plan=await compileCheckedMealPlan(input,repaired,{secondLook:false})
       }
     } else plan=await structuredPlan(claim)
     const published=await publishMealOperation(operationId,workerToken,plan)

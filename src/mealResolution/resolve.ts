@@ -74,6 +74,8 @@ are copied through source IDs and validated by the backend.
 If clarificationAllowed is false, never ask: resolve with explicit assumptions (estimated_mass with a clear
 basis for uncertain portions, the most likely variant for identity) instead of needs_clarification.
 If validationErrorCode is present, it is a fixed backend validation result from a prior attempt.
+missing_visible_food: <foods> means a second look at the photos found those foods eaten but not logged:
+find and log each (search, create if needed) with a reasonable estimated portion, unless a logged food truly covers it.
 history_not_referenced means the user's words do not refer to a past meal: resolve this meal from what the
 photos and text show, without copying historical items. barcode_not_covered means a decoded barcode's
 product is missing: log the food that carries that gtin.
@@ -126,7 +128,9 @@ export type MealResolutionResult = {proposal:MealProposal;
   evidence:ReturnType<typeof createMealEvidence>;model:string;provider:string;
   photoIds:number[];durationMs:number;steps:number;toolCalls:number;
   /** GTINs the barcode library decoded from this meal's photos. */
-  barcodes?:string[]}
+  barcodes?:string[];
+  /** Short-lived signed photo URLs for this attempt only (never persisted). */
+  photoUrls?:URL[]}
 
 export async function resolveMeal(input:MealResolutionInput,deps:{
   evidence?:ReturnType<typeof createMealEvidence>;
@@ -219,7 +223,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     })
     controller.signal.throwIfAborted()
     const proposal=mealProposal.parse(result.output)
-    return {proposal,evidence,photoIds:photos.map(photo=>photo.id),model:selected.id,provider:selected.provider,
+    const resolved:MealResolutionResult={proposal,evidence,photoIds:photos.map(photo=>photo.id),model:selected.id,provider:selected.provider,
       durationMs:performance.now()-started,steps,toolCalls,barcodes:[...barcodes]}
+    // Signed URLs carry storage tokens: usable by the second look, never serialised or logged.
+    Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
+    return resolved
   } finally {clearTimeout(timer);controller.abort()}
 }

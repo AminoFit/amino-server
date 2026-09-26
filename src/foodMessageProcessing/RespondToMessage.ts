@@ -14,7 +14,7 @@ import { logFoodItemStream } from "./logFoodItemExtract/logFoodItemStreamChat"
 import { logFoodItemStreamWithImages } from "./logFoodItemWithImageExtract/logFoodItemWithImageStreamChat"
 import { softDeleteLoggedFoodItemsByMessageId } from "./common/deleteAssociatedMessageFoodItems"
 import { getMessageTimeChat } from "./messageTime/extractMessageTime"
-import { shouldTakeOver, takeOverMessage } from "@/mealOperations/takeover"
+import { shouldTakeOver, takeOverMessage, takeoverMode } from "@/mealOperations/takeover"
 
 type ResponseForUser = {
   resultMessage: string
@@ -45,7 +45,7 @@ export async function GenerateResponseForQuickLog(
         itemsToProcess: loadedMessage.itemsToProcess ?? 0 }
     }
     // The meal agent resolves this message instead of the legacy matcher.
-    if (shouldTakeOver(loadedMessage)) return takeOverMessage(user, loadedMessage, consumedOn, isMessageBeingEdited)
+    if (shouldTakeOver(loadedMessage, await takeoverMode())) return takeOverMessage(user, loadedMessage, consumedOn, isMessageBeingEdited)
     if (loadedMessage.status !== "PROCESSING") {
       const historyReply = await reuseFoodHistory(user, loadedMessage, consumedOn, isMessageBeingEdited)
       if (historyReply) return historyReply

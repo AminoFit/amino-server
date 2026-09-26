@@ -62,7 +62,7 @@ async function run(test: Case) {
     console.error(`  [${test.messageId}] first plan rejected: ${error instanceof Error ? error.message : error} after ${Date.now() - started} ms`)
     // The worker's single repair turn, with the validator's code.
     result = await resolveMeal({ ...input, validationErrorCode: error instanceof Error ? error.message : "invalid_plan" }, { evidence, sources: sources as never, barcodes })
-    plan = await compileCheckedMealPlan(input, result)
+    plan = await compileCheckedMealPlan(input, result, { secondLook: false })
   }
   const problems = test.expect(plan, evidence.foods)
   return { messageId: test.messageId, pass: problems.length === 0, problems, ms: Date.now() - started, barcodes: result.barcodes,
