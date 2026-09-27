@@ -131,14 +131,14 @@ test('a barcode the library did not decode from this meal is ignored',async()=>{
   await sources.searchFoodSources('cereal',{gtin:'016000229969'});
   assert.deepEqual(searched,[],'a model-supplied barcode is not trusted');
   const label=sources.proposeLabelFood({name:'Cereal',brand:null,servingUnit:'cup',servingAmount:1,servingGrams:37,kcal:150,proteinG:8,carbG:24,
-    totalFatG:2.5,fiberG:null,sugarG:null,satFatG:null,gtin:'016000229969'});
+    totalFatG:2.5,fiberG:null,sugarG:null,satFatG:null,gtin:'016000229969',identified:true});
   assert.equal(label.gtin,null);
 });
 
 test('a label is a complete source: it is offered without any web search, and USDA records say whether they match it',async()=>{
   const {sources,calls}=harness({usda:[],barcodes:['00016000229969']});
   const label=sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingUnit:'cup',servingAmount:1,servingGrams:37,
-    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969'});
+    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969',identified:true});
   assert.equal(label.kind,'Label');
   assert.equal(label.gtin,'00016000229969');
   const {candidates}=await sources.searchFoodSources('Cheerios Protein Cookies & Creme',{labelSourceId:label.sourceId,web:true});
@@ -147,7 +147,7 @@ test('a label is a complete source: it is offered without any web search, and US
   const withUsda=harness({usda:[cheerios,{...cheerios,externalId:'9',name:'Cheerios Protein Oats & Honey',defaultServingWeightGram:55,kcalPerServing:210}],
     barcodes:['00016000229969'],usdaSearch:async()=>[{fdcId:2745373,gtinUpc:'016000229969'}]});
   const own=withUsda.sources.proposeLabelFood({name:'Cheerios Protein Cookies & Creme',brand:'Cheerios',servingUnit:'cup',servingAmount:1,servingGrams:37,
-    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969'});
+    kcal:150,proteinG:8,carbG:24,totalFatG:2.5,fiberG:2,sugarG:11,satFatG:0,gtin:'016000229969',identified:true});
   const matched=await withUsda.sources.searchFoodSources('Cheerios',{gtin:'016000229969',labelSourceId:own.sourceId});
   assert.deepEqual(matched.candidates.map(c=>[c.kind,c.matchesLabel]),[['USDA',true],['USDA',false],['Label',undefined]]);
 });
@@ -194,10 +194,10 @@ test('servings keep the unit separate from its amount, so the app never shows "1
 test('a per-100 mL label basis is not stored as a serving',()=>{
   const {sources}=harness({});
   const label=sources.proposeLabelFood({name:'Leche Ultrafiltrada',brand:'Lala',servingUnit:'ml',servingAmount:100,servingGrams:100,
-    kcal:44,proteinG:5.4,carbG:3.5,totalFatG:1,fiberG:null,sugarG:null,satFatG:null,gtin:null});
+    kcal:44,proteinG:5.4,carbG:3.5,totalFatG:1,fiberG:null,sugarG:null,satFatG:null,gtin:null,identified:true});
   assert.deepEqual(label.servings,[]);
   const bottle=sources.proposeLabelFood({name:'Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
-    kcal:120,proteinG:15,carbG:9,totalFatG:2,fiberG:null,sugarG:null,satFatG:null,gtin:null});
+    kcal:120,proteinG:15,carbG:9,totalFatG:2,fiberG:null,sugarG:null,satFatG:null,gtin:null,identified:true});
   assert.deepEqual(bottle.servings,[{name:'bottle',grams:207,amount:1}]);
 });
 
@@ -318,4 +318,15 @@ test('duplicate candidates only come from shared foods and the user\'s own priva
   for (const name of ['search_meal_food_catalogue','get_cosine_results'])
     assert.equal(calls.rpc.find(([n])=>n===name)?.[1].p_user_id,user,name);
   assert.ok(calls.visibility.length>0&&calls.visibility.every(f=>f===`privateToUserId.is.null,privateToUserId.eq.${user}`));
+});
+
+test('a nutrition panel no one can name is saved for the user only; a named or barcoded one is shared',async()=>{
+  const {sources,calls}=harness({near:[],usda:[],jev:{status:'ok',choice:'none',confidence:0.95},barcodes:['00016000229969']});
+  const panel=(extra)=>sources.proposeLabelFood({name:'Protein shake',brand:null,servingUnit:'bottle',servingAmount:1,servingGrams:330,
+    kcal:160,proteinG:30,carbG:5,totalFatG:3,fiberG:null,sugarG:null,satFatG:null,gtin:null,identified:false,...extra});
+  for (const label of [panel({}),panel({name:'Fairlife Core Power Vanilla',identified:true}),panel({name:'Protein shake 2',gtin:'016000229969'})])
+    await sources.createFoodFromSource(label.sourceId);
+  assert.deepEqual(calls.create.map(c=>c.p_private),[true,false,false]);
+  assert.throws(()=>sources.proposeLabelFood({name:'X shake',brand:null,servingUnit:'bottle',servingAmount:1,servingGrams:330,
+    kcal:160,proteinG:30,carbG:5,totalFatG:3,fiberG:null,sugarG:null,satFatG:null,gtin:null}),'the agent must say whether the product is named');
 });

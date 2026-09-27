@@ -19,7 +19,7 @@ export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"
   totalFatG:number;fiberG:number|null;sugarG:number|null;satFatG:number|null;isLiquid:boolean;
   /** name is the unit ("cup", "bottle"); grams describe `amount` of that unit. */
   servings:{name:string;grams:number;amount:number}[];source:string;
-  /** A personal dish (the user's own recipe) is created privately for them. */
+  /** Created privately for the user: a personal dish (their recipe) or an unnamed nutrition panel. */
   personal?:boolean}
 
 export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),
@@ -38,7 +38,8 @@ export const labelFood = z.object({name:z.string().trim().min(2).max(120).descri
   servingGrams:z.number().positive().max(5000),
   kcal:amount,proteinG:amount,carbG:amount,totalFatG:amount,
   fiberG:amount.nullable(),sugarG:amount.nullable(),satFatG:amount.nullable(),
-  gtin:z.string().max(20).nullable()}).strict()
+  gtin:z.string().max(20).nullable(),
+  identified:z.boolean().describe("true when the product's name or brand is visible in the photo or given by the user; false when only the nutrition panel is visible and the name is your own description")}).strict()
 
 const webFood = z.object({foods:z.array(z.object({name:z.string().min(2).max(120),brand:z.string().max(80).nullable(),
   servingUnit:z.string().min(1).max(40),servingAmount:z.number().positive().max(1000),
@@ -282,7 +283,10 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       const candidate:SourceFood={sourceId:`label:${counter++}`,foodInfoSource:"Label",externalId:null,gtin:barcode(food.gtin),
         name:food.name,brand:food.brand,defaultServingWeightGram:food.servingGrams,kcal:food.kcal,proteinG:food.proteinG,
         carbG:food.carbG,totalFatG:food.totalFatG,fiberG:food.fiberG,sugarG:food.sugarG,satFatG:food.satFatG,isLiquid:false,
-        servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount}],source:"Nutrition label in the user's photo"}
+        servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount}],source:"Nutrition label in the user's photo",
+        // A panel no one can name (no product name, no decoded barcode) stays the user's own: a generic name such as
+        // "Protein shake" must not carry one product's exact numbers into everyone's catalogue.
+        personal:!food.identified&&!barcode(food.gtin)}
       if (!complete(candidate)) throw new Error("invalid_label_food")
       return summary(remember(candidate))
     },

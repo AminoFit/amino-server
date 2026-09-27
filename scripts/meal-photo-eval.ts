@@ -3,6 +3,7 @@
 // nothing is written. Run with production read credentials:
 // npx ts-node -T -r tsconfig-paths/register scripts/meal-photo-eval.ts [messageIds...] [--model=<openrouter id>]
 // --model swaps the meal agent's model (the second-look critic stays on Flash) to compare vision models.
+// --no-text drops the user's caption to test photo-only logging (for example a nutrition panel alone).
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { resolveMeal } from "@/mealResolution/resolve"
 import { compileMealPlan } from "@/mealResolution/compile"
@@ -99,7 +100,8 @@ async function run(test: Case) {
   const sources = createFoodSources({ userId: message!.userId, messageId: test.messageId, signal: controller.signal, barcodes,
     discover: id => evidence.discover(id) }, { db: guardedDb as never, enqueue: async () => {} })
   const input = { userId: message!.userId, operationId: "00000000-0000-4000-8000-00000000e000", messageId: test.messageId,
-    originalText: message!.content ?? "", consumedOn: new Date(`${message!.consumedOn}Z`).toISOString(),
+    // --no-text drops the caption: a photo of a nutrition panel alone must still become a named food.
+    originalText: process.argv.includes("--no-text") ? "" : message!.content ?? "", consumedOn: new Date(`${message!.consumedOn}Z`).toISOString(),
     submittedAt: new Date(`${message!.createdAt}Z`).toISOString(), timezone: "America/New_York", locale: null,
     attachmentIds: (photos ?? []).map(photo => photo.id), clarificationAllowed: false }
   let cost = 0

@@ -347,6 +347,8 @@ The Opus models made the same two sibling-variant mistakes: DiGiorno Rising Crus
 - **Database functions:** `search_meal_food_catalogue`, `get_cosine_results` and `create_catalogue_food` take the requesting user. A shared creation never returns or enriches someone's private food; a private one reuses an existing shared food that is the same.
 - **Server code:** it uses the admin key, which bypasses the read rules, so every catalogue read filters by user explicitly. That covers meal-agent evidence, barcode lookups, hydration, the duplicate check, the app's `/api/search-food`, and barcode attach (shared foods only).
 - **Meal agent:** `proposeEstimatedFood` has a `personal` flag. A personal dish is created privately.
+- **Unnamed labels (owner, 2026-09-27):** a nutrition panel that no one can name is private to the user: the photo shows no product name, the user didn't name it, and no barcode was decoded. A generic name like "Protein shake" must not carry one product's exact numbers into everyone's catalogue. `proposeLabelFood` requires an `identified` flag, so the agent always decides. Named or barcoded labels stay shared.
+- **Tested:** label-only photos without captions (Fairlife back panel, potsticker bag) are matched to the right catalogue product. New products get the name from the packaging and an icon after the meal is saved.
 - **Bug fixed:** `update-logged-food-item-serving` treated a food's *creator* as its owner; it now checks `privateToUserId`.
 
 **Tests:** unit tests, plus SQL tests on a disposable database covering per-owner names, no cross-user reuse, and read rules for foods and servings.
