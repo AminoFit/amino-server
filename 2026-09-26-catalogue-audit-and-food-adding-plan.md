@@ -201,6 +201,23 @@ Original finding:
 
 **Prevented:** the meal agent's prompt and the food tools' name fields now say to name a new food as the food itself; the portion is the quantity.
 
+### A11. Best-guess estimates where no source exists (done 2026-09-27: 55 foods)
+
+**Decision (owner, 2026-09-27):** when no source can be confirmed, use a clearly marked best guess, with an icon, instead of leaving a food broken or saving a wrong variant as if it were verified.
+
+**Done:** `scripts/audit-estimate.ts` (backup `A11_estimate`, plus a `FoodItemConflict` row).
+- **Scope:** the foods A3 and A8 couldn't fix: impossible facts or no usable weight, plus Sour Patch Kids.
+- **Method:** Sonnet estimates one typical serving from the name, keeping the stored calories when they're a plausible portion total (usually only the weight was wrong). It retries once when an answer is empty or physically impossible.
+- **Examples:**
+  - Brownie Batter Blizzard (Large): "1 g" → 742 g, 1,390 kcal.
+  - Spicy McCrispy: 209 g, 530 kcal.
+  - Oatmeal: 45 g / 710 kcal → 40 g / 150 kcal.
+  - Sour Patch Kids: 29 g / 110 kcal (379 kcal/100 g).
+- **Marking:** estimates are stored as `AgentEstimate` with their basis, so a real source can supersede them later.
+- **Review flags:** the similar-foods check flagged 6 correct estimates (soda, ramen, tea, scallops, two spices). They were accepted on review; the neighbour signal is noisy, as seen in A2.
+- **Icons:** all 55 got new-style icons (41 generated, 9 reused, 5 already done).
+- **Result:** no food lacks a usable weight any more. The only impossible food left is a junk placeholder row named "food_name", which was left untouched.
+
 ### Audit method
 
 1. **Report first:** a read-only report script repeats this pass and lists examples for each problem.
@@ -280,6 +297,8 @@ The Opus models made the same two sibling-variant mistakes: DiGiorno Rising Crus
 - B3 fixed the one repeated sibling error: Special K High Protein Chocolate Almond picked instead of plain Chocolate Almond, fixed in 3 of 3 runs.
 - It declined vague requests ("Protein Bar" with no flavour).
 - It disagreed with a doubtful reference: Light+Fit "with cookie pieces & dark chocolate" listed at 70 kcal and 0 g fat.
+
+**Decision (2026-09-27):** when the exact variant can't be confirmed, the agent makes a marked estimate instead of saving a sibling variant as verified (see A11).
 
 **Next step:** a better creation eval before tuning further. About 40 products with verified references (the owner's label-sourced foods and barcoded USDA records), queried the way the agent writes them, with the variant words it reads from the photo. Then decide whether a wrong-variant food, which is saved and reused, is worse than a decline, which leads the agent to use the label or an estimate. The B3 code is recoverable from this session.
 

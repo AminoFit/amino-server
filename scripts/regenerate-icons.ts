@@ -2,7 +2,7 @@
 // foods, within an image budget. A new icon is reused for later foods that are near-duplicates of it.
 // Old links are copied to CatalogueAuditBackup (audit A7_icon_link) and restored if a generation fails.
 // Run with production credentials:
-// npx ts-node -T -r tsconfig-paths/register scripts/regenerate-icons.ts <maxFoods> <maxGenerations> <progress.jsonl> [concurrency=6]
+// npx ts-node -T -r tsconfig-paths/register scripts/regenerate-icons.ts <maxFoods> <maxGenerations> <progress.jsonl> [concurrency=6] [--ids=1,2]
 import { appendFileSync, existsSync, readFileSync } from "fs"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
@@ -42,6 +42,12 @@ const cosine = (a: number[], b: number[]) => {
 
 /** New icons of this batch, by the embedding of the food name they were drawn for. */
 type BatchIcons = Map<number, number[]>
+
+async function namesOf(ids: number[]) {
+  const { data, error } = await db.from("FoodItem").select("id,name").in("id", ids)
+  if (error) throw error
+  return data as { id: number; name: string }[]
+}
 
 async function replaceIcon(food: { id: number; name: string }, batchImages: BatchIcons, budget: { left: number }) {
   const { data: oldLinks, error } = await db.from("FoodItemImages").select("*").eq("foodItemId", food.id)
@@ -86,10 +92,13 @@ void (async () => {
   const budget = { left: maxGenerations - done.filter(row => row.status === "generated").length }
   // Console noise from the icon helper stays out of the progress output.
   const log = console.log; console.log = () => {}
-  const queue = (await rankedFoods(maxFoods)).filter(food => !finished.has(food.id))
+  // --ids=1,2 targets specific foods (for example newly estimated ones) instead of the popularity ranking.
+  const ids = (process.argv.find(arg => arg.startsWith("--ids="))?.slice(6) ?? "").split(",").filter(Boolean).map(Number)
+  const chosen = ids.length ? await namesOf(ids) : await rankedFoods(maxFoods)
+  const queue = chosen.filter(food => !finished.has(food.id))
   log(`${queue.length} foods to process, ${budget.left} generations left`)
   // The image API rate-limits bursts; lower concurrency when many requests come back 429.
-  await Promise.all(Array.from({ length: Number(process.argv[5] ?? 6) }, async () => {
+  await Promise.all(Array.from({ length: Number(/^\d+$/.test(process.argv[5] ?? "") ? process.argv[5] : 6) }, async () => {
     for (let food = queue.shift(); food; food = queue.shift()) {
       const row = await replaceIcon(food, batchImages, budget).catch(failure => ({ id: food!.id, name: food!.name, status: "failed",
         error: failure instanceof Error ? failure.message.slice(0, 160) : "unknown" }))
