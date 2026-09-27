@@ -371,6 +371,11 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 
 ## Open decisions
 
+0. **A label that disagrees with an existing food (open, 2026-09-27).** This can be a regional variant, a new recipe or a misread photo. Barcodes already keep regional versions apart (a different barcode means a different food). What's ambiguous is a name-only match, or the same barcode with different numbers. Today the log uses the catalogue values and the conflict is recorded. The options:
+   - A. The label overwrites the shared food.
+   - B. The user gets a private copy with the label values, and the shared food stays unchanged. (Proposed.)
+   - C. B, plus the shared food updates once a second, independent user's label agrees.
+
 1. **Supersede and past logs:** may the audit overwrite nutrients of estimate-grade foods (GPT4 or AgentEstimate) when a cited source disagrees? `LoggedFoodItem` rows keep their own nutrients, so should past logs of a corrected food be recomputed or left as logged?
 2. **Merge policy:** for duplicate barcodes and identities, keep the most-logged food and repoint logs, servings and icons?
 3. **Icon budget:** a spending cap for regenerating wrong icons (A7).
