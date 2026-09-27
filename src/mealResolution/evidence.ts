@@ -50,6 +50,8 @@ export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:f
 export function createMealEvidence(userId:string, signal:AbortSignal,
   db = createAdminSupabase()) {
   const discovered = new Set<number>()
+  // Server reads bypass row security: only shared foods and this user's private foods are evidence.
+  const visible = `privateToUserId.is.null,privateToUserId.eq.${userId}`
   const foods = new Map<number,CatalogFood>()
   const events = new Map<number,MealEvent>()
   return {
@@ -60,7 +62,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const text=query.trim().slice(0,100)
       if (!text) return {status:"empty" as const,candidates:[],nextCursor:null}
       const result=await (db as any).rpc("search_meal_food_catalogue",{
-        p_query:text,p_limit:20,p_offset:cursor}).abortSignal(signal)
+        p_query:text,p_limit:20,p_offset:cursor,p_user_id:userId}).abortSignal(signal)
       if (result.error) throw new Error("catalogue_unavailable")
       const candidates=((result.data??[]) as {id:number;name:string;brand:string|null;knownAs:string[]|null}[])
         .map(row=>({id:row.id,name:row.name,brand:row.brand,knownAs:row.knownAs}))
@@ -73,7 +75,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     /** Catalogue foods carrying a barcode decoded from this meal's photos. */
     async findFoodsByGtin(gtins:string[]) {
       if (!gtins.length) return []
-      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).order("id").limit(10).abortSignal(signal)
+      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).order("id").limit(10).abortSignal(signal)
       if (result.error) throw new Error("catalogue_unavailable")
       const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
       for (const id of ids) discovered.add(id)
@@ -84,7 +86,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const query=text.trim().slice(0,500)
       if (!query) return []
       const [vector]=await getCachedOrFetchEmbeddings("BGE_BASE",[query])
-      const near=await db.rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:limit}).abortSignal(signal)
+      const near=await (db as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:limit,p_user_id:userId}).abortSignal(signal)
       if (near.error) throw new Error("catalogue_unavailable")
       const ids=((near.data??[]) as {id:number}[]).map(row=>row.id)
       for (const id of ids) discovered.add(id)
@@ -94,7 +96,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const allowed=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&discovered.has(id)).slice(0,20)
       const missing=allowed.filter(id=>!foods.has(id))
       if (missing.length) {
-        const result=await db.from("FoodItem").select(catalogColumns).in("id",missing)
+        const result=await db.from("FoodItem").select(catalogColumns).in("id",missing).or(visible)
           .limit(31,{foreignTable:"Serving"}).abortSignal(signal)
         if (result.error) throw new Error("food_details_unavailable")
         for (const row of result.data??[]) {

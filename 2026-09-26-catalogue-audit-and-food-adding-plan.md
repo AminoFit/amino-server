@@ -128,7 +128,9 @@ Original finding (195 groups, 505 foods):
 - **Unit multiples (355):** "oz" = 85 g became 3 × oz, and "g" = 100 g became 100 × g. One unit is an ounce or a gram again, so "2 oz" no longer logs 170 g.
 - **Names (278):** a "(N g)" that matches the weight was removed ("serving (61 g)" → "serving").
 - **Why deletes skip referenced servings:** deleting a serving cascades to `UserFavoriteFoodItem`, so referenced servings are never deleted. 69 unusable servings are referenced by logs, and many "g"/"oz" servings are logged; these remain, and the app and agent hide the unusable ones.
-- **Left for a source check:** 495 foods that have the same serving name with different weights (for example "cup" 150 g and 240 g). The app keeps the smaller one.
+- **Placeholders (2026-09-27):** 56 10 g servings beside the real same-name serving ("Burrito" 10 g next to 185 g) were removed. Their logs and favourites moved to the real serving (`A6_placeholder`). Measurement units were excluded, because there the light serving can be the right one ("fl oz" 25 g beside a whole bottle mislabelled "fl oz").
+- **Qualifier variants are valid:** 162 same-name groups differ only by a qualifier in parentheses ("container (4 oz)" / "(6 oz)", "cup (1/2" pieces)" / "(slices)"). But the app's `filterServings` strips the qualifier and keeps the lighter serving, which hides the real sizes. An app fix is pending, and it needs an iOS build.
+- **Left for a source check:** foods that have the same serving name with different weights (for example "cup" 150 g and 240 g). The app keeps the smaller one.
 
 Original finding:
 
@@ -333,6 +335,23 @@ The Opus models made the same two sibling-variant mistakes: DiGiorno Rising Crus
   - an existing product named in another language
   - a GPT4 food being upgraded
 - **Release gates:** text 16/16, history 12/12, photos 15/16 or better, and the creation eval target from B3.
+
+### B9. Private foods (server done 2026-09-27; app screen later)
+
+**Decision (owner):** personal dishes and hand-made foods are private to their creator. Label, USDA and cited web foods stay shared. The app screen for creating a food by hand is deferred until the UI is designed.
+
+**Done:** migration `20260927010000_private_foods`.
+- **Data model:** `FoodItem.privateToUserId` (empty means shared). It's deliberately not a foreign key, so deleting a user can't cascade into foods that servings reference; an orphaned private food is visible to nobody.
+- **Names:** the name-and-brand uniqueness is now per owner, so two users can each have "Grandma's lasagna".
+- **Read rules:** `FoodItem` reads are limited to shared foods plus your own, and `Serving` reads follow their food.
+- **Database functions:** `search_meal_food_catalogue`, `get_cosine_results` and `create_catalogue_food` take the requesting user. A shared creation never returns or enriches someone's private food; a private one reuses an existing shared food that is the same.
+- **Server code:** it uses the admin key, which bypasses the read rules, so every catalogue read filters by user explicitly. That covers meal-agent evidence, barcode lookups, hydration, the duplicate check, the app's `/api/search-food`, and barcode attach (shared foods only).
+- **Meal agent:** `proposeEstimatedFood` has a `personal` flag. A personal dish is created privately.
+- **Bug fixed:** `update-logged-food-item-serving` treated a food's *creator* as its owner; it now checks `privateToUserId`.
+
+**Tests:** unit tests, plus SQL tests on a disposable database covering per-owner names, no cross-user reuse, and read rules for foods and servings.
+
+**Still to do:** the app's create-food screen, and editing and deleting your own private foods.
 
 ### Model decision (2026-09-26)
 

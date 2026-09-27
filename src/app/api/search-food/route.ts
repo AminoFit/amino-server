@@ -43,8 +43,10 @@ export async function POST(
   // Search for the food item
   const { data: cosineSearchResults, error: searchError } = await supabaseAdmin.rpc("get_cosine_results", {
     p_embedding_cache_id: savedEmbeddings[0].id,
-    amount_of_results: 10
-  })
+    amount_of_results: 10,
+    // The admin client bypasses row security: search the shared catalogue plus this user's private foods.
+    p_user_id: aminoUser.id
+  } as any)
 
   if (searchError) {
     return new NextResponse(JSON.stringify({ error: "Error searching Database", details: searchError.message }), {

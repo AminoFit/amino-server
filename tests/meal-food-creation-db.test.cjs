@@ -7,7 +7,8 @@ const {Client}=require('pg');
 // Runs the real migrations against a disposable Postgres (pgvector is stubbed).
 const connectionString=process.env.AMINO_FOOD_TEST_DATABASE_URL;
 const migrations=['20260925205900_agent_estimate_food_source.sql','20260925210000_catalogue_food_creation.sql',
-  '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql','20260926020000_serving_units.sql','20260926030000_serving_dedupe.sql']
+  '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql','20260926020000_serving_units.sql','20260926030000_serving_dedupe.sql',
+  '20260927010000_private_foods.sql']
   .map(file=>fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
 const fixture=`
 CREATE SCHEMA IF NOT EXISTS extensions;
@@ -16,6 +17,9 @@ DO $$BEGIN CREATE TYPE public."FoodInfoSource" AS ENUM ('User','Online','USDA');
 DO $$BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END$$;
 DO $$BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END$$;
 DO $$BEGIN CREATE ROLE service_role; EXCEPTION WHEN duplicate_object THEN NULL; END$$;
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+CREATE TABLE IF NOT EXISTS public."foodEmbeddingCache" (id serial PRIMARY KEY, "bgeBaseEmbedding" extensions.vector);
 CREATE TABLE IF NOT EXISTS public."FoodItem" (id serial PRIMARY KEY, name text NOT NULL, brand text,
   "defaultServingWeightGram" float8, "kcalPerServing" float8 NOT NULL DEFAULT 0, "proteinPerServing" float8 NOT NULL DEFAULT 0,
   "carbPerServing" float8 NOT NULL DEFAULT 0, "totalFatPerServing" float8 NOT NULL DEFAULT 0, "fiberPerServing" float8,
@@ -107,4 +111,41 @@ test('catalogue food creation never duplicates an existing identity or source',
       assert.ok(!stolen.rows[0].r.added.includes('gtin'));
       assert.equal((await a.query('select gtin from public."FoodItem" where id=$1',[other.food_id])).rows[0].gtin,'04006381333931');
     } finally {await Promise.all([a.end(),b.end()])}
+  });
+
+test('private foods belong to their owner: per-owner names, no cross-user reuse, and hidden from other users',
+  {skip:!connectionString&&'Set AMINO_FOOD_TEST_DATABASE_URL for a disposable test database'},async()=>{
+    const client=new Client({connectionString});
+    await client.connect();
+    try {
+      await client.query(fixture);
+      for (const sql of migrations) await client.query(sql);
+      const tag=`p${Date.now()}`,alice='00000000-0000-4000-8000-00000000000a',bob='00000000-0000-4000-8000-00000000000b';
+      const make=(user,value,priv)=>client.query('select * from public.create_catalogue_food($1,$2,$3,$4,$5)',
+        [user,null,value,JSON.stringify([{name:'slice',grams:250}]),priv]).then(r=>r.rows[0]);
+      const lasagna=food(`Grandma's lasagna ${tag}`,null,{foodInfoSource:'User'});
+      const a=await make(alice,lasagna,true), b=await make(bob,lasagna,true);
+      assert.equal(a.created,true); assert.equal(b.created,true);
+      assert.notEqual(a.food_id,b.food_id,'each user has their own');
+      assert.deepEqual((await make(alice,lasagna,true)).food_id,a.food_id,'the owner reuses their own private food');
+      const shared=await make(alice,lasagna,false);
+      assert.equal(shared.created,true,'a shared creation never returns a private food');
+      const rice=food(`Jasmine rice ${tag}`,null);
+      const riceShared=await make(null,rice,false);
+      assert.deepEqual(await make(bob,rice,true),{food_id:riceShared.food_id,created:false,enrichment:(await make(bob,rice,true)).enrichment},
+        'a private creation reuses the shared food that already exists');
+      const owners=(await client.query('select id,"privateToUserId" from public."FoodItem" where id = any($1)',[[a.food_id,b.food_id,shared.food_id]])).rows;
+      assert.deepEqual(Object.fromEntries(owners.map(r=>[r.id,r.privateToUserId])),{[a.food_id]:alice,[b.food_id]:bob,[shared.food_id]:null});
+      await assert.rejects(make(null,food(`Nobody's dish ${tag}`,null),true),/needs its owner/);
+      // Row security: a signed-in user sees shared foods and their own, never another user's.
+      await client.query('ALTER TABLE public."FoodItem" ENABLE ROW LEVEL SECURITY; ALTER TABLE public."Serving" ENABLE ROW LEVEL SECURITY; GRANT SELECT ON public."FoodItem", public."Serving" TO authenticated');
+      await client.query('BEGIN');
+      await client.query("SET LOCAL ROLE authenticated");
+      await client.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`,[bob]);
+      const seen=(await client.query('select id from public."FoodItem" where id = any($1)',[[a.food_id,b.food_id,shared.food_id]])).rows.map(r=>r.id).sort((x,y)=>x-y);
+      const servingsOf=(await client.query('select distinct "foodItemId" from public."Serving" where "foodItemId" = any($1)',[[a.food_id,b.food_id]])).rows.map(r=>r.foodItemId);
+      await client.query('ROLLBACK');
+      assert.deepEqual(seen,[b.food_id,shared.food_id].sort((x,y)=>x-y));
+      assert.deepEqual(servingsOf,[b.food_id],'servings of another user\'s private food are hidden too');
+    } finally { await client.end() }
   });

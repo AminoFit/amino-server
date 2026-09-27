@@ -18,7 +18,7 @@ const nutrientFields = [
   "vitaminCMg", "vitaminDMcg", "vitaminEMg", "vitaminKMcg", "waterMl", "zincMg"
 ] as const
 
-const foodColumns = `id,userId,defaultServingWeightGram,kcalPerServing,totalFatPerServing,
+const foodColumns = `id,userId,privateToUserId,defaultServingWeightGram,kcalPerServing,totalFatPerServing,
   satFatPerServing,transFatPerServing,carbPerServing,sugarPerServing,addedSugarPerServing,
   proteinPerServing,fiberPerServing,Nutrient(nutrientName,nutrientAmountPerDefaultServing),
   Serving(id,foodItemId,servingName)`
@@ -26,6 +26,7 @@ const loggedColumns = ["id", "userId", "status", "deletedAt", "messageId", "food
   "grams", "updatedAt", ...nutrientFields].join(",")
 
 type PortionFood = FoodItemWithNutrientsAndServing & {
+  privateToUserId?: string | null
   Serving: { id: number; foodItemId: number; servingName: string }[]
 }
 type LoadedFood = Tables<"LoggedFoodItem"> & {
@@ -82,7 +83,8 @@ export async function POST(request: NextRequest) {
         if (error) throw error
         foodItem = data as unknown as PortionFood | null
       }
-      if (!foodItem || (foodItem.userId && foodItem.userId !== userId)) {
+      // A food's creator (userId) does not own a shared food; only a private food is limited to its owner.
+      if (!foodItem || (foodItem.privateToUserId && foodItem.privateToUserId !== userId)) {
         return failure("Food item is unavailable", 404)
       }
       if (foodItem.defaultServingWeightGram !== null && foodItem.defaultServingWeightGram <= 0) {

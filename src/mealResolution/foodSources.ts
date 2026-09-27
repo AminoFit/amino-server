@@ -18,7 +18,9 @@ export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"
   gtin:string|null;name:string;brand:string|null;defaultServingWeightGram:number;kcal:number;proteinG:number;carbG:number;
   totalFatG:number;fiberG:number|null;sugarG:number|null;satFatG:number|null;isLiquid:boolean;
   /** name is the unit ("cup", "bottle"); grams describe `amount` of that unit. */
-  servings:{name:string;grams:number;amount:number}[];source:string}
+  servings:{name:string;grams:number;amount:number}[];source:string;
+  /** A personal dish (the user's own recipe) is created privately for them. */
+  personal?:boolean}
 
 export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),
   brand:z.string().trim().max(80).nullable(),per100g:z.object({kcal:z.number().nonnegative().finite(),
@@ -26,7 +28,8 @@ export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).de
     totalFatG:z.number().nonnegative().finite()}).strict(),
   servings:z.array(z.object({unit:z.string().trim().min(1).max(40),amount:z.number().positive().max(1000),
     grams:z.number().positive().max(5000)}).strict()).max(5),
-  basis:z.string().trim().min(20).max(400)}).strict()
+  basis:z.string().trim().min(20).max(400),
+  personal:z.boolean().default(false).describe("true only for the user's own home-made or personal dish (their recipe or combination, \"my smoothie\", \"grandma's lasagna\"); false for a common dish, restaurant item or product")}).strict()
 
 const amount=z.number().nonnegative().finite()
 /** Nutrition facts transcribed from a label visible in the user's photo. */
@@ -103,6 +106,8 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
   const barcode=(value:string|null|undefined)=>{const gtin=value?normalizeGtin(value):null
     return gtin&&(ctx.barcodes??[]).includes(gtin)?gtin:null}
   let counter=0
+  // Server reads bypass row security: only shared foods and this user's private foods can be duplicates.
+  const visible=`privateToUserId.is.null,privateToUserId.eq.${ctx.userId}`
   const remember=(food:SourceFood)=>{food.servings=realServings(food.servings);sources.set(food.sourceId,food);return food}
   const summary=(food:SourceFood,label?:SourceFood)=>({sourceId:food.sourceId,kind:food.foodInfoSource,name:food.name,
     brand:food.brand,gtin:food.gtin,servingGrams:food.defaultServingWeightGram,kcal:food.kcal,proteinG:food.proteinG,
@@ -171,15 +176,15 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
   async function nearbyFacts(food:SourceFood):Promise<Facts[]> {
     const label=food.brand?`${food.name} - ${food.brand}`:food.name
     const [[vector],byName,byGtin]=await Promise.all([embed("BGE_BASE",[label]),
-      (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0}).abortSignal(ctx.signal),
-      food.gtin?db().from("FoodItem").select("id").eq("gtin",food.gtin).limit(1).abortSignal(ctx.signal):Promise.resolve({data:[],error:null})])
-    const near=await db().rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8}).abortSignal(ctx.signal)
+      (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0,p_user_id:ctx.userId}).abortSignal(ctx.signal),
+      food.gtin?db().from("FoodItem").select("id").eq("gtin",food.gtin).or(visible).limit(1).abortSignal(ctx.signal):Promise.resolve({data:[],error:null})])
+    const near=await (db() as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8,p_user_id:ctx.userId}).abortSignal(ctx.signal)
     if (near.error||byGtin.error) throw new Error("catalogue_unavailable")
     const ids=[...new Set([...(byGtin.data??[]),...(byName.error?[]:byName.data??[]),...(near.data??[])]
       .map(row=>(row as {id:number}).id))].slice(0,14)
     if (!ids.length) return []
     const hydrated=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
-      .in("id",ids).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
+      .in("id",ids).or(visible).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
     if (hydrated.error) throw new Error("catalogue_unavailable")
     return (hydrated.data??[]) as unknown as Facts[]
   }
@@ -218,7 +223,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
   }
 
   const payload=async(food:SourceFood,withEmbedding:boolean)=>{
-    const {sourceId:_,servings:__,...fields}=food
+    const {sourceId:_,servings:__,personal:___,...fields}=food
     if (!withEmbedding) return fields
     const [vector]=await embed("BGE_BASE",[food.brand?`${food.name} - ${food.brand}`:food.name])
     return {...fields,bgeBaseEmbedding:JSON.stringify(vector.embedding)}
@@ -247,12 +252,13 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     async attachBarcode(foodId:number,gtinValue:string,packageName:string) {
       const gtin=barcode(gtinValue)
       if (!gtin) return {status:"refused" as const,reason:"barcode_not_decoded"}
-      const owner=await db().from("FoodItem").select("id").eq("gtin",gtin).limit(1).abortSignal(ctx.signal)
+      const owner=await db().from("FoodItem").select("id").eq("gtin",gtin).or(visible).limit(1).abortSignal(ctx.signal)
       if (owner.error) throw new Error("catalogue_unavailable")
       const already=(owner.data??[])[0] as {id:number}|undefined
       if (already) {ctx.discover(already.id);return {status:already.id===foodId?"attached" as const:"other_food" as const,foodId:already.id}}
       const read=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
-        .eq("id",foodId).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
+        .eq("id",foodId).is("privateToUserId",null).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
+      // Barcodes identify products for everyone, so they go on shared foods only.
       const food=((read.data??[]) as unknown as Facts[])[0]
       if (read.error||!food) throw new Error("catalogue_unavailable")
       if (food.gtin) return {status:"refused" as const,reason:"food_has_another_barcode: a different product or size; findFood with includeSources"}
@@ -285,7 +291,8 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       const food=estimatedFood.parse(value)
       const candidate:SourceFood={sourceId:`estimate:${counter++}`,foodInfoSource:"AgentEstimate",externalId:null,gtin:null,
         name:food.name,brand:food.brand,defaultServingWeightGram:100,...food.per100g,fiberG:null,sugarG:null,satFatG:null,
-        isLiquid:false,servings:food.servings.map(s=>({name:s.unit,grams:s.grams,amount:s.amount})),source:`Estimate: ${food.basis}`}
+        isLiquid:false,servings:food.servings.map(s=>({name:s.unit,grams:s.grams,amount:s.amount})),source:`Estimate: ${food.basis}`,
+        personal:food.personal}
       if (!complete(candidate)) throw new Error("invalid_estimated_food")
       return summary(remember(candidate))
     },
@@ -311,7 +318,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
         return duplicate
       }
       const created=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
-        p_food:await payload(food,true),p_servings:food.servings}).abortSignal(ctx.signal)
+        p_food:await payload(food,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)
       const row=(created.data as {food_id:number;created:boolean;enrichment:unknown}[]|null)?.[0]
       if (created.error||!row) throw new Error("food_creation_unavailable")
       ctx.discover(row.food_id)

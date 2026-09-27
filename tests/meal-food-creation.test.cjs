@@ -10,11 +10,12 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
 function harness({jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
-  const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[]};
+  const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
-  const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,eq:(c,v)=>{column=c;value=v;return q},
+  const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
     abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
     rpc:(name,args)=>{
+    calls.rpc.push([name,args]);
     const result=name==='search_usda_database'?{data:[{fdcId:2345}],error:null}:
       name==='search_meal_food_catalogue'&&byName?{data:byName,error:null}:
       name==='get_cosine_results'?{data:near,error:null}:
@@ -230,7 +231,7 @@ test('barcodes decide duplicates outright, and Jev sees the facts that separate 
 
 function attachHarness({food={id:15295,name:'Lala 100 +Proteina Leche 1% Grasa',brand:'Lala',gtin:null},owner=null,jev={status:'ok',choice:'same',confidence:0.96}}={}){
   const calls={enrich:[],jev:[],discovered:[]};
-  const db={from:()=>{let byGtin=false;const q={select:()=>q,limit:()=>q,eq:column=>{byGtin=column==='gtin';return q},
+  const db={from:()=>{let byGtin=false;const q={select:()=>q,limit:()=>q,or:()=>q,is:()=>q,eq:column=>{byGtin=column==='gtin';return q},
     abortSignal:async()=>({data:byGtin?(owner?[owner]:[]):[{defaultServingWeightGram:250,kcalPerServing:130,proteinPerServing:15,Serving:[],...food}],error:null})};return q},
     rpc:(name,args)=>{calls.enrich.push(args);return {abortSignal:async()=>({data:{foodId:args.p_food_id,added:args.p_food.gtin?['gtin','alias']:[],conflict:false},error:null})}}};
   const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes:['07501020548440'],
@@ -295,4 +296,26 @@ test('an estimate far from similar foods\' energy density goes back once to be r
   assert.equal(calls.create.length,0);
   assert.equal((await sources.createFoodFromSource(high.sourceId)).status,'created','resubmitting the same source accepts it');
   assert.equal((await sources.createFoodFromSource(estimate(125).sourceId)).status,'created','a plausible estimate goes straight through');
+});
+
+test('a personal dish is created privately for the user; common foods stay shared',async()=>{
+  const {sources,calls}=harness({near:[],jev:{status:'ok',choice:'none',confidence:0.95}});
+  const dish=personal=>sources.proposeEstimatedFood({name:personal?"Grandma's lasagna":'Beef lasagna',brand:null,
+    per100g:{kcal:160,proteinG:9,carbG:14,totalFatG:7},servings:[{unit:'slice',amount:1,grams:250}],
+    basis:'Beef, pasta, ricotta and tomato sauce in typical home-recipe proportions',...(personal===undefined?{}:{personal})});
+  await sources.createFoodFromSource(dish(true).sourceId);
+  await sources.createFoodFromSource(dish(false).sourceId);
+  await sources.createFoodFromSource(dish(undefined).sourceId);
+  assert.deepEqual(calls.create.map(c=>c.p_private),[true,false,false]);
+  assert.equal('personal' in calls.create[0].p_food,false,'the flag is not stored on the food');
+});
+
+test('duplicate candidates only come from shared foods and the user\'s own private foods',async()=>{
+  const {sources,calls}=harness({jev:{status:'ok',choice:'none',confidence:0.95}});
+  const [candidate]=(await sources.searchFoodSources('tuna ceviche')).candidates;
+  await sources.createFoodFromSource(candidate.sourceId);
+  const user='00000000-0000-4000-8000-000000000001';
+  for (const name of ['search_meal_food_catalogue','get_cosine_results'])
+    assert.equal(calls.rpc.find(([n])=>n===name)?.[1].p_user_id,user,name);
+  assert.ok(calls.visibility.length>0&&calls.visibility.every(f=>f===`privateToUserId.is.null,privateToUserId.eq.${user}`));
 });
