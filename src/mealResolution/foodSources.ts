@@ -61,7 +61,8 @@ const DUPLICATE_POLICY=`Decide whether the new food is the SAME food as an exist
 brand, flavour, variant, form (for example a drink vs a cup of yogurt, a bar vs a powder) and preparation state
 (dry vs cooked, in oil vs in water, 2% vs whole). Names may differ in language, spelling, word order or punctuation.
 Use the serving units and sizes and the per-100 g energy and protein as evidence: very different values mean a
-different product. Choose none when no candidate is the same food.`
+different product, except for a catalogue food marked estimate, whose numbers may be wrong: judge it by identity
+(name, brand, flavour, variant, form, preparation) alone. Choose none when no candidate is the same food.`
 
 const BARCODE_POLICY=`A barcode library decoded a retail barcode from the user's photo of a package. Decide whether the
 package, described by the agent from the photo, is exactly this catalogue food: same brand, product, flavour, variant
@@ -199,7 +200,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     return []
   }
 
-  type Facts={id:number;name:string;brand:string|null;gtin:string|null;defaultServingWeightGram:number|null;
+  type Facts={id:number;name:string;brand:string|null;gtin:string|null;foodInfoSource?:string;defaultServingWeightGram:number|null;
     kcalPerServing:number|null;proteinPerServing:number|null;Serving:{servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}[]}
   const per100=(value:number|null,grams:number|null)=>value!=null&&grams?Math.round(value*1000/grams)/10:null
   const describe=(f:{name:string;brand:string|null;gtin:string|null;kcal:number|null;protein:number|null;grams:number|null;
@@ -218,18 +219,20 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     const ids=[...new Set([...(byGtin.data??[]),...(byName.error?[]:byName.data??[]),...(near.data??[])]
       .map(row=>(row as {id:number}).id))].slice(0,14)
     if (!ids.length) return []
-    const hydrated=await db().from("FoodItem").select("id,name,brand,gtin,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
+    const hydrated=await db().from("FoodItem").select("id,name,brand,gtin,foodInfoSource,defaultServingWeightGram,kcalPerServing,proteinPerServing,Serving(servingName,servingWeightGram,defaultServingAmount)")
       .in("id",ids).or(visible).limit(3,{foreignTable:"Serving"}).abortSignal(ctx.signal)
     if (hydrated.error) throw new Error("catalogue_unavailable")
     return (hydrated.data??[]) as unknown as Facts[]
   }
 
-  async function duplicateOf(food:SourceFood,facts:Facts[]):Promise<{status:"none"}|{status:"existing";foodId:number}|
+  const isEstimate=(f?:{foodInfoSource?:string})=>f?.foodInfoSource==="GPT4"||f?.foodInfoSource==="AgentEstimate"
+
+  async function duplicateOf(food:SourceFood,facts:Facts[]):Promise<{status:"none"}|{status:"existing";foodId:number;estimate:boolean}|
     {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null}[]}> {
     if (!facts.length) return {status:"none"}
     // Barcodes decide outright: the same GTIN is this food; a different GTIN is another product.
     const sameBarcode=food.gtin?facts.find(f=>f.gtin===food.gtin):undefined
-    if (sameBarcode) return {status:"existing",foodId:sameBarcode.id}
+    if (sameBarcode) return {status:"existing",foodId:sameBarcode.id,estimate:isEstimate(sameBarcode)}
     const candidates=facts.filter(f=>!(food.gtin&&f.gtin&&f.gtin!==food.gtin))
     if (!candidates.length) return {status:"none"}
     const options:Record<string,unknown>={none:null},criteria:Record<string,string>={none:"No candidate is the same food."}
@@ -237,11 +240,14 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     const decision=await (deps.jev??selectWithJev)({options,state:{
       newFood:describe({name:food.name,brand:food.brand,gtin:food.gtin,kcal:food.kcal,protein:food.proteinG,grams:food.defaultServingWeightGram,
         servings:food.servings.map(s=>({unit:s.name,amount:s.amount,grams:s.grams}))}),
-      catalogue:candidates.map(c=>({id:c.id,...describe({name:c.name,brand:c.brand,gtin:c.gtin,kcal:c.kcalPerServing,protein:c.proteinPerServing,
+      catalogue:candidates.map(c=>({id:c.id,...(isEstimate(c)?{estimate:true}:{}),...describe({name:c.name,brand:c.brand,gtin:c.gtin,kcal:c.kcalPerServing,protein:c.proteinPerServing,
         grams:c.defaultServingWeightGram,servings:(c.Serving??[]).map(s=>({unit:s.servingName,amount:Number(s.defaultServingAmount)||1,grams:s.servingWeightGram}))})}))},
       questions:{selection:{type:"choice",instructions:DUPLICATE_POLICY,criteria}}},ctx.signal)
     const confident=decision.status==="ok"&&(decision.confidence??0)>=0.9
-    if (confident&&decision.choice?.startsWith("food_")) return {status:"existing",foodId:Number(decision.choice.slice(5))}
+    if (confident&&decision.choice?.startsWith("food_")) {
+      const foodId=Number(decision.choice.slice(5))
+      return {status:"existing",foodId,estimate:isEstimate(candidates.find(c=>c.id===foodId))}
+    }
     if (confident&&decision.choice==="none") return {status:"none"}
     // Uncertain or unavailable: never create. The agent must pick one or ask.
     return {status:"possible_duplicates",candidates:candidates.map(({id,name,brand})=>({id,name,brand}))}
@@ -346,6 +352,17 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       if (outlier) {rechecked.add(sourceId);return {status:"recheck_estimate" as const,reason:outlier}}
       const duplicate=await duplicateOf(food,facts)
       if (duplicate.status==="existing") {
+        // A verified source that is the same food as an estimate supersedes it (B5): the estimate takes the source's
+        // serving and nutrients, with the old row backed up and any disagreement recorded.
+        if (food.foodInfoSource!=="AgentEstimate"&&duplicate.estimate) {
+          const superseded=await (db() as any).rpc("supersede_catalogue_estimate",{p_food_id:duplicate.foodId,
+            p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)
+          if (!superseded.error&&superseded.data?.foodId) {
+            ctx.discover(superseded.data.foodId)
+            return {status:"existing" as const,foodId:Number(superseded.data.foodId),superseded:superseded.data.superseded===true,
+              enrichment:superseded.data.enrichment??null}
+          }
+        }
         const enriched=await (db() as any).rpc("enrich_catalogue_food",{p_food_id:duplicate.foodId,
           p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)
         ctx.discover(duplicate.foodId)

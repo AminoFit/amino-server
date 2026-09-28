@@ -10,7 +10,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
 function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
-  const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
+  const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
     abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
@@ -20,6 +20,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
       name==='search_meal_food_catalogue'&&byName?{data:byName,error:null}:
       name==='get_cosine_results'?{data:near,error:null}:
       name==='create_catalogue_food'?(calls.create.push(args),{data:[createRow],error:null}):
+      name==='supersede_catalogue_estimate'?(calls.supersede.push(args),{data:{foodId:args.p_food_id,superseded:true,enrichment:null},error:null}):
       name==='enrich_catalogue_food'?(calls.enrich.push(args),{data:{foodId:args.p_food_id,added:enrichConflict?[]:['serving:cup'],conflict:enrichConflict},error:null}):
       {data:null,error:{message:'x'}};
     return {abortSignal:()=>Promise.resolve(result)};
@@ -367,4 +368,22 @@ test('new foods never store the serving shapes the catalogue audit had to repair
     [serving('bottle',207)],'basis units, missing weights and duplicates');
   assert.deepEqual(cleanServings([serving('Burrito',10),serving('Burrito',185)]),[serving('Burrito',185)],'placeholder next to the real serving');
   assert.deepEqual(cleanServings([serving('cup',30),serving('cup',240)]).length,2,'standard units keep both (chopped vs liquid is a naming issue)');
+});
+
+test('a verified source that is the same food as an estimate supersedes it; verified foods and estimates-vs-estimates do not',async()=>{
+  const gpt={id:77,name:'Tuna Ceviche',brand:null,foodInfoSource:'GPT4'};
+  let h=harness({catalogue:[gpt],near:[gpt],jev:task=>({status:'ok',choice:'food_77',confidence:0.95})});
+  let [candidate]=(await h.sources.searchFoodSources('tuna ceviche')).candidates;
+  const result=await h.sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual([result.foodId,result.superseded,h.calls.supersede.length,h.calls.enrich.length],[77,true,1,0]);
+  assert.equal(h.calls.jev[0].state.catalogue[0].estimate,true,'Jev is told the candidate\'s numbers may be wrong');
+  h=harness({catalogue:[{...gpt,foodInfoSource:'USDA'}],near:[gpt],jev:{status:'ok',choice:'food_77',confidence:0.95}});
+  [candidate]=(await h.sources.searchFoodSources('tuna ceviche')).candidates;
+  await h.sources.createFoodFromSource(candidate.sourceId);
+  assert.deepEqual([h.calls.supersede.length,h.calls.enrich.length],[0,1],'a verified food keeps its values');
+  h=harness({catalogue:[gpt],near:[gpt],jev:{status:'ok',choice:'food_77',confidence:0.95}});
+  const estimate=h.sources.proposeEstimatedFood({name:'Tuna ceviche',brand:null,per100g:{kcal:120,proteinG:15,carbG:6,totalFatG:3},
+    servings:[{unit:'bowl',amount:1,grams:300}],basis:'Raw tuna, lime, onion and cucumber in typical proportions'});
+  await h.sources.createFoodFromSource(estimate.sourceId);
+  assert.equal(h.calls.supersede.length,0,'an estimate never supersedes another estimate');
 });

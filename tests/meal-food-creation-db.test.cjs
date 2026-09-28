@@ -8,7 +8,8 @@ const {Client}=require('pg');
 const connectionString=process.env.AMINO_FOOD_TEST_DATABASE_URL;
 const migrations=['20260925205900_agent_estimate_food_source.sql','20260925210000_catalogue_food_creation.sql',
   '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql','20260926020000_serving_units.sql','20260926030000_serving_dedupe.sql',
-  '20260927010000_private_foods.sql','20260927020000_label_variants.sql']
+  '20260927010000_private_foods.sql','20260927020000_label_variants.sql','20260926050000_audit_a1_serving_amounts.sql',
+  '20260927030000_supersede_estimates.sql']
   .map(file=>fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
 const fixture=`
 CREATE SCHEMA IF NOT EXISTS extensions;
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public."FoodItem" (id serial PRIMARY KEY, name text N
   "sugarPerServing" float8, "satFatPerServing" float8, "isLiquid" boolean NOT NULL DEFAULT false, "userId" uuid,
   "messageId" integer, "foodInfoSource" public."FoodInfoSource" NOT NULL DEFAULT 'User', "externalId" text,
   "bgeBaseEmbedding" extensions.vector, description text, verified boolean NOT NULL DEFAULT false,
-  "UPC" bigint, "knownAs" text[] DEFAULT ARRAY[]::text[],
+  "UPC" bigint, "knownAs" text[] DEFAULT ARRAY[]::text[], "weightUnknown" boolean NOT NULL DEFAULT false,
   UNIQUE (name, brand), UNIQUE ("externalId", "foodInfoSource"));
 CREATE TABLE IF NOT EXISTS public."Serving" (id serial PRIMARY KEY, "foodItemId" integer REFERENCES public."FoodItem"(id),
   "servingName" text NOT NULL, "servingWeightGram" float8, "defaultServingAmount" numeric(10,2) DEFAULT 1);`;
@@ -144,6 +145,19 @@ test('private foods belong to their owner: per-owner names, no cross-user reuse,
       assert.equal(copy.created,true); assert.notEqual(copy.food_id,sharedDrink.food_id);
       assert.equal((await make(bob,{...drink,foodInfoSource:'User',kcal:180},true,true)).food_id,copy.food_id,'the user\'s own copy is reused');
       assert.equal((await make(alice,drink,false)).food_id,sharedDrink.food_id,'others keep the shared food');
+      // B5: a verified source supersedes a shared estimate (backup, conflict when it disagrees), never a verified or private food.
+      const supersede=(id,value)=>client.query('select public.supersede_catalogue_estimate($1,$2,$3) r',[id,value,JSON.stringify([{name:'bowl',grams:300}])]).then(r=>r.rows[0].r);
+      const estimate=await make(null,food(`Ceviche ${tag}`,null,{foodInfoSource:'AgentEstimate',defaultServingWeightGram:37.8,kcal:120}),false);
+      const usda=food(`Ceviche ${tag}`,null,{foodInfoSource:'USDA',externalId:`fdc-c-${tag}`,defaultServingWeightGram:300,kcal:390});
+      const done=await supersede(estimate.food_id,usda);
+      assert.equal(done.superseded,true);
+      const row=(await client.query('select "foodInfoSource","defaultServingWeightGram","kcalPerServing","externalId" from public."FoodItem" where id=$1',[estimate.food_id])).rows[0];
+      assert.deepEqual([row.foodInfoSource,row.defaultServingWeightGram,row.kcalPerServing,row.externalId],['USDA',300,390,`fdc-c-${tag}`]);
+      assert.equal((await client.query('select count(*)::int n from public."CatalogueAuditBackup" where audit=$1 and "rowId"=$2',['B5_supersede',estimate.food_id])).rows[0].n,1);
+      assert.equal((await client.query('select count(*)::int n from public."FoodItemConflict" where "foodItemId"=$1',[estimate.food_id])).rows[0].n,1,'317 vs 130 kcal/100 g is recorded');
+      assert.equal((await supersede(riceShared.food_id,usda)).reason,'not_an_estimate');
+      const mine=await make(bob,food(`Bob's ceviche ${tag}`,null,{foodInfoSource:'AgentEstimate'}),true);
+      assert.equal((await supersede(mine.food_id,{...usda,externalId:`fdc-m-${tag}`})).reason,'private_food');
       // Row security: a signed-in user sees shared foods and their own, never another user's.
       await client.query('ALTER TABLE public."FoodItem" ENABLE ROW LEVEL SECURITY; ALTER TABLE public."Serving" ENABLE ROW LEVEL SECURITY; GRANT SELECT ON public."FoodItem", public."Serving" TO authenticated');
       await client.query('BEGIN');

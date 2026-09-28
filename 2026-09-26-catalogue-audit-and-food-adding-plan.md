@@ -321,7 +321,17 @@ The Opus models made the same two sibling-variant mistakes: DiGiorno Rising Crus
 - As built: `addFood` returns `recheck_estimate` once when the density is more than 1.8× (+20 kcal) away from the median of at least 3 similar foods. Resubmitting the same source accepts it.
 - Keep the `AgentEstimate` source label so the audit can upgrade these foods later.
 
-### B5. Supersede estimate-grade foods
+### B5. Supersede estimate-grade foods (done 2026-09-27)
+
+**Done:** migration `20260927030000_supersede_estimates` adds `supersede_catalogue_estimate`, and `createFoodFromSource` calls it.
+- **Trigger:** a verified source (USDA, a cited web page or a label) that the duplicate check matches to a GPT4 or AgentEstimate food.
+- **Effect:** the estimate takes the source's serving weight and nutrients, and its provenance changes to the source. The old row goes to backup `B5_supersede`, and a `FoodItemConflict` row is written only when calories per 100 g disagree by more than 10%.
+- **Duplicate check:** it now tells Jev that an estimate's numbers may be wrong, so identity is judged on name, brand, variant and form.
+- **Refused:** verified foods, private foods (a user's recipe or label copy), and an estimate trying to supersede another estimate.
+- **Twins:** when the source record already is another catalogue food, that food is returned instead.
+- **Logs:** keep their stored nutrients.
+
+Original plan:
 
 - When a verified source (USDA, label or cited web) matches a `GPT4` or `AgentEstimate` food with Jev at 90% or higher but disagrees on density, replace that food's nutrients through a supersede function.
 - Log the old values to `FoodItemConflict`.
