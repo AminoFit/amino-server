@@ -257,7 +257,17 @@ Original finding:
 - The read-side serving guard (see A1).
 - A photo eval with 16 real cases.
 
-### B1. Normalise servings when a food is created (prevents new A1 and A6 cases)
+### B1. Normalise servings when a food is created (done 2026-09-27)
+
+**Done:** `cleanServings` in `foodSources.ts` runs on every new food and every enrichment (label, USDA, web and estimate sources all pass through it).
+- **Size stored as the amount:** "1 cup" 240 g × 240 and "355 ml" × 355 become one unit of the named portion.
+- **Weight in the name:** a "(37 g)" matching the weight is removed.
+- **Impossible standard units:** a bare tsp, tbsp or cup outside plausible grams (0.3–10, 1–25 and 5–400) is dropped.
+- **Other drops:** servings without a weight, basis units the app already offers, duplicates, and 10 g-style placeholders beside a same-name serving (standard units exempt).
+- **Kept:** real small units (a tsp of dried herbs at 0.8 g, a cup of popcorn at 8 g).
+- **Tests:** a unit test covers every bad shape found in the audit.
+
+Original plan:
 
 - Strip a leading number that equals the amount (`355 ml` × 355 becomes `ml` × 355, or `355 ml` × 1).
 - The basis-unit filter currently misses names that include a number.

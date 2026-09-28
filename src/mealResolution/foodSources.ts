@@ -71,8 +71,42 @@ free, protein version) or a different form (drink vs cup) is NOT the same food.`
 // Canonical mass/volume units are a nutrition basis, not a serving: the food's gram
 // basis already covers them and the agent logs by mass.
 const BASIS_UNITS=new Set(["g","gram","grams","gr","kg","mg","ml","milliliter","milliliters","millilitre","millilitres","l","liter","litre","oz","ounce","ounces","fl oz","floz","fluid ounce","fluid ounces","lb"])
-const realServings=(servings:SourceFood["servings"])=>servings.filter(serving=>
-  !BASIS_UNITS.has(serving.name.trim().toLowerCase().replace(/[.\s]+/g," ").trim()))
+const GRAM_UNITS=new Set(["g","gram","grams","gr","ml","milliliter","milliliters","millilitre","millilitres"])
+// Plausible grams for one unit whose size is standard (a tsp of dried herbs weighs 0.5 g, a cup of popcorn 8 g, a cup
+// of honey 340 g); a serving outside is a misread or a mislabel. Plain "oz" and "g" are basis units, dropped below.
+const UNIT_GRAMS:Record<string,[number,number]>={tsp:[0.3,10],teaspoon:[0.3,10],tbsp:[1,25],tablespoon:[1,25],cup:[5,400]}
+const unitKey=(unit:string)=>unit.toLowerCase().replace(/[.\s]+/g," ").trim().replace(/^(cup|tsp|tbsp|teaspoon|tablespoon)s$/,"$1")
+
+/** Servings as the catalogue must store them, whatever the source wrote: the checks the catalogue audit (A1, A6)
+ * applied to existing rows, applied before a food is created or enriched. A size stored as the amount ("1 cup" 240 g
+ * x240, "355 ml" x355) becomes one unit of the named portion; a gram weight repeated in the name is removed (the app
+ * shows it); a bare standard unit with an impossible weight ("tbsp" 60 g) is dropped, as are servings without a
+ * weight, basis units the app already offers, duplicates and 10 g-style placeholders. */
+export function cleanServings(servings:SourceFood["servings"]):SourceFood["servings"] {
+  const kept:SourceFood["servings"]=[],seen=new Set<string>()
+  for (const serving of servings) {
+    let {name,amount}=serving
+    const grams=serving.grams
+    if (!(grams>0)||!(amount>0)||!name?.trim()) continue
+    name=name.replace(/\s*\(\s*(\d+(?:\.\d+)?)\s*g\s*\)\s*/i,(match,g)=>{const n=Number(g)
+      return Math.abs(n-grams)<=0.02*grams||Math.abs(n-grams/amount)<=0.02*grams/amount?" ":match}).replace(/\s+/g," ").trim()
+    if (!name||BASIS_UNITS.has(unitKey(name))) continue
+    const leading=/^(\d+(?:\.\d+)?)\s*(.*)$/.exec(name),unit=unitKey(leading?leading[2]:name)
+    // The size stored as the amount leaves about a gram per unit: the named portion is one unit.
+    const restated=leading&&amount>1&&Number(leading[1])===amount&&(GRAM_UNITS.has(unit)||grams/amount<2)
+    if (restated||amount>1&&grams/amount<2&&!GRAM_UNITS.has(unit)) amount=1
+    const range=UNIT_GRAMS[unit]
+    if (range&&!leading&&(grams/amount<range[0]||grams/amount>range[1])) continue
+    const key=`${name.toLowerCase()}|${Math.round(grams/amount*10)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    kept.push({name,grams,amount})
+  }
+  // A same-name serving at least 5x lighter than another is a placeholder ("Burrito" 10 g beside "Burrito" 185 g);
+  // standard units are exempt, since there the lighter one can be right.
+  const per=(s:SourceFood["servings"][number])=>s.grams/s.amount
+  return kept.filter(s=>UNIT_GRAMS[unitKey(s.name)]||!kept.some(o=>o!==s&&o.name.toLowerCase()===s.name.toLowerCase()&&per(o)>=5*per(s)))
+}
 
 const complete=(food:SourceFood)=>food.name.trim().length>=2&&food.defaultServingWeightGram>0&&
   validNutrition(food.defaultServingWeightGram,{kcal:food.kcal,proteinG:food.proteinG,carbG:food.carbG,totalFatG:food.totalFatG})
@@ -109,7 +143,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
   let counter=0
   // Server reads bypass row security: only shared foods and this user's private foods can be duplicates.
   const visible=`privateToUserId.is.null,privateToUserId.eq.${ctx.userId}`
-  const remember=(food:SourceFood)=>{food.servings=realServings(food.servings);sources.set(food.sourceId,food);return food}
+  const remember=(food:SourceFood)=>{food.servings=cleanServings(food.servings);sources.set(food.sourceId,food);return food}
   const summary=(food:SourceFood,label?:SourceFood)=>({sourceId:food.sourceId,kind:food.foodInfoSource,name:food.name,
     brand:food.brand,gtin:food.gtin,servingGrams:food.defaultServingWeightGram,kcal:food.kcal,proteinG:food.proteinG,
     carbG:food.carbG,totalFatG:food.totalFatG,servings:food.servings,source:food.source,

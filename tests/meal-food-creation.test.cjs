@@ -352,3 +352,19 @@ test('only labels become private copies: another source that disagrees just reco
   const [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
   assert.deepEqual([(await h.sources.createFoodFromSource(candidate.sourceId)).foodId,h.calls.create.length],[77,0]);
 });
+
+test('new foods never store the serving shapes the catalogue audit had to repair',()=>{
+  const {cleanServings}=require('../src/mealResolution/foodSources.ts');
+  const serving=(name,grams,amount=1)=>({name,grams,amount});
+  assert.deepEqual(cleanServings([serving('1 cup',240,240)]),[serving('1 cup',240)],'kefir: "1 cup" would log 1 g');
+  assert.deepEqual(cleanServings([serving('355 ml',355,355)]),[serving('355 ml',355)],'Spindrift: "355 x 355 ml"');
+  assert.deepEqual(cleanServings([serving('cup',240,240)]),[serving('cup',240)]);
+  assert.deepEqual(cleanServings([serving('1 Cup (37g)',37)]),[serving('1 Cup',37)],'the app would show "1 Cup (37g) (37g)"');
+  assert.deepEqual(cleanServings([serving('tbsp',60),serving('cup',900)]),[],'impossible standard units');
+  assert.deepEqual(cleanServings([serving('tsp',0.8),serving('cup',8),serving('2 tbsp.',31,2),serving('pieces',76,4)]),
+    [serving('tsp',0.8),serving('cup',8),serving('2 tbsp.',31,2),serving('pieces',76,4)],'real small units, sensible multiples');
+  assert.deepEqual(cleanServings([serving('g',1),serving('oz',28.35),serving('ml',1),serving('serving',0),serving('bottle',207),serving('bottle',207)]),
+    [serving('bottle',207)],'basis units, missing weights and duplicates');
+  assert.deepEqual(cleanServings([serving('Burrito',10),serving('Burrito',185)]),[serving('Burrito',185)],'placeholder next to the real serving');
+  assert.deepEqual(cleanServings([serving('cup',30),serving('cup',240)]).length,2,'standard units keep both (chopped vs liquid is a naming issue)');
+});
