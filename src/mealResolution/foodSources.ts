@@ -315,6 +315,16 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
         const enriched=await (db() as any).rpc("enrich_catalogue_food",{p_food_id:duplicate.foodId,
           p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)
         ctx.discover(duplicate.foodId)
+        // A label that disagrees with the existing food (a regional variant, a new recipe or a misread photo) leaves
+        // it unchanged (the conflict is recorded) and becomes the user's own private copy with the label's values.
+        if (food.foodInfoSource==="Label"&&!enriched.error&&enriched.data?.conflict===true) {
+          const copy=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
+            p_food:await payload(food,true),p_servings:food.servings,p_private:true,p_variant:true}).abortSignal(ctx.signal)
+          const row=(copy.data as {food_id:number;created:boolean}[]|null)?.[0]
+          if (copy.error||!row) throw new Error("food_creation_unavailable")
+          ctx.discover(row.food_id)
+          return {status:row.created?"created" as const:"existing" as const,foodId:row.food_id,variantOf:duplicate.foodId,enrichment:null}
+        }
         return {status:"existing" as const,foodId:duplicate.foodId,enrichment:enriched.error?null:enriched.data}
       }
       if (duplicate.status==="possible_duplicates") {

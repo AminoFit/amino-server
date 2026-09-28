@@ -80,3 +80,10 @@ test('the agent sees each serving as a unit with its weight per unit, so counts 
     kcalPerServing:140,proteinPerServing:6,carbPerServing:17,totalFatPerServing:5,Serving:[{id:7,foodItemId:161,servingName:'pieces',servingWeightGram:76,defaultServingAmount:4}]});
   assert.deepEqual(summary.servings,[{id:7,unit:'pieces',gramsPerUnit:19}],'5 pieces is amount 5 (95 g), never 1.25 servings');
 });
+
+test('the agent sees which foods are the user\'s own',()=>{
+  const {foodSummary}=require('../src/mealResolution/evidence');
+  const base={id:1,name:'Protein drink',brand:null,gtin:null,defaultServingWeightGram:207,kcalPerServing:180,proteinPerServing:20,carbPerServing:12,totalFatPerServing:4,Serving:[]};
+  assert.equal(foodSummary({...base,privateToUserId:'00000000-0000-4000-8000-00000000000a'}).yours,true);
+  assert.equal('yours' in foodSummary({...base,privateToUserId:null}),false);
+});

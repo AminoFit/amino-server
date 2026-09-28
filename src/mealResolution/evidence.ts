@@ -9,6 +9,8 @@ export type CatalogFood = {
   satFatPerServing:number|null;transFatPerServing:number|null;fiberPerServing:number|null;
   sugarPerServing:number|null;addedSugarPerServing:number|null;
   Serving:{id:number;foodItemId:number;servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}[]
+  /** Set when the food is this user's own (their label's values or their recipe). */
+  privateToUserId?:string|null
 }
 export type HistoricalFood = {
   id:number;updatedAt:string;foodItemId:number;name:string;brand:string|null;
@@ -19,7 +21,7 @@ export type HistoricalFood = {
 export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
-const catalogColumns = "id,name,brand,gtin,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
+const catalogColumns = "id,name,brand,gtin,privateToUserId,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 // Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one
@@ -40,6 +42,7 @@ export function usableServing(serving:CatalogFood["Serving"][number]) {
 
 /** Compact, authoritative view of a read food: enough to select it and its serving. */
 export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:food.brand,gtin:food.gtin??null,
+  ...(food.privateToUserId?{yours:true}:{}),
   servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing,proteinG:food.proteinPerServing,
   carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
   // Each serving is a unit and the weight of one unit: "pieces" 76 g for 4 is 19 g per piece, so 5 pieces is
@@ -75,7 +78,8 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     /** Catalogue foods carrying a barcode decoded from this meal's photos. */
     async findFoodsByGtin(gtins:string[]) {
       if (!gtins.length) return []
-      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).order("id").limit(10).abortSignal(signal)
+      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible)
+        .order("privateToUserId",{ascending:true,nullsFirst:false}).order("id").limit(10).abortSignal(signal)
       if (result.error) throw new Error("catalogue_unavailable")
       const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
       for (const id of ids) discovered.add(id)

@@ -55,7 +55,8 @@ returns USDA records. Only if none is the same food, call it once more with incl
 use it; if it returns possible_duplicates, use the matching one or ask. Only when no source exists (for example
 a homemade dish) call proposeEstimatedFood with per-100 g values and a clear basis, then addFood its sourceId.
 Prefer logging recognisable components separately over inventing a composite. Never add a food the catalogue has.
-A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
+A food marked yours is this user's own version (from their label or recipe): when it is the same product as a shared
+food, use yours. A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
 for this user only. Name a new food as the food itself, never with the portion ("Cheeseburger", not "1/2 Cheeseburger"; "Hard-boiled
 egg", not "Two hard-boiled eggs"): the portion is the item's quantity. Search for the food itself too.
 prefetchedFoods and recentMeals were read before this turn. When prefetchedFoods cover every food with the right
@@ -252,7 +253,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           inputSchema:labelFood,execute:async value=>sources.proposeLabelFood(value)}),
         proposeEstimatedFood:tool({description:"Last resort when no source exists: register an estimated food (per 100 g) with its basis. Returns a sourceId.",
           inputSchema:estimatedFood,execute:async value=>sources.proposeEstimatedFood(value)}),
-        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log, possible duplicates to choose from, or recheck_estimate when an estimate's energy density is far from similar foods.",
+        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log (the user's own copy, with variantOf, when their label disagrees with the shared food), possible duplicates to choose from, or recheck_estimate when an estimate's energy density is far from similar foods.",
           inputSchema:z.object({sourceId:z.string().min(1).max(60)}).strict(),
           execute:({sourceId})=>withCount(async()=>{
             const created=await sources.createFoodFromSource(sourceId)

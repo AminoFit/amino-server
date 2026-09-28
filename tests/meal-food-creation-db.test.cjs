@@ -8,7 +8,7 @@ const {Client}=require('pg');
 const connectionString=process.env.AMINO_FOOD_TEST_DATABASE_URL;
 const migrations=['20260925205900_agent_estimate_food_source.sql','20260925210000_catalogue_food_creation.sql',
   '20260926010000_label_food_source.sql','20260926010100_catalogue_gtin_enrichment.sql','20260926020000_serving_units.sql','20260926030000_serving_dedupe.sql',
-  '20260927010000_private_foods.sql']
+  '20260927010000_private_foods.sql','20260927020000_label_variants.sql']
   .map(file=>fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
 const fixture=`
 CREATE SCHEMA IF NOT EXISTS extensions;
@@ -121,8 +121,8 @@ test('private foods belong to their owner: per-owner names, no cross-user reuse,
       await client.query(fixture);
       for (const sql of migrations) await client.query(sql);
       const tag=`p${Date.now()}`,alice='00000000-0000-4000-8000-00000000000a',bob='00000000-0000-4000-8000-00000000000b';
-      const make=(user,value,priv)=>client.query('select * from public.create_catalogue_food($1,$2,$3,$4,$5)',
-        [user,null,value,JSON.stringify([{name:'slice',grams:250}]),priv]).then(r=>r.rows[0]);
+      const make=(user,value,priv,variant=false)=>client.query('select * from public.create_catalogue_food($1,$2,$3,$4,$5,$6)',
+        [user,null,value,JSON.stringify([{name:'slice',grams:250}]),priv,variant]).then(r=>r.rows[0]);
       const lasagna=food(`Grandma's lasagna ${tag}`,null,{foodInfoSource:'User'});
       const a=await make(alice,lasagna,true), b=await make(bob,lasagna,true);
       assert.equal(a.created,true); assert.equal(b.created,true);
@@ -137,6 +137,13 @@ test('private foods belong to their owner: per-owner names, no cross-user reuse,
       const owners=(await client.query('select id,"privateToUserId" from public."FoodItem" where id = any($1)',[[a.food_id,b.food_id,shared.food_id]])).rows;
       assert.deepEqual(Object.fromEntries(owners.map(r=>[r.id,r.privateToUserId])),{[a.food_id]:alice,[b.food_id]:bob,[shared.food_id]:null});
       await assert.rejects(make(null,food(`Nobody's dish ${tag}`,null),true),/needs its owner/);
+      // A disagreeing label becomes the user's own copy even though the shared food has the same identity and barcode.
+      const drink=food(`Protein drink ${tag}`,'Chobani',{foodInfoSource:'Online',gtin:'00818290015617'});
+      const sharedDrink=await make(null,drink,false);
+      const copy=await make(bob,{...drink,foodInfoSource:'User',kcal:180},true,true);
+      assert.equal(copy.created,true); assert.notEqual(copy.food_id,sharedDrink.food_id);
+      assert.equal((await make(bob,{...drink,foodInfoSource:'User',kcal:180},true,true)).food_id,copy.food_id,'the user\'s own copy is reused');
+      assert.equal((await make(alice,drink,false)).food_id,sharedDrink.food_id,'others keep the shared food');
       // Row security: a signed-in user sees shared foods and their own, never another user's.
       await client.query('ALTER TABLE public."FoodItem" ENABLE ROW LEVEL SECURITY; ALTER TABLE public."Serving" ENABLE ROW LEVEL SECURITY; GRANT SELECT ON public."FoodItem", public."Serving" TO authenticated');
       await client.query('BEGIN');

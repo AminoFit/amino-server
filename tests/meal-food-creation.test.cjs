@@ -9,7 +9,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
   const calls={create:[],enrich:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
@@ -20,7 +20,7 @@ function harness({jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=nul
       name==='search_meal_food_catalogue'&&byName?{data:byName,error:null}:
       name==='get_cosine_results'?{data:near,error:null}:
       name==='create_catalogue_food'?(calls.create.push(args),{data:[createRow],error:null}):
-      name==='enrich_catalogue_food'?(calls.enrich.push(args),{data:{foodId:args.p_food_id,added:['serving:cup'],conflict:false},error:null}):
+      name==='enrich_catalogue_food'?(calls.enrich.push(args),{data:{foodId:args.p_food_id,added:enrichConflict?[]:['serving:cup'],conflict:enrichConflict},error:null}):
       {data:null,error:{message:'x'}};
     return {abortSignal:()=>Promise.resolve(result)};
   }};
@@ -329,4 +329,26 @@ test('a nutrition panel no one can name is saved for the user only; a named or b
   assert.deepEqual(calls.create.map(c=>c.p_private),[true,false,false]);
   assert.throws(()=>sources.proposeLabelFood({name:'X shake',brand:null,servingUnit:'bottle',servingAmount:1,servingGrams:330,
     kcal:160,proteinG:30,carbG:5,totalFatG:3,fiberG:null,sugarG:null,satFatG:null,gtin:null}),'the agent must say whether the product is named');
+});
+
+test('a label that disagrees with the shared food becomes the user\'s own copy; the shared food is left as it is',async()=>{
+  const shared=[{id:77,name:'Chobani Protein Drink',brand:'Chobani',gtin:'00818290015617'}];
+  const label=h=>h.sources.proposeLabelFood({name:'Chobani Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,
+    kcal:180,proteinG:20,carbG:12,totalFatG:4,fiberG:null,sugarG:null,satFatG:null,gtin:'00818290015617',identified:true});
+  let h=harness({near:shared,barcodes:['00818290015617'],enrichConflict:true,createRow:{food_id:99002,created:true,enrichment:null}});
+  const result=await h.sources.createFoodFromSource(label(h).sourceId);
+  assert.deepEqual([result.status,result.foodId,result.variantOf],['created',99002,77]);
+  assert.deepEqual([h.calls.create[0].p_private,h.calls.create[0].p_variant],[true,true]);
+  assert.equal(h.calls.enrich.length,1,'the disagreement is recorded on the shared food, which changes nothing');
+  h=harness({near:shared,barcodes:['00818290015617']});
+  assert.deepEqual([(await h.sources.createFoodFromSource(label(h).sourceId)).foodId,h.calls.create.length],[77,0],'an agreeing label just uses the shared food');
+});
+
+test('only labels become private copies: another source that disagrees just records the conflict',async()=>{
+  const drink={name:'Chobani Protein Drink',brand:'Chobani',servingUnit:'bottle',servingAmount:1,servingGrams:207,kcal:180,proteinG:20,carbG:12,
+    totalFatG:4,sourceUrl:'https://chobani.example/drink'};
+  const h=harness({usda:[],near:[{id:77,name:'Chobani Protein Drink',brand:'Chobani',gtin:'00818290015617'}],barcodes:['00818290015617'],enrichConflict:true,
+    web:async()=>({data:{foods:[drink]},sourceUrls:['https://chobani.example/drink'],searches:1})});
+  const [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  assert.deepEqual([(await h.sources.createFoodFromSource(candidate.sourceId)).foodId,h.calls.create.length],[77,0]);
 });
