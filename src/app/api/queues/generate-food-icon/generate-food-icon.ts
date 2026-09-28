@@ -117,16 +117,19 @@ async function getFoodItem(foodId: number) {
 }
 
 // Generates an icon for the food item and uploads it to storage
-export async function generateAndUploadIcon(foodName: string, foodId: number) {
-  const imageBuffer = await generateIcon(foodName)
+/** Draws and stores an icon for a food. look optionally describes the real product (shape and colours, never text or
+ * logos) so a branded item resembles what the user sees. */
+export async function generateAndUploadIcon(foodName: string, foodId: number, look?: string) {
+  const imageBuffer = await generateIcon(foodName, look)
   const foodImageId = await uploadImageAndGetId(foodName, foodId, imageBuffer)
 
   return foodImageId
 }
 
 /** One simple subject per icon: the food alone, so it suits the food's variants and category. */
-export const iconPrompt = (foodName: string) =>
+export const iconPrompt = (foodName: string, look?: string) =>
   `Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. ` +
+  (look ? `The real product looks like this; use its shape and colours only: ${look} ` : "") +
   `Show only ${foodName} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it; ` +
   `use a plate, bowl, cup or glass only if the food is normally eaten from one. A plain drink, oil, spread or powder ` +
   `that would look like others may show one small whole ingredient beside it (almonds for almond milk). Keep it simple so it stays useful ` +
@@ -134,27 +137,27 @@ export const iconPrompt = (foodName: string) =>
   `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`
 
 // Icons go through OpenRouter's image endpoint like every other model call (same model, same transparent PNG).
-const requestIcon = (apiKey: string, foodName: string) => fetch("https://openrouter.ai/api/v1/images", {
+const requestIcon = (apiKey: string, foodName: string, look?: string) => fetch("https://openrouter.ai/api/v1/images", {
   method:"POST",
   headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},
   signal:AbortSignal.timeout(90000),
   body:JSON.stringify({
     model:IMAGE_MODEL,
-    prompt:iconPrompt(foodName),
+    prompt:iconPrompt(foodName, look),
     n:1,size:"1024x1024",quality:"medium",background:"transparent",output_format:"png"
   })
 })
 
 // The image model returns PNG bytes with an alpha channel directly.
-async function generateIcon(foodName: string) {
+async function generateIcon(foodName: string, look?: string) {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY
   if (!apiKey) throw new Error("OpenRouter is not configured")
   // Bursts are rate-limited (429): wait and try again. Missing credits (402) will not recover by waiting.
-  let response = await requestIcon(apiKey, foodName)
+  let response = await requestIcon(apiKey, foodName, look)
   for (let attempt = 1; response.status === 429 && attempt <= 3; attempt++) {
     await response.body?.cancel()
     await new Promise(resolve => setTimeout(resolve, 15000 * attempt))
-    response = await requestIcon(apiKey, foodName)
+    response = await requestIcon(apiKey, foodName, look)
   }
   if (!response.ok) {await response.body?.cancel();throw new Error(`Image generation failed (${response.status})`)}
   const result=await response.json()
