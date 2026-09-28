@@ -72,13 +72,20 @@ export async function listVisibleFoods(photoUrls: URL[], userText: string,
   if (!response.ok) { await response.body?.cancel(); return [] }
   try {
     const parsed = JSON.parse((await response.json()).choices?.[0]?.message?.content ?? "{}") as { foods?: Record<string, unknown>[] }
-    const amount = (value: unknown, max: number) => typeof value === "number" && value >= 0 && value < max ? value : null
-    return (parsed.foods ?? []).flatMap(item => typeof item.food === "string" && item.food.trim()
-      ? [{ food: shortName(item.food), detail: typeof item.detail === "string" ? item.detail.slice(0, 120) : "",
-        grams: amount(item.estimatedGrams, 5000) || null,
-        estimate: { kcal: amount(item.estimatedKcal, 10000), proteinG: amount(item.estimatedProteinG, 1000),
-          carbG: amount(item.estimatedCarbG, 1000), totalFatG: amount(item.estimatedFatG, 1000) } }] : []).slice(0, 8)
+    return (parsed.foods ?? []).flatMap(item => { const food = visibleFood(item); return food ? [food] : [] }).slice(0, 8)
   } catch { return [] }
+}
+
+const amount = (value: unknown, max: number) => typeof value === "number" && value >= 0 && value < max ? value : null
+
+/** One listed component ({food, detail?, estimatedGrams, estimatedKcal, ...}), or null without a name. Implausible
+ * amounts become unknown. */
+export function visibleFood(item: Record<string, unknown>): VisibleFood | null {
+  if (typeof item.food !== "string" || !item.food.trim()) return null
+  return { food: shortName(item.food), detail: typeof item.detail === "string" ? item.detail.slice(0, 120) : "",
+    grams: amount(item.estimatedGrams, 5000) || null,
+    estimate: { kcal: amount(item.estimatedKcal, 10000), proteinG: amount(item.estimatedProteinG, 1000),
+      carbG: amount(item.estimatedCarbG, 1000), totalFatG: amount(item.estimatedFatG, 1000) } }
 }
 
 const COMPARE = `A first look at the user's meal photos found the components below. The plan logged the foods below, with

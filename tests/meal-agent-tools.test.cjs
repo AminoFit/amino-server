@@ -137,3 +137,41 @@ test('the first look becomes a greyed preview for the app; its estimates never r
   assert.match(firstPrompt,/cooked rice/);
   assert.doesNotMatch(firstPrompt,/234|180/,"the first look's portions and estimates stay out of the agent's evidence");
 });
+
+test('a text meal streams its preview item by item, gains icons after, and none of it reaches the agent',async()=>{
+  const stages=[],searched=[];let firstPrompt,resolveStream;
+  const streamed=new Promise(resolve=>{resolveStream=resolve});
+  const good=plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false},
+    {sourceText:'a banana',itemIndexes:[],historySelectionIndexes:[],omitted:true}]);
+  const rice={id:3,name:'White rice, cooked',servingGrams:100,kcal:130,proteinG:2.7,carbG:28,totalFatG:0.3};
+  const withNutrition={...evidence(searched),async searchFoods(query){searched.push(query);return {candidates:[],foods:query==='rice'?[rice]:[]}}};
+  await resolveMeal({...input,attachmentIds:[]},{evidence:withNutrition,sources:noSources,readBarcode:async()=>null,loadPhotos:async()=>[],
+    textFoods:async(text,onFoods)=>{
+      const foods=[{food:'rice',detail:'',grams:150,estimate:{kcal:195,proteinG:4,carbG:42,totalFatG:0.4}},
+        {food:'banana',detail:'',grams:118,estimate:{kcal:105,proteinG:1.3,carbG:27,totalFatG:0.4}}];
+      onFoods(foods.slice(0,1));onFoods(foods);resolveStream();return foods},
+    onProgress:(stage,preview)=>{stages.push([stage,preview?.map(p=>[p.name,p.kcal,p.foodId])])},
+    generate:async options=>{firstPrompt??=JSON.stringify(options.messages);await streamed;return {output:good,response:{messages:[]}}},
+    model:()=>({id:'test',provider:'test',model:{}})});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(stages.filter(([stage])=>stage==='found').slice(0,3),[['found',[['rice',195,null]]],
+    ['found',[['rice',195,null],['banana',105,null]]],['found',[['rice',195,3],['banana',105,null]]]],
+    'one update per completed item, then again with catalogue candidates for icons');
+  assert.ok(searched.includes('rice')&&searched.includes('banana'));
+  assert.doesNotMatch(firstPrompt,/195|118/,"the preview's portions and estimates stay out of the agent's evidence");
+});
+
+test('streamTextFoods emits the list so far after each completed element and drops unnamed ones',async()=>{
+  const {streamTextFoods}=require('../src/mealResolution/textPreview');
+  const updates=[];let request;
+  const stream=options=>{request=options;return {elementStream:(async function*(){
+    yield {food:'flat white',estimatedGrams:240,estimatedKcal:120,estimatedProteinG:7,estimatedCarbG:10,estimatedFatG:6};
+    yield {food:' ',estimatedGrams:10};
+    yield {food:'banana bread',estimatedGrams:90000,estimatedKcal:320,estimatedProteinG:5,estimatedCarbG:50,estimatedFatG:12}})()}};
+  const foods=await streamTextFoods('a flat white and banana bread',found=>updates.push(found.map(f=>f.food)),
+    {stream,env:{OPENROUTER_API_KEY:'k'}});
+  assert.deepEqual(updates,[['flat white'],['flat white','banana bread']]);
+  assert.equal(foods[1].grams,null,'an implausible amount becomes unknown');
+  assert.match(request.prompt,/"a flat white and banana bread"/,'the description goes in as quoted data');
+  assert.deepEqual(await streamTextFoods('eggs',()=>{},{stream,env:{}}),[],'no key, no call');
+});

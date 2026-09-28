@@ -137,15 +137,22 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
  * whether a delivery is allowed to commit; this function never trusts the queue. */
 /** Best-effort progress for the app while the meal resolves: the stage, and the preview once the first look at a
  * photo found the foods (each with its catalogue candidate's icon). Only this worker's claim can write it. */
+const STAGE_ORDER:Record<MealProgressStage,number>={reading:0,matching:0,found:1,checking:2,saving:3}
+
+/** Reports go out one at a time, in order, and the stage never moves back: a preview that finishes streaming after the
+ * agent started checking updates the rows but keeps "checking". */
 function progressReporter(operationId:string,workerToken:string) {
   const startedAt=new Date().toISOString()
-  let preview:MealPreviewItem[]|undefined
-  return async(stage:MealProgressStage,next?:MealPreviewItem[])=>{
+  let preview:MealPreviewItem[]|undefined,current:MealProgressStage|undefined,queue=Promise.resolve()
+  const send=async(stage:MealProgressStage,next?:MealPreviewItem[])=>{
+    if(current&&STAGE_ORDER[stage]<STAGE_ORDER[current]) stage=current
+    current=stage
     if(next) preview=await withIcons(next).catch(()=>next)
     const {error}=await (createAdminSupabase() as any).rpc("report_meal_operation_progress",{p_operation_id:operationId,
       p_worker_token:workerToken,p_progress:{stage,startedAt,...(preview?{preview}:{})}})
     if(error) console.warn("meal_progress_not_reported",{operationId,stage,error:error.message})
   }
+  return (stage:MealProgressStage,next?:MealPreviewItem[])=>queue=queue.then(()=>send(stage,next)).catch(()=>{})
 }
 
 async function withIcons(preview:MealPreviewItem[]) {

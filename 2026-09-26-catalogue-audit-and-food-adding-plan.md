@@ -434,7 +434,7 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 2. **Early preview** (server plus app):
    - The first look at the photos (about 3 s in) already lists the components with catalogue candidates. Add an estimated grams per component to that call (no extra cost), and publish preview items to `Message.progress.preview`: name, the candidate's icon, and estimated calories and macros.
    - The app shows them greyed out ("estimating") under the pending message and replaces them when the plan is saved. This should appear about 4–6 s after submitting a photo, instead of 20 s.
-   - Text meals resolve in about 5 s; a cheap text first look could preview those too if needed.
+   - Text meals: a streamed text first look now previews those too (done, see below).
 3. **Immediate, honest feedback** (app):
    - Create the pending row as soon as a photo is captured (showing the local photo) and during transcription.
    - Replace the static box with an animated state and stage text.
@@ -454,6 +454,12 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
   - `MealProgressView` replaces the static "Processing…" box with a spinner and the stage text ("Reading your photo…", "Found 4 foods · estimating…", "Checking portions…", "Saving…").
   - The preview shows as faded rows with icon, name, "~150 g · estimate" and "~195 kcal", sized like logged food rows. The saved foods replace them.
   - Validated with `npm run check` and a clean `npm run ios:prod` build. Every app step needs the `npm run ios:prod` build check.
+- **Streamed text preview done (2026-09-27):** text meals get the same preview, streamed item by item.
+  - This brings back the idea of the old streamed JSON parser (`extractLatestValidJSON`, removed in 981291c): each food goes out as soon as the model finishes it. The AI SDK's `Output.array` element stream (`streamTextFoods` in `textPreview.ts`) now does the parsing.
+  - It's a Flash call with minimal reasoning, in parallel with the agent. It never feeds the agent. Catalogue icons follow once the list is complete.
+  - Live: the first item arrives about 1.9–2.4 s after the start, then about one every 0.25 s. The list stays in the user's language ("café con leche", "tostadas").
+  - The worker now sends progress reports one at a time and in order, and the stage never moves back: a preview that finishes after checking has started updates the rows but keeps "Checking portions…".
+  - No app change was needed.
 
 ## Open decisions
 
