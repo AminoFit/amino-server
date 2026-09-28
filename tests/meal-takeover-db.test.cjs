@@ -54,10 +54,19 @@ test('the operation pipeline can take over app messages without locking the app 
 
       const token=randomUUID();
       assert.equal((await call(db,claimSql,[opId,token,45])).messageId,900);
+      // Progress: only the current worker reports, only on its message, and never after the meal is saved.
+      const progressSql='select public.report_meal_operation_progress($1,$2,$3) result';
+      const preview={stage:'found',preview:[{name:'Cheerios Protein',kcal:150}]};
+      assert.equal(await call(db,progressSql,[opId,token,preview]),true);
+      assert.deepEqual((await db.query('select progress from public."Message" where id=900')).rows[0].progress,preview);
+      assert.equal(await call(db,progressSql,[opId,randomUUID(),{stage:'forged'}]),false,'a stale or foreign worker cannot report');
+      assert.deepEqual((await db.query('select progress from public."Message" where id=900')).rows[0].progress,preview);
+      await assert.rejects(call(db,progressSql,[opId,token,JSON.stringify([1,2])]),/Invalid meal progress/);
       const plan={schemaVersion:1,originalText:'',consumedOn,input:{attachmentIds:[900]},
         items:[{logicalItemId:randomUUID(),foodId:7001,servingId:7001,servingAmount:1,loggedUnit:'cup',grams:37,
           nutrition:{kcal:150,proteinG:8,carbG:24,totalFatG:2.5}}]};
       assert.equal((await call(db,publishSql,[opId,token,plan])).publishedRevision,1);
+      assert.equal(await call(db,'select public.report_meal_operation_progress($1,$2,$3) result',[opId,token,{stage:'late'}]),false,'no progress after saving');
       const published=(await db.query('select status,"itemsProcessed","itemsToProcess","activeOperationId","operationOwned" from public."Message" where id=900')).rows[0];
       assert.deepEqual(published,{status:'RESOLVED',itemsProcessed:1,itemsToProcess:1,activeOperationId:null,operationOwned:false});
 

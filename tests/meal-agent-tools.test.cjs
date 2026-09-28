@@ -109,3 +109,31 @@ test('a first look at the photos reaches the first turn with catalogue candidate
   assert.match(firstPrompt,/White rice, cooked/,'candidates come with the list');
   assert.deepEqual(result.visibleFoods.map(v=>v.food),['white rice','banana']);
 });
+
+test('the first look becomes a greyed preview for the app; its estimates never reach the agent',async()=>{
+  const {buildPreview}=require('../src/mealResolution/progress');
+  const rice={id:3,name:'Jasmine Rice (dry)',servingGrams:100,kcal:360,proteinG:7,carbG:79,totalFatG:0.6};
+  assert.deepEqual(buildPreview([
+    {food:'cooked jasmine rice',detail:'bowl',grams:180,estimate:{kcal:234,proteinG:4.9,carbG:50,totalFatG:0.5},catalogue:[rice]},
+    {food:'mystery sauce',detail:'',grams:20,estimate:{kcal:null,proteinG:null,carbG:null,totalFatG:null},catalogue:[]},
+    {food:'banana',detail:'',grams:120,catalogue:[{...rice,id:4,name:'Banana',kcal:89,proteinG:1.1,carbG:23,totalFatG:0.3}]}]),[
+    {name:'cooked jasmine rice',foodId:3,grams:180,kcal:234,proteinG:4.9,carbG:50,totalFatG:0.5},
+    {name:'mystery sauce',foodId:null,grams:20,kcal:null,proteinG:null,carbG:null,totalFatG:null},
+    {name:'banana',foodId:4,grams:120,kcal:106.8,proteinG:1.3,carbG:27.6,totalFatG:0.4}],
+    'the first look names and estimates (cooked, not the dry candidate); a candidate lends its density only without an estimate');
+  const stages=[];let firstPrompt;
+  const good=plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false},
+    {sourceText:'a banana',itemIndexes:[],historySelectionIndexes:[],omitted:true}]);
+  // Catalogue search returns full summaries (serving weight and nutrients), as in production.
+  const withNutrition={...evidence(),async searchFoods(){return {candidates:[{id:3,name:rice.name}],foods:[rice]}}};
+  await resolveMeal(input,{evidence:withNutrition,sources:noSources,readBarcode:async()=>null,
+    loadPhotos:async()=>[{id:7,url:new URL('https://photos.example/7.jpg')}],
+    visible:async()=>[{food:'cooked rice',detail:'bowl',grams:180,estimate:{kcal:234,proteinG:4.9,carbG:50,totalFatG:0.5}}],
+    onProgress:(stage,preview)=>{stages.push([stage,preview?.map(p=>[p.name,p.kcal,p.foodId])])},
+    generate:async options=>{firstPrompt??=JSON.stringify(options.messages);return {output:good,response:{messages:[]}}},
+    model:()=>({id:'test',provider:'test',model:{}})});
+  assert.deepEqual(stages,[['found',[['cooked rice',234,null]]],['found',[['cooked rice',234,3]]],['checking',undefined]],
+    'the preview goes out at once, then again with the candidate for its icon');
+  assert.match(firstPrompt,/cooked rice/);
+  assert.doesNotMatch(firstPrompt,/234|180/,"the first look's portions and estimates stay out of the agent's evidence");
+});

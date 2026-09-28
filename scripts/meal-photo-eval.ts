@@ -109,8 +109,12 @@ async function run(test: Case) {
   const generate = (async options => { const result = await generateText(options)
     for (const step of result.steps ?? []) cost += Number((step.providerMetadata?.openrouter as { usage?: { cost?: number } } | undefined)?.usage?.cost ?? 0)
     return result }) as typeof generateText
-  const deps = { evidence, sources, barcodes, generate, model: agentModel as never }
+  // The preview the app would show greyed out after the first look (stage "found").
+  let preview: { name: string; grams: number | null; kcal: number | null }[] | undefined, firstPreviewMs: number | undefined
   const started = Date.now()
+  const deps = { evidence, sources, barcodes, generate, model: agentModel as never,
+    onProgress: (stage: string, items?: { name: string; grams: number | null; kcal: number | null }[]) => {
+      if (stage === "found") { preview = items; firstPreviewMs ??= Date.now() - started } } }
   let result = await resolveMeal(input, deps)
   let plan: Plan
   try { plan = await compileCheckedMealPlan(input, result, { secondLook: !result.checked }) }
@@ -123,7 +127,8 @@ async function run(test: Case) {
   const problems = test.expect(plan, evidence.foods)
   return { messageId: test.messageId, pass: problems.length === 0, problems, ms: Date.now() - started, agentCostUsd: Number(cost.toFixed(4)), steps: result.steps, checked: result.checked,
     stages: Object.fromEntries(Object.entries((result.timeline ?? []).reduce<Record<string, number>>((sum, t) => ({ ...sum, [t.stage]: (sum[t.stage] ?? 0) + t.ms }), {}))), barcodes: result.barcodes,
-    created, items: named(plan, evidence.foods).map(item => `${item.food?.name} ${Math.round(item.grams)}g ${item.loggedUnit} (${item.origin})`) }
+    created, items: named(plan, evidence.foods).map(item => `${item.food?.name} ${Math.round(item.grams)}g ${item.loggedUnit} (${item.origin})`),
+    firstPreviewMs, preview: preview?.map(p => `${p.name} ${p.grams ?? "?"}g ${p.kcal ?? "?"}kcal`) }
 }
 
 void (async () => {

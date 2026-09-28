@@ -8,7 +8,7 @@ const exportsOf=file=>{const module={exports:{}};
   vm.runInNewContext(ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:module.exports});
   return module.exports};
 
-const MIGRATIONS=['20260924232454_meal_operations.sql','20260926000000_meal_takeover.sql'];
+const MIGRATIONS=['20260924232454_meal_operations.sql','20260926000000_meal_takeover.sql','20260927050000_meal_progress.sql'];
 
 function assertDisposable(connectionString){
   const url=new URL(connectionString);

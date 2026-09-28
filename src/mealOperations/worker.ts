@@ -4,6 +4,7 @@ import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
 import { type PublishedPlan } from "@/mealResolution/compile"
 import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
 import { resolveMeal } from "@/mealResolution/resolve"
+import type { MealPreviewItem, MealProgressStage } from "@/mealResolution/progress"
 import { claimMealOperation, finishMealOperation, getMealSnapshot, publishMealOperation } from "./service"
 import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
 
@@ -134,10 +135,39 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
 
 /** Queue delivery is at least once. The database lease and generation decide
  * whether a delivery is allowed to commit; this function never trusts the queue. */
+/** Best-effort progress for the app while the meal resolves: the stage, and the preview once the first look at a
+ * photo found the foods (each with its catalogue candidate's icon). Only this worker's claim can write it. */
+function progressReporter(operationId:string,workerToken:string) {
+  const startedAt=new Date().toISOString()
+  let preview:MealPreviewItem[]|undefined
+  return async(stage:MealProgressStage,next?:MealPreviewItem[])=>{
+    if(next) preview=await withIcons(next).catch(()=>next)
+    const {error}=await (createAdminSupabase() as any).rpc("report_meal_operation_progress",{p_operation_id:operationId,
+      p_worker_token:workerToken,p_progress:{stage,startedAt,...(preview?{preview}:{})}})
+    if(error) console.warn("meal_progress_not_reported",{operationId,stage,error:error.message})
+  }
+}
+
+async function withIcons(preview:MealPreviewItem[]) {
+  const ids=[...new Set(preview.flatMap(item=>item.foodId?[item.foodId]:[]))]
+  if(!ids.length) return preview
+  const {data,error}=await createAdminSupabase().from("FoodItemImages")
+    .select("foodItemId,FoodImage(id,pathToImage,downvotes)").in("foodItemId",ids)
+  if(error) throw error
+  // The app's rule: fewest downvotes, then the newest icon.
+  const best=new Map<number,{id:number;pathToImage:string;downvotes:number}>()
+  for(const row of (data??[]) as unknown as {foodItemId:number;FoodImage:{id:number;pathToImage:string;downvotes:number}|null}[]) {
+    const image=row.FoodImage, current=best.get(row.foodItemId)
+    if(image&&(!current||image.downvotes<current.downvotes||image.downvotes===current.downvotes&&image.id>current.id)) best.set(row.foodItemId,image)
+  }
+  return preview.map(item=>({...item,icon:item.foodId?best.get(item.foodId)?.pathToImage??null:null}))
+}
+
 export async function processMealOperation(operationId:string) {
   const workerToken=randomUUID()
   const claim=await claimMealOperation(operationId,workerToken)
   if(!claim) return {state:"ignored"}
+  const report=progressReporter(operationId,workerToken)
   const started=performance.now()
   let timeline:{stage:string;ms:number}[]=[]
   try {
@@ -155,7 +185,8 @@ export async function processMealOperation(operationId:string) {
         answers:claim.answers,previousMeal:snapshot??message,
         // The current app cannot show questions: taken-over meals resolve with assumptions.
         clarificationAllowed:raw.takeover!==true}
-      let result=await resolveMeal(input)
+      await report(input.attachmentIds.length?"reading":"matching").catch(()=>{})
+      let result=await resolveMeal(input,{onProgress:report})
       timeline=result.timeline??[]
       if(result.proposal.outcome==="needs_clarification"&&!input.clarificationAllowed)
         result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"})
@@ -181,6 +212,7 @@ export async function processMealOperation(operationId:string) {
         plan=await compileCheckedMealPlan(input,repaired,{secondLook:false})
       }
     } else plan=await structuredPlan(claim)
+    await report("saving").catch(()=>{})
     const published=await publishMealOperation(operationId,workerToken,plan)
     // After publication and best-effort: link or generate icons for foods without one.
     await queueMissingIcons(plan.items.map(item=>item.foodId)).catch(error=>

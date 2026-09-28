@@ -442,7 +442,14 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 4. **No layout jump** (app): keep the pending section's key when foods arrive, and size preview rows like final rows.
 5. **Faster delivery** (app): use realtime payloads directly instead of re-fetching, keep the channel alive under modals, and shorten the poll while a meal is pending.
 
-**Order:** 1 and 2 (server first, then the app's greyed preview rows), then 3 and 4, then 5. Every app step needs the `npm run ios:prod` build check.
+**Order:** 1 and 2 (server first, then the app's greyed preview rows), then 3 and 4, then 5.
+
+**Server side of 1 and 2 done (2026-09-27):**
+- **Progress:** migration `20260927050000_meal_progress` adds `Message.progress` and `report_meal_operation_progress`. Only the operation's current worker (claim token and lease) can write, and only for its active message. It's refused after saving.
+- **Stages:** the worker writes reading (or matching) → found (with the preview) → checking → saving.
+- **Preview:** the first look at the photos now also estimates grams, calories and macros for what it sees. The preview goes out as soon as it answers (about 5–6 s after the photo, against 14–64 s for the saved meal on three test photos), in the first look's own words ("avocado slices", "jasmine rice 150 g 195 kcal", cooked). It's sent again with catalogue icons about 1 s later.
+- **Agent unchanged:** the estimates never reach the agent.
+- **App (next, with the ios:prod build):** read `Message.progress` (the Watermelon schema needs a version bump and migration), show the stage while `PROCESSING`, show the preview as greyed-out "estimating" rows, and replace them when the saved foods arrive. Every app step needs the `npm run ios:prod` build check.
 
 ## Open decisions
 
