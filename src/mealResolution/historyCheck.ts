@@ -1,6 +1,6 @@
 import { selectWithJev } from "@/ai/jev"
 import { compileMealPlan, type PublishedPlan } from "./compile"
-import { missingVisibleFoods } from "./coverageCheck"
+import { missingFromVisibleList, missingVisibleFoods } from "./coverageCheck"
 import type { MealResolutionInput, MealResolutionResult } from "./resolve"
 
 const POLICY = `Decide whether the user's own words explicitly refer to a meal they logged before, for example
@@ -23,7 +23,8 @@ export async function refersToPastMeal(input: Pick<MealResolutionInput, "origina
 /** Compile, refuse to copy past meals the user did not refer to (a lookalike photo is not a
  * reference) and, on a first attempt, take a second look at the photos for unlogged foods. */
 export async function compileCheckedMealPlan(input: MealResolutionInput, result: MealResolutionResult,
-  deps: { jev?: typeof selectWithJev; missing?: typeof missingVisibleFoods; secondLook?: boolean } = {}): Promise<PublishedPlan> {
+  deps: { jev?: typeof selectWithJev; missing?: typeof missingVisibleFoods; missingFromList?: typeof missingFromVisibleList;
+    secondLook?: boolean } = {}): Promise<PublishedPlan> {
   const plan = compileMealPlan(input, result)
   if (plan.items.some(item => item.origin === "history") && !(await refersToPastMeal(input, deps)))
     throw new Error("history_not_referenced")
@@ -36,7 +37,10 @@ export async function compileCheckedMealPlan(input: MealResolutionInput, result:
       const contains = food?.description && !/^(source:|https?:|estimate:)/i.test(food.description.trim()) ? food.description.slice(0, 240) : null
       return { name, contains }
     })
-    const missing = await (deps.missing ?? missingVisibleFoods)(result.photoUrls, input.originalText, logged).catch(() => [])
+    // With a first look at the photos, the check compares text (fast); otherwise it looks at the photos again.
+    const missing = await (result.visibleFoods?.length
+      ? (deps.missingFromList ?? missingFromVisibleList)(result.visibleFoods, logged)
+      : (deps.missing ?? missingVisibleFoods)(result.photoUrls, input.originalText, logged)).catch(() => [])
     if (missing.length) throw new Error(`missing_visible_food: ${missing.join(", ")}`)
   }
   return plan

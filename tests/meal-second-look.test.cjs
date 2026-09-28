@@ -30,3 +30,16 @@ test('no second look without photos, on the repair turn, or when nothing is miss
   assert.equal(calls,0);
   assert.equal((await compileCheckedMealPlan(input,result([new URL('https://photos.example/1.jpg')]),{missing:async()=>[]})).items.length,1);
 });
+
+test('with a first look at the photos, the final check compares text instead of looking again',async()=>{
+  const photos=[new URL('https://photos.example/1.jpg')];
+  let listed,looked=0;
+  const withList={...result(photos),visibleFoods:[{food:'tuna ceviche',detail:'bowl'},{food:'mango',detail:'cubes on top'}]};
+  const missingFromList=async(visible,logged)=>{listed={visible,logged};return ['mango']};
+  await assert.rejects(compileCheckedMealPlan(input,withList,{missingFromList,missing:async()=>{looked++;return []}}),/missing_visible_food: mango/);
+  assert.equal(looked,0,'no second image call');
+  assert.deepEqual(listed.visible.map(v=>v.food),['tuna ceviche','mango']);
+  assert.equal(listed.logged[0].name,'Tuna Ceviche');
+  assert.equal((await compileCheckedMealPlan(input,{...result(photos),visibleFoods:[]},{missingFromList:async()=>{throw new Error('unused')},missing:async()=>{looked++;return []}})).items.length,1);
+  assert.equal(looked,1,'without a first look the photos are checked as before');
+});

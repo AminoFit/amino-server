@@ -94,3 +94,18 @@ test('an unparseable model answer is retried once instead of failing the meal',a
   assert.equal(calls,2);
   assert.equal(result.checked,true);
 });
+
+test('a first look at the photos reaches the first turn with catalogue candidates for each component',async()=>{
+  const searched=[];let firstPrompt;
+  const good=plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false},
+    {sourceText:'a banana',itemIndexes:[],historySelectionIndexes:[],omitted:true}]);
+  const result=await resolveMeal(input,{evidence:evidence(searched),sources:noSources,readBarcode:async()=>null,
+    loadPhotos:async()=>[{id:7,url:new URL('https://photos.example/7.jpg')}],
+    visible:async()=>[{food:'white rice',detail:'bowl'},{food:'banana',detail:'on the side'}],
+    generate:async options=>{firstPrompt??=JSON.stringify(options.messages);return {output:good,response:{messages:[]}}},
+    model:()=>({id:'test',provider:'test',model:{}})});
+  assert.deepEqual(searched,['white rice','banana']);
+  assert.match(firstPrompt,/visibleFoods/);
+  assert.match(firstPrompt,/White rice, cooked/,'candidates come with the list');
+  assert.deepEqual(result.visibleFoods.map(v=>v.food),['white rice','banana']);
+});

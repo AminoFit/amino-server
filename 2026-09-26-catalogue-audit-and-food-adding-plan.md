@@ -389,6 +389,30 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 
 ---
 
+## Photo logging speed (done 2026-09-27)
+
+- **First look:** as soon as the photos load, one Flash call (`listVisibleFoods`, minimal reasoning, about 3 s) lists the components the user is eating, alongside the existing pre-loading. Each component is looked up in the catalogue, and the first turn gets the list with candidates.
+- **Final check:** it compares the plan with that list as text (`missingFromVisibleList`) instead of looking at the photos again. The photo check remains the fallback when there is no list.
+- **Result on the 16-photo eval:** median 25.3 s → 20.0 s, slowest 64 s → 53 s, model turns 3 → 2.5, check time down 63%, agent cost $0.38 → $0.33. Text eval 17/17.
+- **One ambiguous photo:** 30283's leaves are read as basil. The text never mentions a salad; the eval's "salad" expectation came from the retired pipeline's old log.
+- **Next speed step:** don't block the first turn on the first look (it sits in front of the first turn, 3–5 s).
+
+## App to-do (later; each app change needs the `npm run ios:prod` build check)
+
+1. **Hidden serving sizes:** `filterServings` (`components/AddFoodModal/AddFoodRow.tsx`) strips "(…)" qualifiers and keeps the lighter serving, so "can (12 fl oz)" and "can (16 fl oz)" become one option. Remove duplicates by the full name only.
+2. **Your own foods:** create a food by hand (type it or snap the label), and edit or delete your private foods. The UI is to be designed; the server side is done (B9).
+3. **Icons flash on screen change and when the food detail opens** (owner, 2026-09-27). Findings:
+   - The app renders icons with React Native `Image` (`FoodImageLoader` in `components/FoodLog/FoodItemRow.tsx`, and `screens/FoodInfoModal/FoodInfoModal.tsx`), which doesn't cache reliably across remounts.
+   - Log rows request `pathToImage + "?width=80&height=80"`, but public storage URLs ignore those parameters, so every 36 px row downloads the full 1024×1024 PNG (about 1 MB).
+   - Proposed fixes:
+     - Store a small WebP thumbnail (for example 160 px) when an icon is generated, server-side with `sharp`, and backfill existing icons.
+     - Render with `expo-image` (already a dependency) using `cachePolicy="memory-disk"` and a recycling key.
+     - Prefetch the icons for the visible day.
+     - Show a neutral placeholder instead of an empty frame.
+4. **Make logging feel faster** (owner, 2026-09-27):
+   - Report progress from the server as it happens ("Reading photo…", "Found 3 foods…"). The worker already records a stage timeline; write the current stage to the meal-operation row and let the app subscribe as it does for message status.
+   - Show a preview early: after the first look at the photos (about 3–5s, see the speed work), publish provisional items with names, icons and estimated calories and macros. The app shows them in a greyed-out "estimating" state and swaps in the final values when the plan is saved.
+
 ## Open decisions
 
 0. **A label that disagrees with an existing food: decided B (2026-09-27), implemented.** A disagreement (calories more than 10% apart) can be a regional variant, a new recipe or a misread photo.
