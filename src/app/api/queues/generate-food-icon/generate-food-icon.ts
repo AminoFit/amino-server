@@ -176,13 +176,19 @@ async function generateIcon(foodName: string, look?: string) {
 async function uploadImageAndGetId(foodName: string, foodId: number, imageBuffer: Buffer) {
   const imageName = generateImageName(foodName)
   const filePath = `public/${imageName}.png`
+  const thumbnailPath = `public/thumbs/${imageName}.webp`
 
-  // Upload the image to Supabase storage
-  await uploadFile(filePath, imageBuffer)
+  // The full image is kept; the app shows a 256 px WebP (about 6 KB instead of about 800 KB).
+  await uploadFile(filePath, imageBuffer, "image/png")
+  await uploadFile(thumbnailPath, await iconThumbnail(imageBuffer), "image/webp")
 
   // Insert a record into the FoodImage table and return the ID
-  return await insertFoodImageRecord(foodName, foodId, filePath)
+  return await insertFoodImageRecord(foodName, foodId, filePath, thumbnailPath)
 }
+
+/** The size the app displays icons at (up to 80 pt at 3x), as WebP with transparency. */
+export const iconThumbnail = (image: Buffer) =>
+  sharp(image).resize(256, 256, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).webp({ quality: 80 }).toBuffer()
 
 // Generates a unique name for the image using a hash
 function generateImageName(foodName: string) {
@@ -194,29 +200,32 @@ function generateImageName(foodName: string) {
   return hash.slice(0, 12) + "_" + slug
 }
 
-// Uploads a file to Supabase storage
-async function uploadFile(filePath: string, fileBuffer: Buffer) {
+// Uploads a file to Supabase storage. Icon files never change (each name is unique), so devices and the CDN may keep
+// them for a year.
+async function uploadFile(filePath: string, fileBuffer: Buffer, contentType: string) {
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, fileBuffer, {
-    contentType: "image/png"
+    contentType, cacheControl: "31536000"
   })
 
   if (error) throw error
 }
 
 // Inserts a record into the FoodImage table
-async function insertFoodImageRecord(foodName: string, foodId: number, filePath: string) {
+async function insertFoodImageRecord(foodName: string, foodId: number, filePath: string, thumbnailPath: string) {
   // Get the embedding for the foodName
   const embedding = (await getCachedOrFetchEmbeddings("BGE_BASE", [foodName]))[0].embedding
 
   // Construct the URL for the uploaded image
   const imageUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`
+  const thumbnailUrl = `${SupabaseURL}/storage/v1/object/public/${BUCKET_NAME}/${thumbnailPath}`
 
   // Insert the record into the FoodImage table
   const { data: createdFoodImage, error: createImageError } = await supabase
     .from("FoodImage")
     .insert([
       {
-        pathToImage: imageUrl,
+        pathToImage: thumbnailUrl,
+        originalPath: imageUrl,
         bgeBaseEmbedding: vectorToSql(embedding),
         imageDescription: foodName
       }

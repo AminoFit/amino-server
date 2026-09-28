@@ -413,6 +413,37 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
    - Report progress from the server as it happens ("Reading photo…", "Found 3 foods…"). The worker already records a stage timeline; write the current stage to the meal-operation row and let the app subscribe as it does for message status.
    - Show a preview early: after the first look at the photos (about 3–5s, see the speed work), publish provisional items with names, icons and estimated calories and macros. The app shows them in a greyed-out "estimating" state and swaps in the final values when the plan is saved.
 
+## Perceived logging speed: investigation (2026-09-27)
+
+**What the user sees today** (app plus the new server pipeline):
+1. **Submit:** the app writes one local `Message` (status `SENDING`) and nothing else.
+   - A photo from the button bar only creates it after the upload finishes.
+   - Voice from the button bar only creates it after the whole recording is transcribed (not streamed).
+2. **Before the server claims it:** "Food saved. Sending automatically…", which reads like an offline or retry state.
+3. **While resolving:** the `process-message-quick-log` POST returns within about a second, with status `PROCESSING`. The app then shows a static 60 px grey "Processing…" box (no spinner, no count, no elapsed time) for about 20 s for a photo, or about 5 s for text.
+4. **At the end:** the meal operation saves every item at once (atomic publish). The section switches from the pending-message key to a food-section key, so rows remount, the box is replaced by taller rows, and an inferred meal time can move the meal.
+   - The retired pipeline showed per-item "Researching…" rows; the new one has no intermediate rows at all.
+
+**How updates reach the app:**
+- A realtime subscription on `Message` and `LoggedFoodItem` collects only IDs and re-fetches them: 2–3 round trips through one serial queue.
+- A poll runs every 2 s plus fetch time.
+- Realtime and the poll stop while any modal is open.
+
+**Plan:**
+1. **Progress from the server** (server, small): a `Message.progress` column (stage, startedAt, preview). The worker writes accepted → reading the photo → found N foods → matching → checking → saved. The app already receives `Message` updates through realtime.
+2. **Early preview** (server plus app):
+   - The first look at the photos (about 3 s in) already lists the components with catalogue candidates. Add an estimated grams per component to that call (no extra cost), and publish preview items to `Message.progress.preview`: name, the candidate's icon, and estimated calories and macros.
+   - The app shows them greyed out ("estimating") under the pending message and replaces them when the plan is saved. This should appear about 4–6 s after submitting a photo, instead of 20 s.
+   - Text meals resolve in about 5 s; a cheap text first look could preview those too if needed.
+3. **Immediate, honest feedback** (app):
+   - Create the pending row as soon as a photo is captured (showing the local photo) and during transcription.
+   - Replace the static box with an animated state and stage text.
+   - Better copy than "Sending automatically…".
+4. **No layout jump** (app): keep the pending section's key when foods arrive, and size preview rows like final rows.
+5. **Faster delivery** (app): use realtime payloads directly instead of re-fetching, keep the channel alive under modals, and shorten the poll while a meal is pending.
+
+**Order:** 1 and 2 (server first, then the app's greyed preview rows), then 3 and 4, then 5. Every app step needs the `npm run ios:prod` build check.
+
 ## Open decisions
 
 0. **A label that disagrees with an existing food: decided B (2026-09-27), implemented.** A disagreement (calories more than 10% apart) can be a regional variant, a new recipe or a misread photo.
