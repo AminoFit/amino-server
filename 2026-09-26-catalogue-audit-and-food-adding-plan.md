@@ -449,7 +449,11 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 - **Stages:** the worker writes reading (or matching) → found (with the preview) → checking → saving.
 - **Preview:** the first look at the photos now also estimates grams, calories and macros for what it sees. The preview goes out as soon as it answers (about 5–6 s after the photo, against 14–64 s for the saved meal on three test photos), in the first look's own words ("avocado slices", "jasmine rice 150 g 195 kcal", cooked). It's sent again with catalogue icons about 1 s later.
 - **Agent unchanged:** the estimates never reach the agent.
-- **App (next, with the ios:prod build):** read `Message.progress` (the Watermelon schema needs a version bump and migration), show the stage while `PROCESSING`, show the preview as greyed-out "estimating" rows, and replace them when the saved foods arrive. Every app step needs the `npm run ios:prod` build check.
+- **App side done (2026-09-27):**
+  - `messages.progress` is in the Watermelon schema (v8, with a migration; the migration test upgrades from v6 and v7) and syncs through the existing message refresh.
+  - `MealProgressView` replaces the static "Processing…" box with a spinner and the stage text ("Reading your photo…", "Found 4 foods · estimating…", "Checking portions…", "Saving…").
+  - The preview shows as faded rows with icon, name, "~150 g · estimate" and "~195 kcal", sized like logged food rows. The saved foods replace them.
+  - Validated with `npm run check` and a clean `npm run ios:prod` build. Every app step needs the `npm run ios:prod` build check.
 
 ## Open decisions
 
