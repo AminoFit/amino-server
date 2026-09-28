@@ -28,6 +28,9 @@ import Pagination from "@/components/pagination/pagination"
 
 import { useRouter } from "next/navigation"
 
+// Database timestamps are UTC without a zone designator; the browser would read them as local time.
+const utcDate = (value: string) => new Date(/(?:Z|[+-]\d\d:?\d\d)$/i.test(value) ? value : `${value}Z`)
+
 const ITEMS_PER_PAGE = 10
 const MAX_VISIBLE_PAGES = 10
 
@@ -777,9 +780,9 @@ const MessagesOverview = () => {
               <>
                 <ul role="list" className="space-y-4">
                   {messages.map((message, index) => {
-                    const createdAt = message.createdAt ? new Date(message.createdAt).toLocaleString() : "N/A"
-                    const consumedAt = message.consumedOn ? new Date(message.consumedOn).toLocaleString() : "N/A"
-                    const resolvedAt = message.resolvedAt ? new Date(message.resolvedAt).toLocaleString() : "N/A"
+                    const createdAt = message.createdAt ? utcDate(message.createdAt).toLocaleString() : "N/A"
+                    const consumedAt = message.consumedOn ? utcDate(message.consumedOn).toLocaleString() : "N/A"
+                    const resolvedAt = message.resolvedAt ? utcDate(message.resolvedAt).toLocaleString() : "N/A"
                     const messageContent = message.content || ""
                     const statusLabel = message.status || "UNKNOWN"
                     const statusClass = STATUS_STYLES[statusLabel] ?? "bg-slate-200 text-slate-800 border border-slate-300"

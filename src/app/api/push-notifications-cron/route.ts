@@ -1,6 +1,7 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { Expo } from "expo-server-sdk"
 import { NotificationOptions } from "./notifications"
+import { validTimezone } from "@/mealOperations/instant"
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     return Response.json({ status: 500, body: "Error fetching users:" + error.message })
   }
 
-  console.log("Push tokens:", data)
+  console.log("Push tokens:", data.length)
 
   const toSend: Array<{ to: string; title: string; body: string }> = []
 
@@ -38,12 +39,12 @@ export async function GET(request: Request) {
     if (!pushToken) {
       continue
     }
+    // Each user's own clock (their profile timezone, which the app keeps on the phone's timezone). An unknown zone
+    // skips that user instead of aborting the job for everyone.
     const userTimeZone = pushToken.User?.tzIdentifier
-
-    const currentTime = new Date()
-    const userTime = new Date(currentTime.toLocaleString("en-US", { timeZone: userTimeZone }))
-
-    const userHour = userTime.getHours()
+    if (!validTimezone(userTimeZone)) continue
+    const userHour = Number(new Intl.DateTimeFormat("en-US", { timeZone: userTimeZone, hour: "numeric", hourCycle: "h23" })
+      .format(new Date()))
 
     const isLunchOrDinnerTime = userHour === 13 || userHour === 20
 
@@ -52,10 +53,13 @@ export async function GET(request: Request) {
     }
   }
 
-  try {
-    await expo.sendPushNotificationsAsync(toSend)
-  } catch (error) {
-    console.error(`Error sending push notification: ${error}`)
+  // Expo accepts at most 100 messages per request.
+  for (const chunk of expo.chunkPushNotifications(toSend)) {
+    try {
+      await expo.sendPushNotificationsAsync(chunk)
+    } catch (error) {
+      console.error(`Error sending push notification: ${error}`)
+    }
   }
 
   return Response.json({ status: 200, body: "Push notifications sent successfully" })

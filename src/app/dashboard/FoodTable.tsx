@@ -37,7 +37,7 @@ export function FoodTable() {
 
   const groups = _.chain(foods || [])
     .groupBy((food) => {
-      const consumptionTime = moment(food.consumedOn)
+      const consumptionTime = moment.utc(food.consumedOn).local()
       if (consumptionTime.hour() < 10) {
         return "breakfast"
       }

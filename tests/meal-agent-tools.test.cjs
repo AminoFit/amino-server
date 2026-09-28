@@ -175,3 +175,15 @@ test('streamTextFoods emits the list so far after each completed element and dro
   assert.match(request.prompt,/"a flat white and banana bread"/,'the description goes in as quoted data');
   assert.deepEqual(await streamTextFoods('eggs',()=>{},{stream,env:{}}),[],'no key, no call');
 });
+
+test("the agent gets the user's own clock for relative dates, not just a UTC instant and a zone name",async()=>{
+  let firstPrompt;
+  const good=plan([{sourceText:'150 g rice',itemIndexes:[0],historySelectionIndexes:[],omitted:false},
+    {sourceText:'a banana',itemIndexes:[],historySelectionIndexes:[],omitted:true}]);
+  await resolveMeal({...input,consumedOn:'2026-09-28T07:21:35Z',submittedAt:'2026-09-28T07:21:35Z',timezone:'America/Denver'},
+    {evidence:evidence(),sources:noSources,readBarcode:async()=>null,loadPhotos:async()=>[],
+      generate:async options=>{firstPrompt??=JSON.stringify(options.messages);return {output:good,response:{messages:[]}}},
+      model:()=>({id:'test',provider:'test',model:{}})});
+  assert.match(firstPrompt,/submittedAtLocal\\":\\"Monday 2026-09-28 01:21/);
+  assert.match(firstPrompt,/consumedOnLocal\\":\\"Monday 2026-09-28 01:21/);
+});

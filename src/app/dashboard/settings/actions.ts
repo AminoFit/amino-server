@@ -20,7 +20,9 @@ export async function updateUserSettings(updatedSettings: UserSettingsProps) {
   if (!user) {
     return new Response("User not found", { status: 404 })
   }
-  const { error } = await supabase.from("User").update({ updatedSettings }).eq("id", user.id)
+  // The settings are the columns themselves (this wrote a column named "updatedSettings", so nothing was saved).
+  const { error } = await supabase.from("User").update(updatedSettings).eq("id", user.id)
+  if (error) throw new Error(`Could not save settings: ${error.message}`)
 }
 
 type UnitPreference = "IMPERIAL" | "METRIC"

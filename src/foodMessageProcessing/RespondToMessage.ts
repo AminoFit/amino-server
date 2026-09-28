@@ -17,7 +17,8 @@ export async function GenerateResponseForQuickLog(
   user: Tables<"User">,
   inputMessageId: number,
   consumedOn: string = new Date().toISOString(),
-  isMessageBeingEdited: boolean = false
+  isMessageBeingEdited: boolean = false,
+  timezone: string | null = null
 ): Promise<ResponseForUser> {
   const loadedMessage = await GetMessageById(inputMessageId)
   if (!loadedMessage || loadedMessage.userId !== user.id || loadedMessage.deletedAt) {
@@ -30,5 +31,5 @@ export async function GenerateResponseForQuickLog(
       status: loadedMessage.status, itemsProcessed: loadedMessage.itemsProcessed ?? 0,
       itemsToProcess: loadedMessage.itemsToProcess ?? 0 }
   }
-  return takeOverMessage(user, loadedMessage, consumedOn, isMessageBeingEdited)
+  return takeOverMessage(user, loadedMessage, consumedOn, isMessageBeingEdited, { timezone })
 }

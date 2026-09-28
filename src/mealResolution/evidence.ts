@@ -1,4 +1,5 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { localTime, utcInstant } from "@/mealOperations/instant"
 import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 
@@ -18,7 +19,7 @@ export type HistoricalFood = {
   servingId:number|null;servingAmount:number|null;loggedUnit:string|null;
   groupId:string|null
 }
-export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;
+export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;consumedOnLocal?:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
 const catalogColumns = "id,name,brand,gtin,privateToUserId,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
@@ -51,7 +52,11 @@ export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:f
     gramsPerUnit:s.servingWeightGram&&s.defaultServingAmount?Math.round(s.servingWeightGram/Number(s.defaultServingAmount)*10)/10:null}))})
 
 export function createMealEvidence(userId:string, signal:AbortSignal,
-  db = createAdminSupabase()) {
+  db = createAdminSupabase(), timezone?:string) {
+  // History times go to the model as UTC ("…Z") plus the user's wall clock, so "same as yesterday's lunch" never
+  // depends on the model converting zones.
+  const when=(value:string)=>{const utc=utcInstant(value)
+    return {consumedOn:utc,...(timezone?{consumedOnLocal:localTime(utc,timezone)}:{})}}
   const discovered = new Set<number>()
   // Server reads bypass row security: only shared foods and this user's private foods are evidence.
   const visible = `privateToUserId.is.null,privateToUserId.eq.${userId}`
@@ -121,7 +126,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
         .range(cursor,cursor+20).abortSignal(signal)
       if (result.error) throw new Error("history_unavailable")
       return {status:"ok" as const,events:((result.data??[]) as any[]).slice(0,20).map(row=>({
-        messageId:row.id,originalText:row.content,consumedOn:row.consumedOn,
+        messageId:row.id,originalText:row.content,...when(row.consumedOn),
         foodCount:row.itemsToProcess,revision:row.publishedRevision})),
         nextCursor:(result.data?.length??0)>20?cursor+20:null}
     },
@@ -160,7 +165,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
         groups=Array.isArray((revision.data as any)?.snapshot?.groups)?(revision.data as any).snapshot.groups:[]
       }
       const event:MealEvent={messageId,revision:source.publishedRevision,originalText:source.content,
-        consumedOn:source.consumedOn,hasimages:source.hasimages,foods:foodsForEvent,groups}
+        ...when(source.consumedOn),hasimages:source.hasimages,foods:foodsForEvent,groups}
       events.set(messageId,event)
       return {status:"ok" as const,event}
     }

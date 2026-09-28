@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { operationClaim, type OperationRequest, type OperationClaim } from "./contracts"
+import { utcInstant } from "./instant"
 
 const admin = () => createAdminSupabase() as any
 const rpc = async (name:string,args:Record<string,unknown>) => {
@@ -17,7 +18,8 @@ export async function acceptMealOperation(userId:string,request:OperationRequest
   return rpc("accept_meal_operation",{
     p_user_id:userId,p_operation_id:request.operationId,p_client_meal_id:request.clientMealId,
     p_message_id:request.messageId,p_expected_revision:request.expectedPublishedRevision,
-    p_action:request.action,p_input:{...request.input,submittedAt:request.submittedAt,
+    // The database stores UTC wall-clock values: an offset would be dropped by its timestamp casts.
+    p_action:request.action,p_input:{...request.input,consumedOn:utcInstant(request.input.consumedOn),submittedAt:utcInstant(request.submittedAt),
       timezone:request.timezone,locale:request.locale??null},p_payload_hash:operationHash(request)
   }) as Promise<{operationId:string;messageId:number;generation:number;operationVersion:number;
     state:string;publishedRevision:number;result?:unknown}>

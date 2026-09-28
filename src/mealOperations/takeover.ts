@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { acceptMealOperation } from "./service"
 import { dispatchMealOperation } from "./dispatch"
+import { utcInstant, validTimezone } from "./instant"
 import type { OperationRequest } from "./contracts"
 import type { Tables } from "types/supabase"
 
@@ -17,17 +18,19 @@ type Reply = { resultMessage: string; status: "PROCESSING" | "RESOLVED" | "FAILE
  * pipeline. Publication writes the same LoggedFoodItem rows the app already reads. */
 export async function takeOverMessage(user: Pick<Tables<"User">, "id" | "tzIdentifier">, message: Tables<"Message">,
   consumedOn: string, editing: boolean, deps: { accept?: typeof acceptMealOperation; dispatch?: typeof dispatchMealOperation;
-    db?: ReturnType<typeof createAdminSupabase>; /** A deliberate reprocess (not an app retry) needs a new operation. */ nonce?: string } = {}): Promise<Reply> {
+    db?: ReturnType<typeof createAdminSupabase>; /** A deliberate reprocess (not an app retry) needs a new operation. */ nonce?: string;
+    /** The phone's timezone at submission; preferred over the profile, which lags behind a traveller. */ timezone?: string | null } = {}): Promise<Reply> {
   const db = deps.db ?? createAdminSupabase()
   const photos = await db.from("UserMessageImages").select("id").eq("messageId", message.id).eq("userId", user.id).order("id").limit(11)
   if (photos.error) throw new Error("media_evidence_unavailable")
   const revision = (message as { publishedRevision?: number }).publishedRevision ?? 0
-  const input = { originalText: message.content ?? "", consumedOn, attachmentIds: (photos.data ?? []).map(photo => photo.id).slice(0, 10) }
+  const input = { originalText: message.content ?? "", consumedOn: utcInstant(consumedOn), attachmentIds: (photos.data ?? []).map(photo => photo.id).slice(0, 10) }
   const seed = (editing ? `edit:${message.id}:${revision}:${createHash("sha256").update(JSON.stringify(input)).digest("hex")}` : `create:${message.id}`) +
     (deps.nonce ? `:${deps.nonce}` : "")
   const request = { schemaVersion: 1, operationId: stableUuid(`takeover:${seed}`), clientMealId: stableUuid(`meal:${message.id}`),
     messageId: message.id, expectedPublishedRevision: editing ? revision : null, action: editing ? "replace" : "create",
-    submittedAt: new Date(`${message.createdAt}Z`).toISOString(), timezone: user.tzIdentifier || "UTC", locale: null,
+    submittedAt: utcInstant(message.createdAt),
+    timezone: validTimezone(deps.timezone) ? deps.timezone : validTimezone(user.tzIdentifier) ? user.tzIdentifier : "UTC", locale: null,
     input: { ...input, takeover: true } } as unknown as OperationRequest
   let accepted
   try { accepted = await (deps.accept ?? acceptMealOperation)(user.id, request) }

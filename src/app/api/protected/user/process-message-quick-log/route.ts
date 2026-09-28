@@ -8,6 +8,7 @@ import { GenerateResponseForQuickLog } from "@/foodMessageProcessing/RespondToMe
 import { checkAndUpdateUserIsSubscribed } from "@/subscription/checkAndUpdateUserIsSubscribed"
 import { GetMessageById } from "@/database/GetMessagesForUser"
 import { refreshFoodMessageProgress } from "@/foodMessageProcessing/common/refreshFoodMessageProgress"
+import { utcInstant, validTimezone } from "@/mealOperations/instant"
 
 export async function POST(
   request: NextRequest // needed so we don't cache this request
@@ -23,7 +24,11 @@ export async function POST(
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
       const { messageId } = requestBody
-    const consumedOn = requestBody.consumedOn || new Date().toISOString()
+    let consumedOn: string
+    try { consumedOn = utcInstant(typeof requestBody.consumedOn === "string" ? requestBody.consumedOn : new Date().toISOString()) }
+    catch { return NextResponse.json({ error: "Invalid meal time" }, { status: 400 }) }
+    // The phone's timezone when it sent the meal; older apps don't send one and the profile timezone applies.
+    const timezone = validTimezone(requestBody.timezone) ? requestBody.timezone : null
     const isMessageBeingEdited = requestBody.isMessageBeingEdited || false
 
     const { aminoUser, error: aminoUserError } = await GetAminoUserOnRequest()
@@ -41,8 +46,7 @@ export async function POST(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    if (typeof consumedOn !== "string" || !Number.isFinite(new Date(consumedOn).getTime()) ||
-        typeof isMessageBeingEdited !== "boolean") {
+    if (typeof isMessageBeingEdited !== "boolean") {
       return NextResponse.json({ error: "Invalid meal time or edit flag" }, { status: 400 })
     }
 
@@ -71,7 +75,8 @@ export async function POST(
       aminoUser,
       messageId as number,
       consumedOn,
-      isMessageBeingEdited
+      isMessageBeingEdited,
+      timezone
     )
     } catch (error) {
       // Only recover this authenticated user's authoritative completed result.

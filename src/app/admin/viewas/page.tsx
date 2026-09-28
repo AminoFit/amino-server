@@ -250,7 +250,7 @@ function AdminViewAsPageContent() {
     }
 
     for (const item of foodEntries) {
-      const time = moment(item.consumedOn).tz(timezone)
+      const time = moment.utc(item.consumedOn).tz(timezone)
       const meal = determineMeal(time)
       const startTime = item.consumedOn ?? item.createdAt ?? new Date().toISOString()
 
@@ -779,7 +779,7 @@ function FoodRow({
   isDeleting: boolean
   showSourceLabel?: boolean
 }) {
-  const time = moment(food.consumedOn).tz(timezone)
+  const time = moment.utc(food.consumedOn).tz(timezone)
   const timeLabel = time.isValid() ? time.format("h:mm A") : "--"
 
   const normalizedCalories = Math.round(getNormalizedFoodValue(food as any, "kcalPerServing"))

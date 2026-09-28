@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { utcInstant } from "./instant"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
 import { type PublishedPlan } from "@/mealResolution/compile"
@@ -74,7 +75,7 @@ async function legacySnapshot(claim:NonNullable<Awaited<ReturnType<typeof claimM
       sourceItemId:{messageId:claim.messageId,loggedFoodItemId:row.id,
         updatedAt:row.updatedAt,revision:message.publishedRevision}}
   })
-  return {schemaVersion:1,originalText:message.content,consumedOn:message.consumedOn,
+  return {schemaVersion:1,originalText:message.content,consumedOn:message.consumedOn?utcInstant(message.consumedOn):message.consumedOn,
     groups:[],items,claims:[],model:{id:"legacy-snapshot",provider:"server"},
     input:{operationId:claim.operationId,submittedAt:String(claim.input.submittedAt),
       timezone:String(claim.input.timezone),locale:typeof claim.input.locale==="string"?claim.input.locale:null,

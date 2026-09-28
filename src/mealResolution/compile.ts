@@ -185,7 +185,8 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
       actual+tolerance>=claim.value : actual-tolerance<=claim.value
     if (!compatible) throw new Error("nutrition_claim_conflicts_with_food")
   }
-  return {schemaVersion:1,originalText:input.originalText,consumedOn:proposal.consumedOn,
+  // UTC: the database's timestamp casts would drop a local offset ("+02:00") the model may write.
+  return {schemaVersion:1,originalText:input.originalText,consumedOn:new Date(proposal.consumedOn).toISOString(),
     groups:[...groups].map(([id,label])=>({id,label})),items,claims:proposal.claims,
     model:{id:result.model,provider:result.provider},input:{operationId:input.operationId,
       submittedAt:input.submittedAt,timezone:input.timezone,locale:input.locale,

@@ -59,7 +59,7 @@ export default function EditFoodModal({
     foodName = food.FoodItem.name
     brand = food.FoodItem.brand || ""
   }
-  const consumedOnMoment = moment(food.consumedOn)
+  const consumedOnMoment = moment.utc(food.consumedOn).local()
 
   const timeEaten = {
     hours: consumedOnMoment.format("h"),
