@@ -28,7 +28,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
   const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes,
     signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
-      usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),model:'anthropic/claude-sonnet-5',
+      usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),model:'anthropic/claude-sonnet-5.5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
       jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id)});
   return {sources,calls};
@@ -92,7 +92,7 @@ test('web facts need a citation the search actually returned',async()=>{
   const {candidates}=await sources.searchFoodSources('cafe bowl',{web:true});
   assert.deepEqual(candidates.map(c=>c.name),['Cafe Bowl']);
   assert.equal(candidates[0].source,'https://cafe.example/menu');
-  assert.equal(calls.web[0][3].model,'anthropic/claude-sonnet-5','web extraction uses the creation model');
+  assert.equal(calls.web[0][3].model,'anthropic/claude-sonnet-5.5','web extraction uses the creation model');
 });
 
 test('implausible source nutrition is discarded before it can become a food',async()=>{

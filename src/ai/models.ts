@@ -9,9 +9,9 @@ export const EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 export const LABEL_MODEL = "anthropic/claude-sonnet-5.5"
 // The one exception to Flash/Jev: turning web or label evidence into a new
 // catalogue food. Creation is rare, so a stronger model costs little.
-export const CREATION_MODELS = ["anthropic/claude-sonnet-5", "anthropic/claude-opus-5"] as const
+export const CREATION_MODELS = ["anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"] as const
 export type CreationModel = typeof CREATION_MODELS[number]
-export const DEFAULT_CREATION_MODEL: CreationModel = "anthropic/claude-sonnet-5"
+export const DEFAULT_CREATION_MODEL: CreationModel = "anthropic/claude-sonnet-5.5"
 
 export function foodModel(env: NodeJS.ProcessEnv = process.env): typeof FOOD_MODEL {
   const configured = env.FOOD_REASONING_MODEL

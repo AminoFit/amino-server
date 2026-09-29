@@ -63,7 +63,7 @@ async function evaluate(model: string, truth: Truth) {
 }
 
 async function main() {
-  const models = process.argv.slice(2).length ? process.argv.slice(2) : ["google/gemini-3.8-flash", "anthropic/claude-sonnet-5", "anthropic/claude-opus-5"]
+  const models = process.argv.slice(2).length ? process.argv.slice(2) : ["google/gemini-3.8-flash", "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"]
   const cases = await truths()
   const rows: Awaited<ReturnType<typeof evaluate>>[] = []
   const queue = models.flatMap(model => cases.map(truth => ({ model, truth })))
