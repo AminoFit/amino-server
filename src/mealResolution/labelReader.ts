@@ -38,6 +38,25 @@ const SCHEMA = { type: "object", additionalProperties: false,
  * photographed sideways). Returns null when the label is not legible. Transcription only: code does any arithmetic. */
 export async function readNutritionLabel(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; signal?: AbortSignal } = {}):
   Promise<LabelFacts | null> {
+  const first = await readOnce(photo, deps)
+  const gap = first ? energyGap(first) : null
+  if (!first || gap == null || gap <= 0.2) return first
+  // The digits do not add up (a 7 read as a 2): one more look with the arithmetic, done here, as a hint.
+  const macros = 4 * first.proteinG + 4 * first.carbG + 9 * first.totalFatG
+  const second = await readOnce(photo, deps, `A first reading gave ${first.kcal} kcal with protein ${first.proteinG} g, carbohydrate ` +
+    `${first.carbG} g and fat ${first.totalFatG} g, but 4 x protein + 4 x carbohydrate + 9 x fat is ${Math.round(macros)} kcal. ` +
+    `One of the digits is probably misread: look again carefully.`)
+  return second && (energyGap(second) ?? 1) < gap ? second : first
+}
+
+/** How far the printed energy is from what the macros imply (4/4/9), as a fraction; null when there is no energy. */
+export function energyGap(facts: Pick<LabelFacts, "kcal" | "proteinG" | "carbG" | "totalFatG">) {
+  if (!facts.kcal) return null
+  return Math.abs(4 * facts.proteinG + 4 * facts.carbG + 9 * facts.totalFatG - facts.kcal) / facts.kcal
+}
+
+async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; signal?: AbortSignal }, hint?: string):
+  Promise<LabelFacts | null> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key) throw new Error("label_reader_unavailable")
   const doFetch = deps.fetch ?? fetch
@@ -49,13 +68,18 @@ export async function readNutritionLabel(photo: URL, deps: { fetch?: typeof fetc
   const variants = await Promise.all([0, 90, 270].map(angle => sharp(upright).rotate(angle).jpeg({ quality: 85 }).toBuffer()))
   const response = await doFetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", signal: deps.signal,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: LABEL_MODEL, provider: providerPreferences(LABEL_MODEL), max_tokens: 800,
+    // The model's own thinking is what reads a dark, sideways label (with low effort it gave up in 3 s); leave room
+    // for it and the answer (an 800-token cap once returned nothing).
+    body: JSON.stringify({ model: LABEL_MODEL, provider: providerPreferences(LABEL_MODEL), max_tokens: 4000,
       response_format: { type: "json_schema", json_schema: { name: "label", strict: true, schema: SCHEMA } },
-      messages: [{ role: "user", content: [{ type: "text", text: PROMPT },
+      messages: [{ role: "user", content: [{ type: "text", text: hint ? `${PROMPT}\n\n${hint}` : PROMPT },
         ...variants.map(buffer => ({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${buffer.toString("base64")}` } }))] }] }) })
   if (!response.ok) throw new Error(`label_reader_failed_${response.status}`)
   const text: string = (await response.json()).choices?.[0]?.message?.content ?? ""
-  const parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as LabelFacts & { legible: boolean }
+  // No JSON (an empty or prose reply) is an unreadable label, never an error that stops the meal.
+  let parsed: LabelFacts & { legible: boolean }
+  try { parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) }
+  catch { return null }
   const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
   const kcal = amount(parsed.kcal) ?? (amount(parsed.kj) != null ? Math.round(amount(parsed.kj)! / 4.184 * 10) / 10 : null)
   const basisGrams = amount(parsed.basisGrams)

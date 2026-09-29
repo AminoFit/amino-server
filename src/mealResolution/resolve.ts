@@ -200,7 +200,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const evidence=deps.evidence??createMealEvidence(input.userId,controller.signal,undefined,input.timezone)
   const barcodes:string[]=deps.barcodes??[]
   const sources=deps.sources??createFoodSources({userId:input.userId,messageId:input.messageId,barcodes,
-    signal:controller.signal,discover:id=>evidence.discover(id)})
+    signal:controller.signal,discover:id=>evidence.discover(id),refresh:id=>evidence.forget?.(id)})
   const selected=(deps.model??agentModel)()
   let steps=0,toolCalls=0
   const withCount=<T>(work:()=>Promise<T>)=>{toolCalls++;return work()}
@@ -334,11 +334,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           inputSchema:z.object({photoId:z.number().int().positive(),name:labelFood.shape.name,brand:labelFood.shape.brand,
             gtin:z.string().max(20).nullable(),identified:labelFood.shape.identified}).strict(),
           execute:({photoId,name,brand,gtin,identified})=>withCount(async()=>{
-            const photo=photos.find(candidate=>candidate.id===photoId)
-            if (!photo) return {status:"unknown_photo",photoIds:photos.map(candidate=>candidate.id)}
-            const facts=await (deps.readLabel??readNutritionLabel)(photo.url,{signal:controller.signal})
-            if (!facts) return {status:"illegible"}
-            return sources.proposeLabelFood(labelSourceInput(facts,{name,brand,gtin,identified}))
+            // The named photo first; if it has no readable label (often the front of the pack), the meal's other photos.
+            const ordered=[...photos.filter(candidate=>candidate.id===photoId),...photos.filter(candidate=>candidate.id!==photoId)]
+            for (const photo of ordered) {
+              const facts=await (deps.readLabel??readNutritionLabel)(photo.url,{signal:controller.signal})
+              if (facts) return {...sources.proposeLabelFood(labelSourceInput(facts,{name,brand,gtin,identified})),photoId:photo.id}
+            }
+            return {status:"illegible"}
           })}),
         proposeLabelFood:tool({description:"Register nutrition facts the user typed (one serving, in grams) as a source. For a label in a photo use readLabel. Returns a sourceId.",
           inputSchema:labelFood,execute:async value=>sources.proposeLabelFood(value)}),

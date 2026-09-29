@@ -19,7 +19,8 @@ type Reply = { resultMessage: string; status: "PROCESSING" | "RESOLVED" | "FAILE
 export async function takeOverMessage(user: Pick<Tables<"User">, "id" | "tzIdentifier">, message: Tables<"Message">,
   consumedOn: string, editing: boolean, deps: { accept?: typeof acceptMealOperation; dispatch?: typeof dispatchMealOperation;
     db?: ReturnType<typeof createAdminSupabase>; /** A deliberate reprocess (not an app retry) needs a new operation. */ nonce?: string;
-    /** The phone's timezone at submission; preferred over the profile, which lags behind a traveller. */ timezone?: string | null } = {}): Promise<Reply> {
+    /** The phone's timezone at submission; preferred over the profile, which lags behind a traveller. */ timezone?: string | null
+    /** A deliberate re-resolution from scratch: the published version is not shown to the agent. */ fresh?: boolean } = {}): Promise<Reply> {
   const db = deps.db ?? createAdminSupabase()
   const photos = await db.from("UserMessageImages").select("id").eq("messageId", message.id).eq("userId", user.id).order("id").limit(11)
   if (photos.error) throw new Error("media_evidence_unavailable")
@@ -31,7 +32,7 @@ export async function takeOverMessage(user: Pick<Tables<"User">, "id" | "tzIdent
     messageId: message.id, expectedPublishedRevision: editing ? revision : null, action: editing ? "replace" : "create",
     submittedAt: utcInstant(message.createdAt),
     timezone: validTimezone(deps.timezone) ? deps.timezone : validTimezone(user.tzIdentifier) ? user.tzIdentifier : "UTC", locale: null,
-    input: { ...input, takeover: true } } as unknown as OperationRequest
+    input: { ...input, takeover: true, ...(deps.fresh ? { fresh: true } : {}) } } as unknown as OperationRequest
   let accepted
   try { accepted = await (deps.accept ?? acceptMealOperation)(user.id, request) }
   catch (error) {

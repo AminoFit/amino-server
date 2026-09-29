@@ -191,7 +191,8 @@ export async function processMealOperation(operationId:string) {
         locale:typeof raw.locale==="string"?raw.locale:null,
         attachmentIds:Array.isArray(raw.attachmentIds)?raw.attachmentIds as number[]:[],
         useExistingPhotos:claim.action==="replace",
-        answers:claim.answers,previousMeal:snapshot??message,
+        // A deliberate re-resolution (scripts/reprocess-meals.ts) starts fresh instead of anchoring on the old plan.
+        answers:claim.answers,previousMeal:raw.fresh===true?null:snapshot??message,
         // The current app cannot show questions: taken-over meals resolve with assumptions.
         clarificationAllowed:raw.takeover!==true}
       await report(input.attachmentIds.length?"reading":"matching").catch(()=>{})

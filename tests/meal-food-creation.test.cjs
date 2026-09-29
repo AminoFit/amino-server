@@ -435,3 +435,28 @@ test('USDA unit codes read as units, and the calculator never evaluates code',()
   assert.equal(calculate('-2 + .5'),-1.5);
   for (const bad of ['process.exit()','2 +','1/0','2 ** 3','(1']) assert.throws(()=>calculate(bad));
 });
+
+test('label readings: a misread digit shows in the energy check, and the column read maps to servings in code',async()=>{
+  const {energyGap,labelSourceInput,readNutritionLabel}=require('../src/mealResolution/labelReader.ts');
+  // "7,19" read as "2,79": 4 x 11.74 + 4 x 13.56 + 9 x 2.79 = 126 kcal, not the 165.74 printed.
+  assert.ok(energyGap({kcal:165.74,proteinG:11.74,carbG:13.56,totalFatG:2.79})>0.2);
+  assert.ok(energyGap({kcal:165.74,proteinG:11.74,carbG:13.56,totalFatG:7.19})<0.02);
+  const per100={basis:'100g',servingUnit:null,servingAmount:null,basisGrams:100,packageGrams:270,kcal:165.74,kj:null,
+    proteinG:11.74,carbG:13.56,totalFatG:7.19,satFatG:3.29,sugarG:0.6,fiberG:1.49};
+  const input=labelSourceInput(per100,{name:'Baguette de Arrachera',brand:'Aerocomidas',gtin:null,identified:true});
+  assert.deepEqual([input.servingUnit,input.servingAmount,input.servingGrams,input.packageGrams],['g',100,100,270]);
+  const perServing=labelSourceInput({...per100,basis:'serving',servingUnit:'2 cookies',servingAmount:2,basisGrams:30,packageGrams:null},
+    {name:'Cookies',brand:null,gtin:null,identified:true});
+  assert.deepEqual([perServing.servingUnit,perServing.servingAmount,perServing.servingGrams],['cookies',2,30]);
+  // The reader asks again when the digits do not add up, and keeps the reading that does; prose means illegible.
+  const sharp=require('sharp');
+  const photo=await sharp({create:{width:40,height:30,channels:3,background:'#fff'}}).jpeg().toBuffer();
+  const replies=[{...per100,legible:true,totalFatG:2.79},{...per100,legible:true}];const prompts=[];
+  const fetch=async(url,init)=>String(url).startsWith('https://photo')?new Response(photo):
+    (prompts.push(JSON.parse(init.body).messages[0].content[0].text),new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(replies.shift())}}]})));
+  const facts=await readNutritionLabel(new URL('https://photo.example/1.jpg'),{fetch,env:{OPENROUTER_API_KEY:'k'}});
+  assert.equal(facts.totalFatG,7.19);
+  assert.match(prompts[1],/126 kcal/,'the hint carries the arithmetic, done in code');
+  const prose=async(url)=>String(url).startsWith('https://photo')?new Response(photo):new Response(JSON.stringify({choices:[{message:{content:'I cannot read this label.'}}]}));
+  assert.equal(await readNutritionLabel(new URL('https://photo.example/1.jpg'),{fetch:prose,env:{OPENROUTER_API_KEY:'k'}}),null);
+});

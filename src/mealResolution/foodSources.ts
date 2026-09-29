@@ -143,6 +143,7 @@ type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedO
   jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string}
 
 export function createFoodSources(ctx:{userId:string;messageId:number;signal:AbortSignal;discover:(id:number)=>void;
+  /** A food this meal read earlier was changed by a write: forget the cached copy. */ refresh?:(id:number)=>void;
   /** GTINs decoded by the barcode library from this meal's photos; the only barcodes a source may carry. */
   barcodes?:string[]},deps:Deps={}) {
   let client:ReturnType<typeof createAdminSupabase>|undefined
@@ -394,6 +395,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
             p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)
           if (!superseded.error&&superseded.data?.foodId) {
             ctx.discover(superseded.data.foodId)
+            ctx.refresh?.(Number(superseded.data.foodId))
             return {status:"existing" as const,foodId:Number(superseded.data.foodId),superseded:superseded.data.superseded===true,
               enrichment:superseded.data.enrichment??null}
           }
@@ -401,6 +403,8 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
         const enriched=await (db() as any).rpc("enrich_catalogue_food",{p_food_id:duplicate.foodId,
           p_food:await payload(food,false),p_servings:food.servings}).abortSignal(ctx.signal)
         ctx.discover(duplicate.foodId)
+        // Enrichment may have changed it (servings, empty nutrients): a copy read earlier in this meal is stale.
+        ctx.refresh?.(duplicate.foodId)
         // A label that disagrees with the existing food (a regional variant, a new recipe or a misread photo) leaves
         // it unchanged (the conflict is recorded) and becomes the user's own private copy with the label's values.
         if (food.foodInfoSource==="Label"&&!enriched.error&&enriched.data?.conflict===true) {

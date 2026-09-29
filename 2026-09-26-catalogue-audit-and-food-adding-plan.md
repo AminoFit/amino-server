@@ -494,3 +494,13 @@ every time and the agent had no way to say "none of these", so it looped to the 
   display).
 - Eval: photos 21 cases (5 new: the airline meals and the Naya bowl), text 17/17, history 15/15. Airline cases went
   from 1/4 (20 steps, 88 s, failures) to 4/4 at 30-40 s.
+- Follow-ups from fixing the real entries: readLabel tries the meal's other photos when the named one has no readable
+  label (the front of a pack); a reply without JSON is illegible, not an error; the label model keeps its own
+  reasoning (with low effort it gave up on the rotated label in 3 s, with it the reading is exact and repeatable); a
+  reading whose energy does not match 4/4/9 of its macros by 20% is read once more with that arithmetic as a hint
+  (fat "7,19" was once read "2,79"). A food changed by addFood (enriched, or an estimate superseded by a label) is
+  dropped from the meal's cache, so the plan logs the new numbers. `scripts/reprocess-meals.ts` re-resolves meals
+  from scratch (without showing the old plan).
+- Fixed entries (2026-09-29): quinoa 60 kcal (private label copy), Baguette de Arrachera 447 kcal from its label,
+  Naya bowl with rice and vermicelli and garlic sauce. Icons made for the new foods and 6 weak borrowed ones.
+- Later: the app uploads photos at 768x1024, too small for dense labels; a larger upload for label photos would help.

@@ -66,6 +66,8 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     foods,events,
     /** Foods created or matched by the source tools become readable evidence. */
     discover(id:number) {if (Number.isSafeInteger(id)&&id>0) discovered.add(id)},
+    /** Drop a cached food after this meal changed it (a label superseding an estimate), so the next read is fresh. */
+    forget(id:number) {foods.delete(id)},
     async searchFoods(query:string,cursor=0) {
       const text=query.trim().slice(0,100)
       if (!text) return {status:"empty" as const,candidates:[],nextCursor:null}
