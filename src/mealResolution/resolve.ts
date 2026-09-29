@@ -226,6 +226,20 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const decoded=photosLoaded.then(list=>Promise.all(list.map(async photo=>{
       const gtin=await (deps.readBarcode??readPhotoBarcode)(photo.url).catch(()=>null)
       return gtin?{photoId:photo.id,gtin}:null}))).then(reads=>reads.filter((read):read is {photoId:number;gtin:string}=>read!==null)).catch(()=>[])
+      // Sources may only carry decoded barcodes: register them as soon as they decode.
+      .then(reads=>{for (const read of reads) if (!barcodes.includes(read.gtin)) barcodes.push(read.gtin);return reads})
+    // Photos of barcodes and nothing else: each package is the product its barcode names, found in the catalogue or
+    // a barcode database without a model turn. This starts as soon as the barcodes decode, alongside the first look,
+    // and is used only if the first look then sees nothing else. Anything else (text, a repair) goes to the agent.
+    const barcodeOnly=!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length
+    const fastStarted=performance.now()
+    const early=barcodeOnly?Promise.all([photosLoaded,decoded]).then(async([list,reads])=>{
+      if (!list.length||reads.length!==list.length) return null
+      const gtins=[...new Set(reads.map(read=>read.gtin))]
+      const proposal=await barcodeProposal(input,gtins,await evidence.findFoodsByGtin(gtins).catch(()=>[]),evidence,sources)
+      mark("barcode",fastStarted)
+      return proposal
+    }).catch(()=>null):Promise.resolve(null)
     // A first look lists what the user is eating while likely foods load, so the first turn can usually answer.
     const visibleLoaded=photosLoaded.then(list=>list.length?(deps.visible??listVisibleFoods)(list.map(photo=>photo.url),input.originalText):[])
       .catch(()=>[] as VisibleFood[])
@@ -258,16 +272,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       // With catalogue candidates the preview gains icons.
       Promise.resolve(deps.onProgress?.("found",buildPreview(visibleFoods))).catch(()=>{})
     }
-    barcodes.push(...new Set(photoBarcodes.map(read=>read.gtin)))
     const barcodeMatches=barcodes.length?await evidence.findFoodsByGtin(barcodes).catch(()=>[]):[]
     controller.signal.throwIfAborted()
-    // Photos of barcodes and nothing else: each package is the product its barcode names, found in the catalogue or
-    // a barcode database without a model turn. Anything else (text, another food in view, a repair) goes to the agent.
-    if (!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length&&photoBarcodes.length===photos.length&&
-      photos.length>0&&visible.length<=barcodes.length) {
-      const fastStarted=performance.now()
-      const proposal=await barcodeProposal(input,barcodes,barcodeMatches,evidence,sources).catch(()=>null)
-      mark("barcode",fastStarted)
+    if (barcodeOnly&&visible.length<=barcodes.length) {
+      const proposal=await early
       if (proposal) {
         trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
         const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),

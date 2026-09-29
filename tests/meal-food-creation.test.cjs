@@ -491,3 +491,18 @@ test('an Open Food Facts record for another code, or without usable nutrition, i
   const {sources}=harness({usda:[],barcodes:[],off:async()=>offFruit});
   assert.deepEqual(await sources.barcodeSources('00195515039802'),[],'only a barcode decoded from the photo is looked up');
 });
+
+test('a scanned product is created, not held for review, when an unsure check only finds generic foods (message 30353)',async()=>{
+  const generic=[{id:3927,name:'Fruit Mixture, Frozen',brand:null},{id:4100,name:'Mango, frozen',brand:null}];
+  const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,near:generic,
+    jev:{status:'ok',choice:'food_3927',confidence:0.6}});
+  const [food]=await sources.barcodeSources('00195515039802');
+  const result=await sources.createFoodFromSource(food.sourceId);
+  assert.equal(result.status,'created');
+  assert.equal(calls.create[0].p_food.gtin,'00195515039802');
+  const branded=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,
+    near:[...generic,{id:5000,name:'Mango Blueberry Blend',brand:'Amazon Fresh'}],jev:{status:'ok',choice:'food_5000',confidence:0.6}});
+  const [again]=await branded.sources.barcodeSources('00195515039802');
+  assert.equal((await branded.sources.createFoodFromSource(again.sourceId)).status,'possible_duplicates',
+    'a same-brand candidate is still a real question');
+});

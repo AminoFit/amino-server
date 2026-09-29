@@ -319,8 +319,9 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       return {status:"existing",foodId,estimate:isEstimate(candidates.find(c=>c.id===foodId))}
     }
     if (confident&&decision.choice==="none") return {status:"none"}
-    // A label is authoritative: unsure among foods that are not even the same brand, it is a new product.
-    if (food.foodInfoSource==="Label"&&!candidates.some(c=>sameBrand(c.brand))) return {status:"none"}
+    // A label or a barcoded product is authoritative: unsure among foods that are not even the same brand (a generic
+    // "Fruit Mixture, Frozen" for a scanned Amazon Grocery bag), it is a new product.
+    if ((food.foodInfoSource==="Label"||food.gtin)&&!candidates.some(c=>sameBrand(c.brand))) return {status:"none"}
     // Otherwise the agent decides, with addFood's sameAs (a candidate, or null for none).
     return {status:"possible_duplicates",candidates:candidates.map(c=>({id:c.id,name:c.name,brand:c.brand,
       servingGrams:c.defaultServingWeightGram,kcal:c.kcalPerServing,proteinG:c.proteinPerServing}))}
