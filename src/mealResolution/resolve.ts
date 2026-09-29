@@ -2,7 +2,7 @@ import { generateText, jsonSchema, NoObjectGeneratedError, Output, stepCountIs, 
 import { z } from "zod"
 import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
-import { createMealEvidence, foodSummary } from "./evidence"
+import { createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
 import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
 import { decodeBarcode, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
@@ -213,8 +213,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   let stepStarted=performance.now()
   // Most meals finish in one or two turns; creating a missing food needs web search
   // (6-20 s). The worker's lease is 120 s.
-  const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??90000)
-  const answerBy=(deps.deadlineMs??90000)-25000
+  const deadline=deps.deadlineMs??90000
+  const timer=setTimeout(()=>controller.abort(),deadline)
+  // Leave the last 25 s for the answer; a short repair budget answers after its first half.
+  const answerBy=Math.max(deadline-25000,deadline/2)
   const historyEnd=Date.parse(input.submittedAt)+60000
   try {
     // Photos, likely foods and recent meals load in parallel before the first turn.
@@ -259,6 +261,22 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     barcodes.push(...new Set(photoBarcodes.map(read=>read.gtin)))
     const barcodeMatches=barcodes.length?await evidence.findFoodsByGtin(barcodes).catch(()=>[]):[]
     controller.signal.throwIfAborted()
+    // Photos of barcodes and nothing else: each package is the product its barcode names, found in the catalogue or
+    // a barcode database without a model turn. Anything else (text, another food in view, a repair) goes to the agent.
+    if (!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length&&photoBarcodes.length===photos.length&&
+      photos.length>0&&visible.length<=barcodes.length) {
+      const fastStarted=performance.now()
+      const proposal=await barcodeProposal(input,barcodes,barcodeMatches,evidence,sources).catch(()=>null)
+      mark("barcode",fastStarted)
+      if (proposal) {
+        trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
+        const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
+          model:"barcode",provider:"server",durationMs:performance.now()-started,steps:0,toolCalls:0,barcodes:[...barcodes],
+          checked:false,timeline,trace}
+        Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
+        return resolved
+      }
+    }
     const prompt=JSON.stringify({originalText:input.originalText,consumedOn:input.consumedOn,
       consumedOnLocal:localTime(input.consumedOn,input.timezone),submittedAt:input.submittedAt,
       submittedAtLocal:localTime(input.submittedAt,input.timezone),timezone:input.timezone,locale:input.locale,
@@ -287,7 +305,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
             const read=await evidence.getMealEvent(messageId)
             return read.status==="ok"&&Date.parse(read.event.consumedOn)>historyEnd?{status:"unavailable" as const}:read
           })}),
-        findFood:tool({description:"Find a food. Searches the catalogue by name (any language or spelling) and by a decoded barcode, with details. Sources to add are searched only when the catalogue has nothing, or when you call again for the same food with includeSources true: first USDA (the barcode's record, else by name), then on a further call cited web pages. With labelSourceId each source says whether it matches the label. Results are hints, not identity proof.",
+        findFood:tool({description:"Find a food. Searches the catalogue by name (any language or spelling) and by a decoded barcode, with details. Sources to add are searched only when the catalogue has nothing, or when you call again for the same food with includeSources true: first the barcode's USDA or Open Food Facts record (else USDA by name), then on a further call cited web pages. With labelSourceId each source says whether it matches the label. Results are hints, not identity proof.",
           inputSchema:z.object({query:z.string().trim().min(1).max(100),gtin:z.string().max(20).nullable(),
             includeSources:z.boolean(),labelSourceId:z.string().max(60).nullable()}).strict(),
           execute:({query,gtin,includeSources,labelSourceId})=>withCount(async()=>{
@@ -419,6 +437,40 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       error:error instanceof Error?error.message.slice(0,120):"unknown",trace})
     throw error
   } finally {clearTimeout(timer);controller.abort()}
+}
+
+/** One default serving of each barcoded product, or null when a product needs the agent (no source, or a
+ * possible duplicate to judge). The catalogue food carrying the barcode first; else USDA or Open Food Facts,
+ * added through the usual duplicate checks, which attach the barcode to an existing food that is the same. */
+async function barcodeProposal(input:MealResolutionInput,barcodes:string[],matches:CatalogFood[],
+  evidence:ReturnType<typeof createMealEvidence>,sources:ReturnType<typeof createFoodSources>):Promise<MealProposal|null> {
+  const foods:CatalogFood[]=[]
+  for (const gtin of barcodes) {
+    let food=matches.find(match=>match.gtin===gtin)
+    if (!food) {
+      const [source]=await sources.barcodeSources(gtin)
+      if (!source) return null
+      const added=await sources.createFoodFromSource(source.sourceId)
+      if (added.status!=="created"&&added.status!=="existing") return null
+      evidence.forget(added.foodId)
+      food=(await evidence.getFoodsAndServings([added.foodId])).foods[0]
+    }
+    if (!food||food.gtin!==gtin) return null
+    foods.push(food)
+  }
+  return {schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,historyGroupSelections:[],claims:[],clarification:null,
+    items:foods.map(food=>({foodId:food.id,quantity:defaultServing(food),groupId:null,groupLabel:null,
+      evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
+    components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
+      itemIndexes:[index],historySelectionIndexes:[],omitted:false}))}
+}
+
+/** The package's labelled serving: the food's default serving, as its named serving when one weighs the same. */
+function defaultServing(food:CatalogFood):MealProposal["items"][number]["quantity"] {
+  const grams=food.defaultServingWeightGram??100
+  const named=food.Serving.find(serving=>serving.servingWeightGram&&serving.defaultServingAmount&&
+    Math.abs(serving.servingWeightGram-grams)<=0.5)
+  return named?{kind:"serving",servingId:named.id,amount:Number(named.defaultServingAmount)}:{kind:"mass",grams}
 }
 
 /** A tool result as status and IDs only: never names or text, so it can be logged. */

@@ -171,6 +171,11 @@ async function withIcons(preview:MealPreviewItem[]) {
   return preview.map(item=>({...item,icon:item.foodId?best.get(item.foodId)?.pathToImage??null:null}))
 }
 
+// The function is killed at 120 s (maxDuration), which records nothing and leaves the lease to expire. Every
+// resolver call in one delivery shares this budget, leaving time to check, publish or record a failure.
+const RESOLUTION_BUDGET_MS=95_000
+const MIN_REPAIR_MS=20_000
+
 export async function processMealOperation(operationId:string) {
   const workerToken=randomUUID()
   const claim=await claimMealOperation(operationId,workerToken)
@@ -179,6 +184,9 @@ export async function processMealOperation(operationId:string) {
   const started=performance.now()
   let timeline:{stage:string;ms:number}[]=[]
   let trace:string[]=[]
+  const remaining=()=>RESOLUTION_BUDGET_MS-(performance.now()-started)
+  // A repair with too little time left fails now (and is retried) instead of being killed mid-call.
+  const budgetFor=()=>{const ms=remaining();if(ms<MIN_REPAIR_MS) throw new Error("provider_timeout");return {deadlineMs:ms}}
   try {
     let plan:PublishedPlan
     if(claim.action==="create"||claim.action==="replace") {
@@ -196,11 +204,11 @@ export async function processMealOperation(operationId:string) {
         // The current app cannot show questions: taken-over meals resolve with assumptions.
         clarificationAllowed:raw.takeover!==true}
       await report(input.attachmentIds.length?"reading":"matching").catch(()=>{})
-      let result=await resolveMeal(input,{onProgress:report})
+      let result=await resolveMeal(input,{onProgress:report,...budgetFor()})
       timeline=result.timeline??[]
       trace=result.trace??[]
       if(result.proposal.outcome==="needs_clarification"&&!input.clarificationAllowed)
-        result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"})
+        result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"},budgetFor())
       if(result.proposal.outcome==="needs_clarification") {
         if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
         await finishMealOperation(operationId,workerToken,"needs_clarification",
@@ -212,7 +220,7 @@ export async function processMealOperation(operationId:string) {
         const code=error instanceof Error?error.message:"invalid_plan"
         // missing_visible_food carries the names the second look found.
         if(!safeErrorCodes.has(code)&&!code.startsWith("missing_visible_food:")) throw error
-        const repaired=await resolveMeal({...input,validationErrorCode:code})
+        const repaired=await resolveMeal({...input,validationErrorCode:code},budgetFor())
         if(repaired.proposal.outcome==="needs_clarification") {
           if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
           await finishMealOperation(operationId,workerToken,"needs_clarification",

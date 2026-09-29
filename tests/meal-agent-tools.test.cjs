@@ -187,3 +187,55 @@ test("the agent gets the user's own clock for relative dates, not just a UTC ins
   assert.match(firstPrompt,/submittedAtLocal\\":\\"Monday 2026-09-28 01:21/);
   assert.match(firstPrompt,/consumedOnLocal\\":\\"Monday 2026-09-28 01:21/);
 });
+
+// Message 30352: a photo of a bag's barcode and nothing else took the agent three 120 s runs and failed.
+const fruit={id:52000,name:'Mangoes, Blueberries and Blueberries',brand:'Amazon Fresh',gtin:'00195515039802',lastUpdated:'2026-09-29T00:00:00Z',
+  defaultServingWeightGram:140,weightUnknown:false,kcalPerServing:70,proteinPerServing:1,carbPerServing:17,totalFatPerServing:0,
+  satFatPerServing:0,transFatPerServing:null,fiberPerServing:2.9,sugarPerServing:13,addedSugarPerServing:null,
+  Serving:[{id:700,foodItemId:52000,servingName:'cup',servingWeightGram:140,defaultServingAmount:1}]};
+const photoInput={...input,originalText:'',attachmentIds:[8414]};
+const barcodeDeps=(overrides={})=>{
+  const created=[];
+  const foods=new Map();
+  const ev={foods,events:new Map(),discover(){},forget(id){foods.delete(id)},
+    async listMealEvents(){return {events:[]}},async prefetchFoods(){return []},async findFoodsByGtin(){return overrides.catalogue??[]},
+    async searchFoods(){return {candidates:[],foods:[]}},async getFoodsAndServings(ids){foods.set(fruit.id,fruit);return {foods:ids.includes(fruit.id)?[fruit]:[]}}};
+  const sources={sources:new Map(),async barcodeSources(gtin){return overrides.noSource?[]:[{sourceId:'off:0',gtin}]},
+    async createFoodFromSource(id){created.push(id);return overrides.duplicate?{status:'possible_duplicates',candidates:[]}:{status:'created',foodId:fruit.id}},
+    async searchFoodSources(){return {candidates:[]}}};
+  return {created,deps:{evidence:ev,sources,loadPhotos:async()=>[{id:8414,url:new URL('https://example.com/p.jpg')}],
+    readBarcode:async()=>'00195515039802',visible:async()=>overrides.visible??[{food:'frozen fruit'}],
+    generate:async()=>{throw new Error('the agent must not run')},model:()=>({id:'test',provider:'test',model:{}})}};
+};
+
+test('a photo that is only a barcode logs one serving of that product without the agent',async()=>{
+  const {created,deps}=barcodeDeps();
+  const result=await resolveMeal(photoInput,deps);
+  assert.deepEqual(created,['off:0']);
+  assert.equal(result.model,'barcode');
+  assert.equal(result.steps,0);
+  assert.deepEqual(result.barcodes,['00195515039802']);
+  assert.deepEqual(result.proposal.items[0].foodId,52000);
+  assert.deepEqual(result.proposal.items[0].quantity,{kind:'serving',servingId:700,amount:1});
+  assert.equal(result.proposal.components[0].sourceText,'photo: Amazon Fresh Mangoes, Blueberries and Blueberries');
+});
+
+test('a barcode already in the catalogue is logged straight from it',async()=>{
+  const {created,deps}=barcodeDeps({catalogue:[fruit]});
+  const result=await resolveMeal(photoInput,deps);
+  assert.deepEqual(created,[]);
+  assert.equal(result.proposal.items[0].foodId,52000);
+});
+
+test('the agent still handles barcodes with text, other visible foods, no source or a possible duplicate',async()=>{
+  const agentPlan={schemaVersion:1,outcome:'needs_clarification',consumedOn:input.consumedOn,historyGroupSelections:[],items:[],components:[],claims:[],clarification:'Which fruit mix is it?'};
+  for (const [label,run] of [['text',{input:{...photoInput,originalText:'half the bag'}}],
+    ['other food',{overrides:{visible:[{food:'frozen fruit'},{food:'yogurt'}]}}],['no source',{overrides:{noSource:true}}],
+    ['duplicate',{overrides:{duplicate:true}}]]) {
+    const {deps}=barcodeDeps(run.overrides);
+    let agent=0;
+    const result=await resolveMeal(run.input??photoInput,{...deps,generate:async()=>{agent++;return {output:agentPlan,response:{messages:[]}}}});
+    assert.equal(agent,1,label);
+    assert.equal(result.proposal.outcome,'needs_clarification',label);
+  }
+});

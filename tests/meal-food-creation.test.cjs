@@ -9,7 +9,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,barcodes=[]}={}){
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,barcodes=[]}={}){
   const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
@@ -28,7 +28,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
   const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes,
     signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
-      usdaSearch:usdaSearch??(async()=>[]),model:'anthropic/claude-sonnet-5',
+      usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),model:'anthropic/claude-sonnet-5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
       jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id)});
   return {sources,calls};
@@ -459,4 +459,35 @@ test('label readings: a misread digit shows in the energy check, and the column 
   assert.match(prompts[1],/126 kcal/,'the hint carries the arithmetic, done in code');
   const prose=async(url)=>String(url).startsWith('https://photo')?new Response(photo):new Response(JSON.stringify({choices:[{message:{content:'I cannot read this label.'}}]}));
   assert.equal(await readNutritionLabel(new URL('https://photo.example/1.jpg'),{fetch:prose,env:{OPENROUTER_API_KEY:'k'}}),null);
+});
+
+// Open Food Facts' record for 0195515039802 (Amazon Fresh frozen fruit), trimmed to the fields requested.
+const offFruit={code:'0195515039802',product_name:'Mangoes, Blueberries and Blueberries',brands:'Amazon Fresh',
+  // The live record really says ml here; the printed serving says grams.
+  serving_size:'1.0 cup (140.0 g)',serving_quantity:140,serving_quantity_unit:'ml',product_quantity:1360,product_quantity_unit:'g',
+  nutriments:{'energy-kcal_100g':50,proteins_100g:0.71,carbohydrates_100g:12.14,fat_100g:0,fiber_100g:2.1,sugars_100g:9.29,'saturated-fat_100g':0}};
+
+test('a barcode USDA lacks comes from Open Food Facts, per labelled serving, without web search',async()=>{
+  const asked=[];
+  const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],off:async gtin=>{asked.push(gtin);return offFruit}});
+  const [food]=await sources.barcodeSources('195515039802');
+  assert.deepEqual(asked,['00195515039802']);
+  assert.equal(food.gtin,'00195515039802');
+  assert.equal(food.externalId,'off:00195515039802');
+  assert.deepEqual([food.name,food.brand,food.defaultServingWeightGram,food.kcal,food.proteinG,food.isLiquid],
+    ['Mangoes, Blueberries and Blueberries','Amazon Fresh',140,70,0.99,false]);
+  assert.deepEqual(food.servings,[{name:'cup',grams:140,amount:1},{name:'package',grams:1360,amount:1}]);
+  assert.match(food.source,/openfoodfacts\.org\/product\/0195515039802/);
+  const searched=await sources.searchFoodSources('frozen fruit',{gtin:'00195515039802'});
+  assert.equal(searched.candidates[0].name,'Mangoes, Blueberries and Blueberries');
+  assert.equal(calls.web.length,0,'Open Food Facts answers before the web');
+});
+
+test('an Open Food Facts record for another code, or without usable nutrition, is not a source',async()=>{
+  for (const product of [{...offFruit,code:'0195515039819'},{...offFruit,nutriments:{'energy-kcal_100g':50}},null]) {
+    const {sources}=harness({usda:[],barcodes:['00195515039802'],off:async()=>product});
+    assert.deepEqual(await sources.barcodeSources('00195515039802'),[]);
+  }
+  const {sources}=harness({usda:[],barcodes:[],off:async()=>offFruit});
+  assert.deepEqual(await sources.barcodeSources('00195515039802'),[],'only a barcode decoded from the photo is looked up');
 });

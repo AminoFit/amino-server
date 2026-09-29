@@ -138,8 +138,22 @@ async function searchUsdaBranded(query:string):Promise<UsdaHit[]> {
   return ((await response.json()).foods??[]) as UsdaHit[]
 }
 
+type OffProduct={code?:string;product_name?:string;product_name_en?:string;brands?:string;serving_size?:string;
+  serving_quantity?:number|string;serving_quantity_unit?:string;product_quantity?:number|string;product_quantity_unit?:string;
+  nutriments?:Record<string,number|string|undefined>}
+/** Open Food Facts' product for a barcode (null when it has none). Its data is ODbL: credit Open Food Facts. */
+async function fetchOpenFoodFacts(gtin:string):Promise<OffProduct|null> {
+  const fields="code,product_name,product_name_en,brands,serving_size,serving_quantity,serving_quantity_unit,product_quantity,product_quantity_unit,nutriments"
+  const response=await fetch(`https://world.openfoodfacts.org/api/v2/product/${gtin.slice(1)}.json?fields=${fields}`,
+    {headers:{"User-Agent":"Amino/1.0 (https://www.amino.fit)"},signal:AbortSignal.timeout(5000)})
+  if (response.status===404) {await response.body?.cancel();return null}
+  if (!response.ok) {await response.body?.cancel();throw new Error("food_sources_unavailable")}
+  const body=await response.json() as {status?:number;product?:OffProduct}
+  return body.status===1&&body.product?body.product:null
+}
+
 type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedOrFetchEmbeddings;
-  usda?:typeof getUsdaFoodsInfo;usdaSearch?:typeof searchUsdaBranded;web?:typeof resolveWebFood;
+  usda?:typeof getUsdaFoodsInfo;usdaSearch?:typeof searchUsdaBranded;off?:typeof fetchOpenFoodFacts;web?:typeof resolveWebFood;
   jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string}
 
 export function createFoodSources(ctx:{userId:string;messageId:number;signal:AbortSignal;discover:(id:number)=>void;
@@ -181,6 +195,43 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     const hits=await (deps.usdaSearch??searchUsdaBranded)(gtin.startsWith("00")?gtin.slice(2):gtin.slice(1))
     const ids=hits.filter(hit=>hit.gtinUpc&&normalizeGtin(hit.gtinUpc)===gtin).map(hit=>String(hit.fdcId))
     return ids.length?fromUsda(await (deps.usda??getUsdaFoodsInfo)({fdcIds:ids}),gtin):[]
+  }
+
+  /** Open Food Facts' record for the decoded barcode: crowd-sourced label facts, per 100 g, with the package's serving. */
+  async function offByGtin(gtin:string):Promise<SourceFood[]> {
+    const product=await (deps.off??fetchOpenFoodFacts)(gtin)
+    if (!product||!product.code||normalizeGtin(product.code)!==gtin) return []
+    const n=product.nutriments??{},value=(key:string)=>{const v=Number(n[`${key}_100g`]);return Number.isFinite(v)&&v>=0?v:null}
+    const kcal=value("energy-kcal")??(value("energy")!=null?value("energy")!/4.184:null)
+    const [protein,carb,fat]=[value("proteins"),value("carbohydrates"),value("fat")]
+    const name=(product.product_name||product.product_name_en||"").trim()
+    if (kcal==null||protein==null||carb==null||fat==null||name.length<2) return []
+    // "1 cup (140 g)" is the labelled serving; without one the basis is 100 g.
+    const labelled=/^\s*(\d+(?:[.,]\d+)?)\s*([^(]*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*(g|ml)\s*\)/i.exec(product.serving_size??"")
+    const number=(text:string)=>Number(text.replace(",","."))
+    const servingGrams=labelled?number(labelled[3]):Number(product.serving_quantity)>0&&/^(g|ml)$/i.test(product.serving_quantity_unit??"g")?Number(product.serving_quantity):100
+    const packageGrams=Number(product.product_quantity)>0&&/^(g|ml)$/i.test(product.product_quantity_unit??"g")?Number(product.product_quantity):null
+    // The printed serving ("140.0 g") is what the label says; the separate unit field is sometimes wrong ("ml").
+    const liquid=/^ml$/i.test(labelled?labelled[4]:product.serving_quantity_unit??"")
+    const factor=servingGrams/100,round=(v:number)=>Math.round(v*100)/100
+    const servings=[...(labelled&&labelled[2].trim()?[{name:labelled[2].trim(),grams:servingGrams,amount:number(labelled[1])||1}]:[]),
+      ...(packageGrams&&Math.abs(packageGrams-servingGrams)>0.5?[{name:"package",grams:packageGrams,amount:1}]:[])]
+    const nullable=(v:number|null)=>v==null?null:round(v*factor)
+    const candidate:SourceFood={sourceId:`off:${counter++}`,foodInfoSource:"Online",externalId:`off:${gtin}`,gtin,
+      name,brand:product.brands?.split(",")[0]?.trim()||null,defaultServingWeightGram:servingGrams,
+      kcal:round(kcal*factor),proteinG:round(protein*factor),carbG:round(carb*factor),totalFatG:round(fat*factor),
+      fiberG:nullable(value("fiber")),sugarG:nullable(value("sugars")),satFatG:nullable(value("saturated-fat")),
+      isLiquid:liquid,servings,
+      source:`https://world.openfoodfacts.org/product/${gtin.slice(1)}`}
+    return complete(candidate)?[remember(candidate)]:[]
+  }
+
+  /** Barcode databases for a decoded barcode, no model involved: USDA's branded record, else Open Food Facts. */
+  async function barcodeSources(value:string):Promise<SourceFood[]> {
+    const gtin=barcode(value)
+    if (!gtin) return []
+    const usda=await usdaByGtin(gtin).catch(()=>[])
+    return usda.length?usda:await offByGtin(gtin).catch(()=>[])
   }
 
   async function usdaByName(query:string):Promise<SourceFood[]> {
@@ -296,15 +347,16 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
 
   return {
     sources,
+    barcodeSources,
     /** Sources in order of cost; the catalogue was already searched. A barcode's USDA record first. A label is
      * already a complete source, so it never triggers web search. Without a barcode, USDA by name; cited web
      * search only when asked for (web), the last resort after USDA had nothing matching. A decoded barcode
-     * that neither the catalogue nor USDA knows, with no label, goes to the web. */
+     * that neither the catalogue, USDA nor Open Food Facts knows, with no label, goes to the web. */
     async searchFoodSources(query:string,options:{gtin?:string|null;labelSourceId?:string|null;web?:boolean}={}) {
       const text=query.trim().slice(0,100),gtin=barcode(options.gtin)
       const label=options.labelSourceId?sources.get(options.labelSourceId):undefined
       if (!text&&!gtin) return {status:"empty" as const,candidates:[]}
-      let found=gtin?await usdaByGtin(gtin).catch(()=>[]):[]
+      let found=gtin?await barcodeSources(gtin):[]
       if (!found.length&&!label) {
         found=gtin||options.web?await webCandidates(text||gtin!,gtin):await usdaByName(text).catch(()=>[])
       }
