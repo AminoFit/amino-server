@@ -19,7 +19,8 @@ const agentModel = () => ({ id: modelId, provider: "openrouter", model: createOp
   { provider: providerPreferences(modelId), reasoning: { effort: "low" }, usage: { include: true } }) })
 
 type Plan = ReturnType<typeof compileMealPlan>
-type Case = { messageId: number; expect: (plan: Plan, foods: Map<number, CatalogFood>) => string[] }
+// photoIds limits a case to some of the message's photos (the same meal seen with less evidence).
+type Case = { messageId: number; photoIds?: number[]; expect: (plan: Plan, foods: Map<number, CatalogFood>) => string[] }
 const named = (plan: Plan, foods: Map<number, CatalogFood>) => plan.items.map(item => ({ ...item, food: foods.get(item.foodId) }))
 // Past photo logs: each check is [name pattern, label, min grams?, max grams?, min kcal?, max kcal?].
 type Check = [RegExp, string, number?, number?, number?, number?]
@@ -33,6 +34,19 @@ const needs = (...checks: Check[]) => (plan: Plan, foods: Map<number, CatalogFoo
   return []
 })
 const CASES: Case[] = [
+  // "Naya bowl with pita. Rice, vermicelli and rotisserie chicken": each listed food is covered by a food that includes
+  // it ("Vermicelli rice" covers both; a "Rice Pilaf" covers only the rice, so vermicelli must be its own item).
+  { messageId: 30345, expect: needs([/rice/i, "rice"], [/vermicelli|noodle/i, "vermicelli"], [/chicken/i, "chicken"], [/pita/i, "pita"]) },
+  // Airline meals, blue cabin light. A packaged "Baguette de Pollo" (chicken, mozzarella, spinach), no nutrition label.
+  { messageId: 30341, expect: needs([/pollo|chicken/i, "chicken baguette", 150, 320]) },
+  // Undercover crispy quinoa, label only: 1 package = 0.5 oz (14 g), 60 kcal. The catalogue's USDA record says 70.
+  { messageId: 30342, expect: needs([/undercover|quinoa/i, "Undercover quinoa", 12, 16, 55, 65]) },
+  // "Baguette de Arrachera" (skirt steak, beans, Oaxaca cheese), net 270 g, front only (the owner's first log of it,
+  // 30343, was deleted with its photo): the named product, not a generic sub (its label gives 442 kcal).
+  // Without the label the energy is an estimate (the model says ~225 kcal/100 g, ~610 kcal): only plausibility is checked.
+  { messageId: 30344, photoIds: [8410], expect: needs([/arrachera/i, "Baguette de Arrachera", 250, 290, 330, 700]) },
+  // The same baguette with its Mexican label, rotated: per 100 g 163.7 kcal; per package (270 g) 442 kcal.
+  { messageId: 30344, expect: needs([/arrachera/i, "Baguette de Arrachera", 250, 290, 400, 485]) },
   { messageId: 30318, expect: (plan, foods) => { const items = named(plan, foods), problems: string[] = []
     if (items.some(item => item.origin === "history")) problems.push("copied a past meal")
     if (!items.some(item => /tuna/i.test(item.food?.name ?? ""))) problems.push("no tuna ceviche")
@@ -94,7 +108,15 @@ async function run(test: Case) {
       return { abortSignal: async () => ({ data: [{ food_id: id, created: true, enrichment: null }], error: null }) }
     }
     if (name === "enrich_catalogue_food") { if (args.p_food?.gtin) created.push(`barcode ${args.p_food.gtin} -> food ${args.p_food_id}`)
-      return { abortSignal: async () => ({ data: { foodId: args.p_food_id, added: args.p_food?.gtin ? ["gtin"] : [], conflict: false }, error: null }) } }
+      // As the database decides: energy densities more than max(10, 10%) kcal/100 g apart are a conflict.
+      return { abortSignal: async () => {
+        const { data: existing } = await realDb.from("FoodItem").select("kcalPerServing,defaultServingWeightGram").eq("id", args.p_food_id).maybeSingle()
+        const density = (kcal: number | null, grams: number | null) => kcal != null && grams ? kcal / grams * 100 : null
+        const old = density(existing?.kcalPerServing ?? null, existing?.defaultServingWeightGram ?? null)
+        const proposed = density(args.p_food?.kcal ?? null, args.p_food?.defaultServingWeightGram ?? null)
+        const conflict = old != null && proposed != null && Math.abs(old - proposed) > Math.max(10, 0.1 * Math.max(old, proposed))
+        return { data: { foodId: args.p_food_id, added: args.p_food?.gtin ? ["gtin"] : [], conflict }, error: null }
+      } } }
     return realDb.rpc(name, args)
   } }
   const sources = createFoodSources({ userId: message!.userId, messageId: test.messageId, signal: controller.signal, barcodes,
@@ -103,7 +125,7 @@ async function run(test: Case) {
     // --no-text drops the caption: a photo of a nutrition panel alone must still become a named food.
     originalText: process.argv.includes("--no-text") ? "" : message!.content ?? "", consumedOn: new Date(`${message!.consumedOn}Z`).toISOString(),
     submittedAt: new Date(`${message!.createdAt}Z`).toISOString(), timezone: "America/New_York", locale: null,
-    attachmentIds: (photos ?? []).map(photo => photo.id), clarificationAllowed: false }
+    attachmentIds: (photos ?? []).map(photo => photo.id).filter(id => !test.photoIds || test.photoIds.includes(id)), clarificationAllowed: false }
   let cost = 0
   // OpenRouter reports each step's cost; sum it across the agent's steps.
   const generate = (async options => { const result = await generateText(options)
@@ -112,7 +134,14 @@ async function run(test: Case) {
   // The preview the app would show greyed out after the first look (stage "found").
   let preview: { name: string; grams: number | null; kcal: number | null }[] | undefined, firstPreviewMs: number | undefined
   const started = Date.now()
-  const deps = { evidence, sources, barcodes, generate, model: agentModel as never,
+  // --trace prints each tool call with its input and output to stderr.
+  const tools: string[] = []
+  const onTool = (name: string, toolInput: unknown, output: unknown) => {
+    const line = `${name} ${JSON.stringify(toolInput).slice(0, 600)} -> ${JSON.stringify(output).slice(0, 600)}`
+    tools.push(line)
+    if (process.argv.includes("--trace")) console.error(`[${test.messageId}] ${line}`)
+  }
+  const deps = { evidence, sources, barcodes, generate, model: agentModel as never, onTool,
     onProgress: (stage: string, items?: { name: string; grams: number | null; kcal: number | null }[]) => {
       if (stage === "found") { preview = items; firstPreviewMs ??= Date.now() - started } } }
   let result = await resolveMeal(input, deps)
@@ -125,7 +154,7 @@ async function run(test: Case) {
     plan = await compileCheckedMealPlan(input, result, { secondLook: false })
   }
   const problems = test.expect(plan, evidence.foods)
-  return { messageId: test.messageId, pass: problems.length === 0, problems, ms: Date.now() - started, agentCostUsd: Number(cost.toFixed(4)), steps: result.steps, checked: result.checked,
+  return { messageId: test.messageId, pass: problems.length === 0, problems, trace: result.trace, ms: Date.now() - started, agentCostUsd: Number(cost.toFixed(4)), steps: result.steps, checked: result.checked,
     stages: Object.fromEntries(Object.entries((result.timeline ?? []).reduce<Record<string, number>>((sum, t) => ({ ...sum, [t.stage]: (sum[t.stage] ?? 0) + t.ms }), {}))), barcodes: result.barcodes,
     created, items: named(plan, evidence.foods).map(item => `${item.food?.name} ${Math.round(item.grams)}g ${item.loggedUnit} (${item.origin})`),
     firstPreviewMs, preview: preview?.map(p => `${p.name} ${p.grams ?? "?"}g ${p.kcal ?? "?"}kcal`) }
@@ -137,7 +166,9 @@ void (async () => {
   let passed = 0
   for (const test of CASES.filter(test => !only.length || only.includes(test.messageId))) {
     try { const row = await run(test); if (row.pass) passed++; console.log(JSON.stringify(row)) }
-    catch (error) { console.log(JSON.stringify({ messageId: test.messageId, pass: false, error: error instanceof Error ? error.message : "unknown" })) }
+    catch (error) { const text = (error as { text?: string }).text
+      if (text) console.error(`[${test.messageId}] unparsed output: ${text.slice(0, 1500)}`)
+      console.log(JSON.stringify({ messageId: test.messageId, pass: false, error: error instanceof Error ? error.message : "unknown" })) }
   }
   console.log(`\n${modelId}: ${passed} passed`)
 })()

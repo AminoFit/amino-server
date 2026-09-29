@@ -39,6 +39,7 @@ export const labelFood = z.object({name:z.string().trim().min(2).max(120).descri
   kcal:amount,proteinG:amount,carbG:amount,totalFatG:amount,
   fiberG:amount.nullable(),sugarG:amount.nullable(),satFatG:amount.nullable(),
   gtin:z.string().max(20).nullable(),
+  packageGrams:z.number().positive().max(5000).nullable().optional().describe("The package's net weight in grams when printed and the facts are not already per package (for example a per-100 g table on a 270 g sandwich)"),
   identified:z.boolean().describe("true when the product's name or brand is visible in the photo or given by the user; false when only the nutrition panel is visible and the name is your own description")}).strict()
 
 const webFood = z.object({foods:z.array(z.object({name:z.string().min(2).max(120),brand:z.string().max(80).nullable(),
@@ -62,7 +63,9 @@ brand, flavour, variant, form (for example a drink vs a cup of yogurt, a bar vs 
 (dry vs cooked, in oil vs in water, 2% vs whole). Names may differ in language, spelling, word order or punctuation.
 Use the serving units and sizes and the per-100 g energy and protein as evidence: very different values mean a
 different product, except for a catalogue food marked estimate, whose numbers may be wrong: judge it by identity
-(name, brand, flavour, variant, form, preparation) alone. Choose none when no candidate is the same food.`
+(name, brand, flavour, variant, form, preparation) alone. A generic database food (a description such as "Fast foods,
+submarine sandwich" or "Steak sandwich") is never the same as a specific named product ("Baguette de Arrachera").
+Choose none when no candidate is the same food.`
 
 const BARCODE_POLICY=`A barcode library decoded a retail barcode from the user's photo of a package. Decide whether the
 package, described by the agent from the photo, is exactly this catalogue food: same brand, product, flavour, variant
@@ -86,7 +89,8 @@ const unitKey=(unit:string)=>unit.toLowerCase().replace(/[.\s]+/g," ").trim().re
 export function cleanServings(servings:SourceFood["servings"]):SourceFood["servings"] {
   const kept:SourceFood["servings"]=[],seen=new Set<string>()
   for (const serving of servings) {
-    let {name,amount}=serving
+    let {amount}=serving
+    let name=readableUnits(serving.name??"")
     const grams=serving.grams
     if (!(grams>0)||!(amount>0)||!name?.trim()) continue
     name=name.replace(/\s*\(\s*(\d+(?:\.\d+)?)\s*g\s*\)\s*/i,(match,g)=>{const n=Number(g)
@@ -107,6 +111,12 @@ export function cleanServings(servings:SourceFood["servings"]):SourceFood["servi
   // standard units are exempt, since there the lighter one can be right.
   const per=(s:SourceFood["servings"][number])=>s.grams/s.amount
   return kept.filter(s=>UNIT_GRAMS[unitKey(s.name)]||!kept.some(o=>o!==s&&o.name.toLowerCase()===s.name.toLowerCase()&&per(o)>=5*per(s)))
+}
+
+// USDA branded records keep their raw unit codes (".25 ONZ", "8 OZA", "15 MLT"); people read "0.25 oz", "8 fl oz".
+const USDA_UNIT_CODES:Record<string,string>={ONZ:"oz",OZA:"fl oz",GRM:"g",MLT:"mL",LTR:"L",KGM:"kg",MGM:"mg",LBR:"lb"}
+export function readableUnits(name:string) {
+  return name.replace(/\b(ONZ|OZA|GRM|MLT|LTR|KGM|MGM|LBR)\b/g,code=>USDA_UNIT_CODES[code]).replace(/^\.(\d)/,"0.$1")
 }
 
 const complete=(food:SourceFood)=>food.name.trim().length>=2&&food.defaultServingWeightGram>0&&
@@ -228,12 +238,20 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
   const isEstimate=(f?:{foodInfoSource?:string})=>f?.foodInfoSource==="GPT4"||f?.foodInfoSource==="AgentEstimate"
 
   async function duplicateOf(food:SourceFood,facts:Facts[]):Promise<{status:"none"}|{status:"existing";foodId:number;estimate:boolean}|
-    {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null}[]}> {
+    {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null;servingGrams:number|null;kcal:number|null;proteinG:number|null}[]}> {
     if (!facts.length) return {status:"none"}
     // Barcodes decide outright: the same GTIN is this food; a different GTIN is another product.
     const sameBarcode=food.gtin?facts.find(f=>f.gtin===food.gtin):undefined
     if (sameBarcode) return {status:"existing",foodId:sameBarcode.id,estimate:isEstimate(sameBarcode)}
-    const candidates=facts.filter(f=>!(food.gtin&&f.gtin&&f.gtin!==food.gtin))
+    // A different barcode is another product, and so is a different brand (older rows often have no brand at all, so
+    // those stay candidates). Without this, nearby noise ("Kind dark chocolate bar" for an Undercover quinoa snack)
+    // kept a label food from ever being created.
+    const brandOf=(value:string|null|undefined)=>(value??"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g,"")
+    const brand=brandOf(food.brand)
+    // "Undercover" and "Undercover Snacks" are one brand.
+    const sameBrand=(other:string|null|undefined)=>{const b=brandOf(other);return !!b&&!!brand&&(b.includes(brand)||brand.includes(b))}
+    const candidates=facts.filter(f=>!(food.gtin&&f.gtin&&f.gtin!==food.gtin)&&
+      (!brand||!brandOf(f.brand)||sameBrand(f.brand)||(f.gtin!=null&&f.gtin===food.gtin)))
     if (!candidates.length) return {status:"none"}
     const options:Record<string,unknown>={none:null},criteria:Record<string,string>={none:"No candidate is the same food."}
     for (const c of candidates) {options[`food_${c.id}`]=c.id;criteria[`food_${c.id}`]=`Catalogue food ${c.id}.`}
@@ -249,11 +267,16 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       return {status:"existing",foodId,estimate:isEstimate(candidates.find(c=>c.id===foodId))}
     }
     if (confident&&decision.choice==="none") return {status:"none"}
-    // Uncertain or unavailable: never create. The agent must pick one or ask.
-    return {status:"possible_duplicates",candidates:candidates.map(({id,name,brand})=>({id,name,brand}))}
+    // A label is authoritative: unsure among foods that are not even the same brand, it is a new product.
+    if (food.foodInfoSource==="Label"&&!candidates.some(c=>sameBrand(c.brand))) return {status:"none"}
+    // Otherwise the agent decides, with addFood's sameAs (a candidate, or null for none).
+    return {status:"possible_duplicates",candidates:candidates.map(c=>({id:c.id,name:c.name,brand:c.brand,
+      servingGrams:c.defaultServingWeightGram,kcal:c.kcalPerServing,proteinG:c.proteinPerServing}))}
   }
 
   const rechecked=new Set<string>()
+  // Candidates offered per source (with whether each is an estimate), so addFood's sameAs can only pick one of them.
+  const offeredDuplicates=new Map<string,Map<number,boolean>>()
   function densityOutlier(food:SourceFood,facts:Facts[]) {
     const densities=facts.flatMap(f=>f.defaultServingWeightGram&&f.defaultServingWeightGram>0&&f.kcalPerServing!=null
       ?[f.kcalPerServing/f.defaultServingWeightGram*100]:[]).sort((a,b)=>a-b)
@@ -323,7 +346,9 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       const candidate:SourceFood={sourceId:`label:${counter++}`,foodInfoSource:"Label",externalId:null,gtin:barcode(food.gtin),
         name:food.name,brand:food.brand,defaultServingWeightGram:food.servingGrams,kcal:food.kcal,proteinG:food.proteinG,
         carbG:food.carbG,totalFatG:food.totalFatG,fiberG:food.fiberG,sugarG:food.sugarG,satFatG:food.satFatG,isLiquid:false,
-        servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount}],source:"Nutrition label in the user's photo",
+        servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount},
+          ...(food.packageGrams&&Math.abs(food.packageGrams-food.servingGrams)>0.5?[{name:"package",grams:food.packageGrams,amount:1}]:[])],
+        source:"Nutrition label in the user's photo",
         // A panel no one can name (no product name, no decoded barcode) stays the user's own: a generic name such as
         // "Protein shake" must not carry one product's exact numbers into everyone's catalogue.
         personal:!food.identified&&!barcode(food.gtin)}
@@ -342,15 +367,25 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     },
     /** Adds a remembered source candidate to the catalogue unless it already exists, in
      * which case the existing food is enriched (barcode, servings, empty nutrients). */
-    async createFoodFromSource(sourceId:string) {
+    async createFoodFromSource(sourceId:string,sameAs?:number|null) {
       const food=sources.get(sourceId)
       if (!food) throw new Error("unknown_food_source")
-      const facts=await nearbyFacts(food)
-      // An estimate far from similar foods' energy density usually has a wrong basis (a GPT-era "tuna ceviche"
-      // at 317 kcal/100 g vs ~120). It goes back once to be re-checked; resubmitting the same source accepts it.
-      const outlier=food.foodInfoSource==="AgentEstimate"&&!rechecked.has(sourceId)?densityOutlier(food,facts):null
-      if (outlier) {rechecked.add(sourceId);return {status:"recheck_estimate" as const,reason:outlier}}
-      const duplicate=await duplicateOf(food,facts)
+      let duplicate:Awaited<ReturnType<typeof duplicateOf>>
+      const offered=offeredDuplicates.get(sourceId)
+      if (sameAs!==undefined&&offered) {
+        // The agent's answer to possible_duplicates: one of the candidates, or none of them.
+        if (sameAs!==null&&!offered.has(sameAs)) throw new Error("sameAs must be one of the possible duplicates, or null")
+        duplicate=sameAs===null?{status:"none"}:{status:"existing",foodId:sameAs,estimate:offered.get(sameAs)===true}
+      } else {
+        const facts=await nearbyFacts(food)
+        // An estimate far from similar foods' energy density usually has a wrong basis (a GPT-era "tuna ceviche"
+        // at 317 kcal/100 g vs ~120). It goes back once to be re-checked; resubmitting the same source accepts it.
+        const outlier=food.foodInfoSource==="AgentEstimate"&&!rechecked.has(sourceId)?densityOutlier(food,facts):null
+        if (outlier) {rechecked.add(sourceId);return {status:"recheck_estimate" as const,reason:outlier}}
+        duplicate=await duplicateOf(food,facts)
+        if (duplicate.status==="possible_duplicates") offeredDuplicates.set(sourceId,
+          new Map(duplicate.candidates.map(c=>[c.id,isEstimate(facts.find(f=>f.id===c.id))])))
+      }
       if (duplicate.status==="existing") {
         // A verified source that is the same food as an estimate supersedes it (B5): the estimate takes the source's
         // serving and nutrients, with the old row backed up and any disagreement recorded.
@@ -380,7 +415,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       }
       if (duplicate.status==="possible_duplicates") {
         for (const c of duplicate.candidates) ctx.discover(c.id)
-        return duplicate
+        return {...duplicate,next:"Call addFood again with sameAs: the candidate that is the same food (same product, brand and variant), or null when none is."}
       }
       const created=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
         p_food:await payload(food,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)

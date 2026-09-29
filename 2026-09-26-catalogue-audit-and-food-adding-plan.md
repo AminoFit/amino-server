@@ -472,3 +472,25 @@ Muse Spark's contributor tier (it trains on inputs) is blocked by the OpenRouter
 1. **Supersede and past logs:** may the audit overwrite nutrients of estimate-grade foods (GPT4 or AgentEstimate) when a cited source disagrees? `LoggedFoodItem` rows keep their own nutrients, so should past logs of a corrected food be recomputed or left as logged?
 2. **Merge policy:** for duplicate barcodes and identities, keep the most-logged food and repoint logs, servings and icons?
 3. **Icon budget:** a spending cap for regenerating wrong icons (A7).
+
+## Labels and named products (2026-09-29)
+
+An airline day showed three failures: a readable label ignored for an older catalogue record (60 vs 70 kcal), a named
+"Baguette de Arrachera" logged as a generic US steak sub (675 vs 442 kcal), and the same baguette with its Mexican
+label stuck for 4 minutes and failed once. Root cause: addFood answered `possible_duplicates` with 8 noisy candidates
+every time and the agent had no way to say "none of these", so it looped to the deadline.
+
+- `addFood` takes `sameAs` (a candidate, or null for none). The duplicate check drops other brands; an unsure check on
+  a label creates it unless a same-brand candidate exists. Generic database foods are never a named product.
+- `readLabel`: Sonnet 5.5 transcribes the label from the photo in three orientations (exact on the rotated Mexican
+  label where Flash varied; it declines an unreadable one). Code maps per serving / per 100 g / per package, kJ and
+  the package weight; no model arithmetic. `calculate` for any other arithmetic.
+- Prompt: labels are the truth (readLabel then addFood, no search), a named packaged product is one item under its
+  name (its ingredient list never becomes items), listed foods share a food only when it includes each of them, a
+  photo-only message is a new meal, multi-serve packages default to one labelled serving.
+- Harness: a turn 25 s before the deadline must answer (a best-effort plan beats a failed meal retried minutes
+  later); history reads stop at the meal's own submission; each meal logs a tool trace (status and IDs only).
+- USDA unit codes in serving names become units (".25 ONZ" is "0.25 oz"; 521 existing servings, fixed in the app's
+  display).
+- Eval: photos 21 cases (5 new: the airline meals and the Naya bowl), text 17/17, history 15/15. Airline cases went
+  from 1/4 (20 steps, 88 s, failures) to 4/4 at 30-40 s.

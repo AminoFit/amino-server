@@ -10,6 +10,8 @@ import { compileCheckedMealPlan } from "./historyCheck"
 import { listVisibleFoods, type VisibleFood } from "./coverageCheck"
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
+import { calculate } from "./calculate"
+import { labelSourceInput, readNutritionLabel } from "./labelReader"
 import { localTime } from "@/mealOperations/instant"
 
 const system = `You resolve one whole food-log operation in any language. The original user wording,
@@ -41,29 +43,43 @@ exact gtin. A barcodeMatches food is that product: use it. For a barcode with no
 findFood with its gtin. If a catalogue food is exactly the scanned product (same brand, product, flavour, variant
 and form), call attachBarcode so the catalogue remembers the barcode, then log that food. Otherwise call findFood
 again with includeSources and addFood the matching source (it keeps the barcode); never substitute a similar
-catalogue food. When a photo shows a nutrition label, call proposeLabelFood with the facts exactly as printed
-for one serving (and the decoded gtin if one belongs to this product), then findFood with its labelSourceId.
-Use a catalogue food that is this product; otherwise addFood a source with matchesLabel true, or the label
-source itself (it is complete; never search the web for a product whose label you have). When neither the photo
-nor the user names the product (only the nutrition panel is visible), set identified false and give a short
-descriptive name: the food is saved for this user only.
+catalogue food. A nutrition label in a photo is the truth for that product, whatever the catalogue says. Call readLabel with that
+photo's attachment ID, the product's name and brand as printed and the decoded gtin if it belongs to this product:
+it transcribes the label exactly (in any orientation, per serving, per 100 g or per package, with the package weight)
+and returns a label sourceId. Then addFood that sourceId straight away, without searching: it reuses the catalogue
+food when it is this product (your own copy with the label's numbers when they disagree) or creates it. Log the
+food addFood returns. Never search the web for a product whose label you have. The portion eaten is the item's
+quantity (one labelled serving of a multi-serve package unless the user says more, the whole package when it is
+single-serve, a mass, or a fraction such as 0.5 of a serving) and the backend does the arithmetic. If
+readLabel reports the label illegible, use the catalogue food or an estimate with a clear basis. proposeLabelFood is
+only for nutrition facts the user typed: copy them exactly as given, never converted. When neither the photo nor
+the user names the product (only the nutrition panel is visible), set identified false and give a short descriptive
+name: the food is saved for this user only.
 Identify the exact product variant (flavour, line, size) from everything visible: packaging colours,
 the food itself, labels and text. When the photo does not name the variant, search for the variant the
 visual evidence indicates; never settle for a sibling variant merely because it exists in the catalogue.
 A dish with visible extras served on or with it (a topping, side or sauce) is the dish plus each extra as its
 own item, unless the dish's catalogue food already includes that extra. Small visible amounts still count.
 Copy items from a past meal only when the user refers to one (for example "same as yesterday"). A photo or
-description that resembles a recent meal is not a reference: identify what this meal actually contains.
+description that resembles a recent meal is not a reference: identify what this meal actually contains. A message
+with only photos is a new meal: log what they show, without reading history. Never return a plan without items
+because a similar meal was logged before.
 For a packaged product with no stated amount: a single-serve package (a bottle, can or bar meant for one
 person) is the whole package; a multi-serve package (a carton, large bottle or box) is one labelled serving.
 Every logged item must reference a catalogue food. findFood searches the catalogue (any language or spelling;
 details included); the catalogue is the cache of every food found before, so use it whenever it has the food.
 When no catalogue food has the same identity, call findFood again for that food with includeSources true: it
 returns USDA records. Only if none is the same food, call it once more with includeSources for a cited web search
-(slow, the last resort). addFood the best source. addFood may return an existing food instead:
-use it; if it returns possible_duplicates, use the matching one or ask. Only when no source exists (for example
-a homemade dish) call proposeEstimatedFood with per-100 g values and a clear basis, then addFood its sourceId.
-Prefer logging recognisable components separately over inventing a composite. Never add a food the catalogue has.
+(slow, the last resort). addFood the best source. addFood may return an existing food instead: use it. If it returns
+possible_duplicates, call addFood again with sameAs: the candidate that is the same food, or null when none is (the
+food is then created). Only when no source exists (for example a homemade dish) call proposeEstimatedFood with
+per-100 g values and a clear basis, then addFood its sourceId.
+A named packaged or menu product (its name printed on the packaging, for example "Baguette de Arrachera") is one item
+under that name: its printed ingredient list describes it and never becomes separate items, and a generic look-alike
+("steak sandwich") is not the same food. When the catalogue has no such product and no label is visible, call
+proposeEstimatedFood with the printed name, per-100 g values estimated from its ingredients, and a package serving of
+its net weight when printed. For an unnamed dish, prefer logging recognisable components separately over inventing
+a composite. Never add a food the catalogue has.
 A food marked yours is this user's own version (from their label or recipe): when it is the same product as a shared
 food, use yours. A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
 for this user only. Name a new food as the food itself, never with the portion ("Cheeseburger", not "1/2 Cheeseburger"; "Hard-boiled
@@ -79,13 +95,18 @@ Quantity kinds: mass for an explicit mass, serving for a catalogue serving where
 units (5 pieces is amount 5 of the "pieces" serving; grams = amount x gramsPerUnit),
 history for scaling a recorded portion, estimated_mass for a reasonable supported food-log
 estimate with a clear basis. Never invent a branded label, food ID, serving ID or source fact.
+Never do arithmetic in your head: for any sum, product, fraction or unit conversion (3 of 8 slices of a 400 g pizza,
+2.5 oz in grams) call calculate and use its result.
 Preserve explicit nutrient facts and their scope. Use sourceText copied from the original wording,
 including non-English text. If a real ambiguity could change the foods/amounts, ask a concise
 clarification in the user's language. If a retrieval tool errors, do not treat it as no food.
 List every distinct food the user mentions (or a photo shows) once in components. Use sourceText
 copied verbatim from originalText, or "photo: <what is visible>" for photo-only foods. Map each to the
 item and/or history selection indexes that account for it. A mention covered by a composite food or a
-referenced dish maps to that one item or selection. Mark explicit omissions ("without X") omitted with
+referenced dish maps to that one item or selection. Foods the user lists separately ("rice, vermicelli and
+chicken") may share one catalogue food only when its name or description includes each of them ("Vermicelli rice"
+covers rice and vermicelli); a food that covers only one ("Rice pilaf" covers the rice) means searching for the other
+and logging it as its own item. Mark explicit omissions ("without X") omitted with
 no indexes. Every item and selection must appear in exactly one component: never drop a mentioned food,
 never add an unmentioned one, and never log the same food twice in one dish; combine its quantity.
 The claims array is ONLY for explicit numeric nutrient assertions in the current originalText.
@@ -157,13 +178,18 @@ export type MealResolutionResult = {proposal:MealProposal;
   /** True when the final plan already passed the backend check in-session. */
   checked?:boolean;
   /** Stage durations for telemetry (no user content). */
-  timeline?:{stage:string;ms:number}[]}
+  timeline?:{stage:string;ms:number}[]
+  /** Each tool call and its outcome (status and IDs only, no user content), for logs. */
+  trace?:string[]}
 
 export async function resolveMeal(input:MealResolutionInput,deps:{
   evidence?:ReturnType<typeof createMealEvidence>;
   generate?:typeof generateText;model?:typeof agentModel;visible?:typeof listVisibleFoods;textFoods?:typeof streamTextFoods;
+  readLabel?:typeof readNutritionLabel;
   /** Best-effort stage reports for the app (stage, and a preview after the first look at a photo). */
   onProgress?:(stage:MealProgressStage,preview?:MealPreviewItem[])=>unknown;
+  /** Every tool call with its full input and output (evals and debugging). */
+  onTool?:(name:string,input:unknown,output:unknown)=>void;
   loadPhotos?:typeof loadMealPhotos;deadlineMs?:number;
   sources?:ReturnType<typeof createFoodSources>;readBarcode?:(url:URL)=>Promise<string|null>;
   /** Decoded GTINs are pushed here; pass the same array to injected sources. */
@@ -183,10 +209,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   // Where the time goes: prefetch, each model step, each tool call and the backend check.
   const timeline:{stage:string;ms:number}[]=[]
   const mark=(stage:string,since:number)=>{timeline.push({stage,ms:Math.round(performance.now()-since)})}
+  const trace:string[]=[]
   let stepStarted=performance.now()
   // Most meals finish in one or two turns; creating a missing food needs web search
   // (6-20 s). The worker's lease is 120 s.
   const timer=setTimeout(()=>controller.abort(),deps.deadlineMs??90000)
+  const answerBy=(deps.deadlineMs??90000)-25000
+  const historyEnd=Date.parse(input.submittedAt)+60000
   try {
     // Photos, likely foods and recent meals load in parallel before the first turn.
     const now=Date.parse(input.submittedAt)
@@ -245,10 +274,19 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         listMealEvents:tool({description:"List this user's published meal events in a structured UTC time window. Page through results when needed.",
           inputSchema:z.object({from:z.string().datetime({offset:true}),to:z.string().datetime({offset:true}),
             cursor:z.number().int().min(0).max(200).default(0)}).strict(),
-          execute:({from,to,cursor})=>withCount(()=>evidence.listMealEvents(from,to,cursor))}),
+          // History is what came before this meal: a later log (an edit of an old meal, or the same food logged again)
+          // is never a reference and must not make this meal look already logged.
+          execute:({from,to,cursor})=>withCount(async()=>{
+            const end=Math.min(Date.parse(to),historyEnd)
+            if (!(end>Date.parse(from))) return {status:"ok" as const,events:[],nextCursor:null}
+            return evidence.listMealEvents(from,new Date(end).toISOString(),cursor)
+          })}),
         getMealEvent:tool({description:"Read the complete owned historical event, its original wording, foods, and component groups.",
           inputSchema:z.object({messageId:z.number().int().positive()}).strict(),
-          execute:({messageId})=>withCount(()=>evidence.getMealEvent(messageId))}),
+          execute:({messageId})=>withCount(async()=>{
+            const read=await evidence.getMealEvent(messageId)
+            return read.status==="ok"&&Date.parse(read.event.consumedOn)>historyEnd?{status:"unavailable" as const}:read
+          })}),
         findFood:tool({description:"Find a food. Searches the catalogue by name (any language or spelling) and by a decoded barcode, with details. Sources to add are searched only when the catalogue has nothing, or when you call again for the same food with includeSources true: first USDA (the barcode's record, else by name), then on a further call cited web pages. With labelSourceId each source says whether it matches the label. Results are hints, not identity proof.",
           inputSchema:z.object({query:z.string().trim().min(1).max(100),gtin:z.string().max(20).nullable(),
             includeSources:z.boolean(),labelSourceId:z.string().max(60).nullable()}).strict(),
@@ -285,17 +323,32 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
             if (food&&attached.status==="attached") evidence.foods.set(food.id,{...food,gtin:code})
             return {...attached,food:food?foodSummary({...food,gtin:attached.status==="attached"?code:food.gtin}):null}
           })}),
+        calculate:tool({description:"Evaluate arithmetic exactly: numbers, + - * / and parentheses (\"3/8 * 400\", \"2.5 * 28.35\"). Use it for every calculation.",
+          inputSchema:z.object({expression:z.string().min(1).max(200)}).strict(),
+          execute:async({expression})=>{try {return {result:calculate(expression)}}
+            catch (error) {return {error:error instanceof Error?error.message:"invalid_expression"}}}}),
         getFoodsAndServings:tool({description:"Read authoritative details for previously discovered catalogue food IDs, including serving weights and nutrients.",
           inputSchema:z.object({foodIds:z.array(z.number().int().positive()).min(1).max(20)}).strict(),
           execute:({foodIds})=>withCount(async()=>{const read=await evidence.getFoodsAndServings(foodIds);return {...read,foods:read.foods.map(foodSummary)}})}),
-        proposeLabelFood:tool({description:"Register the nutrition facts printed on a label in the photo (one serving, in grams) as a source. Returns a sourceId.",
+        readLabel:tool({description:"Read the nutrition label in one of this meal's photos exactly (any orientation) and register it as a label source. Returns a sourceId for addFood, or illegible.",
+          inputSchema:z.object({photoId:z.number().int().positive(),name:labelFood.shape.name,brand:labelFood.shape.brand,
+            gtin:z.string().max(20).nullable(),identified:labelFood.shape.identified}).strict(),
+          execute:({photoId,name,brand,gtin,identified})=>withCount(async()=>{
+            const photo=photos.find(candidate=>candidate.id===photoId)
+            if (!photo) return {status:"unknown_photo",photoIds:photos.map(candidate=>candidate.id)}
+            const facts=await (deps.readLabel??readNutritionLabel)(photo.url,{signal:controller.signal})
+            if (!facts) return {status:"illegible"}
+            return sources.proposeLabelFood(labelSourceInput(facts,{name,brand,gtin,identified}))
+          })}),
+        proposeLabelFood:tool({description:"Register nutrition facts the user typed (one serving, in grams) as a source. For a label in a photo use readLabel. Returns a sourceId.",
           inputSchema:labelFood,execute:async value=>sources.proposeLabelFood(value)}),
         proposeEstimatedFood:tool({description:"Last resort when no source exists: register an estimated food (per 100 g) with its basis. Returns a sourceId.",
           inputSchema:estimatedFood,execute:async value=>sources.proposeEstimatedFood(value)}),
-        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log (the user's own copy, with variantOf, when their label disagrees with the shared food), possible duplicates to choose from, or recheck_estimate when an estimate's energy density is far from similar foods.",
-          inputSchema:z.object({sourceId:z.string().min(1).max(60)}).strict(),
-          execute:({sourceId})=>withCount(async()=>{
-            const created=await sources.createFoodFromSource(sourceId)
+        addFood:tool({description:"Add a source to the catalogue after duplicate checks (enriching an existing food instead when it is the same). Returns the catalogue food with servings to log (the user's own copy, with variantOf, when their label disagrees with the shared food), possible duplicates to choose from (answer with sameAs), or recheck_estimate when an estimate's energy density is far from similar foods.",
+          inputSchema:z.object({sourceId:z.string().min(1).max(60),
+            sameAs:z.number().int().positive().nullable().optional().describe("Only after possible_duplicates: the candidate ID that is the same food, or null when none is")}).strict(),
+          execute:({sourceId,sameAs})=>withCount(async()=>{
+            const created=await sources.createFoodFromSource(sourceId,sameAs)
             if (created.status!=="created"&&created.status!=="existing") return created
             // Return the food's details so the agent can log it without another turn.
             const {foods}=await evidence.getFoodsAndServings([created.foodId]).catch(()=>({foods:[]}))
@@ -304,7 +357,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       },
       toolChoice:"auto",stopWhen:stepCountIs(MAX_STEPS),
       // The last step must answer; a model still searching would otherwise return nothing.
-      prepareStep:({stepNumber}:{stepNumber:number})=>stepNumber>=MAX_STEPS-1?{toolChoice:"none" as const}:{},maxOutputTokens:6000,
+      // So does a turn near the deadline: a best-effort plan beats a failed meal retried minutes later.
+      prepareStep:({stepNumber}:{stepNumber:number})=>stepNumber>=MAX_STEPS-1||performance.now()-started>answerBy?
+        {toolChoice:"none" as const}:{},maxOutputTokens:6000,
       // Shared Gemini capacity sometimes aborts upstream; retry with backoff before failing the meal.
       maxRetries:2,
       abortSignal:controller.signal,onStepFinish:()=>{steps++;mark("model_step",stepStarted);stepStarted=performance.now()}
@@ -312,7 +367,16 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     for (const [name,definition] of Object.entries(request.tools) as [string,{execute?:(...args:any[])=>Promise<unknown>}][]) {
       const run=definition.execute
       if (run) definition.execute=async(...args:any[])=>{const started=performance.now()
-        try {return await run(...args)} finally {mark(`tool:${name}`,started)}}
+        try {
+          const output=await run(...args)
+          trace.push(`${name}: ${toolOutcome(output)}`)
+          deps.onTool?.(name,args[0],output)
+          return output
+        } catch (error) {
+          trace.push(`${name}: error ${error instanceof Error?error.message.slice(0,80):"unknown"}`)
+          deps.onTool?.(name,args[0],{error:error instanceof Error?error.message:"unknown"})
+          throw error
+        } finally {mark(`tool:${name}`,started)}}
     }
     let messages:ModelMessage[]=[{role:"user",content:photos.length?[{type:"text",text:prompt},
       ...photos.map(photo=>({type:"image" as const,image:photo.url}))]:prompt}]
@@ -343,9 +407,28 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),model:selected.id,provider:selected.provider,
       durationMs:performance.now()-started,steps,toolCalls,barcodes:[...barcodes],
       // The final plan already passed the backend check (the second look ran in-session).
-      checked,timeline}
+      checked,timeline,trace}
     // Signed URLs carry storage tokens: usable by the second look, never serialised or logged.
     Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
     return resolved
+  } catch (error) {
+    // A failed meal is retried later; what the agent tried is the only clue to why.
+    console.warn("meal_resolution_failed",{messageId:input.messageId,steps,
+      error:error instanceof Error?error.message.slice(0,120):"unknown",trace})
+    throw error
   } finally {clearTimeout(timer);controller.abort()}
+}
+
+/** A tool result as status and IDs only: never names or text, so it can be logged. */
+function toolOutcome(value:unknown):string {
+  if (!value||typeof value!=="object") return typeof value
+  const record=value as Record<string,unknown>
+  const food=record.food as {id?:number}|null|undefined
+  return [typeof record.status==="string"?record.status:null,
+    typeof record.foodId==="number"?`food ${record.foodId}`:food?.id?`food ${food.id}`:null,
+    typeof record.sourceId==="string"?`source ${record.sourceId}`:null,
+    Array.isArray(record.foods)?`${record.foods.length} foods`:null,
+    Array.isArray(record.candidates)?`${record.candidates.length} candidates`:null,
+    Array.isArray(record.duplicates)?`${record.duplicates.length} duplicates`:null,
+    typeof record.error==="string"?`error ${record.error.slice(0,60)}`:null].filter(Boolean).join(", ")||"ok"
 }

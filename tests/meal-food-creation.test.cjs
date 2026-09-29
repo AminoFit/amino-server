@@ -387,3 +387,51 @@ test('a verified source that is the same food as an estimate supersedes it; veri
   await h.sources.createFoodFromSource(estimate.sourceId);
   assert.equal(h.calls.supersede.length,0,'an estimate never supersedes another estimate');
 });
+
+const quinoaLabel={name:'Dark Chocolate + Sea Salt Quinoa Crisps',brand:'Undercover',servingUnit:'package',servingAmount:1,servingGrams:14,
+  kcal:60,proteinG:1,carbG:10,totalFatG:3,fiberG:1,sugarG:3,satFatG:1.8,gtin:null,identified:true};
+const quinoaNearby=[{id:15289,name:'Dark Chocolate + Sea Salt Crispy Quinoa',brand:'Undercover Snacks',defaultServingWeightGram:7,kcalPerServing:35},
+  {id:2550,name:'Dark Chocolate Nuts & Sea Salt Bar',brand:'Kind'},{id:1609,name:'Dark Chocolate Sea Salt Clean Protein Bar',brand:'Ready'}];
+
+test('an unsure duplicate check on a label asks only about the same brand, and sameAs settles it',async()=>{
+  const {sources,calls}=harness({near:quinoaNearby,enrichConflict:true,jev:{status:'ok',choice:'food_15289',confidence:0.6}});
+  const label=sources.proposeLabelFood(quinoaLabel);
+  const asked=await sources.createFoodFromSource(label.sourceId);
+  assert.equal(asked.status,'possible_duplicates');
+  assert.deepEqual(asked.candidates.map(c=>c.id),[15289],'other brands are never candidates');
+  assert.deepEqual(calls.jev[0].options,{none:null,food_15289:15289});
+  await assert.rejects(sources.createFoodFromSource(label.sourceId,2550),/sameAs must be one of/);
+  const picked=await sources.createFoodFromSource(label.sourceId,15289);
+  assert.equal(picked.variantOf,15289,'the label disagrees (60 vs 70 kcal per 14 g): the user gets their own copy');
+  assert.equal(calls.create.at(-1).p_private,true);
+  assert.equal(calls.jev.length,1,'the answer does not run the duplicate check again');
+});
+
+test('sameAs null creates the label food; an unbranded label unsure among look-alikes is created outright',async()=>{
+  let {sources,calls}=harness({near:quinoaNearby,jev:{status:'ok',choice:'food_15289',confidence:0.6}});
+  const label=sources.proposeLabelFood(quinoaLabel);
+  await sources.createFoodFromSource(label.sourceId);
+  const created=await sources.createFoodFromSource(label.sourceId,null);
+  assert.equal(created.status,'created');
+  assert.equal(calls.create[0].p_food.kcal,60);
+  ({sources,calls}=harness({near:[{id:8693,name:'Fast Foods, Submarine Sandwich, Steak And Cheese',brand:null}],
+    jev:{status:'ok',choice:'food_8693',confidence:0.55}}));
+  const baguette=sources.proposeLabelFood({name:'Baguette de Arrachera',brand:null,servingUnit:'g',servingAmount:100,servingGrams:100,
+    kcal:163.74,proteinG:11.4,carbG:13.56,totalFatG:7.39,fiberG:1.49,sugarG:0.6,satFatG:3.29,gtin:null,packageGrams:270,identified:true});
+  assert.deepEqual(baguette.servings,[{name:'package',grams:270,amount:1}],'the net weight becomes a package serving (grams are built in)');
+  const made=await sources.createFoodFromSource(baguette.sourceId);
+  assert.equal(made.status,'created','a label is authoritative: an unsure match to a generic sub never blocks it');
+});
+
+test('USDA unit codes read as units, and the calculator never evaluates code',()=>{
+  const {cleanServings,readableUnits}=require('../src/mealResolution/foodSources.ts');
+  const {calculate}=require('../src/mealResolution/calculate.ts');
+  assert.equal(readableUnits('.25 ONZ'),'0.25 oz');
+  assert.equal(readableUnits('8 OZA'),'8 fl oz');
+  assert.deepEqual(cleanServings([{name:'.25 ONZ',grams:7,amount:1},{name:'15 MLT',grams:15,amount:1},{name:'GRM',grams:1,amount:1}]),
+    [{name:'0.25 oz',grams:7,amount:1},{name:'15 mL',grams:15,amount:1}]);
+  assert.equal(calculate('3/8 * 400'),150);
+  assert.equal(calculate('(2 + 1.5) * 28.35'),99.225);
+  assert.equal(calculate('-2 + .5'),-1.5);
+  for (const bad of ['process.exit()','2 +','1/0','2 ** 3','(1']) assert.throws(()=>calculate(bad));
+});

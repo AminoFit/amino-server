@@ -178,6 +178,7 @@ export async function processMealOperation(operationId:string) {
   const report=progressReporter(operationId,workerToken)
   const started=performance.now()
   let timeline:{stage:string;ms:number}[]=[]
+  let trace:string[]=[]
   try {
     let plan:PublishedPlan
     if(claim.action==="create"||claim.action==="replace") {
@@ -196,6 +197,7 @@ export async function processMealOperation(operationId:string) {
       await report(input.attachmentIds.length?"reading":"matching").catch(()=>{})
       let result=await resolveMeal(input,{onProgress:report})
       timeline=result.timeline??[]
+      trace=result.trace??[]
       if(result.proposal.outcome==="needs_clarification"&&!input.clarificationAllowed)
         result=await resolveMeal({...input,validationErrorCode:"clarification_unavailable"})
       if(result.proposal.outcome==="needs_clarification") {
@@ -226,7 +228,7 @@ export async function processMealOperation(operationId:string) {
     await queueMissingIcons(plan.items.map(item=>item.foodId)).catch(error=>
       console.error("meal_icons_not_queued",{operationId,error:error instanceof Error?error.message:"unknown"}))
     console.info("meal_operation_complete",{operationId,state:"succeeded",durationMs:Math.round(performance.now()-started),
-      stages:summariseTimeline(timeline)})
+      stages:summariseTimeline(timeline),tools:trace})
     return {state:"succeeded",published}
   } catch(error) {
     const raw=error instanceof Error?error.message:"unknown_error"
