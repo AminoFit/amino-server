@@ -3,6 +3,7 @@ import path from "node:path"
 import sharp from "sharp"
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from "zxing-wasm/reader"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
 
 // Barcode digits come only from ZXing. A model may help locate a barcode, never read it.
 
@@ -111,6 +112,7 @@ export async function locateBarcodesWithFlash(jpeg: Buffer, width: number, heigh
   deps: { fetch?: typeof fetch; model?: string; env?: NodeJS.ProcessEnv } = {}): Promise<Box[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key) return []
+  const model = deps.model ?? FOOD_MODEL, started = performance.now()
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(6000),
@@ -121,9 +123,10 @@ export async function locateBarcodesWithFlash(jpeg: Buffer, width: number, heigh
           properties: { box_2d: { type: "array", items: { type: "integer" } } } } } } } } },
       messages: [{ role: "user", content: [{ type: "text", text: LOCATE_PROMPT },
         { type: "image_url", image_url: { url: `data:image/jpeg;base64,${jpeg.toString("base64")}` } }] }] })
-  })
-  if (!response.ok) { await response.body?.cancel(); return [] }
+  }).catch(recordFailure("barcode_locate", model, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("barcode_locate", model, started, null, `http_${response.status}`); return [] }
   const body = await response.json()
+  recordOpenRouterResponse("barcode_locate", model, started, body, "ok")
   let parsed: { boxes?: { box_2d?: unknown }[] }
   try { parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}") } catch { return [] }
   return (parsed.boxes ?? []).flatMap(({ box_2d }) => {

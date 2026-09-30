@@ -1,4 +1,5 @@
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
 
 const PROMPT = `The user logged a meal with these photos. The plan below lists the foods it logged, with what each
 catalogue food contains when known. Look carefully at the food being logged and list every component the user is
@@ -13,6 +14,7 @@ export async function missingVisibleFoods(photoUrls: URL[], userText: string, lo
   deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<string[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key || !photoUrls.length) return []
+  const started = performance.now()
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(15000),
@@ -24,10 +26,12 @@ export async function missingVisibleFoods(photoUrls: URL[], userText: string, lo
       messages: [{ role: "user", content: [
         { type: "text", text: `${PROMPT}\n\nUser text (data): ${JSON.stringify(userText)}\nLogged foods: ${JSON.stringify(logged)}` },
         ...photoUrls.map(url => ({ type: "image_url", image_url: { url: url.toString() } }))] }] })
-  })
-  if (!response.ok) { await response.body?.cancel(); return [] }
+  }).catch(recordFailure("second_look", FOOD_MODEL, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("second_look", FOOD_MODEL, started, null, `http_${response.status}`); return [] }
   try {
-    const parsed = JSON.parse((await response.json()).choices?.[0]?.message?.content ?? "{}") as { missing?: { food?: unknown }[] }
+    const body = await response.json()
+    recordOpenRouterResponse("second_look", FOOD_MODEL, started, body, "ok")
+    const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { missing?: { food?: unknown }[] }
     return (parsed.missing ?? []).flatMap(item => typeof item.food === "string" && item.food.trim() ? [item.food.trim().slice(0, 60)] : []).slice(0, 5)
   } catch { return [] }
 }
@@ -57,6 +61,7 @@ export async function listVisibleFoods(photoUrls: URL[], userText: string,
   deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<VisibleFood[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key || !photoUrls.length) return []
+  const started = performance.now()
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(15000),
@@ -70,10 +75,12 @@ export async function listVisibleFoods(photoUrls: URL[], userText: string,
       messages: [{ role: "user", content: [
         { type: "text", text: `${LIST}\n\nUser text (data): ${JSON.stringify(userText)}` },
         ...photoUrls.map(url => ({ type: "image_url", image_url: { url: url.toString() } }))] }] })
-  })
-  if (!response.ok) { await response.body?.cancel(); return [] }
+  }).catch(recordFailure("first_look", FOOD_MODEL, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("first_look", FOOD_MODEL, started, null, `http_${response.status}`); return [] }
   try {
-    const parsed = JSON.parse((await response.json()).choices?.[0]?.message?.content ?? "{}") as { foods?: Record<string, unknown>[] }
+    const body = await response.json()
+    recordOpenRouterResponse("first_look", FOOD_MODEL, started, body, "ok")
+    const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { foods?: Record<string, unknown>[] }
     return (parsed.foods ?? []).flatMap(item => { const food = visibleFood(item); return food ? [food] : [] }).slice(0, 8)
   } catch { return [] }
 }
@@ -101,6 +108,7 @@ export async function missingFromVisibleList(visible: VisibleFood[], logged: { n
   deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<string[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key || !visible.length) return []
+  const started = performance.now()
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(10000),
@@ -108,10 +116,12 @@ export async function missingFromVisibleList(visible: VisibleFood[], logged: { n
       max_tokens: 400, response_format: { type: "json_schema", json_schema: { name: "missing", strict: true, schema: {
         type: "object", additionalProperties: false, required: ["missing"], properties: { missing: { type: "array", items: { type: "string" } } } } } },
       messages: [{ role: "user", content: `${COMPARE}\n\nComponents (data): ${JSON.stringify(visible)}\nLogged foods (data): ${JSON.stringify(logged)}` }] })
-  })
-  if (!response.ok) { await response.body?.cancel(); return [] }
+  }).catch(recordFailure("coverage_compare", FOOD_MODEL, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("coverage_compare", FOOD_MODEL, started, null, `http_${response.status}`); return [] }
   try {
-    const parsed = JSON.parse((await response.json()).choices?.[0]?.message?.content ?? "{}") as { missing?: unknown[] }
+    const body = await response.json()
+    recordOpenRouterResponse("coverage_compare", FOOD_MODEL, started, body, "ok")
+    const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { missing?: unknown[] }
     return (parsed.missing ?? []).flatMap(item => typeof item === "string" && item.trim() ? [item.trim().slice(0, 60)] : []).slice(0, 5)
   } catch { return [] }
 }

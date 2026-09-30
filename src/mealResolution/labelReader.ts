@@ -1,5 +1,6 @@
 import sharp from "sharp"
 import { LABEL_MODEL, providerPreferences } from "@/ai/models"
+import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
 
 /** What a nutrition label says, transcribed exactly, for the column read. */
 export type LabelFacts = {
@@ -66,6 +67,7 @@ async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.P
   const upright = await sharp(Buffer.from(await image.arrayBuffer())).rotate()
     .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true }).toBuffer()
   const variants = await Promise.all([0, 90, 270].map(angle => sharp(upright).rotate(angle).jpeg({ quality: 85 }).toBuffer()))
+  const started = performance.now(), detail = hint ? "second reading with the arithmetic" : undefined
   const response = await doFetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", signal: deps.signal,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     // The model's own thinking is what reads a dark, sideways label (with low effort it gave up in 3 s); leave room
@@ -74,8 +76,14 @@ async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.P
       response_format: { type: "json_schema", json_schema: { name: "label", strict: true, schema: SCHEMA } },
       messages: [{ role: "user", content: [{ type: "text", text: hint ? `${PROMPT}\n\n${hint}` : PROMPT },
         ...variants.map(buffer => ({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${buffer.toString("base64")}` } }))] }] }) })
-  if (!response.ok) throw new Error(`label_reader_failed_${response.status}`)
-  const text: string = (await response.json()).choices?.[0]?.message?.content ?? ""
+    .catch(recordFailure("label_read", LABEL_MODEL, started))
+  if (!response.ok) {
+    recordOpenRouterResponse("label_read", LABEL_MODEL, started, null, `http_${response.status}`, detail)
+    throw new Error(`label_reader_failed_${response.status}`)
+  }
+  const body = await response.json()
+  recordOpenRouterResponse("label_read", LABEL_MODEL, started, body, "ok", detail)
+  const text: string = body.choices?.[0]?.message?.content ?? ""
   // No JSON (an empty or prose reply) is an unreadable label, never an error that stops the meal.
   let parsed: LabelFacts & { legible: boolean }
   try { parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) }

@@ -8,6 +8,7 @@ import { resolveMeal } from "@/mealResolution/resolve"
 import type { MealPreviewItem, MealProgressStage } from "@/mealResolution/progress"
 import { claimMealOperation, finishMealOperation, getMealSnapshot, publishMealOperation } from "./service"
 import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
+import { mealRunTotals, withMealRun, type MealRun } from "@/mealResolution/runRecorder"
 
 const transientCodes=new Set(["catalogue_unavailable","food_details_unavailable",
   "history_unavailable","history_revision_unavailable","media_evidence_unavailable",
@@ -176,12 +177,43 @@ async function withIcons(preview:MealPreviewItem[]) {
 const RESOLUTION_BUDGET_MS=95_000
 const MIN_REPAIR_MS=20_000
 
+type Claim=NonNullable<Awaited<ReturnType<typeof claimMealOperation>>>
+
 export async function processMealOperation(operationId:string) {
   const workerToken=randomUUID()
   const claim=await claimMealOperation(operationId,workerToken)
   if(!claim) return {state:"ignored"}
-  const report=progressReporter(operationId,workerToken)
   const started=performance.now()
+  // Every model and tool call in this delivery lands in one debug record (public."MealRun"), saved once it ends.
+  const delivered:{plan?:PublishedPlan}={}
+  const {value,run}=await withMealRun(()=>deliverMealOperation(operationId,workerToken,claim,started,delivered))
+  await saveMealRun(claim,value,delivered.plan,run,performance.now()-started)
+  return value
+}
+
+// A debug record stays small: the admin page needs the shape of the run, not every call of a runaway one.
+const MAX_RUN_ENTRIES=60
+
+/** Best-effort: a missing debug record never changes the meal's outcome. */
+async function saveMealRun(claim:Claim,outcome:{state:string;errorCode?:string},plan:PublishedPlan|undefined,run:MealRun,durationMs:number) {
+  try {
+    const raw=claim.input as Record<string,unknown>
+    const photos=(claim.action==="create"||claim.action==="replace")&&Array.isArray(raw?.attachmentIds)?raw.attachmentIds.length:0
+    const {error}=await (createAdminSupabase() as any).from("MealRun").insert({operationId:claim.operationId,messageId:claim.messageId,
+      userId:claim.userId,action:claim.action,attempt:claim.attempts,state:outcome.state,
+      errorCode:outcome.errorCode??(outcome.state==="needs_clarification"?"ambiguous_meal":null),
+      route:plan?.model?.id??run.resolutions.at(-1)?.model??null,photoCount:photos,itemCount:plan?plan.items.length:null,
+      durationMs:Math.round(durationMs),...mealRunTotals(run),resolutions:run.resolutions,
+      tools:run.tools.slice(0,MAX_RUN_ENTRIES),models:run.models.slice(0,MAX_RUN_ENTRIES)})
+    if(error) console.warn("meal_run_not_recorded",{operationId:claim.operationId,error:error.message})
+  } catch(error) {
+    console.warn("meal_run_not_recorded",{operationId:claim.operationId,error:error instanceof Error?error.message:"unknown"})
+  }
+}
+
+async function deliverMealOperation(operationId:string,workerToken:string,claim:Claim,started:number,
+  delivered:{plan?:PublishedPlan}) {
+  const report=progressReporter(operationId,workerToken)
   let timeline:{stage:string;ms:number}[]=[]
   let trace:string[]=[]
   const remaining=()=>RESOLUTION_BUDGET_MS-(performance.now()-started)
@@ -231,6 +263,7 @@ export async function processMealOperation(operationId:string) {
         plan=await compileCheckedMealPlan(input,repaired,{secondLook:false})
       }
     } else plan=await structuredPlan(claim)
+    delivered.plan=plan
     await report("saving").catch(()=>{})
     const published=await publishMealOperation(operationId,workerToken,plan)
     // After publication and best-effort: link or generate icons for foods without one.

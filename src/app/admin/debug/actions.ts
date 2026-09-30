@@ -29,6 +29,12 @@ export interface MessageWithSignedUrls extends MessageType {
   imageUrls: string[]
 }
 
+/** Server actions are public POST endpoints and these use the service role: only admins may call them. */
+async function adminOnly() {
+  const { data, error } = await createClient().auth.getUser()
+  if (error || !data.user || !ADMIN_ALLOWED_USER_IDS.includes(data.user.id)) throw new Error("Unauthorized")
+}
+
 export type MessageSortField = "createdAt" | "resolvedAt" | "consumedOn"
 export type MessageSortDirection = "asc" | "desc"
 
@@ -45,6 +51,7 @@ export async function fetchMessages(
   dateField?: MessageSortField,
   dateValue?: string
 ) {
+  await adminOnly()
   const supabase = await createAdminSupabase()
   const anonSupabase = createClient()
 
@@ -295,6 +302,7 @@ export async function fetchMessages(
 }
 
 export async function updateMessageDeletedAt(messageId: number, deletedAt: string | null) {
+  await adminOnly()
   const supabase = await createAdminSupabase()
 
   const { error } = await supabase
@@ -310,6 +318,7 @@ export async function updateMessageDeletedAt(messageId: number, deletedAt: strin
 }
 
 export async function permanentlyDeleteMessage(messageId: number) {
+  await adminOnly()
   const supabase = await createAdminSupabase()
 
   const { error } = await supabase

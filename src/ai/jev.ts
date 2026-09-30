@@ -1,4 +1,5 @@
 import { decisionModel } from "@/ai/models"
+import { currentMealRun, recordModelCall } from "@/mealResolution/runRecorder"
 export type DecisionTask = {options:Record<string,unknown>;state:unknown;questions:{selection:{type:"choice";instructions:string;criteria:Record<string,string>}}}
 export type JevResult = {status:"ok" | "unavailable" | "invalid_response"; choice?: string; confidence?: number;
   model:string; durationMs:number; promptTokens:number; completionTokens:number; costUsd?:number}
@@ -39,6 +40,11 @@ export async function selectWithJev(task: DecisionTask, signal: AbortSignal,
       result.status = "ok";result.choice = answer.choice;result.confidence = answer.confidence
     })(),deadline])
   } catch { /* Keep credentials, response bodies and provider errors out of telemetry. */ }
-  finally {clearTimeout(timer);signal.removeEventListener("abort",abort);controller.abort();result.durationMs=performance.now()-start}
+  finally {clearTimeout(timer);signal.removeEventListener("abort",abort);controller.abort();result.durationMs=performance.now()-start
+    // The meal's debug record: what Jev was asked to choose between and what it chose.
+    if (currentMealRun()) recordModelCall({kind:"jev",model,startedAt:start,promptTokens:result.promptTokens,
+      completionTokens:result.completionTokens,costUsd:result.costUsd??null,status:result.status,
+      detail:task.questions?.selection?.instructions?.slice(0,80),
+      output:{choice:result.choice??null,confidence:result.confidence??null,options:Object.keys(task.options??{}).slice(0,30)}})}
   return {...result}
 }

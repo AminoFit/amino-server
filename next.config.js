@@ -10,6 +10,14 @@ const nextConfig = {
       },
     ],
   },
+  // The old admin pages were replaced by the /admin dashboard.
+  async redirects() {
+    return [
+      { source: '/admin/debug', destination: '/admin/meals', permanent: false },
+      { source: '/admin/viewas', destination: '/admin/users', permanent: false },
+      { source: '/admin/bad-icons', destination: '/admin/foods?filter=no_icon', permanent: false },
+    ];
+  },
   experimental: {
     serverComponentsExternalPackages: ['zxing-wasm'],
     // The barcode reader loads its WASM from disk; ship it with the meal worker.

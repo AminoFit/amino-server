@@ -6,7 +6,8 @@ export function agentModel(env: NodeJS.ProcessEnv = process.env) {
   const apiKey = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!apiKey) throw new Error("OpenRouter unavailable")
   return {id,provider:"openrouter",model:createOpenRouter({apiKey}).chat(id,{
-    provider:providerPreferences(id),reasoning:{effort:"low"}
+    // Usage accounting puts each step's cost in providerMetadata.openrouter.usage (the meal's debug record).
+    provider:providerPreferences(id),reasoning:{effort:"low"},usage:{include:true}
   })}
 }
 

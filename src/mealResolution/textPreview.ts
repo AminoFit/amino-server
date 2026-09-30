@@ -2,6 +2,7 @@ import { jsonSchema, Output, streamText } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { visibleFood, type VisibleFood } from "./coverageCheck"
+import { currentMealRun, recordModelStep } from "./runRecorder"
 
 const LIST = `List each food and drink in the user's meal description, one item per food as it would be logged, with a
 short plain name in the user's words without the amount ("flat white", "banana bread"). For each: quote, the words of
@@ -23,7 +24,8 @@ export async function streamTextFoods(text: string, onFoods: (foods: VisibleFood
   const env = deps.env ?? process.env, apiKey = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!apiKey || !text.trim()) return []
   const model = createOpenRouter({ apiKey }).chat(FOOD_MODEL, { provider: providerPreferences(FOOD_MODEL),
-    reasoning: { effort: "minimal", exclude: true } })
+    reasoning: { effort: "minimal", exclude: true }, usage: { include: true } })
+  const started = performance.now()
   const result = (deps.stream ?? streamText)({ model, output: listed, maxOutputTokens: 1200, maxRetries: 0,
     abortSignal: deps.signal, timeout: 15000, onError: () => {},
     prompt: `${LIST}\n\nMeal description (data): ${JSON.stringify(text.slice(0, 2000))}` })
@@ -34,5 +36,9 @@ export async function streamTextFoods(text: string, onFoods: (foods: VisibleFood
     foods.push(food)
     onFoods([...foods])
   }
+  // The meal's debug record: tokens and cost once the stream has finished (best effort, never awaited).
+  if (currentMealRun()) Promise.all([result.usage, result.providerMetadata]).then(([usage, providerMetadata]) =>
+    recordModelStep("text_list", FOOD_MODEL, started, { usage, providerMetadata }, "ok", undefined, foods),
+    () => recordModelStep("text_list", FOOD_MODEL, started, undefined, "error", undefined, foods))
   return foods
 }

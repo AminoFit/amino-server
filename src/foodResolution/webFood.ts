@@ -1,6 +1,7 @@
 import { foodModel, providerPreferences } from "@/ai/models"
 import { LogOpenAiUsage } from "@/languageModelProviders/openai/utils/openAiHelper"
 import type { Tables } from "types/supabase"
+import { recordFailure, recordOpenRouterResponse } from "@/mealResolution/runRecorder"
 
 export type WebFoodResult = {data:unknown;sourceUrls:string[];searches:number;costUsd?:number}
 
@@ -35,7 +36,7 @@ export async function resolveWebFood(system:string,prompt:string,user:Pick<Table
 export async function requestWebFood(system:string,prompt:string,model:string=foodModel()) {
   const key=process.env.OPENROUTER_API_KEY||process.env.OPEN_ROUTER_API_KEY
   if(!key)throw new Error("OpenRouter unavailable")
-  const signal=AbortSignal.timeout(40000)
+  const signal=AbortSignal.timeout(40000),started=performance.now()
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
     method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${key}`},signal,
     body:JSON.stringify({model,messages:[{role:"system",content:system},{role:"user",content:prompt}],
@@ -45,9 +46,14 @@ export async function requestWebFood(system:string,prompt:string,model:string=fo
       reasoning:{effort:"low",exclude:true},provider:providerPreferences(model),
       tools:[{type:"openrouter:web_search",parameters:{engine:"exa",max_uses:3,
         max_results:5,max_total_results:12,max_characters:4000}}],max_tool_calls:3})
-  })
-  if(!response.ok){await response.body?.cancel();throw new Error(`Web food request failed (${response.status})`)}
-  const body=await response.json(),parsed=parseWebFoodResponse(body)
+  }).catch(recordFailure("web_food",model,started))
+  if(!response.ok){await response.body?.cancel();recordOpenRouterResponse("web_food",model,started,null,`http_${response.status}`)
+    throw new Error(`Web food request failed (${response.status})`)}
+  const body=await response.json()
+  // The admin sees what the search returned even when it is then rejected (no citations, unfinished JSON).
+  recordOpenRouterResponse("web_food",model,started,body,body?.choices?.[0]?.finish_reason==="stop"?"ok":"unfinished",
+    `${body?.usage?.server_tool_use_details?.web_search_requests??0} searches`)
+  const parsed=parseWebFoodResponse(body)
   if(!parsed.sourceUrls.length)throw new Error("Web food response had no source citations")
   return {body,parsed}
 }

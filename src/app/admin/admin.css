@@ -1,0 +1,43 @@
+/* Chart colours for the admin pages. Categorical slots in a fixed order (validated for colour-vision deficiency on
+   adjacent pairs); the dark set is the same hues stepped for the dark surface. */
+.admin-root {
+  --chart-surface: #ffffff;
+  --chart-grid: #e4e4e7;
+  --chart-axis: #71717a;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  /* Ordered buckets (faster to slower): one hue, light to dark. */
+  --seq-1: #86b6ef;
+  --seq-2: #5598e7;
+  --seq-3: #2a78d6;
+  --seq-4: #256abf;
+  --seq-5: #184f95;
+  --seq-6: #0d366b;
+}
+@media (prefers-color-scheme: dark) {
+  .admin-root {
+    --chart-surface: #18181b;
+    --chart-grid: #27272a;
+    --chart-axis: #a1a1aa;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --seq-1: #184f95;
+    --seq-2: #256abf;
+    --seq-3: #2a78d6;
+    --seq-4: #5598e7;
+    --seq-5: #86b6ef;
+    --seq-6: #b7d3f6;
+  }
+}

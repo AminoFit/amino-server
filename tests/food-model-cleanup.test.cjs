@@ -87,7 +87,7 @@ test('category worker updates an uncategorized food once and skips categorized f
 })
 
 const web=load('foodResolution/webFood.ts',{
-  '@/ai/models':{},'@/languageModelProviders/openai/utils/openAiHelper':{}
+  '@/ai/models':{},'@/languageModelProviders/openai/utils/openAiHelper':{},'@/mealResolution/runRecorder':{}
 })
 test('Exa food response requires finished JSON and reads only cited URLs',()=>{
   const result=web.parseWebFoodResponse({choices:[{finish_reason:'stop',message:{
