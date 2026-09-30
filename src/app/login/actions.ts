@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { createClient } from '@/utils/supabase/server'
+import { safeNextPath } from './nextPath'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL
 
@@ -24,18 +25,17 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect(safeNextPath(formData.get('next')) ?? '/')
 }
 
-export async function loginWithGoogle() {
-  console.log('login with google')
-  console.log(`${BASE_URL}/auth/callback`)
+export async function loginWithGoogle(formData: FormData) {
   const supabase = createClient()
+  const next = safeNextPath(formData.get('next'))
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${BASE_URL}/auth/callback`,
+      redirectTo: `${BASE_URL}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
     },
   })
   

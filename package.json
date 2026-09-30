@@ -22,6 +22,7 @@
     "@deepgram/sdk": "^3.1.9",
     "@headlessui/react": "^2.0.4",
     "@heroicons/react": "^2.1.1",
+    "@modelcontextprotocol/server": "2.2.0",
     "@next/third-parties": "^14.1.4",
     "@openrouter/ai-sdk-provider": "2.10.0",
     "@supabase/auth-helpers-nextjs": "^0.9.0",
@@ -58,6 +59,7 @@
     "jose": "^5.2.2",
     "jsonwebtoken": "^9.0.2",
     "mathjs": "^12.4.0",
+    "mcp-handler": "2.2.0",
     "moment-timezone": "^0.5.45",
     "next": "^14.2.3",
     "nodemailer": "^6.9.11",
@@ -78,9 +80,10 @@
     "swr": "^2.2.5",
     "typescript": "^5.3.3",
     "underscore": "^1.13.6",
+    "uqr": "0.1.3",
     "vcards-js": "^2.10.0",
     "yup": "^1.3.3",
-    "zod": "3.25.76",
+    "zod": "4.6.5",
     "zxing-wasm": "^3.1.4"
   },
   "optionalDependencies": {

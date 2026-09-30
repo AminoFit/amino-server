@@ -13,7 +13,9 @@ export function fastRouteEnabledFor(value: string, userId: string) {
   return trimmed.split(",").map(id => id.trim()).includes(userId.toLowerCase())
 }
 
-async function flagEnabled(flag: string, userId: string, db: ReturnType<typeof createAdminSupabase>) {
+/** Any per-user switch in FeatureFlag, with the same values and 30 s cache. */
+export async function userFlagEnabled(flag: string, userId: string,
+  db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()) {
   const hit = cached.get(flag)
   if (!hit || Date.now() - hit.at >= 30_000) {
     const { data, error } = await (db as any).from("FeatureFlag").select("value").eq("name", flag).maybeSingle()
@@ -23,6 +25,6 @@ async function flagEnabled(flag: string, userId: string, db: ReturnType<typeof c
 }
 
 export const textFastRouteEnabled = (userId: string, db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()) =>
-  flagEnabled(FAST_ROUTE_FLAG, userId, db)
+  userFlagEnabled(FAST_ROUTE_FLAG, userId, db)
 export const photoFastRouteEnabled = (userId: string, db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()) =>
-  flagEnabled(PHOTO_FAST_ROUTE_FLAG, userId, db)
+  userFlagEnabled(PHOTO_FAST_ROUTE_FLAG, userId, db)

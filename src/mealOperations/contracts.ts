@@ -88,6 +88,6 @@ export const operationClaim = z.object({operationId:uuid,messageId:z.number().in
   generation:z.number().int().positive(),operationVersion:z.number().int().positive(),workerToken:uuid,
   attempts:z.number().int().positive(),
   action:z.enum(["create","replace","portion","move","delete"]),
-  input:z.record(z.unknown()),answers:z.array(z.object({text:z.string(),at:z.string()})),
+  input:z.record(z.string(),z.unknown()),answers:z.array(z.object({text:z.string(),at:z.string()})),
   expectedPublishedRevision:z.number().int().nonnegative().nullable()})
 export type OperationClaim = z.infer<typeof operationClaim>

@@ -1,13 +1,14 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { type CookieOptions, createServerClient } from '@supabase/ssr'
+import { safeNextPath } from '@/app/login/nextPath'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   console.log(`auth callback with code ${searchParams.get('code')}`)
   const code = searchParams.get('code')
   // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/'
+  const next = safeNextPath(searchParams.get('next')) ?? '/'
 
   if (code) {
     console.log("auth callback with code")

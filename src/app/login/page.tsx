@@ -3,13 +3,16 @@ import { createClient } from '@/utils/supabase/server'
 import { login, signup, loginWithGoogle, logout } from "./actions"
 import GoogleLogo from "../../../public/logos/GoogleLogo"
 import GithubLogo from "../../../public/logos/GithubLogo"
+import { redirect } from "next/navigation"
+import { safeNextPath } from "./nextPath"
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: { next?: string } }) {
   const supabase = createClient()
+  const next = safeNextPath(searchParams.next)
 
   const { data, error } = await supabase.auth.getUser()
 
-  console.log('data', data)
+  if (data?.user != null && next) redirect(next)
 
   if (data?.user != null) {
     return (
@@ -55,6 +58,7 @@ export default async function LoginPage() {
             <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
               <div className="bg-white px-6 py-12 shadow sm:rounded-lg sm:px-12">
                 <form className="space-y-6" action={login} method="POST">
+                  {next && <input type="hidden" name="next" value={next} />}
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
                       Email address
@@ -138,6 +142,7 @@ export default async function LoginPage() {
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <form action={loginWithGoogle} method="POST">
+                    {next && <input type="hidden" name="next" value={next} />}
                     <button
                       type="submit"
                       className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:ring-transparent"
