@@ -3,7 +3,6 @@ import { createClient } from "@/utils/supabase/server"
 import { SignedOut, loadDashboard } from "@/app/dashboard/_lib/data"
 import type { Dashboard } from "@/app/dashboard/_lib/types"
 import { StatsView } from "@/app/dashboard/_components/StatsPanel"
-import { TopBar } from "@/app/dashboard/_components/TopBar"
 
 // Trends from the last 12 weeks of the log. Server-rendered: every day in the charts links to its log.
 export const dynamic = "force-dynamic"
@@ -20,10 +19,5 @@ export default async function StatsPage() {
     if (error instanceof SignedOut) redirect(`${signIn}&session=expired`)
     throw error
   }
-  return (
-    <>
-      <TopBar name={data.name} email={data.email} active="stats" />
-      <StatsView data={data} />
-    </>
-  )
+  return <StatsView data={data} />
 }

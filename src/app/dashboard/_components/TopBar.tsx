@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import {
   ArrowRightStartOnRectangleIcon, BookOpenIcon, ChartBarIcon, ComputerDesktopIcon, Cog6ToothIcon, MoonIcon, SunIcon
@@ -22,8 +24,6 @@ const TABS = [
   { key: "settings", label: "Settings", href: "/settings", Icon: Cog6ToothIcon }
 ] as const
 
-export type Tab = (typeof TABS)[number]["key"]
-
 /** System, light or dark, with labels (the Settings page). */
 export function ThemeSwitch({ initial }: { initial: ThemeChoice }) {
   const [choice, setChoice] = useState(initial)
@@ -41,22 +41,27 @@ export function ThemeSwitch({ initial }: { initial: ThemeChoice }) {
   )
 }
 
-export function TopBar({ name, email, active }: { name?: string; email?: string; active: Tab }) {
+/** The signed-in pages' bar. Tabs are client-side links, prefetched, so switching doesn't reload the page. */
+export function TopBar({ name, email }: { name?: string; email?: string }) {
+  const pathname = usePathname()
   return (
     <header className="sticky top-0 z-30 border-b border-app-border/40 bg-app-bg/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <a href="/log" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
+        <Link href="/log" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
           <AminoLogo className="h-7 w-auto" />
-        </a>
+        </Link>
         <nav className="ml-2 flex items-center gap-1 sm:ml-6" aria-label="Sections">
-          {TABS.map(({ key, label, href, Icon }) => (
-            <a key={key} href={href} aria-current={active === key ? "page" : undefined}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${active === key
+          {TABS.map(({ key, label, href, Icon }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`)
+            return (
+            <Link key={key} href={href} prefetch aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${active
                 ? "bg-app-text/10 text-app-text" : "text-app-muted hover:bg-app-text/[0.05] hover:text-app-text"}`}>
               <Icon className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">{label}</span>
               <span className="sr-only sm:hidden">{label}</span>
-            </a>
-          ))}
+            </Link>
+            )
+          })}
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <Menu as="div" className="relative">
@@ -71,9 +76,9 @@ export function TopBar({ name, email, active }: { name?: string; email?: string;
               </div>
               <div className="my-1 h-px bg-app-border/60" />
               <MenuItem>
-                <a href="/settings" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm data-[focus]:bg-app-text/[0.06]">
+                <Link href="/settings" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm data-[focus]:bg-app-text/[0.06]">
                   <Cog6ToothIcon className="h-4 w-4 text-app-muted" aria-hidden /> Settings
-                </a>
+                </Link>
               </MenuItem>
               <MenuItem>
                 <button type="submit" form="logout-form"

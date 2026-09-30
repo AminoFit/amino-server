@@ -8,7 +8,7 @@ import { MACROS, initials, number } from "@/app/dashboard/_lib/stats"
 import { dayIn } from "@/app/admin/_lib/format"
 import { AgentsPanel } from "@/app/dashboard/_components/AgentsPanel"
 import { Card } from "@/app/dashboard/_components/StatsPanel"
-import { ThemeSwitch, TopBar } from "@/app/dashboard/_components/TopBar"
+import { ThemeSwitch } from "@/app/dashboard/_components/TopBar"
 import { logout } from "@/app/login/actions"
 
 // Everything that isn't the food log: the account, goals (set in the app or by an agent), appearance, and the agents
@@ -36,7 +36,6 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <TopBar name={name} email={email} active="settings" />
       <main className="mx-auto max-w-3xl space-y-4 px-4 pb-16 pt-6 sm:px-6 lg:pt-8">
         <h1 className="app-rise px-1 text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
 

@@ -9,7 +9,6 @@ import { dayTotals, number } from "../_lib/stats"
 import { DayRing } from "./DayRing"
 import { GoalBars } from "./GoalBars"
 import { MealCard } from "./MealCard"
-import { TopBar } from "./TopBar"
 
 // The web log: pick a day (arrows, the week strip, the calendar, or ← → and T on the keyboard) and see its goals and
 // meals; stats are on /stats. The first day comes with the page; others load from /api/web/day, with the neighbouring
@@ -49,14 +48,17 @@ function WeekStrip({ day, today, kcalByDay, goal, onPick }: { day: string; today
   )
 }
 
-export function LogView({ initial }: { initial: Dashboard }) {
+/** `loadedAt`: when the server read the first day. The tabs prefetch this page, so it can be minutes old by the time
+ * it shows; the day refetches at once when it's older than the query's minute. */
+export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: number }) {
   const queryClient = useQueryClient()
   const { today, goals } = initial
   const [day, setDay] = useState(initial.day.date)
   const [direction, setDirection] = useState<"left" | "right" | null>(null)
 
   const query = useQuery({ ...dayQuery(day), placeholderData: keepPreviousData,
-    initialData: day === initial.day.date ? { day: initial.day, week: initial.week } : undefined })
+    initialData: day === initial.day.date ? { day: initial.day, week: initial.week } : undefined,
+    initialDataUpdatedAt: loadedAt })
   const shown = query.data ?? { day: initial.day, week: initial.week }
   const loading = query.isPlaceholderData && query.isFetching
 
@@ -106,7 +108,6 @@ export function LogView({ initial }: { initial: Dashboard }) {
 
   return (
     <>
-      <TopBar name={initial.name} email={initial.email} active="log" />
       <main className="mx-auto max-w-3xl px-3 pb-16 pt-4 sm:px-6 sm:pt-6 lg:pt-8">
         <div className="min-w-0 space-y-4">
           <section className="app-rise rounded-3xl border border-app-border/70 bg-app-card/90 p-3.5 shadow-sm shadow-black/[0.03] sm:p-6">

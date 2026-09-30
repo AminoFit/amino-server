@@ -24,5 +24,5 @@ export default async function LogPage({ searchParams }: { searchParams: { day?: 
     if (error instanceof SignedOut) redirect(`${signIn}&session=expired`)
     throw error
   }
-  return <LogView initial={dashboard} />
+  return <LogView initial={dashboard} loadedAt={Date.now()} />
 }

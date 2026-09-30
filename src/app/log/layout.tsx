@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
-import { AppShell } from "@/components/AppShell"
+import { SignedInShell } from "@/app/dashboard/_components/SignedInShell"
 
 export const metadata = { title: "Your log · Amino", robots: { index: false, follow: false } }
 
 export default function LogLayout({ children }: { children: ReactNode }) {
-  return <AppShell>{children}</AppShell>
+  return <SignedInShell>{children}</SignedInShell>
 }
