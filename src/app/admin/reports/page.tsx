@@ -16,14 +16,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Para
   const page = Math.max(1, Number(param(searchParams, "page")) || 1)
   const type = param(searchParams, "type")
   const db = adminDb()
-  let query = db.from("userSubmittedBug").select("*,FoodItem(name,brand)")
-    .order("created_at", { ascending: false }).range((page - 1) * PER_PAGE, page * PER_PAGE)
+  let query = db.from("userSubmittedBug").select("*,FoodItem(name,brand)", { count: "exact" })
+    .order("created_at", { ascending: false }).range((page - 1) * PER_PAGE, page * PER_PAGE - 1)
   if (type) query = query.eq("bug_type", type)
   const [bugs, conflicts] = await Promise.all([
     query,
     db.from("FoodItemConflict").select("id,foodItemId,source,existing,proposed,createdAt,FoodItem(name,brand)").order("id", { ascending: false }).limit(20)
   ])
-  const rows = must("userSubmittedBug", bugs) as unknown as Bug[]
+  const rows = must("userSubmittedBug", bugs) as unknown as Bug[], total = bugs.count ?? rows.length
   const conflictRows = must("FoodItemConflict", conflicts) as unknown as { id: number; foodItemId: number; source: string; existing: unknown
     proposed: unknown; createdAt: string; FoodItem: { name: string; brand: string | null } | null }[]
   // created_by_user has no foreign key to User, so emails come from a second read.
@@ -45,7 +45,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Para
           <Table>
             <thead><tr><Th>When</Th><Th>Type</Th><Th>Food</Th><Th>Details</Th><Th>User</Th><Th>Meal</Th></tr></thead>
             <tbody>
-              {rows.slice(0, PER_PAGE).map(bug => (
+              {rows.map(bug => (
                 <tr key={bug.id}>
                   <Td className="text-xs text-zinc-500"><When value={bug.created_at} /></Td>
                   <Td><Badge tone={bug.bug_type === "bad_food_icon" ? "amber" : "red"}>{bug.bug_type ?? "other"}</Badge></Td>
@@ -65,8 +65,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Para
             </tbody>
           </Table>
         ) : <Empty>No reports.</Empty>}
-        <Pager label={`Page ${page}`} prev={page > 1 ? withParams("/admin/reports", searchParams, { page: page - 1 }) : undefined}
-          next={rows.length > PER_PAGE ? withParams("/admin/reports", searchParams, { page: page + 1 }) : undefined} />
+        <Pager page={page} perPage={PER_PAGE} total={total} href={n => withParams("/admin/reports", searchParams, { page: n })} />
       </Card>
       <Card className="mt-5" title="Latest source conflicts" padded={false}>
         {conflictRows.length ? (

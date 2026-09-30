@@ -11,7 +11,7 @@ export type MealListRow = {
   errorCode: string | null; durationMs: number | null; operations: number; edits: number; photos: number
   foods: { id: number; foodId: number | null; name: string | null; brand: string | null; grams: number; kcal: number | null
     unit: string | null; amount: number | null }[]
-  kcal: number | null; itemCount: number
+  kcal: number | null; itemCount: number; total: number
 }
 
 export type StatGroup = { dim: "kind" | "route"; key: string; n: number; succeeded: number; failed: number; clarified: number
@@ -48,11 +48,12 @@ export type FoodListRow = {
   id: number; name: string; brand: string | null; foodInfoSource: string; verified: boolean; gtin: string | null
   privateToUserId: string | null; kcalPerServing: number; proteinPerServing: number; carbPerServing: number
   totalFatPerServing: number; defaultServingWeightGram: number | null; createdAtDateTime: string; icon: string | null
-  logs: number; users: number; lastLogged: string | null
+  logs: number; logs30d: number; users: number; lastLogged: string | null; total: number
 }
 
 export type UserListRow = { id: string; email: string | null; fullName: string | null; tzIdentifier: string
-  subscriptionType: string | null; lastMessageAt: string | null; meals7d: number; meals30d: number; failed30d: number; totalMeals: number }
+  subscriptionType: string | null; firstMessageAt: string | null; lastMessageAt: string | null; meals7d: number; meals30d: number
+  totalMeals: number; foods30d: number; totalFoods: number; failed30d: number; total: number }
 
 export type MealOperationRow = {
   id: string; userId: string; messageId: number; action: string; state: string; attempts: number; generation: number

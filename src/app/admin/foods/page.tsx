@@ -11,12 +11,12 @@ const PER_PAGE = 50
 export default async function FoodsPage({ searchParams }: { searchParams: Params }) {
   await requireAdmin()
   const page = Math.max(1, Number(param(searchParams, "page")) || 1)
-  const q = param(searchParams, "q")
+  const q = param(searchParams, "q"), sort = param(searchParams, "sort")
   const rows = await rpc<FoodListRow[]>("admin_search_foods", {
     p_query: q ?? null, p_source: param(searchParams, "source") ?? null, p_filter: param(searchParams, "filter") ?? null,
-    p_sort: param(searchParams, "sort") ?? "relevance", p_limit: PER_PAGE + 1, p_offset: (page - 1) * PER_PAGE
+    p_sort: sort ?? (q ? "relevance" : "newest"), p_limit: PER_PAGE, p_offset: (page - 1) * PER_PAGE
   })
-  const foods = rows.slice(0, PER_PAGE)
+  const foods = rows, total = rows[0]?.total ?? 0
   return (
     <>
       <PageHeader title="Foods" subtitle="The whole catalogue, private foods included. Search by name (typo tolerant), brand, food ID or barcode." />
@@ -26,13 +26,14 @@ export default async function FoodsPage({ searchParams }: { searchParams: Params
         <Field label="Show"><Select name="filter" value={param(searchParams, "filter")} options={[["", "All foods"], ["shared", "Shared catalogue"],
           ["private", "Private foods"], ["unverified", "Unverified"], ["gtin", "With a barcode"], ["no_icon", "Without an icon"],
           ["reported", "Reported by users"], ["conflicts", "With source conflicts"]]} /></Field>
-        <Field label="Sort"><Select name="sort" value={param(searchParams, "sort")} options={[["", q ? "Best match" : "Newest"], ["newest", "Newest"],
-          ["oldest", "Oldest"], ["name", "Name"]]} /></Field>
+        <Field label="Sort"><Select name="sort" value={sort} options={[["", q ? "Best match" : "Newest"], ["newest", "Newest"],
+          ["oldest", "Oldest"], ["name", "Name"], ["logs", "Most logged, all time"], ["logs_30d", "Most logged, 30 days"],
+          ["users", "Most users"], ["last_logged", "Last logged"]]} /></Field>
       </FilterForm>
       <Card padded={false}>
-        {foods.length ? <FoodTable rows={foods} /> : <Empty>No foods match.</Empty>}
-        <Pager label={`Page ${page}`} prev={page > 1 ? withParams("/admin/foods", searchParams, { page: page - 1 }) : undefined}
-          next={rows.length > PER_PAGE ? withParams("/admin/foods", searchParams, { page: page + 1 }) : undefined} />
+        {foods.length ? <FoodTable rows={foods} sort={sort ?? (q ? "relevance" : "newest")} sortHref={next => withParams("/admin/foods", searchParams, { sort: next, page: undefined })} /> :
+          <Empty>No foods match.</Empty>}
+        <Pager page={page} perPage={PER_PAGE} total={total} href={n => withParams("/admin/foods", searchParams, { page: n })} />
       </Card>
     </>
   )

@@ -2,18 +2,18 @@ import { adminDb, must, rpc, signPhotos } from "./db"
 import type { MealListRow } from "./types"
 
 export type MealFilters = { userId?: string; kind?: string; state?: string; route?: string; q?: string
-  from?: string; to?: string; dateField?: "created" | "consumed"; deleted?: string }
+  from?: string; to?: string; dateField?: "created" | "consumed"; deleted?: string; sort?: string }
 
-/** One page of meals plus the next page's existence (one extra row, no count query) and signed photo thumbnails. */
+/** One page of meals, the number of matching meals (counted by the same query) and signed photo thumbnails. */
 export async function listMeals(filters: MealFilters, page: number, perPage: number, withPhotos = true) {
   const rows = await rpc<MealListRow[]>("admin_meals", {
     p_user_id: filters.userId ?? null, p_kind: filters.kind ?? null, p_state: filters.state ?? null,
     p_route: filters.route ?? null, p_query: filters.q ?? null, p_from: filters.from ?? null, p_to: filters.to ?? null,
-    p_date_field: filters.dateField ?? "created", p_deleted: filters.deleted ?? "hide",
-    p_limit: perPage + 1, p_offset: (page - 1) * perPage
+    p_date_field: filters.dateField ?? "created", p_deleted: filters.deleted ?? "hide", p_sort: filters.sort ?? "newest",
+    p_limit: perPage, p_offset: (page - 1) * perPage
   })
-  const hasMore = rows.length > perPage, meals = rows.slice(0, perPage)
-  return { meals, hasMore, photos: withPhotos ? await mealPhotos(meals.filter(meal => meal.photos).map(meal => meal.id)) : new Map() }
+  const meals = rows, total = rows[0]?.total ?? 0
+  return { meals, total, hasMore: page * perPage < total, photos: withPhotos ? await mealPhotos(meals.filter(meal => meal.photos).map(meal => meal.id)) : new Map() }
 }
 
 /** Signed photo URLs per message, with one table read and one storage call for the whole page. */

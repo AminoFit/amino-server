@@ -3,7 +3,7 @@ import { listMeals } from "../_lib/meals"
 import { param, withParams, UUID, type Params } from "../_lib/format"
 import { Card, Empty, Field, FilterForm, Input, PageHeader, Pager, Select } from "../_components/ui"
 import { MealTable } from "./MealTable"
-import { KIND_OPTIONS, ROUTE_OPTIONS, STATE_OPTIONS } from "./options"
+import { KIND_OPTIONS, ROUTE_OPTIONS, SORT_OPTIONS, STATE_OPTIONS } from "./options"
 
 const PER_PAGE = 40
 
@@ -12,11 +12,12 @@ export default async function MealsPage({ searchParams }: { searchParams: Params
   const page = Math.max(1, Number(param(searchParams, "page")) || 1)
   const user = param(searchParams, "user")
   const from = param(searchParams, "from"), to = param(searchParams, "to")
-  const { meals, hasMore, photos } = await listMeals({
+  const { meals, total, photos } = await listMeals({
     userId: user && UUID.test(user) ? user : undefined, kind: param(searchParams, "kind"), state: param(searchParams, "state"),
     route: param(searchParams, "route"), q: param(searchParams, "q"),
     from: from ? `${from}T00:00:00Z` : undefined, to: to ? `${to}T23:59:59.999Z` : undefined,
-    dateField: param(searchParams, "date") === "consumed" ? "consumed" : "created", deleted: param(searchParams, "deleted") ?? "hide"
+    dateField: param(searchParams, "date") === "consumed" ? "consumed" : "created", deleted: param(searchParams, "deleted") ?? "hide",
+    sort: param(searchParams, "sort")
   }, page, PER_PAGE)
   return (
     <>
@@ -30,12 +31,12 @@ export default async function MealsPage({ searchParams }: { searchParams: Params
         <Field label="From (UTC)"><Input name="from" type="date" value={from} /></Field>
         <Field label="To"><Input name="to" type="date" value={to} /></Field>
         <Field label="Dates are"><Select name="date" value={param(searchParams, "date")} options={[["", "Sent"], ["consumed", "Eaten"]]} /></Field>
+        <Field label="Sort"><Select name="sort" value={param(searchParams, "sort")} options={SORT_OPTIONS} /></Field>
         <Field label="Deleted"><Select name="deleted" value={param(searchParams, "deleted")} options={[["", "Hide"], ["all", "Include"], ["only", "Only deleted"]]} /></Field>
       </FilterForm>
       <Card padded={false}>
         {meals.length ? <MealTable rows={meals} photos={photos} /> : <Empty>No meals match these filters.</Empty>}
-        <Pager label={`Page ${page}`} prev={page > 1 ? withParams("/admin/meals", searchParams, { page: page - 1 }) : undefined}
-          next={hasMore ? withParams("/admin/meals", searchParams, { page: page + 1 }) : undefined} />
+        <Pager page={page} perPage={PER_PAGE} total={total} href={n => withParams("/admin/meals", searchParams, { page: n })} />
       </Card>
     </>
   )

@@ -5,3 +5,5 @@ export const STATE_OPTIONS: [string, string][] = [["", "Any state"], ["succeeded
 export const ROUTE_OPTIONS: [string, string][] = [["", "Any route"], ["agent", "Agent"], ["text-fast-route", "Text fast route"],
   ["photo-fast-route", "Photo fast route"], ["barcode", "Barcode"], ["structured-action", "Structured edit"]]
 export const KIND_OPTIONS: [string, string][] = [["", "Any input"], ["text", "Text"], ["photo", "Photo"], ["voice", "Voice"]]
+export const SORT_OPTIONS: [string, string][] = [["", "Newest"], ["slowest", "Slowest"], ["attempts", "Most attempts"],
+  ["kcal", "Most calories"], ["items", "Most foods"]]

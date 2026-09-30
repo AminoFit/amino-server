@@ -140,18 +140,47 @@ export const When = ({ value, zone }: { value: string | null | undefined; zone?:
 export const TextLink = ({ href, children, className }: { href: string; children: ReactNode; className?: string }) =>
   <Link href={href} className={classNames("text-sky-700 hover:underline dark:text-sky-400", className)}>{children}</Link>
 
-export function Pager({ prev, next, label }: { prev?: string; next?: string; label?: ReactNode }) {
-  const button = "rounded border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700"
+/** Numbered pages: the first two, a window around the current page and the last two, with gaps between
+ * ("1 2 … 7 8 9 … 67 68"), plus previous and next and the range shown. */
+export function Pager({ page, perPage, total, href }: { page: number; perPage: number; total: number; href: (page: number) => string }) {
+  const last = Math.max(1, Math.ceil(total / perPage))
+  const wanted = new Set([1, 2, last - 1, last, page - 2, page - 1, page, page + 1, page + 2].filter(n => n >= 1 && n <= last))
+  const numbers = [...wanted].sort((a, b) => a - b)
+  const cell = "inline-flex h-8 min-w-8 items-center justify-center rounded px-2 text-sm tabular-nums"
+  const from = total ? (page - 1) * perPage + 1 : 0, to = Math.min(total, page * perPage)
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
-      <span>{label}</span>
-      <div className="flex gap-2">
-        {prev ? <Link className={classNames(button, "hover:bg-zinc-100 dark:hover:bg-zinc-800")} href={prev}>← Previous</Link> :
-          <span className={classNames(button, "opacity-40")}>← Previous</span>}
-        {next ? <Link className={classNames(button, "hover:bg-zinc-100 dark:hover:bg-zinc-800")} href={next}>Next →</Link> :
-          <span className={classNames(button, "opacity-40")}>Next →</span>}
-      </div>
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+      <span className="tabular-nums">{from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}</span>
+      {last > 1 && (
+        <nav className="flex flex-wrap items-center gap-1" aria-label="Pages">
+          {page > 1 ? <Link className={classNames(cell, "hover:bg-zinc-100 dark:hover:bg-zinc-800")} href={href(page - 1)} aria-label="Previous page">←</Link> :
+            <span className={classNames(cell, "opacity-30")}>←</span>}
+          {numbers.map((n, i) => (
+            <span key={n} className="flex items-center gap-1">
+              {i > 0 && n - numbers[i - 1] > 1 && <span className="px-1 text-zinc-400">…</span>}
+              {n === page ? <span aria-current="page" className={classNames(cell, "bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900")}>{n}</span> :
+                <Link className={classNames(cell, "hover:bg-zinc-100 dark:hover:bg-zinc-800")} href={href(n)}>{n}</Link>}
+            </span>
+          ))}
+          {page < last ? <Link className={classNames(cell, "hover:bg-zinc-100 dark:hover:bg-zinc-800")} href={href(page + 1)} aria-label="Next page">→</Link> :
+            <span className={classNames(cell, "opacity-30")}>→</span>}
+        </nav>
+      )}
     </div>
+  )
+}
+
+/** A column header that sorts the list (largest first) through the URL; the active sort shows an arrow. */
+export function SortTh({ label, sort, current, href, right }: { label: string; sort: string; current: string | undefined
+  href: (sort: string) => string; right?: boolean }) {
+  const active = current === sort
+  return (
+    <Th right={right}>
+      <Link href={href(sort)} className={classNames("inline-flex items-center gap-0.5 hover:text-zinc-900 dark:hover:text-zinc-100",
+        active && "font-semibold text-zinc-900 dark:text-zinc-100")}>
+        {label}{active ? " ↓" : ""}
+      </Link>
+    </Th>
   )
 }
 
