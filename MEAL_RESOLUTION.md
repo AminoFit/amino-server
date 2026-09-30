@@ -120,7 +120,7 @@ Built on the AI SDK's `generateText`, with a JSON output schema (`mealProposal`)
 
 | Tool | Reads / writes | Notes |
 |---|---|---|
-| `findFood` | Reads; may add **source candidates** | Catalogue first (any language, aliases, decoded barcode). Sources only when the catalogue has nothing, or when called again with `includeSources` for the same query: barcode record (USDA, then Open Food Facts) or USDA by name, then **cited web search** on a further call. |
+| `findFood` | Reads; may add **source candidates** | Catalogue first (any language, aliases, decoded barcode; the first page blends letter matches with the foods nearest by meaning, `searchBlend.ts`). Sources only when the catalogue has nothing, or when called again with `includeSources` for the same query: barcode record (USDA, then Open Food Facts) or USDA by name, then **cited web search** on a further call. |
 | `addFood` | **Writes the catalogue** | Adds a source after duplicate checks. It may return an existing food (enriched with the source's barcode and servings), `possible_duplicates` (answer with `sameAs`), or `recheck_estimate` when an estimate's energy density is far from similar foods. |
 | `attachBarcode` | **Writes the catalogue** | Puts a decoded GTIN on a shared food that Jev confirms is exactly the scanned product. Refuses foods with another barcode or a sibling variant. |
 | `readLabel` | Registers a label source | Sonnet transcribes the label in 3 orientations; code converts the chosen column. Returns a `sourceId` for `addFood`. |

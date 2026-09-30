@@ -248,6 +248,21 @@ Original finding:
 4. **attachBarcode:** when a scanned barcode isn't in the catalogue but an existing food is that product, the barcode is written onto that food. The barcode must come from the decoding library, the food must have no barcode, and Jev must confirm the product description at 90% confidence or higher. The next scan is then a catalogue hit.
 5. **After publish:** category classification and icon generation are queued for new foods.
 
+### A12. Duplicate foods by name (prepared 2026-09-30: about 300 merges)
+Name embeddings (name and brand) found 2,688 pairs at 0.93 or more; nutrition alone (kcal and macros within 2% per
+100 g) found 33,789 pairs, 30,000 of them unrelated foods (cheddar and Monterey Jack), so it only confirms. Jev judged
+each shared pair by name and brand (2,696 pairs, $0.06): 887 the same product at 0.9 or more.
+- **Merge now** (migration `20260930040000_audit_a12_name_duplicate_merge`): a food merges into the most-logged one
+  (then the better source) only when Jev confirmed it against that survivor directly (chained look-alikes left
+  Nature Valley's almond and peanut bars merging) and calories per 100 g agree within 10%. Examples: blueberry into
+  blueberries, scrambled egg and eggs scrambled into scrambled eggs, avocados into Avocado, fries into french fries.
+  Each moved log's food and serving are backed up (`CatalogueAuditBackup`, audit `A12_name_duplicate_merge`) so the
+  batch can be undone. Dry run: 300 merged, 35,842 logs intact, none on a missing food or another food's serving.
+- **Left for later:** 285 pairs with two different barcodes (pack sizes: they need a food to carry several
+  barcodes), 41 foods whose calories differ 10-15% (review), and 182 same-name pairs with different nutrition,
+  mostly vague names hiding variants ("chicken breast" 165 vs 195 kcal, "greek yogurt" nonfat vs full fat): rename
+  and correct rather than merge.
+
 ### B0. Done on 2026-09-26 (pending the eval gate)
 
 - Catalogue first: USDA, then the web, per food.
