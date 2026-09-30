@@ -202,12 +202,18 @@ export async function textFastProposal(input: { originalText: string; consumedOn
   }
 }
 
-/** The package's labelled serving: the food's default serving, as its named serving when one weighs the same. */
+/** The package's labelled serving: the food's default serving, as its named serving when one weighs the same. A 100 g
+ * default is usually the per-100 g convention rather than the label's serving: then the food's own named serving is the
+ * label's ("2 tbsp" = 28 g of hummus, "2 waffles" = 76 g), at the label's amount. */
 export function labelledServing(food: CatalogFood): MealProposal["items"][number]["quantity"] {
   const grams = food.defaultServingWeightGram ?? 100
-  const named = food.Serving.find(serving => serving.servingWeightGram && serving.defaultServingAmount &&
-    Math.abs(serving.servingWeightGram - grams) <= 0.5)
-  return named ? { kind: "serving", servingId: named.id, amount: Number(named.defaultServingAmount) } : { kind: "mass", grams }
+  const servings = food.Serving.filter(serving => usableServing(serving))
+  const asServing = (serving: CatalogFood["Serving"][number]) =>
+    ({ kind: "serving" as const, servingId: serving.id, amount: Number(serving.defaultServingAmount) })
+  const same = servings.find(serving => Math.abs(serving.servingWeightGram! - grams) <= 0.5)
+  if (same) return asServing(same)
+  if (grams === 100 && servings.length) return asServing([...servings].sort((a, b) => a.id - b.id)[0])
+  return { kind: "mass", grams }
 }
 
 /** How much of a food in a photo. A branded product is a package: one of its servings (a named one, "bar" = 70 g, or

@@ -142,3 +142,14 @@ test('a photo meal routes only a single matched component; its mention is the ph
   const two=[{food:'Cheerios Protein',detail:'',grams:37},{food:'banana',detail:'',grams:118}]
   assert.equal((await fast.photoFastProposal(input,two,ev,{select:jev([]).select})).reason,'too_many_items')
 })
+
+test('a scanned package logs its label serving, not the 100 g per-100 g default',()=>{
+  const hummus=food(14625,'Sabra Hummus',[['tbsp',28,2]],'Sabra');hummus.defaultServingWeightGram=100
+  assert.deepEqual(plain(fast.labelledServing(hummus)),{kind:'serving',servingId:146250,amount:2})
+  const drink=food(15296,'Tropical Punch Greek Yogurt Drink',[['bottle',207]],'Chobani');drink.defaultServingWeightGram=207
+  assert.deepEqual(plain(fast.labelledServing(drink)),{kind:'serving',servingId:152960,amount:1})
+  const loose=food(20,'Loose product',[],'Brand');loose.defaultServingWeightGram=100
+  assert.deepEqual(plain(fast.labelledServing(loose)),{kind:'mass',grams:100})
+  const other=food(21,'Snack',[['bag',30]],'Brand');other.defaultServingWeightGram=45
+  assert.deepEqual(plain(fast.labelledServing(other)),{kind:'mass',grams:45})
+})
