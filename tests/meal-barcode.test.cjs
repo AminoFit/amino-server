@@ -46,6 +46,22 @@ test('EXIF orientation is applied before decoding',async()=>{
   assert.equal((await decodeBarcode(photo)).gtin,'04006381333931');
 });
 
+test('a faint barcode under glare on a curved bottle decodes once the lighting is evened out',async()=>{
+  // Meal 30384: a sideways kefir barcode, ~2 px per bar at upload size, on a white bottle over a dark floor. A tight
+  // crop read it; the whole photo and the tiles did not, because each scan line's threshold also saw the floor.
+  const code=await sharp(await barcode('017077109321','UPCA',190)).grayscale().linear(0.35,255*0.65)
+    .rotate(90,{background:'#fff'}).png().toBuffer();
+  const bottle=`<svg width="768" height="1024"><rect width="768" height="1024" fill="rgb(60,50,40)"/>
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9aa"/></linearGradient></defs>
+    <rect x="40" y="0" width="520" height="880" rx="120" fill="url(#g)"/>
+    <text x="80" y="200" font-size="36" fill="#223">INGREDIENTS: LOWFAT MILK</text>
+    <text x="80" y="620" font-size="28" fill="#223">LIFEWAY FOODS</text></svg>`;
+  const photo=await sharp(Buffer.from(bottle)).composite([{input:code,left:400,top:560}]).jpeg({quality:85}).toBuffer();
+  const read=await decodeBarcode(photo);
+  assert.deepEqual([read.gtin,read.method],['00017077109321','flattened']);
+  assert.ok(read.ms<3000,`took ${read.ms} ms`);
+});
+
 test('a photo without a barcode gives up fast and never asks the locator at upload size',async()=>{
   let located=0;
   const started=Date.now();
@@ -68,7 +84,9 @@ test('large photos use the locator box for a full-resolution crop',async()=>{
 // Private fixtures: the user's own photos, read from a local directory, never committed.
 const privateDir=process.env.AMINO_PRIVATE_PHOTOS;
 test('real app photos decode as expected',{skip:!privateDir&&'Set AMINO_PRIVATE_PHOTOS to the private photo directory'},async()=>{
-  const expected={'20260925230005755_jlv734j4.jpg':'00016000229969','20260925225645222_kufh1kry.jpg':null,'20260925230020223_a13zb1j1.jpg':null};
+  const expected={'20260925230005755_jlv734j4.jpg':'00016000229969','20260925225645222_kufh1kry.jpg':null,'20260925230020223_a13zb1j1.jpg':null,
+    // Meal 30384 (glare on a curved kefir bottle): only the flattened pass reads it.
+    '20260930212026717_zmetilwj.jpg':'00017077109321'};
   for (const [file,gtin] of Object.entries(expected)) {
     const read=await decodeBarcode(fs.readFileSync(path.join(privateDir,file)));
     assert.equal(read?.gtin??null,gtin,file);

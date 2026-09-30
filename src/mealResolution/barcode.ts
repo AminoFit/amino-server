@@ -56,7 +56,7 @@ async function read(image: Buffer, tryHarder: boolean) {
 
 /** Pixel box in the oriented image. */
 export type Box = { left: number; top: number; width: number; height: number }
-export type BarcodeRead = { gtin: string; format: string; method: "whole" | "located" | "tiles"; ms: number }
+export type BarcodeRead = { gtin: string; format: string; method: "whole" | "located" | "tiles" | "flattened"; ms: number }
 
 async function crop(image: Buffer, box: Box, width: number, height: number, upscaleTo = 900) {
   const left = Math.max(0, Math.floor(box.left)), top = Math.max(0, Math.floor(box.top))
@@ -66,8 +66,25 @@ async function crop(image: Buffer, box: Box, width: number, height: number, upsc
   return sharp(image).extract(region).resize(Math.round(region.width * scale), Math.round(region.height * scale)).png().toBuffer()
 }
 
-/** Decode one photo, cheapest first: the whole image, then overlapping tiles,
- * then (only when the photo has more resolution than the working copy) a
+/** 3x2 tiles with ~20% overlap, full effort. */
+async function readTiles(image: Buffer, width: number, height: number) {
+  const tileW = width / 3, tileH = height / 2
+  for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
+    const region = await crop(image, { left: col * tileW - tileW * 0.2, top: row * tileH - tileH * 0.2, width: tileW * 1.4, height: tileH * 1.4 }, width, height, 1200)
+    const hit = region && await read(region, true)
+    if (hit) return hit
+  }
+  return null
+}
+
+/** The image divided by its own blur (a flat-field correction), stretched to full contrast. */
+async function flatten(gray: Buffer, sigma: number) {
+  const lighting = await sharp(gray).blur(sigma).negate().toBuffer()
+  return sharp(gray).composite([{ input: lighting, blend: "colour-dodge" }]).grayscale().normalise().png().toBuffer()
+}
+
+/** Decode one photo, cheapest first: the whole image, then overlapping tiles, then both again with the lighting
+ * evened out, then (only when the photo has more resolution than the working copy) a
  * full-resolution crop around the boxes an optional locator suggests. */
 export async function decodeBarcode(photo: Buffer, deps: { locate?: (jpeg: Buffer, width: number, height: number) => Promise<Box[]> } = {}): Promise<BarcodeRead | null> {
   const started = performance.now()
@@ -82,12 +99,17 @@ export async function decodeBarcode(photo: Buffer, deps: { locate?: (jpeg: Buffe
   const whole = await read(jpeg, true)
   if (whole) return done(whole, "whole")
 
-  // 3x2 tiles with ~20% overlap, full effort.
-  const tileW = width / 3, tileH = height / 2
-  for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-    const region = await crop(jpeg, { left: col * tileW - tileW * 0.2, top: row * tileH - tileH * 0.2, width: tileW * 1.4, height: tileH * 1.4 }, width, height, 1200)
-    const hit = region && await read(region, true)
-    if (hit) return done(hit, "tiles")
+  const tiles = await readTiles(jpeg, width, height)
+  if (tiles) return done(tiles, "tiles")
+
+  // Glare and shadow: ZXing sets each scan line's black/white threshold from the whole line, so a dark background
+  // or a highlight on a curved bottle washes out faint bars that a tight crop reads easily (meal 30384). Dividing by
+  // a heavy blur evens out the lighting; then the whole image and the tiles again, at two blur sizes. Real photos
+  // gained 6 correct reads on 42 and lost none (2026-09-30, 600 photos).
+  for (const divisor of [64, 32]) {
+    const flat = await flatten(jpeg, Math.max(width, height) / divisor)
+    const hit = await read(flat, true) ?? await readTiles(flat, width, height)
+    if (hit) return done(hit, "flattened")
   }
 
   // A located crop only helps when the original holds detail the working copy lost.
