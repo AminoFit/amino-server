@@ -38,9 +38,9 @@ async function withPhotoUrls(day: Day): Promise<Day> {
 }
 
 /** The first page load: goals, the day (today when none is given), its week, 12 weeks of totals and stats. */
-export async function loadDashboard(day: string | null): Promise<Dashboard> {
+export async function loadDashboard(day: string | null, { photos = true } = {}): Promise<Dashboard> {
   const raw = await call<Dashboard>(createClient(), "web_dashboard", { p_date: day })
-  return { ...raw, goals: goalsOf(raw.goals), day: await withPhotoUrls(raw.day) }
+  return { ...raw, goals: goalsOf(raw.goals), day: photos ? await withPhotoUrls(raw.day) : raw.day }
 }
 
 export async function loadDay(day: string): Promise<DayWithWeek> {

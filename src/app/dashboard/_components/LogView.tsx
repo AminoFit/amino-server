@@ -9,12 +9,11 @@ import { dayTotals, number } from "../_lib/stats"
 import { DayRing } from "./DayRing"
 import { GoalBars } from "./GoalBars"
 import { MealCard } from "./MealCard"
-import { StatsPanel } from "./StatsPanel"
 import { TopBar } from "./TopBar"
 
-// The web log: pick a day (arrows, the week strip, the calendar, the 12-week grid, or ← → and T on the keyboard) and
-// see its goals and meals, with stats alongside. The first day comes with the page; others load
-// from /api/web/day, with the neighbouring days fetched ahead so moving a day at a time is instant.
+// The web log: pick a day (arrows, the week strip, the calendar, or ← → and T on the keyboard) and see its goals and
+// meals; stats are on /stats. The first day comes with the page; others load from /api/web/day, with the neighbouring
+// days fetched ahead so moving a day at a time is instant.
 
 const SIGN_IN = "/login?next=/log"
 
@@ -118,7 +117,7 @@ export function LogView({ initial }: { initial: Dashboard }) {
   return (
     <>
       <TopBar name={initial.name} email={initial.email} active="log" />
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-16 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:pt-8">
+      <main className="mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6 lg:pt-8">
         <div className="min-w-0 space-y-4">
           <section className="app-rise rounded-3xl border border-app-border/70 bg-app-card/90 p-4 shadow-sm shadow-black/[0.03] sm:p-6">
             <div className="flex items-center gap-3">
@@ -178,9 +177,6 @@ export function LogView({ initial }: { initial: Dashboard }) {
           </div>
         </div>
 
-        <aside className="min-w-0 space-y-4">
-          <StatsPanel data={initial} selected={day} onPickDay={picked => { go(picked); window.scrollTo({ top: 0, behavior: "smooth" }) }} />
-        </aside>
 
       </main>
     </>

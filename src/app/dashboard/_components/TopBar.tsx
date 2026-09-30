@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import {
-  ArrowRightStartOnRectangleIcon, BookOpenIcon, ComputerDesktopIcon, Cog6ToothIcon, MoonIcon, SunIcon
+  ArrowRightStartOnRectangleIcon, BookOpenIcon, ChartBarIcon, ComputerDesktopIcon, Cog6ToothIcon, MoonIcon, SunIcon
 } from "@heroicons/react/20/solid"
 import { AminoLogo } from "@/components/AminoLogo"
 import { applyTheme, type ThemeChoice } from "@/utils/appTheme"
@@ -18,6 +18,7 @@ const THEMES: { choice: ThemeChoice; label: string; Icon: typeof SunIcon }[] = [
 
 const TABS = [
   { key: "log", label: "Log", href: "/log", Icon: BookOpenIcon },
+  { key: "stats", label: "Stats", href: "/stats", Icon: ChartBarIcon },
   { key: "settings", label: "Settings", href: "/settings", Icon: Cog6ToothIcon }
 ] as const
 
