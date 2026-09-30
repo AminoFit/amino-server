@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
+import { ChevronDownIcon } from "@heroicons/react/20/solid"
 import type { Dashboard, DayTotals, DayWithWeek } from "../_lib/types"
 import { dayTitle, format, isDay, shiftDay, weekOf } from "../_lib/dates"
 import { dayTotals, number } from "../_lib/stats"
@@ -35,7 +35,7 @@ function WeekStrip({ day, today, kcalByDay, goal, onPick }: { day: string; today
         return (
           <button key={date} type="button" onClick={() => onPick(date)} aria-pressed={selected}
             aria-label={format(date, { weekday: "long", month: "long", day: "numeric" })}
-            className={`flex flex-col items-center gap-1.5 rounded-2xl py-2 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link
+            className={`flex flex-col items-center gap-1 rounded-2xl py-1.5 transition sm:gap-1.5 sm:py-2 duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link
               ${selected ? "bg-app-text/10" : "hover:bg-app-text/[0.05]"} ${isToday && !selected ? "ring-1 ring-inset ring-app-text/15" : ""}
               ${future ? "opacity-45" : ""}`}>
             <span className={`text-[11px] font-medium uppercase tracking-wide ${selected ? "text-app-text" : "text-app-muted"}`}>
@@ -49,21 +49,11 @@ function WeekStrip({ day, today, kcalByDay, goal, onPick }: { day: string; today
   )
 }
 
-function RoundButton({ label, onClick, children, disabled }: { label: string; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
-  return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
-      className="grid h-9 w-9 place-items-center rounded-full bg-app-text/[0.06] text-app-text transition hover:bg-app-text/[0.12] active:scale-95 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
-      {children}
-    </button>
-  )
-}
-
 export function LogView({ initial }: { initial: Dashboard }) {
   const queryClient = useQueryClient()
   const { today, goals } = initial
   const [day, setDay] = useState(initial.day.date)
   const [direction, setDirection] = useState<"left" | "right" | null>(null)
-  const picker = useRef<HTMLInputElement>(null)
 
   const query = useQuery({ ...dayQuery(day), placeholderData: keepPreviousData,
     initialData: day === initial.day.date ? { day: initial.day, week: initial.week } : undefined })
@@ -102,10 +92,10 @@ export function LogView({ initial }: { initial: Dashboard }) {
     return () => window.removeEventListener("keydown", onKey)
   })
 
-  const openPicker = () => {
-    const input = picker.current
-    if (!input) return
-    try { input.showPicker() } catch { input.focus() }
+  // The day title is a date input: a tap opens the phone's own picker; on desktop the click opens the calendar
+  // (the picker icon is stretched over the input, and showPicker covers browsers that ignore that).
+  const openPicker = (event: React.MouseEvent<HTMLInputElement>) => {
+    try { event.currentTarget.showPicker() } catch {}
   }
 
   const meals = shown.day.meals
@@ -117,36 +107,33 @@ export function LogView({ initial }: { initial: Dashboard }) {
   return (
     <>
       <TopBar name={initial.name} email={initial.email} active="log" />
-      <main className="mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6 lg:pt-8">
+      <main className="mx-auto max-w-3xl px-3 pb-16 pt-4 sm:px-6 sm:pt-6 lg:pt-8">
         <div className="min-w-0 space-y-4">
-          <section className="app-rise rounded-3xl border border-app-border/70 bg-app-card/90 p-4 shadow-sm shadow-black/[0.03] sm:p-6">
+          <section className="app-rise rounded-3xl border border-app-border/70 bg-app-card/90 p-3.5 shadow-sm shadow-black/[0.03] sm:p-6">
             <div className="flex items-center gap-3">
               <div className="relative min-w-0 flex-1">
-                <button type="button" onClick={openPicker}
-                  className="group -mx-2 flex max-w-full flex-col items-start rounded-xl px-2 py-1 text-left transition hover:bg-app-text/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
-                  <span className="text-xs font-medium uppercase tracking-wider text-app-muted">
+                <input type="date" value={day} max={shiftDay(today, 365)} aria-label="Pick a day" required
+                  onChange={event => go(event.target.value)} onClick={openPicker}
+                  className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0 text-base [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer" />
+                <div className="-mx-2 flex max-w-full flex-col items-start rounded-xl px-2 py-1 transition peer-hover:bg-app-text/[0.05] peer-focus-visible:ring-2 peer-focus-visible:ring-app-link">
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-app-muted sm:text-xs">
                     {format(day, { month: "long", year: "numeric" })}
                   </span>
-                  <span className="flex items-center gap-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <span className="flex max-w-full items-center gap-1.5 text-xl font-semibold tracking-tight sm:text-3xl">
                     <span className="truncate">{dayTitle(day, today)}</span>
-                    <ChevronDownIcon className="h-5 w-5 shrink-0 text-app-muted transition group-hover:translate-y-0.5" aria-hidden />
+                    <ChevronDownIcon className="h-5 w-5 shrink-0 text-app-muted" aria-hidden />
                   </span>
-                </button>
-                <input ref={picker} type="date" value={day} max={shiftDay(today, 365)} tabIndex={-1} aria-label="Pick a day"
-                  onChange={event => go(event.target.value)}
-                  className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0" />
+                </div>
               </div>
               {day !== today && (
                 <button type="button" onClick={() => go(today)}
-                  className="app-fade rounded-full bg-app-text px-3.5 py-1.5 text-xs font-semibold text-app-bg transition hover:opacity-90 active:scale-95">
+                  className="app-fade shrink-0 rounded-full bg-app-text px-3.5 py-1.5 text-xs font-semibold text-app-bg transition hover:opacity-90 active:scale-95">
                   Today
                 </button>
               )}
-              <RoundButton label="Previous day" onClick={() => go(shiftDay(day, -1))}><ChevronLeftIcon className="h-5 w-5" /></RoundButton>
-              <RoundButton label="Next day" onClick={() => go(shiftDay(day, 1))}><ChevronRightIcon className="h-5 w-5" /></RoundButton>
             </div>
-            <div className="mt-5"><WeekStrip day={day} today={today} kcalByDay={kcalByDay} goal={goals.kcal} onPick={go} /></div>
-            <div className={`mt-5 transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
+            <div className="mt-3 sm:mt-5"><WeekStrip day={day} today={today} kcalByDay={kcalByDay} goal={goals.kcal} onPick={go} /></div>
+            <div className={`mt-3 sm:mt-5 transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
               <GoalBars totals={totals} goals={goals} />
               {totals.fiberG > 0 && <p className="mt-2.5 px-1 text-xs text-app-muted">{number(totals.fiberG, 1)} g fibre</p>}
             </div>

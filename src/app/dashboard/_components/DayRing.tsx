@@ -12,7 +12,7 @@ export function DayRing({ progress, children }: { progress: number; children: Re
   const over = Math.min(Math.max(progress - 1, 0), 1)
   const nearGoal = progress >= 0.85 && progress <= 1.15
   return (
-    <span className="relative grid h-10 w-10 place-items-center">
+    <span className="relative grid h-9 w-9 place-items-center sm:h-10 sm:w-10">
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="absolute inset-0 -rotate-90" aria-hidden>
         {nearGoal && <circle cx={SIZE / 2} cy={SIZE / 2} r={radius} className="fill-app-kcal/15" />}
         <circle cx={SIZE / 2} cy={SIZE / 2} r={radius} fill="none" strokeWidth={STROKE} className="stroke-app-kcal/15" />
@@ -24,7 +24,7 @@ export function DayRing({ progress, children }: { progress: number; children: Re
           className="app-ring-arc" stroke="#1F7EA0" strokeDasharray={innerLength} strokeDashoffset={innerLength * (1 - over)}
           style={{ "--ring-length": innerLength } as React.CSSProperties} />}
       </svg>
-      <span className="relative text-sm font-semibold tabular-nums">{children}</span>
+      <span className="relative text-[13px] font-semibold tabular-nums sm:text-sm">{children}</span>
     </span>
   )
 }

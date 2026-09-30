@@ -59,14 +59,15 @@ export default async function SettingsPage() {
 
         <Card title="Daily goals" subtitle="Change them in the Amino app, or ask a connected agent to."
           className="app-rise" style={{ "--delay": "80ms" } as React.CSSProperties}>
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <dl className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {MACROS.map(({ key, label, unit }) => {
               const goal = profile?.[GOAL_COLUMNS[key]]
               return (
-                <div key={key} className="rounded-2xl bg-app-text/[0.04] px-3 py-3">
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-app-muted">{label}</dt>
-                  <dd className={`mt-1 text-xl font-semibold tabular-nums ${GOAL_TEXT[key]}`}>
-                    {goal ? number(goal) : "—"}<span className="ml-1 text-xs font-normal text-app-muted">{unit}</span>
+                <div key={key} className="rounded-xl bg-app-text/[0.04] px-2 py-2 text-center sm:rounded-2xl sm:px-3 sm:py-3 sm:text-left">
+                  <dt className="text-[10px] font-medium uppercase tracking-wide text-app-muted sm:text-[11px]">{label}</dt>
+                  <dd className={`mt-0.5 text-base font-semibold tabular-nums sm:mt-1 sm:text-xl ${GOAL_TEXT[key]}`}>
+                    {goal ? number(goal) : "—"}
+                    <span className="block text-[10px] font-normal text-app-muted sm:ml-1 sm:inline sm:text-xs">{unit}</span>
                   </dd>
                 </div>
               )
