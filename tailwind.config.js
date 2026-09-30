@@ -8,7 +8,7 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      sans: ['Inter', 'sans-serif'],
+      sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
     },
     extend: {
       backgroundImage: {
@@ -17,6 +17,10 @@ module.exports = {
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
       colors: {
+        // The app's theme (amino-mobile Theming.tsx) for the signed-in pages, as CSS variables in src/app/theme.css so
+        // light and dark share class names: bg-app-card, text-app-muted, bg-app-text/10 (the app's textAlpha10), …
+        app: Object.fromEntries(["bg", "card", "raised", "border", "text", "muted", "primary", "accent", "link", "danger",
+          "kcal", "protein", "carb", "fat"].map(name => [name, `rgb(var(--app-${name}) / <alpha-value>)`])),
         amino: {
           50: '#F4FCE8',
           100: '#E9F9D2',

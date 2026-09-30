@@ -1,0 +1,90 @@
+/* The app's colours (amino-mobile Theming.tsx) for the signed-in pages. `.app-theme` follows the system appearance
+   unless data-theme pins it. Tailwind reads these as bg-app-*, text-app-* and so on (tailwind.config.js). */
+.app-theme {
+  --app-bg: 228 231 235;       /* #E4E7EB */
+  --app-card: 248 249 250;     /* #F8F9FA */
+  --app-raised: 255 255 255;
+  --app-border: 206 212 218;   /* #CED4DA */
+  --app-text: 16 24 40;        /* #101828 */
+  --app-muted: 71 84 103;      /* #475467 */
+  --app-primary: 139 178 208;  /* #8BB2D0 */
+  --app-accent: 53 98 130;     /* #356282 */
+  --app-link: 53 98 130;       /* #356282 */
+  --app-danger: 228 37 85;     /* #E42555 */
+  --app-kcal: 46 180 224;      /* #2EB4E0 */
+  --app-protein: 239 71 111;   /* #EF476F */
+  --app-carb: 255 176 102;     /* #FFB066 */
+  --app-fat: 190 51 255;       /* #BE33FF */
+  --app-glow: 139 178 208;
+  color-scheme: light;
+  background-color: rgb(var(--app-bg));
+  color: rgb(var(--app-text));
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-theme:not([data-theme="light"]) {
+    --app-bg: 16 24 40;        /* #101828 */
+    --app-card: 29 41 57;      /* #1D2939 */
+    --app-raised: 38 52 71;
+    --app-border: 52 64 84;    /* #344054 */
+    --app-text: 255 255 255;
+    --app-muted: 152 162 179;  /* #98A2B3 */
+    --app-primary: 66 122 161; /* #427aa1 */
+    --app-link: 46 180 224;    /* #2EB4E0 */
+    --app-glow: 66 122 161;
+    color-scheme: dark;
+  }
+}
+
+.app-theme[data-theme="dark"] {
+  --app-bg: 16 24 40;
+  --app-card: 29 41 57;
+  --app-raised: 38 52 71;
+  --app-border: 52 64 84;
+  --app-text: 255 255 255;
+  --app-muted: 152 162 179;
+  --app-primary: 66 122 161;
+  --app-link: 46 180 224;
+  --app-glow: 66 122 161;
+  color-scheme: dark;
+}
+
+/* A soft light from the top of the page. */
+.app-glow {
+  background-image: radial-gradient(60rem 28rem at 50% -8rem, rgb(var(--app-glow) / 0.28), transparent 70%);
+}
+
+/* Motion: things arrive by fading up; the day's content slides in from the side it came from. */
+@keyframes app-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes app-from-right { from { opacity: 0; transform: translateX(28px); } }
+@keyframes app-from-left { from { opacity: 0; transform: translateX(-28px); } }
+@keyframes app-fade { from { opacity: 0; } }
+@keyframes app-grow-x { from { transform: scaleX(0); } }
+@keyframes app-ring { from { stroke-dashoffset: var(--ring-length); } }
+@keyframes app-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.app-rise { animation: app-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards; animation-delay: var(--delay, 0ms); }
+.app-from-right { animation: app-from-right 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.app-from-left { animation: app-from-left 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.app-fade { animation: app-fade 240ms ease-out backwards; }
+.app-bar {
+  transform-origin: left;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: app-grow-x 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.app-ring-arc {
+  transition: stroke-dashoffset 500ms ease-out;
+  animation: app-ring 700ms ease-out backwards;
+}
+.app-shimmer {
+  background: linear-gradient(100deg, rgb(var(--app-text) / 0.04) 30%, rgb(var(--app-text) / 0.12) 50%, rgb(var(--app-text) / 0.04) 70%);
+  background-size: 200% 100%;
+  animation: app-shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-rise, .app-from-right, .app-from-left, .app-fade, .app-bar, .app-ring-arc, .app-shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -35,7 +35,10 @@ export default function MarketingNav() {
             <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
-        <div className="hidden lg:flex lg:gap-x-12">
+        <div className="hidden lg:flex lg:items-center lg:gap-x-6">
+          <a href="/login" className="text-sm font-semibold leading-6 text-gray-900 hover:text-gray-600">
+            Log in
+          </a>
           {/* {navigation.map((item) => (
             <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900">
               {item.name}
@@ -89,7 +92,7 @@ export default function MarketingNav() {
               </div>
               <div className="py-6">
                 <a
-                  href="#"
+                  href="/login"
                   className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
                 >
                   Log in

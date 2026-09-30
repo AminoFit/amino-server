@@ -37,6 +37,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  // Back to the sign-in page, which says it didn't work (there is no separate error page).
+  return NextResponse.redirect(`${origin}/login?error=google`)
 }

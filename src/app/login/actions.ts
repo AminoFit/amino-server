@@ -8,77 +8,35 @@ import { safeNextPath } from './nextPath'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL
 
-export async function login(formData: FormData) {
-  const supabase = createClient()
+export type LoginState = { error?: string } | null
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
+/** Email and password (useFormState): an error message to show, or a redirect to where the user was going. */
+export async function login(_state: LoginState, formData: FormData): Promise<LoginState> {
+  const email = formData.get('email'), password = formData.get('password')
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password)
+    return { error: 'Enter your email and password.' }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
-
+  const { error } = await createClient().auth.signInWithPassword({ email, password })
   if (error) {
-    redirect('/error')
+    return { error: error.status === 400 ? "That email and password don't match." : "Signing in didn't work. Try again." }
   }
 
   revalidatePath('/', 'layout')
-  redirect(safeNextPath(formData.get('next')) ?? '/')
+  redirect(safeNextPath(formData.get('next')) ?? '/log')
 }
 
 export async function loginWithGoogle(formData: FormData) {
-  const supabase = createClient()
-  const next = safeNextPath(formData.get('next'))
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const next = safeNextPath(formData.get('next')) ?? '/log'
+  const { data, error } = await createClient().auth.signInWithOAuth({
     provider: 'google',
-    options: {
-      redirectTo: `${BASE_URL}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
-    },
+    options: { redirectTo: `${BASE_URL}/auth/callback?next=${encodeURIComponent(next)}` },
   })
-  
-  if (data.url) {
-    redirect(data.url) 
-  }
-  
-  if (error) {
-    redirect('/error')
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/')
-}
-
-export async function signup(formData: FormData) {
-  const supabase = createClient()
-
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
-
-  const { error } = await supabase.auth.signUp(data)
-
-  if (error) {
-    redirect('/error')
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/')
+  if (error || !data.url) redirect('/login?error=google')
+  redirect(data.url)
 }
 
 export async function logout() {
-  const supabase = createClient()
-  const { error } = await supabase.auth.signOut()
-
-  if (error) {
-    redirect('/error')
-  }
-
+  await createClient().auth.signOut()
   revalidatePath('/', 'layout')
   redirect('/login')
 }
