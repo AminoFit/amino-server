@@ -9,7 +9,7 @@ import { MACROS, averages, heatmap, number, targetDays, titleCase, type HeatCell
 export function Card({ title, subtitle, children, className = "", style }: { title: string; subtitle?: string;
   children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <section style={style} className={`rounded-3xl border border-app-border/70 bg-app-card p-5 shadow-sm shadow-black/[0.03] ${className}`}>
+    <section style={style} className={`min-w-0 rounded-3xl border border-app-border/70 bg-app-card p-5 shadow-sm shadow-black/[0.03] ${className}`}>
       <div className="mb-4">
         <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
         {subtitle && <p className="mt-0.5 text-xs text-app-muted">{subtitle}</p>}
@@ -46,7 +46,7 @@ function Overview({ data }: { data: Dashboard }) {
   const ofGoal = (kcal: number) => `${Math.round((100 * kcal) / goals.kcal)}% of goal`
   return (
     <Card title="Overview" subtitle="Averages count the days you logged food" className="app-rise lg:col-span-2" style={delay(40)}>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>*]:min-w-0">
         <div className="rounded-2xl bg-gradient-to-br from-app-carb/25 to-app-protein/15 px-4 py-3.5">
           <p className="text-[11px] font-medium uppercase tracking-wide text-app-muted">Streak</p>
           <p className="mt-1 flex items-center gap-1 text-2xl font-semibold tabular-nums tracking-tight">
@@ -64,11 +64,11 @@ function Overview({ data }: { data: Dashboard }) {
         <p className="mb-2.5 text-xs text-app-muted">
           On target, last 30 days <span className="opacity-70">(within 10%; protein at least 90%)</span>
         </p>
-        <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
           {MACROS.map(({ key, label }) => {
             const share = target.logged ? target.hits[key] / target.logged : 0
             return (
-              <li key={key} className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 text-sm">
+              <li key={key} className="grid min-w-0 grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 text-sm">
                 <span className="text-app-muted">{label}</span>
                 <span className="h-1.5 overflow-hidden rounded-full bg-app-text/[0.07]">
                   <span className={`app-bar block h-full rounded-full ${MACRO_BG[key]}`} style={{ transform: `scaleX(${share})` }} />
@@ -99,13 +99,13 @@ function CaloriesChart({ data }: { data: Dashboard }) {
             goal {number(goals.kcal)}
           </span>
         </div>
-        <div className="flex h-full items-end gap-[3px]">
+        <div className="flex h-full min-w-0 items-end gap-[2px] sm:gap-[3px]">
           {days.map((day, index) => {
             const kcal = byDate.get(day) ?? 0
             const over = kcal > goals.kcal * 1.1
             return (
               <a key={day} href={dayLink(day)} title={`${format(day, { weekday: "short", month: "short", day: "numeric" })} · ${number(kcal)} kcal`}
-                className="group flex h-full flex-1 items-end rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
+                className="group flex h-full min-w-0 flex-1 items-end rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
                 <span className={`app-bar-y block w-full rounded-t-md transition group-hover:opacity-80 ${kcal ? over ? "bg-app-carb" : "bg-app-kcal" : "bg-app-text/[0.08]"}`}
                   style={{ height: kcal ? `${Math.max(2, (100 * kcal) / top)}%` : "3px", animationDelay: `${120 + index * 12}ms` }} />
               </a>
@@ -124,9 +124,9 @@ function Calendar({ data }: { data: Dashboard }) {
   const weeks = heatmap(data.recent, data.today, data.goals.kcal)
   return (
     <Card title="Last 12 weeks" subtitle="Calories against your goal. Pick a day to open it." className="app-rise" style={delay(140)}>
-      <div className="mx-auto flex max-w-md gap-[3px]">
+      <div className="mx-auto flex min-w-0 max-w-md gap-[3px]">
         {weeks.map(column => (
-          <div key={column[0].date} className="flex flex-1 flex-col gap-[3px]">
+          <div key={column[0].date} className="flex min-w-0 flex-1 flex-col gap-[3px]">
             {column.map(cell => cell.future
               ? <span key={cell.date} className="aspect-square w-full" />
               : <a key={cell.date} href={dayLink(cell.date)}
@@ -202,7 +202,7 @@ export function StatsView({ data }: { data: Dashboard }) {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:pt-8">
       <h1 className="app-rise mb-4 px-1 text-2xl font-semibold tracking-tight sm:text-3xl">Stats</h1>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Overview data={data} />
         <CaloriesChart data={data} />
         <Calendar data={data} />

@@ -142,7 +142,7 @@ export function AgentsPanel({ agents: initial, today }: { agents: Agent[] | null
           above, then approve it with your phone.
         </p>
       ) : (
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {agents.map(agent => <AgentRow key={agent.id} agent={agent} today={today}
             onGone={() => setAgents(list => list?.filter(a => a.id !== agent.id) ?? null)} />)}
         </ul>
