@@ -1,8 +1,5 @@
 // Constants
 export const MAX_DURATION = 300
-// Reuse an existing icon only when its description is close to the food ("greek yogurt" for a yogurt
-// drink scores ~0.83); weaker matches ("lasagna" for a milk, ~0.70) get a new icon instead.
-const REUSE_SIMILARITY = 0.8
 
 // Importing dependencies and initializing the Supabase client
 import { createClient } from "@supabase/supabase-js"
@@ -16,6 +13,7 @@ import { SupabaseURL, SupabaseServiceKey } from "@/utils/auth-keys"
 import { IMAGE_MODEL } from "@/ai/models"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { vectorToSql } from "@/utils/pgvectorHelper"
+import { chooseFoodIcon } from "./chooseFoodIcon"
 
 const BUCKET_NAME = "foodimages"
 
@@ -46,37 +44,29 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
     return
   }
 
-  // Retrieve embedding ID for the food name
-  const embeddingData = await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name])
-  const embeddingId = embeddingData[0].id
-
-  // Call the Supabase function to get top similar images
-  const { data: similarImages, error: similarityError } = await supabase.rpc("get_top_foodimage_embedding_similarity", {
-    p_embedding_cache_id: embeddingId
+  // The closest icons by name shortlist; Jev decides whether one shows this food (the closest name can be another
+  // food: "mixed vegetables" for mixed mushrooms).
+  const embeddingId = (await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name]))[0].id
+  const { data: candidates, error: candidatesError } = await supabase.rpc("food_icon_candidates", {
+    p_embedding_cache_id: embeddingId,
+    p_limit: 8
   })
-
-  if (similarityError) throw similarityError
-
-  // Link the closest existing image when it is close enough
-  if (similarImages.length > 0 && similarImages[0].cosine_similarity >= REUSE_SIMILARITY) {
-    // Link the found image to the food item
-    const { data: foodItemImages, error: errorFoodItemImages } = await supabase
-      .from("FoodItemImages")
-      .insert([
-        {
-          foodItemId: foodItemId,
-          foodImageId: similarImages[0].food_image_id,
-          similarity: similarImages[0].cosine_similarity
-        }
-      ])
-      .select()
-      .single()
-
-    if (errorFoodItemImages) throw errorFoodItemImages
-
-    console.log(`Linked existing FoodImage ${similarImages[0].food_image_id} to FoodItem ${foodItemId}`)
+  if (candidatesError) throw candidatesError
+  const choice = await chooseFoodIcon(
+    { name: foodItem.name, brand: foodItem.brand, category: foodItem.foodItemCategoryName },
+    candidates.map(row => ({
+      id: row.food_image_id, description: row.image_description, similarity: row.cosine_similarity
+    }))
+  )
+  if (choice.kind === "reuse") {
+    const { error: linkError } = await supabase.from("FoodItemImages")
+      .insert([{ foodItemId, foodImageId: choice.imageId, similarity: choice.similarity }])
+    if (linkError) throw linkError
+    console.log("food_icon_reused", { foodItemId, foodImageId: choice.imageId, similarity: choice.similarity,
+      confidence: choice.confidence })
     return
   }
+  console.log("food_icon_generating", { foodItemId, reason: choice.reason })
 
   // The food, not its brand: brands add packaging and logos, and a generic icon suits the food's variants.
   const foodName = foodItem.name

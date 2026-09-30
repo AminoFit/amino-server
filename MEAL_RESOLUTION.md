@@ -183,6 +183,11 @@ of re-reading the photos.
 `reading | matching → found → checking → saving`. The preview is the first look's components (or, for text, a
 streamed item list), with catalogue icons once candidates are found. The saved meal replaces it.
 
+After the meal is saved, foods without an icon go to the icon queue (`generate-food-icon`). It shortlists the 8
+closest icons by name embedding (`food_icon_candidates`; the old flat `*_(no_bg)` drawings are never reused), and Jev
+picks the one that shows the food or says none fits (`chooseFoodIcon`). An unsure pick is confirmed on its own; a
+reuse needs 0.9 confidence. Otherwise a new icon is drawn. Without Jev, only a name scoring 0.85 or more is reused.
+
 ## 9. Debugging a meal
 
 1. **Find the operation.**

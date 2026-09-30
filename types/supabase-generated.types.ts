@@ -1263,6 +1263,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      food_icon_candidates: {
+        Args: {
+          p_embedding_cache_id: number
+          p_limit?: number
+        }
+        Returns: {
+          food_image_id: number
+          image_description: string
+          cosine_similarity: number
+        }[]
+      }
       get_top_foodimage_embedding_similarity: {
         Args: {
           p_embedding_cache_id: number
