@@ -7,11 +7,11 @@ import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
 import { decodeBarcode, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
 import { compileCheckedMealPlan, refersToPastMeal } from "./historyCheck"
-import { listVisibleFoods, type VisibleFood } from "./coverageCheck"
+import { listVisibleFoods, missingVisibleFoods, type VisibleFood } from "./coverageCheck"
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
-import { textFastProposal } from "./textFastRoute"
-import { textFastRouteEnabled } from "./fastRouteFlag"
+import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, textFastProposal } from "./textFastRoute"
+import { photoFastRouteEnabled, textFastRouteEnabled } from "./fastRouteFlag"
 import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
 import { localTime } from "@/mealOperations/instant"
@@ -198,6 +198,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   barcodes?:string[]
   /** Overrides FeatureFlag.meal_text_fast_route for this meal (evals and tests). */
   fastRoute?:boolean
+  /** Overrides FeatureFlag.meal_photo_fast_route for this meal (evals and tests). */
+  photoFastRoute?:boolean
 }={}):Promise<MealResolutionResult> {
   const started=performance.now()
   const controller=new AbortController()
@@ -256,7 +258,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // passes the check wins the race (FeatureFlag.meal_text_fast_route).
     const plainText=!!input.originalText.trim()&&!input.attachmentIds.length&&!input.useExistingPhotos&&
       !input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
-    const fastWanted=plainText?Promise.resolve(deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
+    const fastWanted=plainText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
     const textListed=Promise.all([photosLoaded,fastWanted]).then(([list,fast])=>list.length||!input.originalText.trim()||
       !deps.onProgress&&!fast?[]:(deps.textFoods??streamTextFoods)(input.originalText,
@@ -314,6 +316,34 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         return resolved
       }
     }
+    // A photo meal without text can skip the agent too: Jev matches the first look's components while the agent starts
+    // (FeatureFlag.meal_photo_fast_route). Photos with a barcode keep the barcode route or the agent.
+    const plainPhoto=!input.originalText.trim()&&photos.length>0&&!input.validationErrorCode&&!input.answers?.length&&
+      input.previousMeal==null&&!barcodes.length&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS
+    const photoFastStarted=performance.now()
+    const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??photoFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false))
+      .then(async enabled=>{
+        if (!enabled) return null
+        const outcome=await photoFastProposal(input,visible,evidence,{signal:controller.signal})
+        mark("photo_fast_route",photoFastStarted)
+        if (!outcome.proposal) {trace.push(`photo_fast_route: ${outcome.reason}`);return null}
+        const quick:MealResolutionResult={proposal:outcome.proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
+          model:"photo-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[],checked:true,timeline,trace}
+        // The plan covers every component of the first look one to one, so the second look has nothing to add.
+        const problem=await compileCheckedMealPlan(input,quick,{secondLook:false}).then(()=>null,
+          (error:unknown)=>error instanceof Error?error.message:"invalid_plan")
+        if (problem) {trace.push(`photo_fast_route: check ${problem.slice(0,60)}`);return null}
+        // The agent's plans get a second look at the photos for anything the plan misses; so does this one, and anything
+        // missing (or a failed look) leaves the meal to the agent.
+        const missing=await missingVisibleFoods(photos.map(photo=>photo.url),"",outcome.proposal.items.map(item=>
+          ({name:evidence.foods.get(item.foodId!)?.name??`food ${item.foodId}`}))).catch(()=>["second_look_failed"])
+        if (missing.length) {trace.push("photo_fast_route: second look found more");return null}
+        trace.push(`photo_fast_route: ${outcome.foods.map(food=>`food ${food.foodId}`).join(", ")}`)
+        const resolved={...quick,durationMs:performance.now()-started}
+        Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
+        return resolved
+      }).catch(()=>null)
+
     // The agent starts now; a fast-route plan that arrives first is used instead (returning aborts the agent).
     const agent=async():Promise<MealResolutionResult>=>{
     const prompt=JSON.stringify({originalText:input.originalText,consumedOn:input.consumedOn,
@@ -473,9 +503,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     }
     const agentRun=agent()
     agentRun.catch(()=>{})
-    const quick=await Promise.race([fast,agentRun.then(()=>null,()=>null)])
-    if (quick) console.info("meal_text_fast_route",{messageId:input.messageId,ms:Math.round(quick.durationMs),
-      foods:quick.proposal.items.length})
+    const quick=await Promise.race([plainText?fast:photoFast,agentRun.then(()=>null,()=>null)])
+    if (quick) console.info(plainText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
+      ms:Math.round(quick.durationMs),foods:quick.proposal.items.length})
     return quick??await agentRun
   } catch (error) {
     // A failed meal is retried later; what the agent tried is the only clue to why.
@@ -505,19 +535,12 @@ async function barcodeProposal(input:MealResolutionInput,barcodes:string[],match
     foods.push(food)
   }
   return {schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,historyGroupSelections:[],claims:[],clarification:null,
-    items:foods.map(food=>({foodId:food.id,quantity:defaultServing(food),groupId:null,groupLabel:null,
+    items:foods.map(food=>({foodId:food.id,quantity:labelledServing(food),groupId:null,groupLabel:null,
       evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
     components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
       itemIndexes:[index],historySelectionIndexes:[],omitted:false}))}
 }
 
-/** The package's labelled serving: the food's default serving, as its named serving when one weighs the same. */
-function defaultServing(food:CatalogFood):MealProposal["items"][number]["quantity"] {
-  const grams=food.defaultServingWeightGram??100
-  const named=food.Serving.find(serving=>serving.servingWeightGram&&serving.defaultServingAmount&&
-    Math.abs(serving.servingWeightGram-grams)<=0.5)
-  return named?{kind:"serving",servingId:named.id,amount:Number(named.defaultServingAmount)}:{kind:"mass",grams}
-}
 
 /** A tool result as status and IDs only: never names or text, so it can be logged. */
 function toolOutcome(value:unknown):string {

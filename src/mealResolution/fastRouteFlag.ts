@@ -1,9 +1,10 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
-/** FeatureFlag.meal_text_fast_route: "off", "all", or a comma-separated list of user IDs. Cached for 30 s, so a flip
+/** Fast-route switches in FeatureFlag: "off", "all", or a comma-separated list of user IDs. Cached for 30 s, so a flip
  * takes effect without a deploy; a failed read keeps the last value (off before any read). */
 export const FAST_ROUTE_FLAG = "meal_text_fast_route"
-let cached: { value: string; at: number } | undefined
+export const PHOTO_FAST_ROUTE_FLAG = "meal_photo_fast_route"
+const cached = new Map<string, { value: string; at: number }>()
 
 export function fastRouteEnabledFor(value: string, userId: string) {
   const trimmed = value.trim().toLowerCase()
@@ -12,11 +13,16 @@ export function fastRouteEnabledFor(value: string, userId: string) {
   return trimmed.split(",").map(id => id.trim()).includes(userId.toLowerCase())
 }
 
-export async function textFastRouteEnabled(userId: string,
-  db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()): Promise<boolean> {
-  if (!cached || Date.now() - cached.at >= 30_000) {
-    const { data, error } = await (db as any).from("FeatureFlag").select("value").eq("name", FAST_ROUTE_FLAG).maybeSingle()
-    cached = { value: error ? cached?.value ?? "off" : (data as { value?: string } | null)?.value ?? "off", at: Date.now() }
+async function flagEnabled(flag: string, userId: string, db: ReturnType<typeof createAdminSupabase>) {
+  const hit = cached.get(flag)
+  if (!hit || Date.now() - hit.at >= 30_000) {
+    const { data, error } = await (db as any).from("FeatureFlag").select("value").eq("name", flag).maybeSingle()
+    cached.set(flag, { value: error ? hit?.value ?? "off" : (data as { value?: string } | null)?.value ?? "off", at: Date.now() })
   }
-  return fastRouteEnabledFor(cached.value, userId)
+  return fastRouteEnabledFor(cached.get(flag)!.value, userId)
 }
+
+export const textFastRouteEnabled = (userId: string, db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()) =>
+  flagEnabled(FAST_ROUTE_FLAG, userId, db)
+export const photoFastRouteEnabled = (userId: string, db: ReturnType<typeof createAdminSupabase> = createAdminSupabase()) =>
+  flagEnabled(PHOTO_FAST_ROUTE_FLAG, userId, db)

@@ -139,6 +139,34 @@ export function verbatim(text: string, ...phrases: (string | undefined)[]): stri
 const words = (text: string) => new Set(text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, " ")
   .split(/\s+/).filter(word => word.length >= 3))
 
+/** Jev picks the catalogue food for one item: the search's top 8 plus the user's recent foods that share a word
+ * (marked "logged before"); a pick under 0.9 gets its own yes/no question. */
+export async function matchFood(context: string, item: string, words_: string, history: FastCandidate[],
+  evidence: FastRouteEvidence, select: typeof selectWithJev, signal: AbortSignal):
+  Promise<{ food: CatalogFood; confidence: number } | { reason: string }> {
+  const found = (await evidence.searchFoods(item)).candidates.slice(0, 8)
+  const itemWords = words(`${item} ${words_}`)
+  const mine = new Set(history.map(food => food.id))
+  const related = history.filter(food => [...words(`${food.name} ${food.brand ?? ""}`)].some(word => itemWords.has(word)))
+  const seen = new Set<number>()
+  const candidates = [...found.map(food => mine.has(food.id) ? { ...food, mine: true } : food),
+    ...related.slice(0, 8).map(food => ({ ...food, mine: true }))].filter(food => !seen.has(food.id) && seen.add(food.id))
+  if (!candidates.length) return { reason: "no_candidates" }
+  const choice = await select(foodChoiceTask(context, item, candidates), signal, { timeoutMs: 4000 })
+  if (choice.status !== "ok" || !choice.choice || choice.choice === "none") return { reason: "none_fits" }
+  const pick = candidates.find(candidate => `food_${candidate.id}` === choice.choice)
+  if (!pick) return { reason: "none_fits" }
+  let confidence = choice.confidence ?? 0
+  if (confidence < MATCH_CONFIDENCE) {
+    const confirmation = await select(foodConfirmationTask(context, item, pick), signal, { timeoutMs: 4000 })
+    confidence = confirmation.status === "ok" && confirmation.choice === "yes" ? confirmation.confidence ?? 0 : 0
+    if (confidence < MATCH_CONFIDENCE) return { reason: "low_confidence" }
+  }
+  evidence.discover?.(pick.id)
+  const food = (await evidence.getFoodsAndServings([pick.id])).foods[0]
+  return food ? { food, confidence } : { reason: "food_unavailable" }
+}
+
 export async function textFastProposal(input: { originalText: string; consumedOn: string },
   items: VisibleFood[], evidence: FastRouteEvidence,
   deps: { select?: typeof selectWithJev; signal?: AbortSignal } = {}): Promise<FastRouteOutcome> {
@@ -152,27 +180,9 @@ export async function textFastProposal(input: { originalText: string; consumedOn
     return { proposal: null, reason: "not_verbatim" }
   const matched = await Promise.all(items.map(async (item, index) => {
     if (!item.grams) return { reason: "no_amount" }
-    const found = (await evidence.searchFoods(item.food)).candidates.slice(0, 8)
-    const itemWords = words(`${item.food} ${quotes[index]}`)
-    const mine = new Set(history.map(food => food.id))
-    const related = history.filter(food => [...words(`${food.name} ${food.brand ?? ""}`)].some(word => itemWords.has(word)))
-    const seen = new Set<number>()
-    const candidates = [...found.map(food => mine.has(food.id) ? { ...food, mine: true } : food),
-      ...related.slice(0, 8).map(food => ({ ...food, mine: true }))].filter(food => !seen.has(food.id) && seen.add(food.id))
-    if (!candidates.length) return { reason: "no_candidates" }
-    const choice = await select(foodChoiceTask(text, item.food, candidates), signal, { timeoutMs: 4000 })
-    if (choice.status !== "ok" || !choice.choice || choice.choice === "none") return { reason: "none_fits" }
-    const pick = candidates.find(candidate => `food_${candidate.id}` === choice.choice)
-    if (!pick) return { reason: "none_fits" }
-    let confidence = choice.confidence ?? 0
-    if (confidence < MATCH_CONFIDENCE) {
-      const confirmation = await select(foodConfirmationTask(text, item.food, pick), signal, { timeoutMs: 4000 })
-      confidence = confirmation.status === "ok" && confirmation.choice === "yes" ? confirmation.confidence ?? 0 : 0
-      if (confidence < MATCH_CONFIDENCE) return { reason: "low_confidence" }
-    }
-    evidence.discover?.(pick.id)
-    const food = (await evidence.getFoodsAndServings([pick.id])).foods[0]
-    if (!food) return { reason: "food_unavailable" }
+    const found = await matchFood(text, item.food, quotes[index]!, history, evidence, select, signal)
+    if ("reason" in found) return found
+    const { food, confidence } = found
     const quantity = itemQuantity(quotes[index]!, food, item.grams)
     if (!quantity) return { reason: "amount_mismatch" }
     return { item: item.food, food, quantity, confidence }
@@ -187,6 +197,72 @@ export async function textFastProposal(input: { originalText: string; consumedOn
       items: picks.map(pick => ({ foodId: pick.food.id, quantity: pick.quantity, groupId: null, groupLabel: null,
         evidence: [`food:${pick.food.id}`, "jev:fast_route"] })),
       components: picks.map((_, index) => ({ sourceText: quotes[index]!, itemIndexes: [index],
+        historySelectionIndexes: [], omitted: false })) },
+    foods: picks.map(pick => ({ item: pick.item, foodId: pick.food.id, confidence: pick.confidence }))
+  }
+}
+
+/** The package's labelled serving: the food's default serving, as its named serving when one weighs the same. */
+export function labelledServing(food: CatalogFood): MealProposal["items"][number]["quantity"] {
+  const grams = food.defaultServingWeightGram ?? 100
+  const named = food.Serving.find(serving => serving.servingWeightGram && serving.defaultServingAmount &&
+    Math.abs(serving.servingWeightGram - grams) <= 0.5)
+  return named ? { kind: "serving", servingId: named.id, amount: Number(named.defaultServingAmount) } : { kind: "mass", grams }
+}
+
+/** How much of a food in a photo. A branded product is a package: one of its servings (a named one, "bar" = 70 g, or
+ * the default), the one nearest the first look's estimate, and only when that estimate is about one serving (a whole
+ * carton or two bars goes to the agent). Unbranded food is the first look's estimate, as the agent's would be. */
+export function photoQuantity(food: CatalogFood, estimatedGrams: number | null, name: string):
+  MealProposal["items"][number]["quantity"] | null {
+  if (!estimatedGrams || estimatedGrams <= 0) return null
+  if (food.brand) {
+    if (food.weightUnknown) return null
+    // A named serving is the package's own unit; the default weight is used only when there is none (it is often
+    // just 100 g).
+    const named = food.Serving.filter(serving => usableServing(serving)).map(serving => ({ id: serving.id as number | null,
+      grams: serving.servingWeightGram! / Number(serving.defaultServingAmount) }))
+    const units = (named.length ? named : food.defaultServingWeightGram ? [{ id: null as number | null,
+      grams: food.defaultServingWeightGram }] : []).filter(unit => unit.grams > 0 && estimatedGrams >= unit.grams * 0.6 && estimatedGrams <= unit.grams * 1.6)
+      .sort((a, b) => Math.abs(a.grams - estimatedGrams) - Math.abs(b.grams - estimatedGrams))
+    const unit = units[0]
+    if (!unit) return null
+    return unit.id === null ? labelledServing(food) : { kind: "serving", servingId: unit.id, amount: 1 }
+  }
+  return { kind: "estimated_mass", grams: Math.round(estimatedGrams), basis: `Estimated from the photo: ${name.slice(0, 200)}` }
+}
+
+/** One component only: the first look can list things that are in the photo but not eaten (a bunch of bananas behind a
+ * cereal box), which only the agent, seeing the photo, can tell apart. */
+export const MAX_PHOTO_COMPONENTS = 1
+
+/** A photo meal without text, resolved from the first look: every component matched by Jev, or the agent's plan. */
+export async function photoFastProposal(input: { consumedOn: string }, items: VisibleFood[], evidence: FastRouteEvidence,
+  deps: { select?: typeof selectWithJev; signal?: AbortSignal } = {}): Promise<FastRouteOutcome> {
+  const select = deps.select ?? selectWithJev, signal = deps.signal ?? AbortSignal.timeout(10000)
+  if (!items.length) return { proposal: null, reason: "no_items" }
+  if (items.length > MAX_PHOTO_COMPONENTS) return { proposal: null, reason: "too_many_items" }
+  const names = items.map(item => item.food.trim())
+  if (new Set(names.map(name => name.toLowerCase())).size !== names.length) return { proposal: null, reason: "same_item_twice" }
+  const history = await (evidence.recentFoods?.() ?? Promise.resolve([])).catch(() => [] as FastCandidate[])
+  const context = `A photo of a meal showing: ${names.join(", ")}`
+  const matched = await Promise.all(items.map(async item => {
+    const found = await matchFood(context, item.food, item.detail ?? "", history, evidence, select, signal)
+    if ("reason" in found) return found
+    const quantity = photoQuantity(found.food, item.grams, item.food)
+    if (!quantity) return { reason: "amount_unclear" }
+    return { item: item.food, food: found.food, quantity, confidence: found.confidence }
+  }))
+  const miss = matched.find((match): match is { reason: string } => "reason" in match)
+  if (miss) return { proposal: null, reason: miss.reason }
+  const picks = matched as { item: string; food: CatalogFood; quantity: MealProposal["items"][number]["quantity"]; confidence: number }[]
+  if (new Set(picks.map(pick => pick.food.id)).size !== picks.length) return { proposal: null, reason: "same_food_twice" }
+  return {
+    proposal: { schemaVersion: 1, outcome: "resolved", consumedOn: input.consumedOn, historyGroupSelections: [],
+      claims: [], clarification: null,
+      items: picks.map(pick => ({ foodId: pick.food.id, quantity: pick.quantity, groupId: null, groupLabel: null,
+        evidence: [`food:${pick.food.id}`, "jev:photo_fast_route"] })),
+      components: picks.map((pick, index) => ({ sourceText: `photo: ${pick.item}`.slice(0, 300), itemIndexes: [index],
         historySelectionIndexes: [], omitted: false })) },
     foods: picks.map(pick => ({ item: pick.item, foodId: pick.food.id, confidence: pick.confidence }))
   }

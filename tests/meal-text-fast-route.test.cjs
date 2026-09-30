@@ -114,3 +114,31 @@ test('the flag is off, all, or a list of users',()=>{
   assert.equal(flag.fastRouteEnabledFor('u2','u1'),false)
   assert.equal(flag.fastRouteEnabledFor('','u1'),false)
 })
+
+const bar=food(15304,'PRO Protein Bar, Chocolate Brownie',[['bar',70]],'PROBAR');bar.defaultServingWeightGram=100
+const milk=food(15295,'Lala 100 Leche Ultrafiltrada',[['cup',250]],'Lala');milk.defaultServingWeightGram=250
+const baguette=food(15297,'Baguette de Pollo');baguette.defaultServingWeightGram=100
+
+test('a photo: a branded package is one labelled serving when the first look sees about one; plated food is its estimate',()=>{
+  // The named 70 g bar, not the 100 g default.
+  assert.deepEqual(plain(fast.photoQuantity(bar,70,'PROBAR bar')),{kind:'serving',servingId:153040,amount:1})
+  // A whole carton (1000 g for a 250 g serving) or two bars: the agent decides how much was eaten.
+  assert.equal(fast.photoQuantity(milk,1000,'Lala milk carton'),null)
+  assert.equal(fast.photoQuantity(bar,140,'two bars'),null)
+  const plated=plain(fast.photoQuantity(baguette,220,'Baguette de pollo'))
+  assert.equal(plated.kind,'estimated_mass');assert.equal(plated.grams,220);assert.match(plated.basis,/photo/)
+  assert.equal(fast.photoQuantity(baguette,null,'x'),null)
+})
+
+test('a photo meal routes only a single matched component; its mention is the photo component',async()=>{
+  const ev=evidenceWith([bar,baguette])
+  const input={consumedOn:'2026-09-30T12:00:00Z'}
+  const ok=plain(await fast.photoFastProposal(input,[{food:'Baguette de pollo',detail:'',grams:220}],ev,{select:jev([{choice:'food_15297',confidence:0.93}]).select}))
+  assert.deepEqual(ok.proposal.components.map(c=>c.sourceText),['photo: Baguette de pollo'])
+  assert.deepEqual(ok.proposal.items.map(i=>i.quantity.kind),['estimated_mass'])
+  const unsure=await fast.photoFastProposal(input,[{food:'Baguette de pollo',detail:'',grams:220}],ev,{select:jev([{choice:'none',confidence:0.8}]).select})
+  assert.equal(unsure.reason,'none_fits')
+  // A second component (a banana behind the cereal box?) leaves the meal to the agent, which sees the photo.
+  const two=[{food:'Cheerios Protein',detail:'',grams:37},{food:'banana',detail:'',grams:118}]
+  assert.equal((await fast.photoFastProposal(input,two,ev,{select:jev([]).select})).reason,'too_many_items')
+})

@@ -99,6 +99,13 @@ lists the user, `textFastRoute.ts` runs alongside the agent:
    "2 eggs") logs that serving; anything else is the listing's estimate (`estimated_mass`).
 4. The plan goes through the normal check. "Same as yesterday" (Jev's past-meal question) always goes to the agent.
 
+**Photos** (`FeatureFlag.meal_photo_fast_route`): a photo meal with no text, no decoded barcode and a first look of
+**one** component (the first look can list things in the photo that aren't eaten, like bananas behind a cereal box,
+which only the agent can tell apart) takes the same Jev match. A branded product logs its named serving nearest the
+first look's estimate ("bar" = 70 g, not a 100 g default), only when the estimate is about one serving (a whole carton
+goes to the agent); unbranded food logs the estimate. The plan then gets the agent's second look at the photo, and
+anything missing leaves the meal to the agent. Photo eval with it on: 10/10; routed meals took 7-10 s (agent 13-244 s).
+
 The first answer wins: a fast plan returns and aborts the agent; any miss (none, unsure, not verbatim, same food twice,
 a check failure) just leaves the agent running, so a miss costs no time. Text eval with the route on: 17/17, 9 routed
 in 1.6-2.8 s. The trace shows `fast_route: <reason>` or the foods picked; logs show `meal_text_fast_route`.

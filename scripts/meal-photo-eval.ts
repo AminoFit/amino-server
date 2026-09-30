@@ -142,6 +142,7 @@ async function run(test: Case) {
     if (process.argv.includes("--trace")) console.error(`[${test.messageId}] ${line}`)
   }
   const deps = { evidence, sources, barcodes, generate, model: agentModel as never, onTool,
+    photoFastRoute: process.env.EVAL_PHOTO_FAST === "1",
     onProgress: (stage: string, items?: { name: string; grams: number | null; kcal: number | null }[]) => {
       if (stage === "found") { preview = items; firstPreviewMs ??= Date.now() - started } } }
   let result = await resolveMeal(input, deps)
