@@ -388,6 +388,20 @@ test('a verified source that is the same food as an estimate supersedes it; veri
   assert.equal(h.calls.supersede.length,0,'an estimate never supersedes another estimate');
 });
 
+test('a label leaning "none" among same-brand flavours is created without asking the agent',async()=>{
+  // Meal 30384: Lifeway blueberry kefir; the catalogue had only other Lifeway flavours with the same numbers.
+  const near=[{id:6589,name:'Lowfat Strawberry Kefir',brand:'Lifeway Foods',defaultServingWeightGram:240,kcalPerServing:140},
+    {id:1441,name:'Mixed Berry Kefir Cultured Lowfat Milk',brand:'Lifeway',defaultServingWeightGram:247.2,kcalPerServing:140}];
+  const kefir={name:'Lowfat Blueberry Kefir',brand:'Lifeway Foods',servingUnit:'cup',servingAmount:1,servingGrams:240,kcal:140,
+    proteinG:10,carbG:18,totalFatG:2,fiberG:0,sugarG:18,satFatG:1.5,gtin:null,identified:true};
+  let h=harness({near,jev:{status:'ok',choice:'none',confidence:0.74}});
+  assert.equal((await h.sources.createFoodFromSource(h.sources.proposeLabelFood(kefir).sourceId)).status,'created');
+  assert.match(h.calls.jev[0].questions.selection.instructions,/sibling flavour/);
+  // Below 0.7 the agent still decides, and an unsure "none" for a USDA source still asks (see the tuna ceviche test).
+  h=harness({near,jev:{status:'ok',choice:'none',confidence:0.6}});
+  assert.equal((await h.sources.createFoodFromSource(h.sources.proposeLabelFood(kefir).sourceId)).status,'possible_duplicates');
+});
+
 const quinoaLabel={name:'Dark Chocolate + Sea Salt Quinoa Crisps',brand:'Undercover',servingUnit:'package',servingAmount:1,servingGrams:14,
   kcal:60,proteinG:1,carbG:10,totalFatG:3,fiberG:1,sugarG:3,satFatG:1.8,gtin:null,identified:true};
 const quinoaNearby=[{id:15289,name:'Dark Chocolate + Sea Salt Crispy Quinoa',brand:'Undercover Snacks',defaultServingWeightGram:7,kcalPerServing:35},

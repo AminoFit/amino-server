@@ -65,7 +65,8 @@ Use the serving units and sizes and the per-100 g energy and protein as evidence
 different product, except for a catalogue food marked estimate, whose numbers may be wrong: judge it by identity
 (name, brand, flavour, variant, form, preparation) alone. A generic database food (a description such as "Fast foods,
 submarine sandwich" or "Steak sandwich") is never the same as a specific named product ("Baguette de Arrachera").
-Choose none when no candidate is the same food.`
+A sibling flavour or variant in the same brand's line (blueberry vs strawberry kefir, vanilla vs chocolate, Zero vs
+regular) is a different food, however close the numbers. Choose none when no candidate is the same food.`
 
 const BARCODE_POLICY=`A barcode library decoded a retail barcode from the user's photo of a package. Decide whether the
 package, described by the agent from the photo, is exactly this catalogue food: same brand, product, flavour, variant
@@ -318,7 +319,12 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
       const foodId=Number(decision.choice.slice(5))
       return {status:"existing",foodId,estimate:isEstimate(candidates.find(c=>c.id===foodId))}
     }
-    if (confident&&decision.choice==="none") return {status:"none"}
+    // A label or a decoded barcode is authoritative: when the check leans "none" (a sibling flavour of the same brand,
+    // meal 30384's blueberry kefir among strawberry ones, at 0.74), it is created now rather than spending an agent
+    // turn on possible_duplicates, which that meal no longer had time for.
+    const authoritative=food.foodInfoSource==="Label"||!!food.gtin
+    if (decision.status==="ok"&&decision.choice==="none"&&(confident||(authoritative&&(decision.confidence??0)>=0.7)))
+      return {status:"none"}
     // A label or a barcoded product is authoritative: unsure among foods that are not even the same brand (a generic
     // "Fruit Mixture, Frozen" for a scanned Amazon Grocery bag), it is a new product.
     if ((food.foodInfoSource==="Label"||food.gtin)&&!candidates.some(c=>sameBrand(c.brand))) return {status:"none"}
