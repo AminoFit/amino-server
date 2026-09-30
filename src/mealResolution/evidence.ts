@@ -2,6 +2,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { localTime, utcInstant } from "@/mealOperations/instant"
 import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
+import { blendSearch, type SearchRow } from "./searchBlend"
 
 export type CatalogFood = {
   id:number;name:string;brand:string|null;lastUpdated:string;gtin?:string|null;description?:string|null;
@@ -71,16 +72,23 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     async searchFoods(query:string,cursor=0) {
       const text=query.trim().slice(0,100)
       if (!text) return {status:"empty" as const,candidates:[],nextCursor:null}
-      const result=await (db as any).rpc("search_meal_food_catalogue",{
-        p_query:text,p_limit:20,p_offset:cursor,p_user_id:userId}).abortSignal(signal)
+      // The first page blends in the foods nearest by meaning (searchBlend.ts); later pages page the text search.
+      const [result,near]=await Promise.all([
+        (db as any).rpc("search_meal_food_catalogue",{p_query:text,p_limit:20,p_offset:cursor,p_user_id:userId}).abortSignal(signal),
+        cursor>0?Promise.resolve([] as SearchRow[]):getCachedOrFetchEmbeddings("BGE_BASE",[text.toLowerCase()])
+          .then(([vector])=>(db as any).rpc("search_food_catalogue_nearest",{p_embedding_cache_id:vector.id,p_limit:12,
+            p_user_id:userId}).abortSignal(signal))
+          .then((nearest:{data:SearchRow[]|null;error:unknown})=>nearest.error?[]:nearest.data??[])
+          // Meaning is an improvement: without it the text search still answers.
+          .catch(()=>[] as SearchRow[])])
       if (result.error) throw new Error("catalogue_unavailable")
-      const candidates=((result.data??[]) as {id:number;name:string;brand:string|null;knownAs:string[]|null}[])
-        .map(row=>({id:row.id,name:row.name,brand:row.brand,knownAs:row.knownAs}))
+      const textRows=((result.data??[]) as SearchRow[]).map(row=>({id:row.id,name:row.name,brand:row.brand,knownAs:row.knownAs}))
+      const candidates=cursor>0?textRows:blendSearch(text,textRows,near.map(row=>({id:row.id,name:row.name,brand:row.brand,knownAs:row.knownAs})))
       for (const candidate of candidates) discovered.add(candidate.id)
       // Hydrate the best hits so the agent can select without another turn.
       const details=candidates.length?await this.getFoodsAndServings(candidates.slice(0,8).map(c=>c.id)):{foods:[]}
       return {status:candidates.length?"ok" as const:"empty" as const,candidates,
-        foods:details.foods.map(foodSummary),nextCursor:candidates.length===20?cursor+20:null}
+        foods:details.foods.map(foodSummary),nextCursor:textRows.length===20?cursor+20:null}
     },
     /** Catalogue foods carrying a barcode decoded from this meal's photos. */
     async findFoodsByGtin(gtins:string[]) {

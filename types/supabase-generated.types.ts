@@ -1263,6 +1263,19 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      search_food_catalogue_nearest: {
+        Args: {
+          p_embedding_cache_id: number
+          p_limit?: number
+          p_user_id?: string
+        }
+        Returns: {
+          id: number
+          name: string
+          brand: string
+          knownAs: string[]
+        }[]
+      }
       food_icon_candidates: {
         Args: {
           p_embedding_cache_id: number
