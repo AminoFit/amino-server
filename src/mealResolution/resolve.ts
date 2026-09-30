@@ -6,10 +6,12 @@ import { createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
 import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
 import { decodeBarcode, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
-import { compileCheckedMealPlan } from "./historyCheck"
+import { compileCheckedMealPlan, refersToPastMeal } from "./historyCheck"
 import { listVisibleFoods, type VisibleFood } from "./coverageCheck"
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
+import { textFastProposal } from "./textFastRoute"
+import { textFastRouteEnabled } from "./fastRouteFlag"
 import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
 import { localTime } from "@/mealOperations/instant"
@@ -194,6 +196,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   sources?:ReturnType<typeof createFoodSources>;readBarcode?:(url:URL)=>Promise<string|null>;
   /** Decoded GTINs are pushed here; pass the same array to injected sources. */
   barcodes?:string[]
+  /** Overrides FeatureFlag.meal_text_fast_route for this meal (evals and tests). */
+  fastRoute?:boolean
 }={}):Promise<MealResolutionResult> {
   const started=performance.now()
   const controller=new AbortController()
@@ -248,13 +252,38 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       .catch(()=>{})
     // A text meal's preview streams in item by item while the agent works; icons follow once the list is complete.
     const report=(preview:MealPreviewItem[])=>{Promise.resolve(deps.onProgress?.("found",preview)).catch(()=>{})}
-    if (deps.onProgress) void photosLoaded.then(list=>list.length||!input.originalText.trim()?[]:
-      (deps.textFoods??streamTextFoods)(input.originalText,found=>report(buildPreview(found.map(item=>({...item,catalogue:[]})))),
-        {signal:controller.signal}))
+    // A plain text meal can skip the agent: Jev matches the listed items while the agent starts, and a plan that
+    // passes the check wins the race (FeatureFlag.meal_text_fast_route).
+    const plainText=!!input.originalText.trim()&&!input.attachmentIds.length&&!input.useExistingPhotos&&
+      !input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
+    const fastWanted=plainText?Promise.resolve(deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
+    // The preview's list of items (with the user's words and amounts) also feeds the fast route.
+    const textListed=Promise.all([photosLoaded,fastWanted]).then(([list,fast])=>list.length||!input.originalText.trim()||
+      !deps.onProgress&&!fast?[]:(deps.textFoods??streamTextFoods)(input.originalText,
+        found=>report(buildPreview(found.map(item=>({...item,catalogue:[]})))),{signal:controller.signal}))
+      .catch(()=>[] as VisibleFood[])
+    if (deps.onProgress) void textListed
       .then(found=>found.length?Promise.all(found.map(item=>evidence.searchFoods(item.food)
         .then(result=>({...item,catalogue:(result.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
         .then(withCandidates=>report(buildPreview(withCandidates))):undefined)
       .catch(()=>{})
+    const fastRouteStarted=performance.now()
+    const fast=fastWanted.then(async enabled=>{
+      if (!enabled) return null
+      const [items,past]=await Promise.all([textListed,refersToPastMeal(input,{signal:controller.signal}).catch(()=>true)])
+      // "Same as yesterday" copies a past meal: only the agent reads history.
+      if (past) {trace.push("fast_route: past_meal");return null}
+      const outcome=await textFastProposal(input,items,evidence,{signal:controller.signal})
+      mark("fast_route",fastRouteStarted)
+      if (!outcome.proposal) {trace.push(`fast_route: ${outcome.reason}`);return null}
+      const quick:MealResolutionResult={proposal:outcome.proposal,evidence,visibleFoods:[],photoIds:[],
+        model:"text-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[],checked:true,timeline,trace}
+      const problem=await compileCheckedMealPlan(input,quick,{secondLook:false}).then(()=>null,
+        (error:unknown)=>error instanceof Error?error.message:"invalid_plan")
+      if (problem) {trace.push(`fast_route: check ${problem.slice(0,60)}`);return null}
+      trace.push(`fast_route: ${outcome.foods.map(food=>`food ${food.foodId}`).join(", ")}`)
+      return {...quick,durationMs:performance.now()-started}
+    }).catch(()=>null)
     const prefetchStarted=performance.now()
     const [photos,prefetched,recent,photoBarcodes,visible]=await Promise.all([
       photosLoaded,
@@ -285,6 +314,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         return resolved
       }
     }
+    // The agent starts now; a fast-route plan that arrives first is used instead (returning aborts the agent).
+    const agent=async():Promise<MealResolutionResult>=>{
     const prompt=JSON.stringify({originalText:input.originalText,consumedOn:input.consumedOn,
       consumedOnLocal:localTime(input.consumedOn,input.timezone),submittedAt:input.submittedAt,
       submittedAtLocal:localTime(input.submittedAt,input.timezone),timezone:input.timezone,locale:input.locale,
@@ -439,6 +470,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // Signed URLs carry storage tokens: usable by the second look, never serialised or logged.
     Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
     return resolved
+    }
+    const agentRun=agent()
+    agentRun.catch(()=>{})
+    const quick=await Promise.race([fast,agentRun.then(()=>null,()=>null)])
+    if (quick) console.info("meal_text_fast_route",{messageId:input.messageId,ms:Math.round(quick.durationMs),
+      foods:quick.proposal.items.length})
+    return quick??await agentRun
   } catch (error) {
     // A failed meal is retried later; what the agent tried is the only clue to why.
     console.warn("meal_resolution_failed",{messageId:input.messageId,steps,

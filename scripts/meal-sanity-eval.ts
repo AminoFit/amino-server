@@ -1,7 +1,7 @@
 // Live Flash evaluation of meal matching sanity: every mentioned food exactly once,
 // nothing invented or doubled, and the right energy-density variant, in several
 // languages and with typos. Uses a fixture catalogue; makes no database writes.
-// EVAL_PREFETCH=0 measures the search-only path.
+// EVAL_PREFETCH=0 measures the search-only path; EVAL_FAST_ROUTE=1 lets the text fast route race the agent.
 // Run: npx ts-node -r tsconfig-paths/register scripts/meal-sanity-eval.ts [caseId...]  (EVAL_CONCURRENCY=2)
 import { compileMealPlan } from "@/mealResolution/compile"
 import { resolveMeal } from "@/mealResolution/resolve"
@@ -53,8 +53,12 @@ async function evaluate(item:typeof cases[number]) {
   const evidence={foods,events:new Map(),discover(){},
     async listMealEvents(){return {status:"ok",events:[],nextCursor:null}},
     async getMealEvent(){return {status:"unavailable"}},
-    async searchFoods(){for (const f of catalogue) foods.set(f.id,f)
-      return {status:"ok",candidates:catalogue.map(({id,name,brand})=>({id,name,brand,knownAs:[]})),foods:catalogue.map(foodSummary),nextCursor:null}},
+    // Every food, those sharing a word with the query first (like the real search's ranking).
+    async searchFoods(query:string){for (const f of catalogue) foods.set(f.id,f)
+      const words=query.toLowerCase().split(/[^a-z]+/).filter(w=>w.length>=3)
+      const score=(f:CatalogFood)=>words.filter(w=>f.name.toLowerCase().includes(w)).length
+      const ranked=[...catalogue].sort((a,b)=>score(b)-score(a))
+      return {status:"ok",candidates:ranked.map(({id,name,brand})=>({id,name,brand,knownAs:[]})),foods:ranked.map(foodSummary),nextCursor:null}},
     async prefetchFoods(){if (process.env.EVAL_PREFETCH==="0") return [];for (const f of catalogue) foods.set(f.id,f);return catalogue},
     async getFoodsAndServings(ids:number[]){const found=ids.flatMap(id=>byId.has(id)?[byId.get(id)!]:[]);
       for (const f of found) foods.set(f.id,f);return {status:"ok",foods:found,missingIds:ids.filter(id=>!byId.has(id))}}}
@@ -64,7 +68,8 @@ async function evaluate(item:typeof cases[number]) {
     messageId:1,originalText:item.text,consumedOn:"2026-09-25T12:00:00Z",submittedAt:"2026-09-25T12:00:00Z",
     timezone:"UTC",locale:null,attachmentIds:[]}
   const started=Date.now()
-  const resolved=await resolveMeal(input,{evidence:evidence as any,sources:noSources as any,loadPhotos:async()=>[],deadlineMs:45000})
+  const resolved=await resolveMeal(input,{evidence:evidence as any,sources:noSources as any,loadPhotos:async()=>[],deadlineMs:45000,
+    fastRoute:process.env.EVAL_FAST_ROUTE==="1"})
   let plan,error:string|undefined
   try {plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null} catch(e) {error=e instanceof Error?e.message:"invalid"}
   const ids=plan?.items.map(i=>i.foodId)??[]
@@ -73,7 +78,7 @@ async function evaluate(item:typeof cases[number]) {
     (!item.grams||total>=item.grams[0]&&total<=item.grams[1])
   return {id:item.id,pass,foodIds:ids,expected:item.expected,error,outcome:resolved.proposal.outcome,
     grams:plan?.items.map(i=>Math.round(i.grams)),kcal:plan?Math.round(plan.items.reduce((s,i)=>s+i.nutrition.kcal,0)):null,
-    steps:resolved.steps,ms:Date.now()-started,clarification:resolved.proposal.clarification}
+    steps:resolved.steps,ms:Date.now()-started,route:resolved.model,clarification:resolved.proposal.clarification}
 }
 
 async function main() {

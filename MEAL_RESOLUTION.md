@@ -85,7 +85,25 @@ through to the agent. A scanned branded product counts as new, rather than an un
 shares its brand (a generic "Fruit Mixture, Frozen" is never the scanned bag). The result still goes through the
 check in section 5.
 
-### 3.3 Agent loop
+### 3.3 Text fast route (Jev, races the agent)
+
+For a **plain text meal** (no photos, answers, repair or edit) when `FeatureFlag.meal_text_fast_route` is `all` or
+lists the user, `textFastRoute.ts` runs alongside the agent:
+
+1. The text preview's listing (the same Flash call as the app's streaming preview) gives each item with the user's own
+   words (`quote`) and a gram estimate. Each quote must be found verbatim in the text.
+2. Per item, Jev picks the catalogue food from the search's top 8 plus the user's foods from the last 60 days that
+   share a word (marked "logged before"), or none. A variant word the user didn't say (Elite, Zero, Light, Diet...)
+   rules a food out. A pick under 0.9 gets its own yes/no question and needs 0.9 there.
+3. Amounts: a stated mass ("153g", "1.16/2 lb") is computed in code; a unit the food has as a serving ("1 tbsp",
+   "2 eggs") logs that serving; anything else is the listing's estimate (`estimated_mass`).
+4. The plan goes through the normal check. "Same as yesterday" (Jev's past-meal question) always goes to the agent.
+
+The first answer wins: a fast plan returns and aborts the agent; any miss (none, unsure, not verbatim, same food twice,
+a check failure) just leaves the agent running, so a miss costs no time. Text eval with the route on: 17/17, 9 routed
+in 1.6-2.8 s. The trace shows `fast_route: <reason>` or the foods picked; logs show `meal_text_fast_route`.
+
+### 3.4 Agent loop
 
 Built on the AI SDK's `generateText`, with a JSON output schema (`mealProposal`) and tools.
 

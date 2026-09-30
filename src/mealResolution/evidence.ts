@@ -132,6 +132,18 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
         foodCount:row.itemsToProcess,revision:row.publishedRevision})),
         nextCursor:(result.data?.length??0)>20?cursor+20:null}
     },
+    /** Foods this user logged in the last 60 days (distinct, newest first): the text fast route prefers them over a
+     * similar variant ("core power vanilla" is the regular shake they log, not the Elite one). */
+    async recentFoods() {
+      const since=new Date(Date.now()-60*86400000).toISOString()
+      const result=await db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand)")
+        .eq("userId",userId).is("deletedAt",null).gte("createdAt",since)
+        .order("createdAt",{ascending:false}).limit(400).abortSignal(signal)
+      if (result.error) throw new Error("history_unavailable")
+      const seen=new Set<number>()
+      return ((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
+        .map(row=>({id:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null}))
+    },
     async getMealEvent(messageId:number) {
       if (!Number.isSafeInteger(messageId)||messageId<=0) throw new Error("invalid_history_id")
       if (events.has(messageId)) return {status:"ok" as const,event:events.get(messageId)!}

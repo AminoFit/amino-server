@@ -34,6 +34,8 @@ export async function missingVisibleFoods(photoUrls: URL[], userText: string, lo
 
 /** A component of the meal seen in the photos, with the first look's own estimate for the visible amount. */
 export type VisibleFood = { food: string; detail: string; grams: number | null;
+  /** A text meal's item: the user's own words for it, with the amount (the fast route finds them in the text). */
+  quote?: string;
   estimate?: { kcal: number | null; proteinG: number | null; carbG: number | null; totalFatG: number | null } }
 
 // Names end at a word, not mid-word ("…with Almonds", never "…with Almonds ce").
@@ -83,6 +85,7 @@ const amount = (value: unknown, max: number) => typeof value === "number" && val
 export function visibleFood(item: Record<string, unknown>): VisibleFood | null {
   if (typeof item.food !== "string" || !item.food.trim()) return null
   return { food: shortName(item.food), detail: typeof item.detail === "string" ? item.detail.slice(0, 120) : "",
+    ...(typeof item.quote === "string" && item.quote.trim() ? { quote: item.quote.trim().slice(0, 300) } : {}),
     grams: amount(item.estimatedGrams, 5000) || null,
     estimate: { kcal: amount(item.estimatedKcal, 10000), proteinG: amount(item.estimatedProteinG, 1000),
       carbG: amount(item.estimatedCarbG, 1000), totalFatG: amount(item.estimatedFatG, 1000) } }
