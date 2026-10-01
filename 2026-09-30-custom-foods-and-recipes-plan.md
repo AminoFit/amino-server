@@ -5,7 +5,8 @@
 
 - Phase 1 (server) is deployed and its migration applied.
 - Phases 2 and 3 (app) are built: amino-mobile 53f56f6 and 0782e5d.
-- Phase 4 (agent, with recipe evals) is next.
+- Phase 4 (agent) is deployed (7f72181). `recipes_in_agent` is on for the owner only, after evals: recipes 14/14 (agent) and 14/14 (fast route); text 17/17; photos 21/21.
+- Still open: the chat "create a recipe" suggestion (phase 4 item 5), recipes in the app's Add Food search (see `food-search-plan.md`), and phase 5.
 **Scope:** amino-server (database, API, meal agent, MCP) and amino-mobile (new Foods tab, log actions, food detail).
 
 Users can create their own foods and recipes, see and edit them in a new Foods tab, and log them. A recipe is a named group of foods that makes a number of portions ("I ate 1.5 portions"), and it can be saved from a past meal.
@@ -208,6 +209,8 @@ Errors are `{error}` with a code: `name_taken` 409, `food_unavailable` 404, `ing
    Then the full eval (~$1.30) before the flag goes from your ID to 'all'.
 
 7. **History and versions:** "same as yesterday" copies the logged rows, so it re-logs the recipe version eaten then, even if the recipe has since been edited. Decide whether a history copy of a recipe row should switch to the current version.
+
+**Phase 4 as built:** `search_own_foods` (migration `20261004040000`) gives the agent `yourFoods`, the user's foods and recipes named in the text: best name match, then most recently edited. `refersToRecipe` (Jev, confidence ≥ 0.9) gates every recipe in a plan (`recipe_not_referenced` goes back to the agent). The fast route logs a recipe only for an amount it reads (portions or a mass). `scripts/meal-recipe-eval.ts` has 14 cases.
 
 ## Phase 5: MCP and web
 
