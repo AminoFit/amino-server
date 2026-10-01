@@ -1,5 +1,35 @@
 # Food search: include your recipes and custom foods
 
+**Status (2026-09-30, implemented):**
+
+- **Server:** amino-server c047a99 and 8b1ce4e, migrations `20261004050000` and `20261004060000` applied.
+- **App:** amino-mobile commit "Food search: your foods first…".
+- **Measured (from a laptop, round trip included):**
+  - app search: ~400–650 ms → ~25–140 ms;
+  - agent text search: ~460 ms → ~55 ms;
+  - agent nearest: ~139 ms → ~33 ms.
+
+**What was built, and where it differs from the plan below:**
+
+- **SQL:**
+  - vector search is index-first: the query vector is passed as a scalar subquery, and `hnsw.ef_search` is set at run time, because Supabase refuses it as a function setting;
+  - the text search is a `UNION` of indexed branches (name trigram, brand expression index, alias GIN, and a new every-word `LIKE` branch, so partial words like "pas sau" work);
+  - `p_include_recipes`, and `p_threshold` for a typo pass;
+  - `ANALYZE`;
+  - a `pg_cron` job that `pg_prewarm`s the food indexes every 5 minutes. They are evicted by the 1.8 GB USDA index, and cold they cost 400–800 ms per new query.
+- **No stored generated column:** the name branch is 29 ms with the existing expression index, and adding the column would rewrite a 136 MB table.
+- **The USDA index isn't kept warm:** it doesn't fit in the 256 MB of shared buffers, and `halfvec` needs pgvector 0.7 (production has 0.5.1). So USDA loads only on request ("More from USDA", about 2 s).
+- **The 0.6 meaning floor became 0.75:** BGE scores unrelated foods 0.65–0.73, for example "Chives" for "chiken brest".
+- **No local JWT verification:** there's no JWT secret in the environment, and this auth-js has no `getClaims`. Verified tokens are cached for 60 s instead.
+- **The agent keeps its own `evidence.searchFoods`:** it already uses the same `blendSearch` and benefits from every SQL change. Moving it onto `searchFoodsForUser`'s floors and typo pass would need its own eval.
+- **No server endpoint for the start screen:** it's built on the phone, from Watermelon (your foods plus `logged_food_items`).
+- **Tier 2 (catalogue mirror):**
+  - pulled by `lastUpdated`, which catches new and edited foods;
+  - enrichment doesn't bump `lastUpdated`, and making it do so would trip the agent's catalogue-changed check, so a weekly full refresh catches enrichments and drops merged foods;
+  - no FTS5 table: SQLite `LIKE` on name and brand over about 14k rows is fast enough so far.
+- **Tier 3 (stored results):** the last server answer per query is kept in MMKV (up to 60 queries) instead of a new Watermelon table, and cleared on any food or recipe change.
+- **Still open:** a barcode scan in the search (see `barcode-route-plan.md`).
+
 The "add food to your log" search lives in two repos:
 
 - **App:** `amino-mobile/common/foodSearch/useSearchForFoodByString.ts`, used by `screens/AddFoodModal.tsx`, `screens/Foods/IngredientSearchScreen.tsx` and `FoodSearchView.tsx`.
