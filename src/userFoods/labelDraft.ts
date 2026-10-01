@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { readNutritionLabel, labelSourceInput } from "@/mealResolution/labelReader"
 import { decodeBarcode, locateBarcodesWithFlash } from "@/mealResolution/barcode"
 import { UserFoodError } from "./userFoods"
+import { microsFrom } from "@/foodResolution/micronutrients"
 
 const KJ_PER_KCAL=4.184
 
@@ -34,5 +35,7 @@ export async function labelDraft(userId:string,imagePath:string,db=createAdminSu
   return {legible:true as const,gtin,existingFood,
     serving:{unit:read.servingUnit,amount:read.servingAmount,grams:read.servingGrams},packageGrams:read.packageGrams,
     kcal:Math.round(kcal*10)/10,proteinG:read.proteinG,carbG:read.carbG,totalFatG:read.totalFatG,
-    fiberG:read.fiberG,sugarG:read.sugarG,satFatG:read.satFatG}
+    fiberG:read.fiberG,sugarG:read.sugarG,satFatG:read.satFatG,
+    // Vitamins and minerals per serving, by the app's nutrient keys (magnesiumMg…), for the editor's other nutrients.
+    nutrients:microsFrom(facts.micronutrients??[])}
 }

@@ -15,6 +15,8 @@ export type CatalogFood = {
   satFatPerServing:number|null;transFatPerServing:number|null;fiberPerServing:number|null;
   sugarPerServing:number|null;addedSugarPerServing:number|null;
   Serving:{id:number;foodItemId:number;servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}[]
+  /** Its vitamins and minerals per default serving (any naming; read through foodResolution/micronutrients). */
+  Nutrient?:{nutrientName:string;nutrientUnit:string|null;nutrientAmountPerDefaultServing:number}[]|null
   /** Set when the food is this user's own (their label's values or their recipe). */
   privateToUserId?:string|null
   /** Set for the user's recipe: the portions it makes. Its default serving ("portion") is one portion. */
@@ -29,7 +31,7 @@ export type HistoricalFood = {
 export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;consumedOnLocal?:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
-const catalogColumns = "id,name,brand,gtin,privateToUserId,recipePortions,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
+const catalogColumns = "id,name,brand,gtin,privateToUserId,recipePortions,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 // Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one

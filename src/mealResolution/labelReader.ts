@@ -17,6 +17,10 @@ export type LabelFacts = {
   satFatG: number | null
   sugarG: number | null
   fiberG: number | null
+  /** A Supplement Facts panel: calories and macros it doesn't list are 0. */
+  supplement: boolean
+  /** Every vitamin and mineral line, as printed for the column read (mapped by foodResolution/micronutrients). */
+  micronutrients: { name: string; amount: number; unit: string }[]
 }
 
 const PROMPT = `The photos are the same picture in three orientations: read the nutrition facts label from whichever is upright.
@@ -25,15 +29,24 @@ otherwise per package. Copy every digit as printed (a comma is a decimal point) 
 if energy is printed only in kJ, give kj and leave kcal null. basisGrams is the grams (or mL) of the column you read
 (100 for per 100 g); servingUnit and servingAmount are the printed serving ("1 package", "2 cookies") when the
 column is per serving; packageGrams is the net weight or content printed on the package, if any.
-If you cannot read the energy and all three macronutrients with confidence, set legible false instead of guessing.`
+micronutrients lists every vitamin and mineral line in that column (sodium, cholesterol, potassium, calcium, iron,
+magnesium, vitamins…) with its printed amount and unit, never the % daily value.
+A Supplement Facts panel (capsules, tablets, powders) sets supplement true: give calories, protein, carbohydrate and fat
+only if printed (null otherwise), and when no serving weight is printed, basisGrams is the sum of the serving's listed
+amounts (two 500 mg capsules: 1).
+If you cannot read the energy and all three macronutrients with confidence (a supplement: its serving and amounts), set
+legible false instead of guessing.`
 
 const number = { type: ["number", "null"] }
 const SCHEMA = { type: "object", additionalProperties: false,
   required: ["legible", "basis", "servingUnit", "servingAmount", "basisGrams", "packageGrams", "kcal", "kj", "proteinG", "carbG",
-    "totalFatG", "satFatG", "sugarG", "fiberG"],
+    "totalFatG", "satFatG", "sugarG", "fiberG", "supplement", "micronutrients"],
   properties: { legible: { type: "boolean" }, basis: { type: "string", enum: ["serving", "100g", "package"] },
     servingUnit: { type: ["string", "null"] }, servingAmount: number, basisGrams: number, packageGrams: number, kcal: number, kj: number,
-    proteinG: number, carbG: number, totalFatG: number, satFatG: number, sugarG: number, fiberG: number } }
+    proteinG: number, carbG: number, totalFatG: number, satFatG: number, sugarG: number, fiberG: number,
+    supplement: { type: "boolean" },
+    micronutrients: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "amount", "unit"],
+      properties: { name: { type: "string" }, amount: { type: "number" }, unit: { type: "string" } } } } } }
 
 /** Reads a nutrition label with the label model, sent upright, rotated left and rotated right (labels are often
  * photographed sideways). Returns null when the label is not legible. Transcription only: code does any arithmetic. */
@@ -51,8 +64,8 @@ export async function readNutritionLabel(photo: URL, deps: { fetch?: typeof fetc
 }
 
 /** How far the printed energy is from what the macros imply (4/4/9), as a fraction; null when there is no energy. */
-export function energyGap(facts: Pick<LabelFacts, "kcal" | "proteinG" | "carbG" | "totalFatG">) {
-  if (!facts.kcal) return null
+export function energyGap(facts: Pick<LabelFacts, "kcal" | "proteinG" | "carbG" | "totalFatG"> & { supplement?: boolean }) {
+  if (!facts.kcal || facts.supplement) return null
   return Math.abs(4 * facts.proteinG + 4 * facts.carbG + 9 * facts.totalFatG - facts.kcal) / facts.kcal
 }
 
@@ -85,17 +98,23 @@ async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.P
   recordOpenRouterResponse("label_read", LABEL_MODEL, started, body, "ok", detail)
   const text: string = body.choices?.[0]?.message?.content ?? ""
   // No JSON (an empty or prose reply) is an unreadable label, never an error that stops the meal.
-  let parsed: LabelFacts & { legible: boolean }
+  let parsed: Omit<LabelFacts, "kcal" | "proteinG" | "carbG" | "totalFatG"> & { legible: boolean; kcal: number | null;
+    proteinG: number | null; carbG: number | null; totalFatG: number | null }
   try { parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) }
   catch { return null }
   const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
-  const kcal = amount(parsed.kcal) ?? (amount(parsed.kj) != null ? Math.round(amount(parsed.kj)! / 4.184 * 10) / 10 : null)
+  // A supplement's panel leaves out what it doesn't contain: unlisted calories and macros are 0.
+  const supplement = parsed.supplement === true, none = supplement ? 0 : null
+  const kcal = amount(parsed.kcal) ?? (amount(parsed.kj) != null ? Math.round(amount(parsed.kj)! / 4.184 * 10) / 10 : none)
   const basisGrams = amount(parsed.basisGrams)
-  const [proteinG, carbG, totalFatG] = [amount(parsed.proteinG), amount(parsed.carbG), amount(parsed.totalFatG)]
+  const [proteinG, carbG, totalFatG] = [amount(parsed.proteinG) ?? none, amount(parsed.carbG) ?? none, amount(parsed.totalFatG) ?? none]
+  const micronutrients = (Array.isArray(parsed.micronutrients) ? parsed.micronutrients : []).flatMap(row =>
+    row && typeof row.name === "string" && amount(row.amount) != null ? [{ name: row.name.slice(0, 80), amount: row.amount, unit: String(row.unit ?? "").slice(0, 10) }] : [])
+    .slice(0, 40)
   if (!parsed.legible || kcal == null || !basisGrams || proteinG == null || carbG == null || totalFatG == null) return null
   return { basis: parsed.basis, servingUnit: parsed.servingUnit?.trim() || null, servingAmount: amount(parsed.servingAmount),
     basisGrams, packageGrams: amount(parsed.packageGrams) || null, kcal, kj: amount(parsed.kj), proteinG, carbG, totalFatG,
-    satFatG: amount(parsed.satFatG), sugarG: amount(parsed.sugarG), fiberG: amount(parsed.fiberG) }
+    satFatG: amount(parsed.satFatG), sugarG: amount(parsed.sugarG), fiberG: amount(parsed.fiberG), supplement, micronutrients }
 }
 
 /** The label as a label source (proposeLabelFood's input): the column read becomes the serving; a per-100 g column
@@ -105,5 +124,5 @@ export function labelSourceInput(facts: LabelFacts, product: { name: string; bra
   const amount = facts.basis === "100g" ? 100 : facts.basis === "package" ? 1 : facts.servingAmount || 1
   return { ...product, servingUnit: unit, servingAmount: amount, servingGrams: facts.basisGrams, kcal: facts.kcal!,
     proteinG: facts.proteinG, carbG: facts.carbG, totalFatG: facts.totalFatG, fiberG: facts.fiberG, sugarG: facts.sugarG,
-    satFatG: facts.satFatG, packageGrams: facts.packageGrams }
+    satFatG: facts.satFatG, packageGrams: facts.packageGrams, micronutrients: facts.micronutrients ?? [] }
 }

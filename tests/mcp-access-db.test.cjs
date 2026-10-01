@@ -8,6 +8,7 @@ const {assertDisposable}=require('./helpers/mealTestDb.cjs');
 // The MCP read functions and the sync feed (20261002000000_mcp_access.sql), on a real database, as the user.
 const connectionString=process.env.AMINO_MCP_TEST_DATABASE_URL;
 const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261002000000_mcp_access.sql'),'utf8');
+const dailyMicros=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005000000_mcp_daily_micronutrients.sql'),'utf8');
 
 // Just enough of the Supabase schema: roles, auth.uid() from the JWT claims, the tables with their read policies.
 const BASE=`DO $$ BEGIN
@@ -56,6 +57,7 @@ test('agents read their own meals by local day, with totals, pages, daily sums a
     try {
       await db.query(BASE);
       await db.query(migration);
+      await db.query(dailyMicros);
       const me=randomUUID(),other=randomUUID();
       await db.query(`INSERT INTO public."User"(id,"tzIdentifier") VALUES($1,'America/New_York'),($2,'UTC')`,[me,other]);
       await db.query(`INSERT INTO public."FoodItem"(id,name,brand) VALUES(1,'Oat milk','Oatly'),(2,'Banana',null)`);
@@ -115,6 +117,9 @@ test('agents read their own meals by local day, with totals, pages, daily sums a
       const summary=(await one(db,`SELECT public.mcp_daily_summary('2026-09-29','2026-09-30') AS s`)).s;
       assert.equal(summary.timezone,'America/New_York');
       assert.deepEqual(summary.days.map(d=>[d.date,d.meals,d.kcal]),[['2026-09-29',1,105],['2026-09-30',1,225]]);
+      assert.equal(summary.days[0].nutrients,undefined,'vitamins and minerals only when asked');
+      const everything=(await one(db,`SELECT public.mcp_daily_summary('2026-09-29','2026-09-30',true) AS s`)).s;
+      assert.deepEqual(everything.days.map(d=>d.nutrients),summary.days.map(d=>d.date==='2026-09-29'?{vitaminCMg:10.3}:{}));
 
       // The feed: every meal once, oldest change first, the deleted one as a tombstone.
       const feed=(await db.query(`SELECT * FROM public.mcp_meal_changes()`)).rows;

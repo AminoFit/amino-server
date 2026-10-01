@@ -606,3 +606,34 @@ test('a barcode nothing knows by its digits is searched by the product name the 
   assert.equal(candidates[0].gtin,gtin);
   assert.equal(JSON.parse(calls.web.at(-1)[1]).barcode,gtin);
 });
+
+test('sources carry vitamins and minerals: Open Food Facts per serving, and a supplement page\'s mineral lines',async()=>{
+  const gtin='00766298001746';
+  const off=async()=>({code:'766298001746',product_name:'Magnesium (glycinate)',brands:'Pure Encapsulations',serving_size:'1 capsule (1 g)',
+    nutriments:{'energy-kcal_100g':0,proteins_100g:0,carbohydrates_100g:0,fat_100g:0,magnesium_100g:12}});
+  const fromOff=harness({barcodes:[gtin],off});
+  const [capsule]=await fromOff.sources.barcodeSources(gtin);
+  assert.equal(capsule.micros.magnesiumMg,120,'12 g per 100 g at a 1 g serving');
+  const page={name:'Glycine 1,000 mg',brand:'Life Extension',servingUnit:'capsule',servingAmount:1,servingGrams:1,kcal:null,proteinG:null,carbG:null,
+    totalFatG:null,supplement:true,micronutrients:[{name:'Magnesium (as magnesium glycinate)',amount:50,unit:'mg'},{name:'Glycine',amount:1000,unit:'mg'}],
+    sourceUrl:'https://shop.example/glycine'};
+  const fromPage=harness({barcodes:['00737870166917'],pages:async()=>[{url:'https://shop.example/glycine',title:'Glycine',description:'',facts:'Supplement Facts'}],
+    web:async()=>({data:{foods:[page]},sourceUrls:[],searches:0})});
+  const [glycine]=(await fromPage.sources.barcodeProduct('00737870166917')).foods;
+  assert.deepEqual(glycine.micros,{magnesiumMg:50});
+});
+
+test('filling a food\'s micronutrients adds only the ones it lacks, scaled to its own serving',async()=>{
+  const inserted=[],updated=[];
+  const db={from:table=>{const q={select:()=>q,eq:()=>q,limit:()=>q,
+    insert:rows=>{inserted.push(...rows);return q},update:fields=>{updated.push(fields);return q},
+    abortSignal:async()=>table==='FoodItem'&&!updated.length&&!inserted.length
+      ?{data:[{defaultServingWeightGram:200,Nutrient:[{nutrientName:'Magnesium, Mg'}]}],error:null}:{data:null,error:null}};return q}};
+  const {createFoodSources}=require('../src/mealResolution/foodSources.ts');
+  const sources=createFoodSources({userId:'u',messageId:null,signal:new AbortController().signal,discover:()=>{}},{db});
+  const added=await sources.fillMicros(5,{defaultServingWeightGram:100,micros:{magnesiumMg:30,potassiumMg:400}});
+  assert.equal(added,1);
+  assert.deepEqual(inserted,[{nutrientName:'potassium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:800,foodItemId:5}],
+    'magnesium (as "Magnesium, Mg") is kept; potassium doubled for a 200 g serving');
+  assert.equal(updated.length,1,'lastUpdated bumped so syncs pick it up');
+});

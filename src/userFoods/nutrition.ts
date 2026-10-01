@@ -1,7 +1,8 @@
 // Values of a user's own foods and recipes. A food stores macros per default serving in its columns and other
 // nutrients per default serving as Nutrient rows; a logged row stores absolute amounts (HISTORY_NUTRIENTS).
 import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
-import { getMappedNutrientField, nutrientMappingConfig } from "@/foodMessageProcessing/common/calculateNutrientData"
+import { nutrientMappingConfig } from "@/foodMessageProcessing/common/calculateNutrientData"
+import { inKeyUnit, nutrientKey } from "@/foodResolution/micronutrients"
 
 export type NutrientKey = typeof HISTORY_NUTRIENTS[number]
 export type Amounts = Partial<Record<NutrientKey, number>>
@@ -16,7 +17,7 @@ export const ROW_NUTRIENTS = HISTORY_NUTRIENTS.filter(key=>!(key in COLUMN_NUTRI
 
 export type FoodBasis = {defaultServingWeightGram:number|null;weightUnknown?:boolean|null}
   & {[K in typeof COLUMN_NUTRIENTS[ColumnKey]]?:number|null}
-  & {Nutrient?:{nutrientName:string;nutrientAmountPerDefaultServing:number}[]|null}
+  & {Nutrient?:{nutrientName:string;nutrientUnit?:string|null;nutrientAmountPerDefaultServing:number}[]|null}
 
 const finite=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)
 
@@ -30,10 +31,12 @@ export function nutrientsAt(food:FoodBasis,grams:number):Amounts|null {
     const value=food[column]
     if (finite(value)) amounts[key]=value*factor
   }
+  // Nutrient rows in any naming and unit ("Magnesium, Mg", Vitamin D in IU); the first row for a nutrient counts.
   for (const row of food.Nutrient??[]) {
-    const key=getMappedNutrientField(row.nutrientName) as NutrientKey|null
-    if (key&&!(key in COLUMN_NUTRIENTS)&&(HISTORY_NUTRIENTS as readonly string[]).includes(key)&&finite(row.nutrientAmountPerDefaultServing))
-      amounts[key]=row.nutrientAmountPerDefaultServing*factor
+    const key=nutrientKey(row.nutrientName)
+    if (!key||key in COLUMN_NUTRIENTS||amounts[key]!=null||!finite(row.nutrientAmountPerDefaultServing)) continue
+    const value=inKeyUnit(key,row.nutrientAmountPerDefaultServing,row.nutrientUnit)
+    if (value!=null) amounts[key]=value*factor
   }
   return amounts
 }

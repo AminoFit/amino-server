@@ -3,6 +3,8 @@ import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
 import type { MealProposal } from "@/mealOperations/contracts"
 import type { MealResolutionInput, MealResolutionResult } from "./resolve"
 import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
+import { MICRO_KEYS } from "@/foodResolution/micronutrients"
+import { nutrientsAt } from "@/userFoods/nutrition"
 
 type Nutrition = HistoryNutrition & {kcal:number;proteinG:number|null;carbG:number|null;totalFatG:number|null}
 export type PublishedItem = {logicalItemId:string;foodId:number;grams:number;
@@ -127,7 +129,10 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
       const computed=foodNutrition(food,grams)
       if (!computed) throw new Error("invalid_catalogue_nutrition")
       const factor=grams/(food.defaultServingWeightGram??0)
-      nutrition={...computed,
+      // Vitamins and minerals from the food's Nutrient rows, as the tray and recipes price them (none were logged by the
+      // agent's meals from 2026-09-24 until this).
+      const micros=nutrientsAt(food,grams)??{}
+      nutrition={...computed,...Object.fromEntries(MICRO_KEYS.map(key=>[key,micros[key]??null])),
         satFatG:food.satFatPerServing==null?null:food.satFatPerServing*factor,
         transFatG:food.transFatPerServing==null?null:food.transFatPerServing*factor,
         fiberG:food.fiberPerServing==null?null:food.fiberPerServing*factor,

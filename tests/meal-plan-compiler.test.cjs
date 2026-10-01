@@ -87,3 +87,23 @@ test('the agent sees which foods are the user\'s own',()=>{
   assert.equal(foodSummary({...base,privateToUserId:'00000000-0000-4000-8000-00000000000a'}).yours,true);
   assert.equal('yours' in foodSummary({...base,privateToUserId:null}),false);
 });
+
+test('an AI meal logs the food\'s vitamins and minerals, whatever the rows are called (none were logged from 2026-09-24)',()=>{
+  const food={id:2,name:'banana',brand:null,defaultServingWeightGram:100,weightUnknown:false,
+    kcalPerServing:89,proteinPerServing:1.1,carbPerServing:22.8,totalFatPerServing:0.3,satFatPerServing:null,transFatPerServing:null,
+    fiberPerServing:2.6,sugarPerServing:12,addedSugarPerServing:null,Serving:[{id:9,foodItemId:2,servingName:'banana',servingWeightGram:118,defaultServingAmount:1}],
+    Nutrient:[{nutrientName:'Magnesium, Mg',nutrientUnit:'mg',nutrientAmountPerDefaultServing:27},
+      {nutrientName:'potassium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:358},
+      {nutrientName:'Vitamin D',nutrientUnit:'IU',nutrientAmountPerDefaultServing:40}]};
+  const input={userId:'test',operationId:'test',messageId:50,originalText:'a banana',consumedOn:'2026-10-01T08:00:00Z',
+    submittedAt:'2026-10-01T08:00:00Z',timezone:'UTC',locale:null,attachmentIds:[]};
+  const compiled=compileMealPlan(input,{proposal:{schemaVersion:1,outcome:'resolved',consumedOn:input.consumedOn,historyGroupSelections:[],
+    items:[{foodId:2,quantity:{kind:'serving',servingId:9,amount:1},groupId:null,groupLabel:null,evidence:['food:2']}],
+    components:[{sourceText:'a banana',itemIndexes:[0],historySelectionIndexes:[],omitted:false}],claims:[],clarification:null},
+    evidence:{events:new Map(),foods:new Map([[2,food]])},model:'fixture',provider:'test',durationMs:0,steps:0,toolCalls:1});
+  const n=compiled.items[0].nutrition;
+  assert.ok(Math.abs(n.magnesiumMg-31.86)<0.01);
+  assert.ok(Math.abs(n.potassiumMg-422.44)<0.01);
+  assert.ok(Math.abs(n.vitaminDMcg-1.18)<0.01,'IU converted to µg');
+  assert.equal(n.zincMg,null);
+});

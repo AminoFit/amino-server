@@ -104,12 +104,14 @@ export function registerAminoTools(server: McpServer) {
   server.registerTool("get_daily_summary", {
     title: "Get daily summary",
     description: "Totals per local day (kcal, protein, carbs, fat, saturated fat, fibre, sugar, sodium, alcohol, " +
-      "caffeine, water) and the user's goals, for up to 366 days. Days with nothing logged are left out.",
-    inputSchema: z.object({ from: date, to: date }),
+      "caffeine, water) and the user's goals, for up to 366 days. Days with nothing logged are left out. With " +
+      "allNutrients, each day also has `nutrients`: its vitamins and minerals (and other fats, cholesterol, omega-3/6), " +
+      "each summed over the foods that record it.",
+    inputSchema: z.object({ from: date, to: date, allNutrients }),
     annotations: READ
-  }, ({ from, to }, ctx) => run("get_daily_summary", ctx.http?.authInfo, async ({ db, userId }) => {
+  }, ({ from, to, allNutrients }, ctx) => run("get_daily_summary", ctx.http?.authInfo, async ({ db, userId }) => {
     checkRange(from, to, 366)
-    const [summary, profile] = await Promise.all([dailySummary(db, from, to), getProfile(db, userId)])
+    const [summary, profile] = await Promise.all([dailySummary(db, from, to, allNutrients), getProfile(db, userId)])
     return { data: { ...summary, goals: profile.goals }, rows: summary.days.length }
   }))
 

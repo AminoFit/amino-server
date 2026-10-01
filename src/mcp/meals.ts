@@ -53,8 +53,8 @@ export async function getMeals(db: UserDatabase, ids: number[]) {
   return rpc<Meal[]>(db, "mcp_get_meals", { p_ids: ids })
 }
 
-export async function dailySummary(db: UserDatabase, from: string, to: string) {
-  return rpc<{ timezone: string; days: Record<string, unknown>[] }>(db, "mcp_daily_summary", { p_from: from, p_to: to })
+export async function dailySummary(db: UserDatabase, from: string, to: string, allNutrients = false) {
+  return rpc<{ timezone: string; days: Record<string, unknown>[] }>(db, "mcp_daily_summary", { p_from: from, p_to: to, p_all: allNutrients })
 }
 
 export async function mealChanges(db: UserDatabase, input: { cursor?: string; limit: number; allNutrients: boolean }) {
