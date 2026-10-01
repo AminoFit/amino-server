@@ -81,7 +81,8 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       await db.query('SET check_function_bodies = off');
       await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
       await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
-      await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'));
+      await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'))
+      await db.query(read('20261004040000_search_own_foods.sql'));
       await db.query('RESET check_function_bodies');
       const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0]);
       const save=(user,id,value,{servings=[{name:'portion',grams:value.defaultServingWeightGram,amount:1}],nutrients=[],ingredients=null}={})=>
@@ -124,6 +125,16 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       await db.query(`insert into public."FeatureFlag" values ('recipes_in_agent',$1) on conflict (name) do update set value=excluded.value`,[` ${alice.toUpperCase()} , x`])
       assert.ok((await search(alice,'Chicken pasta')).includes(pasta.food_id))
       assert.ok(!(await search(bob,'Chicken pasta')).includes(pasta.food_id))
+      await db.query(`update public."FeatureFlag" set value='off' where name='recipes_in_agent'`)
+
+      // Own foods named in a meal's text: only the owner's, recipes only behind the flag.
+      const own=(user,text)=>db.query('select id,score from public.search_own_foods($1,$2,5)',[text,user]).then(r=>r.rows.map(x=>x.id))
+      assert.ok((await own(alice,'a protein shake after the gym')).includes(shake.food_id))
+      assert.deepEqual(await own(alice,'1.5 portions of my chicken pasta'),[],'recipes stay hidden while the flag is off')
+      await db.query(`update public."FeatureFlag" set value=$1 where name='recipes_in_agent'`,[alice])
+      assert.ok((await own(alice,'1.5 portions of my chicken pasta')).includes(pasta.food_id))
+      assert.ok(!(await own(alice,'pasta at Olive Garden')).includes(pasta.food_id),'a shared word is not the recipe name')
+      assert.deepEqual(await own(bob,'1.5 portions of my chicken pasta'),[],"never another user's")
       await db.query(`update public."FeatureFlag" set value='off' where name='recipes_in_agent'`)
 
       // The agent's private creations never reuse a recipe (or collide with its name).

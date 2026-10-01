@@ -3,6 +3,10 @@ import { localTime, utcInstant } from "@/mealOperations/instant"
 import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { blendSearch, type SearchRow } from "./searchBlend"
+import { userFlagEnabled } from "./fastRouteFlag"
+
+/** FeatureFlag that lets the agent and the fast route use the user's recipes (the recipe check gates each use). */
+export const RECIPES_FLAG = "recipes_in_agent"
 
 export type CatalogFood = {
   id:number;name:string;brand:string|null;lastUpdated:string;gtin?:string|null;description?:string|null;
@@ -13,6 +17,8 @@ export type CatalogFood = {
   Serving:{id:number;foodItemId:number;servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}[]
   /** Set when the food is this user's own (their label's values or their recipe). */
   privateToUserId?:string|null
+  /** Set for the user's recipe: the portions it makes. Its default serving ("portion") is one portion. */
+  recipePortions?:number|null
 }
 export type HistoricalFood = {
   id:number;updatedAt:string;foodItemId:number;name:string;brand:string|null;
@@ -23,7 +29,7 @@ export type HistoricalFood = {
 export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;consumedOnLocal?:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
-const catalogColumns = "id,name,brand,gtin,privateToUserId,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
+const catalogColumns = "id,name,brand,gtin,privateToUserId,recipePortions,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 // Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one
@@ -45,6 +51,8 @@ export function usableServing(serving:CatalogFood["Serving"][number]) {
 /** Compact, authoritative view of a read food: enough to select it and its serving. */
 export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:food.brand,gtin:food.gtin??null,
   ...(food.privateToUserId?{yours:true}:{}),
+  // The user's recipe, logged in portions (amount 1.5 of its "portion" serving is 1.5 portions).
+  ...(food.recipePortions!=null?{recipe:{portions:Number(food.recipePortions)}}:{}),
   servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing,proteinG:food.proteinPerServing,
   carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
   // Each serving is a unit and the weight of one unit: "pieces" 76 g for 4 is 19 g per piece, so 5 pieces is
@@ -101,6 +109,17 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       for (const id of ids) discovered.add(id)
       return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
     },
+    /** The user's own foods and recipes whose names appear in the meal text, read before the first model turn: the
+     * agent sees them only when relevant (recipes only behind RECIPES_FLAG, which search_own_foods applies). */
+    async yourFoods(text:string) {
+      const query=text.trim().slice(0,2000)
+      if (!query) return []
+      const result=await (db as any).rpc("search_own_foods",{p_text:query,p_user_id:userId,p_limit:5}).abortSignal(signal)
+      if (result.error) throw new Error("catalogue_unavailable")
+      const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
+      for (const id of ids) discovered.add(id)
+      return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
+    },
     /** Semantic catalogue neighbours of the whole meal text, read before the first model turn. */
     async prefetchFoods(text:string,limit=15) {
       const query=text.trim().slice(0,500)
@@ -145,15 +164,16 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
      * similar variant ("core power vanilla" is the regular shake they log, not the Elite one). */
     async recentFoods() {
       const since=new Date(Date.now()-60*86400000).toISOString()
-      const result=await db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand,archivedAt,recipePortions)")
+      const [result,recipes]=await Promise.all([db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand,archivedAt,recipePortions)")
         .eq("userId",userId).is("deletedAt",null).gte("createdAt",since)
-        .order("createdAt",{ascending:false}).limit(400).abortSignal(signal)
+        .order("createdAt",{ascending:false}).limit(400).abortSignal(signal),
+        userFlagEnabled(RECIPES_FLAG,userId,db).catch(()=>false)])
       if (result.error) throw new Error("history_unavailable")
       const seen=new Set<number>()
-      // Archived versions are replaced by their newer version, and recipes wait for the recipe check (plan phase 4),
-      // so neither is a fast-route candidate even when the user logged it recently.
+      // Archived versions are replaced by their newer version; recipes are candidates only behind RECIPES_FLAG (the
+      // recipe check then gates each use).
       return ((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt&&
-        row.FoodItem.recipePortions==null&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
+        (recipes||row.FoodItem.recipePortions==null)&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
         .map(row=>({id:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null}))
     },
     async getMealEvent(messageId:number) {

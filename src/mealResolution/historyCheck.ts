@@ -20,6 +20,38 @@ export async function refersToPastMeal(input: Pick<MealResolutionInput, "origina
   return decision.status === "ok" && decision.choice === "yes" && (decision.confidence ?? 0) >= 0.9
 }
 
+const RECIPE_POLICY = `Decide whether the user's words mean the named recipe: their own dish, saved under that name.
+They mean it when they name it (exactly or nearly, in any language) or call it theirs ("my chili", "a bowl of the
+pasta I made"). A generic dish word that merely shares a word with the recipe name does not ("pasta at a restaurant"
+is not their "Chicken pasta"; "chili flakes" is not their "Chili"). Empty text is never a reference.`
+
+/** True only when Jev is confident the user's words mean this recipe of theirs. */
+export async function refersToRecipe(input: Pick<MealResolutionInput, "originalText" | "answers">, recipeName: string,
+  deps: { jev?: typeof selectWithJev; signal?: AbortSignal } = {}): Promise<boolean> {
+  const text = input.originalText.trim()
+  if (!text && !input.answers?.length) return false
+  const decision = await (deps.jev ?? selectWithJev)({ options: { yes: true, no: false },
+    state: { userWords: text, answers: (input.answers ?? []).map(answer => answer.text), recipeName },
+    questions: { selection: { type: "choice", instructions: RECIPE_POLICY,
+      criteria: { yes: "The user means this recipe of theirs.", no: "The user does not mean this recipe." } } } },
+    deps.signal ?? AbortSignal.timeout(5000))
+  return decision.status === "ok" && decision.choice === "yes" && (decision.confidence ?? 0) >= 0.9
+}
+
+/** Recipes in the plan the user's words don't mean. A recipe is the user's own dish: it is logged only when they name
+ * it, never because a photo or a generic word resembles it. */
+async function unreferencedRecipes(input: MealResolutionInput, result: MealResolutionResult, plan: PublishedPlan,
+  deps: { jev?: typeof selectWithJev }) {
+  const recipes = new Map<number, string>()
+  for (const item of plan.items) {
+    const food = result.evidence.foods.get(item.foodId)
+    if (food?.recipePortions != null) recipes.set(food.id, food.name)
+  }
+  const checks = await Promise.all([...recipes].map(async ([id, name]) =>
+    (await refersToRecipe(input, name, deps).catch(() => false)) ? null : `${name} (food ${id})`))
+  return checks.filter((name): name is string => name !== null)
+}
+
 /** Compile, refuse to copy past meals the user did not refer to (a lookalike photo is not a
  * reference) and, on a first attempt, take a second look at the photos for unlogged foods. */
 export async function compileCheckedMealPlan(input: MealResolutionInput, result: MealResolutionResult,
@@ -28,6 +60,9 @@ export async function compileCheckedMealPlan(input: MealResolutionInput, result:
   const plan = compileMealPlan(input, result)
   if (plan.items.some(item => item.origin === "history") && !(await refersToPastMeal(input, deps)))
     throw new Error("history_not_referenced")
+  const recipes = await unreferencedRecipes(input, result, plan, deps)
+  if (recipes.length) throw Object.assign(new Error("recipe_not_referenced"),
+    { detail: `the user's words don't name ${recipes.join(", ")}: log what they describe with catalogue foods instead` })
   if (deps.secondLook !== false && result.photoUrls?.length) {
     const logged = plan.items.map(item => {
       const food = result.evidence.foods.get(item.foodId)

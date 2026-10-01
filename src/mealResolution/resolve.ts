@@ -84,7 +84,11 @@ proposeEstimatedFood with the printed name, per-100 g values estimated from its 
 its net weight when printed. For an unnamed dish, prefer logging recognisable components separately over inventing
 a composite. Never add a food the catalogue has.
 A food marked yours is this user's own version (from their label or recipe): when it is the same product as a shared
-food, use yours. A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
+food, use yours. yourFoods lists the user's own foods and recipes whose names appear in their words; it is empty when
+none do. A food marked recipe is the user's own dish, logged in portions: its "portion" serving is one portion, so
+"1.5 portions" (or "one and a half bowls" of it) is amount 1.5 of that serving and "half of my chili" is 0.5. Use a
+recipe only when the user names it or calls it theirs; never for a photo alone or a generic word it shares (the
+backend checks). A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
 for this user only. Name a new food as the food itself, never with the portion ("Cheeseburger", not "1/2 Cheeseburger"; "Hard-boiled
 egg", not "Two hard-boiled eggs"): the portion is the item's quantity. Search for the food itself too.
 prefetchedFoods and recentMeals were read before this turn. When prefetchedFoods cover every food with the right
@@ -122,7 +126,8 @@ If validationErrorCode is present, it is a fixed backend validation result from 
 missing_visible_food: <foods> means a second look at the photos found those foods eaten but not logged:
 find and log each (search, create if needed) with a reasonable estimated portion, unless a logged food truly covers it.
 history_not_referenced means the user's words do not refer to a past meal: resolve this meal from what the
-photos and text show, without copying historical items. barcode_not_covered means a decoded barcode's
+photos and text show, without copying historical items. recipe_not_referenced means the user's words don't name that
+recipe of theirs: log what they describe with catalogue foods instead. barcode_not_covered means a decoded barcode's
 product is missing: log the food that carries that gtin.
 Reinspect evidence and return a corrected plan or a focused clarification.
 Return exactly one JSON object matching the provided schema, with no markdown or prose outside it.
@@ -291,9 +296,11 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       return {...quick,durationMs:performance.now()-started}
     }).catch(()=>null)
     const prefetchStarted=performance.now()
-    const [photos,prefetched,recent,photoBarcodes,visible]=await Promise.all([
+    const [photos,prefetched,yours,recent,photoBarcodes,visible]=await Promise.all([
       photosLoaded,
       Promise.resolve().then(()=>evidence.prefetchFoods(input.originalText)).catch(()=>[]),
+      // The user's own foods and recipes named in their words (none for a photo alone).
+      Promise.resolve().then(()=>evidence.yourFoods?.(input.originalText)??[]).catch(()=>[]),
       // Prefetch is an optimisation: any failure just means the agent searches.
       Promise.resolve().then(()=>evidence.listMealEvents(new Date(now-3*86400000).toISOString(),
         new Date(now+60000).toISOString())).then(result=>result.events).catch(()=>[]),
@@ -355,6 +362,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       submittedAtLocal:localTime(input.submittedAt,input.timezone),timezone:input.timezone,locale:input.locale,
       attachmentIds:photos.map(photo=>photo.id),answers:input.answers??[],previousMeal:input.previousMeal,
       validationErrorCode:input.validationErrorCode,clarificationAllowed:input.clarificationAllowed??true,prefetchedFoods:prefetched.map(foodSummary),
+      yourFoods:yours.map(foodSummary),
       recentMeals:recent,barcodes:photoBarcodes,barcodeMatches:barcodeMatches.map(foodSummary),
       // The grams estimate only feeds the preview: the agent sizes portions from its own evidence.
       visibleFoods:visibleFoods.map(({grams:_,estimate:__,...item})=>item),outputGuide})
