@@ -379,7 +379,9 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
     WHERE source ~ '^USDA FoodData Central [0-9]+' ORDER BY "foodItemId", id`)).rows.map(row => [Number(row.foodItemId), String(row.source)]))
   console.log(`correct: ${generic.length} generic foods, ${generic.filter(food => recorded.has(food.id)).length} with a USDA match`)
   const corrected: { food: Food; changes: Record<string, { from: number; to: number }> }[] = []
-  for (const food of generic) {
+  // --only <file>: the judged corrections, {"<foodId>": ["potassiumMg", …]}; nothing else is changed.
+  const only = option("only") ? JSON.parse(readFileSync(option("only")!, "utf8")) as Record<string, string[]> : null
+  for (const food of only ? generic.filter(food => only[String(food.id)]) : generic) {
     const fdcId = recorded.get(food.id)?.match(/USDA FoodData Central (\d+)/)?.[1]
     const usda = (fdcId ? await usdaRecord(food, fdcId).catch(() => null) : await usdaMatch(food, false).catch(() => null))
     if (!usda) continue
@@ -391,7 +393,7 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
       const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
       const floor = FLOOR[keyUnit(key)] ?? 1
       if (from == null || to < floor || Math.abs(from - to) < floor) continue
-      if (from === 0 || from > 2 * to || from < to / 2) changes[key] = { from, to }
+      if ((from === 0 || from > 2 * to || from < to / 2) && (!only || only[String(food.id)].includes(key))) changes[key] = { from, to }
     }
     if (!Object.keys(changes).length) continue
     corrected.push({ food, changes })
