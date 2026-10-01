@@ -423,6 +423,8 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
       if (from == null || to < floor || Math.abs(from - to) < floor) continue
       if ((from === 0 || from > 2 * to || from < to / 2) && (!only || only[String(food.id)].includes(key))) changes[key] = { from, to }
     }
+    // Only the judged nutrients.
+    if (only) for (const key of Object.keys(changes)) if (!only[String(food.id)].includes(key)) delete changes[key]
     if (!Object.keys(changes).length) continue
     corrected.push({ food, changes })
     console.log(`  ~ ${food.id} ${food.name}: ${Object.entries(changes).map(([key, c]) => `${key} ${Math.round(c.from * 10) / 10}->${Math.round(c.to * 10) / 10}`).join(", ")}`)
