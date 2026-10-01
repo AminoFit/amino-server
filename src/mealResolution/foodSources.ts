@@ -4,8 +4,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { resolveWebFood, citedSource } from "@/foodResolution/webFood"
 import { barcodePages } from "@/foodResolution/barcodePages"
-import { microRows, microsFrom, nutrientKey, offMicrosPer100g, scaleMicros, type Micros } from "@/foodResolution/micronutrients"
-import { validNutrition } from "@/foodResolution/nutrition"
+import { kjToKcal, microRows, microsFrom, nutrientKey, offMicrosPer100g, scaleMicros, type Micros, validNutrition } from "@/nutrition"
 import { selectWithJev } from "@/ai/jev"
 import { creationModel } from "@/ai/models"
 import { normalizeGtin } from "./barcode"
@@ -242,7 +241,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     const product=await (deps.off??fetchOpenFoodFacts)(gtin)
     if (!product||!product.code||normalizeGtin(product.code)!==gtin) return []
     const n=product.nutriments??{},value=(key:string)=>{const v=Number(n[`${key}_100g`]);return Number.isFinite(v)&&v>=0?v:null}
-    const kcal=value("energy-kcal")??(value("energy")!=null?value("energy")!/4.184:null)
+    const kcal=value("energy-kcal")??(value("energy")!=null?kjToKcal(value("energy")!):null)
     const [protein,carb,fat]=[value("proteins"),value("carbohydrates"),value("fat")]
     const name=(product.product_name||product.product_name_en||"").trim()
     if (kcal==null||protein==null||carb==null||fat==null||name.length<2) return []

@@ -1,6 +1,7 @@
 import sharp from "sharp"
 import { LABEL_MODEL, providerPreferences } from "@/ai/models"
 import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
+import { kjToKcal } from "@/nutrition"
 
 /** What a nutrition label says, transcribed exactly, for the column read. */
 export type LabelFacts = {
@@ -19,7 +20,7 @@ export type LabelFacts = {
   fiberG: number | null
   /** A Supplement Facts panel: calories and macros it doesn't list are 0. */
   supplement: boolean
-  /** Every vitamin and mineral line, as printed for the column read (mapped by foodResolution/micronutrients). */
+  /** Every vitamin and mineral line, as printed for the column read (mapped by @/nutrition). */
   micronutrients: { name: string; amount: number; unit: string }[]
 }
 
@@ -105,7 +106,7 @@ async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.P
   const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
   // A supplement's panel leaves out what it doesn't contain: unlisted calories and macros are 0.
   const supplement = parsed.supplement === true, none = supplement ? 0 : null
-  const kcal = amount(parsed.kcal) ?? (amount(parsed.kj) != null ? Math.round(amount(parsed.kj)! / 4.184 * 10) / 10 : none)
+  const kcal = amount(parsed.kcal) ?? (amount(parsed.kj) != null ? Math.round(kjToKcal(amount(parsed.kj)!) * 10) / 10 : none)
   const basisGrams = amount(parsed.basisGrams)
   const [proteinG, carbG, totalFatG] = [amount(parsed.proteinG) ?? none, amount(parsed.carbG) ?? none, amount(parsed.totalFatG) ?? none]
   const micronutrients = (Array.isArray(parsed.micronutrients) ? parsed.micronutrients : []).flatMap(row =>

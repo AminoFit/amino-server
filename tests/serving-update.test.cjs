@@ -68,8 +68,8 @@ function fixture({ userId = 'owner', status = 'RESOLVED', servingFoodId = 9,
     'next/server': { NextResponse: { json: (value, options) => Response.json(value, options) } },
     '@/utils/supabase/GetUserIdFromRequest': { GetUserIdOnRequest: async () => ({ userId: 'owner' }) },
     '@/utils/supabase/serverAdmin': { createAdminSupabase: () => db },
-    '@/foodMessageProcessing/common/calculateNutrientData': {
-      calculateNutrientData: grams => ({ kcal: grams * 2 })
+    '@/nutrition': {
+      nutrientsAt: (food, grams) => ({ kcal: grams * 2 })
     },
     './validateServingUpdate': validator
   })

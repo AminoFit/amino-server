@@ -24,8 +24,7 @@ import { selectWithJev } from "@/ai/jev"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { createFoodSources } from "@/mealResolution/foodSources"
-import { MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey } from "@/foodResolution/micronutrients"
-import { nutrientsAt, recipeValues } from "@/userFoods/nutrition"
+import { MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey, nutrientsAt, recipeValues } from "@/nutrition"
 
 // The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
 // --third-key: a second run in parallel on its own key.

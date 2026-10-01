@@ -14,6 +14,7 @@ import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, photoQuantity
 import { photoFastRouteEnabled, textFastRouteEnabled } from "./fastRouteFlag"
 import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
+import { kjToKcal } from "@/nutrition"
 import { localTime } from "@/mealOperations/instant"
 import { recordModelStep, recordResolution, recordTool } from "./runRecorder"
 
@@ -398,7 +399,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       const facts=await Promise.all(unscanned.slice(0,2).map(photo=>(deps.readLabel??readNutritionLabel)(photo.url,{signal:controller.signal}).catch(()=>null)))
       const recordDensity=(food.kcalPerServing??0)/(food.defaultServingWeightGram||1)
       for (const fact of facts) {
-        const kcal=fact?.kcal??(fact?.kj!=null?fact.kj/4.184:null)
+        const kcal=fact?.kcal??(fact?.kj!=null?kjToKcal(fact.kj):null)
         if (!fact||kcal==null||!(fact.basisGrams>0)||!(recordDensity>0)) continue
         if (Math.abs(kcal/fact.basisGrams-recordDensity)/recordDensity>0.15) {labelDisagrees.push(food.gtin!);break}
       }

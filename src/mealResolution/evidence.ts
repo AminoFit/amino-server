@@ -1,6 +1,6 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { localTime, utcInstant } from "@/mealOperations/instant"
-import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
+import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/nutrition"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { blendSearch, type SearchRow } from "./searchBlend"
 import { userFlagEnabled } from "./fastRouteFlag"

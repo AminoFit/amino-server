@@ -27,6 +27,10 @@ export const foodAttributesToQuery: FoodAttribute[] = [
   { id: 1235, name: "Sugars, added", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "addedSugar" },
   { id: 1003, name: "Protein", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "protein" },
   { id: 1051, name: "Water", usdaUnit: "g", targetUnit: "ml", conversionFactor: 1, targetName: "water" },
+  // Vitamins A, D and E in USDA's own units first (most records); IU only where that is all a record has.
+  { id: 1106, name: "Vitamin A, RAE", usdaUnit: "µg", targetUnit: "mcg", conversionFactor: 1, targetName: "vitaminA" },
+  { id: 1114, name: "Vitamin D (D2 + D3)", usdaUnit: "µg", targetUnit: "mcg", conversionFactor: 1, targetName: "vitaminD" },
+  { id: 1109, name: "Vitamin E (alpha-tocopherol)", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "vitaminE" },
   { id: 1104, name: "Vitamin A, IU", usdaUnit: "IU", targetUnit: "mcg", conversionFactor: 0.3, targetName: "vitaminA" },
   { id: 1162, name: "Vitamin C, total ascorbic acid", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "vitaminC" },
   { id: 1110,name: "Vitamin D (D2 + D3), International Units",usdaUnit: "IU",targetUnit: "mcg",conversionFactor: 0.025,targetName: "vitaminD"},
@@ -132,7 +136,8 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: FoodAttrib
       if (attribute && !foodInfo[attribute.targetName].amount) {
         if (foodNutrient.nutrient.name !== "Energy" || foodNutrient.nutrient.unitName === "kcal") {
           const normalizedAmount = foodNutrient.amount * (default_serving.default_serving_amount / 100) * attribute.conversionFactor;
-          const roundedAmount = Number(normalizedAmount.toPrecision(2));
+          // Four decimals: two significant figures stored 486 kcal as 490 and 16.54 g protein as 17.
+          const roundedAmount = Math.round(normalizedAmount * 1e4) / 1e4;
           
           foodInfo[attribute.targetName] = {
             amount: roundedAmount,

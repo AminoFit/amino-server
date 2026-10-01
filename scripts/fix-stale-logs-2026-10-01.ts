@@ -4,8 +4,7 @@
 // Every nutrient is repriced through nutrientsAt (vitamins and minerals included). Previous values are recorded in
 // LoggedFoodItemMicroFill.filled as {"correction": ..., "previous": {...}}. --apply writes; otherwise a dry run.
 import { Client } from "pg"
-import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
-import { nutrientsAt } from "@/userFoods/nutrition"
+import { HISTORY_NUTRIENTS, nutrientsAt } from "@/nutrition"
 
 type Fix = { id: number; grams?: number; unit?: { servingId: number | null; servingAmount: number; loggedUnit: string }; why: string }
 const recompute = (ids: number[], why: string): Fix[] => ids.map(id => ({ id, why }))

@@ -5,9 +5,8 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { readNutritionLabel, labelSourceInput } from "@/mealResolution/labelReader"
 import { decodeBarcode, locateBarcodesWithFlash } from "@/mealResolution/barcode"
 import { UserFoodError } from "./userFoods"
-import { microsFrom } from "@/foodResolution/micronutrients"
+import { kjToKcal, microsFrom } from "@/nutrition"
 
-const KJ_PER_KCAL=4.184
 
 export async function labelDraft(userId:string,imagePath:string,db=createAdminSupabase()) {
   // Only the user's own uploads (the app stores them under their ID).
@@ -29,7 +28,7 @@ export async function labelDraft(userId:string,imagePath:string,db=createAdminSu
     existingFood=(data?.[0] as unknown as typeof existingFood)??null
   }
   if (!facts) return {legible:false as const,gtin,existingFood}
-  const kcal=facts.kcal??(facts.kj!=null?facts.kj/KJ_PER_KCAL:null)
+  const kcal=facts.kcal??(facts.kj!=null?kjToKcal(facts.kj):null)
   if (kcal==null) return {legible:false as const,gtin,existingFood}
   const read=labelSourceInput({...facts,kcal},{name:"",brand:null,gtin,identified:false})
   return {legible:true as const,gtin,existingFood,

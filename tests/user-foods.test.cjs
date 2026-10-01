@@ -7,6 +7,8 @@ const ts=require('typescript')
 
 // Transpiles a src module with its @/ imports loaded the same way (or stubbed).
 function load(file,stubs={}) {
+  // A folder module ("@/nutrition") loads its index.
+  if (!fs.existsSync(path.join(__dirname,'../src',file))) file=file.replace(/\.ts$/,'/index.ts')
   const source=fs.readFileSync(path.join(__dirname,'../src',file),'utf8')
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText
   const module={exports:{}}
@@ -17,8 +19,8 @@ function load(file,stubs={}) {
 }
 // Values made inside the sandbox have its own prototypes: compare plain copies.
 const plain=value=>JSON.parse(JSON.stringify(value))
-const nutrition=load('userFoods/nutrition.ts')
-const {getMappedNutrientField}=load('foodMessageProcessing/common/calculateNutrientData.ts')
+const nutrition=load('nutrition/index.ts')
+const {getMappedNutrientField}=nutrition
 const userFoods=load('userFoods/userFoods.ts',{'@/utils/supabase/serverAdmin':{},'@/utils/embeddingsCache/getCachedOrFetchEmbeddings':{}})
 
 const rice={id:1,defaultServingWeightGram:100,kcalPerServing:130,proteinPerServing:2.7,carbPerServing:28,totalFatPerServing:0.3,
@@ -46,11 +48,11 @@ test('a recipe is priced per portion from its ingredients; the cooked weight set
 })
 
 test('nutrient rows are named so the existing nutrient mapping reads every one back',()=>{
-  const amounts=Object.fromEntries(nutrition.ROW_NUTRIENTS.map((key,i)=>[key,i+1]))
+  const amounts=Object.fromEntries(nutrition.MICRO_KEYS.map((key,i)=>[key,i+1]))
   const rows=nutrition.nutrientRows(amounts)
-  assert.equal(rows.length,nutrition.ROW_NUTRIENTS.length)
+  assert.equal(rows.length,nutrition.MICRO_KEYS.length)
   for (const row of rows) assert.equal(amounts[getMappedNutrientField(row.name)],row.amount,row.name)
-  assert.ok(!nutrition.ROW_NUTRIENTS.some(key=>key in nutrition.COLUMN_NUTRIENTS))
+  assert.ok(!nutrition.MICRO_KEYS.some(key=>key in nutrition.COLUMN_NUTRIENTS))
   assert.deepEqual(plain(rows.find(row=>row.name==='sodium')),{name:'sodium',unit:'mg',amount:amounts.sodiumMg})
 })
 

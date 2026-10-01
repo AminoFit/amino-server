@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { GetUserIdOnRequest } from "@/utils/supabase/GetUserIdFromRequest"
-import { calculateNutrientData } from "@/foodMessageProcessing/common/calculateNutrientData"
+import { nutrientsAt, type FoodBasis } from "@/nutrition"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
@@ -18,9 +18,9 @@ const nutrientFields = [
   "vitaminCMg", "vitaminDMcg", "vitaminEMg", "vitaminKMcg", "waterMl", "zincMg"
 ] as const
 
-const foodColumns = `id,userId,privateToUserId,defaultServingWeightGram,kcalPerServing,totalFatPerServing,
+const foodColumns = `id,userId,privateToUserId,defaultServingWeightGram,weightUnknown,kcalPerServing,totalFatPerServing,
   satFatPerServing,transFatPerServing,carbPerServing,sugarPerServing,addedSugarPerServing,
-  proteinPerServing,fiberPerServing,Nutrient(nutrientName,nutrientAmountPerDefaultServing),
+  proteinPerServing,fiberPerServing,Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing),
   Serving(id,foodItemId,servingName)`
 const loggedColumns = ["id", "userId", "status", "deletedAt", "messageId", "foodItemId",
   "grams", "updatedAt", ...nutrientFields].join(",")
@@ -102,14 +102,19 @@ export async function POST(request: NextRequest) {
       return failure("Original portion is invalid", 422)
     }
 
-    const nutrients: Partial<Record<(typeof nutrientFields)[number], number>> = foodItem
-      ? calculateNutrientData(change.grams, foodItem)
-      : Object.fromEntries(nutrientFields.flatMap(field => {
-          const previous = loggedFoodItem[field]
-          return typeof previous === "number" && loggedFoodItem.grams > 0
-            ? [[field, previous * change.grams / loggedFoodItem.grams]] : []
-        }))
-    if (Object.values(nutrients).some(value => !Number.isFinite(value))) {
+    // Every nutrient is written: the food's value at the new weight (the shared pricing, units converted, unknown left
+    // unknown rather than 0); for a nutrient the food doesn't record, the logged value scaled if it's the same food,
+    // else unknown (a swapped food never keeps the old food's vitamins).
+    const priced = foodItem ? nutrientsAt(foodItem as unknown as FoodBasis, change.grams) : null
+    if (foodItem && !priced) return failure("Food item has no usable serving weight", 422)
+    const sameFood = foodItemId === loggedFoodItem.foodItemId
+    const nutrients = Object.fromEntries(nutrientFields.map(field => {
+      const value = priced?.[field as keyof typeof priced]
+      if (value != null) return [field, value]
+      const previous = loggedFoodItem[field]
+      return [field, sameFood && typeof previous === "number" && loggedFoodItem.grams > 0 ? previous * change.grams / loggedFoodItem.grams : null]
+    })) as Partial<Record<(typeof nutrientFields)[number], number | null>>
+    if (Object.values(nutrients).some(value => value !== null && !Number.isFinite(value))) {
       return failure("Calculated nutrition is invalid", 422)
     }
 

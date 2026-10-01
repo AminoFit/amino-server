@@ -1,19 +1,8 @@
-// Values of a user's own foods and recipes. A food stores macros per default serving in its columns and other
-// nutrients per default serving as Nutrient rows; a logged row stores absolute amounts (HISTORY_NUTRIENTS).
-import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
-import { nutrientMappingConfig } from "@/foodMessageProcessing/common/calculateNutrientData"
-import { inKeyUnit, nutrientKey } from "@/foodResolution/micronutrients"
-
-export type NutrientKey = typeof HISTORY_NUTRIENTS[number]
-export type Amounts = Partial<Record<NutrientKey, number>>
-
-/** Logged nutrients that live in FoodItem columns, with their column. */
-export const COLUMN_NUTRIENTS = {kcal:"kcalPerServing",proteinG:"proteinPerServing",carbG:"carbPerServing",
-  totalFatG:"totalFatPerServing",fiberG:"fiberPerServing",sugarG:"sugarPerServing",addedSugarG:"addedSugarPerServing",
-  satFatG:"satFatPerServing",transFatG:"transFatPerServing"} as const
-type ColumnKey = keyof typeof COLUMN_NUTRIENTS
-/** Every other logged nutrient is stored as a Nutrient row. */
-export const ROW_NUTRIENTS = HISTORY_NUTRIENTS.filter(key=>!(key in COLUMN_NUTRIENTS)) as Exclude<NutrientKey,ColumnKey>[]
+// A food's values at a weight, the one way everything prices food (meals, edits, the tray, recipes, MCP, the backfill):
+// its per-serving columns and its Nutrient rows (any naming and unit) over its serving weight. Unknown stays unknown.
+import { COLUMN_NUTRIENTS, MICRO_KEYS, NUTRIENT_NAMES, type Amounts, type ColumnKey, type NutrientKey } from "./spec"
+import { inKeyUnit, nutrientKey } from "./units"
+import { validNutrition, type Nutrition } from "./validate"
 
 export type FoodBasis = {defaultServingWeightGram:number|null;weightUnknown?:boolean|null}
   & {[K in typeof COLUMN_NUTRIENTS[ColumnKey]]?:number|null}
@@ -43,11 +32,11 @@ export function nutrientsAt(food:FoodBasis,grams:number):Amounts|null {
 
 /** Nutrient rows for amounts per default serving, named so getMappedNutrientField reads them back. */
 export function nutrientRows(amounts:Amounts) {
-  return ROW_NUTRIENTS.flatMap(key=>{
+  return MICRO_KEYS.flatMap(key=>{
     const amount=amounts[key]
     if (!finite(amount)||amount<0) return []
     const unit=key.endsWith("Mcg")?"mcg":key.endsWith("Mg")?"mg":key.endsWith("Ml")?"ml":"g"
-    return [{name:nutrientMappingConfig[key][0],unit,amount}]
+    return [{name:NUTRIENT_NAMES[key][0],unit,amount}]
   })
 }
 
@@ -74,4 +63,12 @@ export function recipeValues(ingredients:{food:FoodBasis;grams:number}[],portion
   const wholeGrams=finite(cookedWeightGram)&&cookedWeightGram>0?cookedWeightGram:ingredientGrams
   const perPortion=Object.fromEntries(Object.entries(totals).map(([key,value])=>[key,value/portions])) as Amounts
   return {ingredientGrams,wholeGrams,portionGrams:wholeGrams/portions,totals,perPortion}
+}
+
+/** Calories and macros at a weight (a view of nutrientsAt), when they pass validNutrition. */
+export function foodNutrition(food: FoodBasis, grams: number): Nutrition | null {
+  const amounts = nutrientsAt(food, grams)
+  if (!amounts) return null
+  const nutrients = { kcal: amounts.kcal!, proteinG: amounts.proteinG ?? null, carbG: amounts.carbG ?? null, totalFatG: amounts.totalFatG ?? null }
+  return validNutrition(grams, nutrients) ? nutrients : null
 }

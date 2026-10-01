@@ -1,25 +1,23 @@
-// Vitamins and minerals as Amino keeps them: the logged nutrient keys (magnesiumMg, vitaminDMcg, …), each in the unit its
-// name ends with. Sources name them every which way ("Magnesium, Mg", "Vitamin A" in IU, Open Food Facts' grams), so every
-// path reads and writes them through here (docs/micronutrients-plan.md in amino-mobile).
-import { getMappedNutrientField, nutrientMappingConfig } from "@/foodMessageProcessing/common/calculateNutrientData"
-import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
+// Nutrient names and units from every source ("Magnesium, Mg", "Vitamin A" in IU, Open Food Facts' grams, a Supplement
+// Facts line) as Amino's keys and units (spec.ts), and back as the catalogue's rows.
+import { COLUMN_NUTRIENTS, HISTORY_NUTRIENTS, MICRO_KEYS, NUTRIENT_NAMES, keyUnit, type Micros, type NutrientKey } from "./spec"
 
-export type NutrientKey = typeof HISTORY_NUTRIENTS[number]
-export type Micros = Partial<Record<NutrientKey, number>>
+const normalized = (name: string) => name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")
+const BY_NAME = new Map<string, NutrientKey>()
+for (const [key, names] of Object.entries(NUTRIENT_NAMES) as [NutrientKey, string[]][])
+  for (const name of [key, ...names]) if (!BY_NAME.has(normalized(name))) BY_NAME.set(normalized(name), key)
+/** A key from one of its listed names (spec.ts NUTRIENT_NAMES), compared without case, spaces or punctuation. */
+export function getMappedNutrientField(name: string): NutrientKey | null {
+  return BY_NAME.get(normalized(name)) ?? null
+}
 
-/** Logged nutrients a food keeps in its own columns; every other one is a Nutrient row (a micronutrient here). */
-const COLUMN_KEYS = new Set<string>(["kcal", "proteinG", "carbG", "totalFatG", "fiberG", "sugarG", "addedSugarG", "satFatG", "transFatG"])
-export const MICRO_KEYS = HISTORY_NUTRIENTS.filter(key => !COLUMN_KEYS.has(key))
+/** Kilojoules as kilocalories. */
+export const kjToKcal = (kj: number) => kj / 4.184
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
 const GRAMS: Record<string, number> = { g: 1, mg: 1e-3, mcg: 1e-6, "µg": 1e-6, ug: 1e-6 }
 /** International units per key unit: vitamin A as retinol (0.3 µg), D (0.025 µg), E as natural tocopherol (0.67 mg). */
 const IU: Partial<Record<NutrientKey, number>> = { vitaminAMcg: 0.3, vitaminDMcg: 0.025, vitaminEMg: 0.67 }
-
-/** The unit a key is kept in. */
-export function keyUnit(key: NutrientKey) {
-  return key.endsWith("Mcg") ? "mcg" : key.endsWith("Mg") ? "mg" : key.endsWith("Ml") ? "ml" : key === "kcal" ? "kcal" : "g"
-}
 
 /** A nutrient's key from any of its names ("Magnesium, Mg", "magnesium", "magnesiumMg"); null when unknown. */
 export function nutrientKey(name: string): NutrientKey | null {
@@ -63,7 +61,7 @@ export function microsFrom(rows: { name: string; amount: number | null | undefin
   for (const row of rows) if (omega3Part(row.name) && finite(row.amount)) omega3 += inKeyUnit("omega3Mg", row.amount, row.unit) ?? 0
   for (const row of rows) {
     const key = nutrientKey(row.name)
-    if (!key || COLUMN_KEYS.has(key) || micros[key] != null || !finite(row.amount)) continue
+    if (!key || key in COLUMN_NUTRIENTS || micros[key] != null || !finite(row.amount)) continue
     const value = inKeyUnit(key, row.amount, row.unit)
     if (value != null) micros[key] = value
   }
@@ -82,7 +80,7 @@ export function microRows(micros: Micros) {
   return MICRO_KEYS.flatMap(key => {
     const amount = micros[key]
     return finite(amount) && amount >= 0
-      ? [{ nutrientName: nutrientMappingConfig[key][0], nutrientUnit: keyUnit(key), nutrientAmountPerDefaultServing: Math.round(amount * 1e4) / 1e4 }]
+      ? [{ nutrientName: NUTRIENT_NAMES[key][0], nutrientUnit: keyUnit(key), nutrientAmountPerDefaultServing: Math.round(amount * 1e4) / 1e4 }]
       : []
   })
 }

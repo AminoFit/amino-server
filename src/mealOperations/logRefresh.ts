@@ -8,8 +8,7 @@
 //    meal per run so each operation sees the meal's latest revision.
 import { randomUUID } from "node:crypto"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { MICRO_KEYS } from "@/foodResolution/micronutrients"
-import { nutrientsAt, type FoodBasis } from "@/userFoods/nutrition"
+import { MICRO_KEYS, nutrientsAt, type FoodBasis } from "@/nutrition"
 import { acceptMealOperation } from "./service"
 import { dispatchMealOperation } from "./dispatch"
 import type { OperationRequest } from "./contracts"

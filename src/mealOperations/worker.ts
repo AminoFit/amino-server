@@ -1,14 +1,12 @@
 import { createHash, randomUUID } from "node:crypto"
 import { utcInstant } from "./instant"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { validNutrition } from "@/foodResolution/nutrition"
-import { nutrientsAt, type FoodBasis } from "@/userFoods/nutrition"
+import { validNutrition, nutrientsAt, type FoodBasis, HISTORY_NUTRIENTS } from "@/nutrition"
 import { type PublishedPlan } from "@/mealResolution/compile"
 import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
 import { resolveMeal } from "@/mealResolution/resolve"
 import type { MealPreviewItem, MealProgressStage } from "@/mealResolution/progress"
 import { claimMealOperation, finishMealOperation, getMealSnapshot, publishMealOperation } from "./service"
-import { HISTORY_NUTRIENTS } from "@/foodResolution/history/nutrients"
 import { mealRunTotals, withMealRun, type MealRun } from "@/mealResolution/runRecorder"
 
 const transientCodes=new Set(["catalogue_unavailable","food_details_unavailable",

@@ -2,7 +2,7 @@ require('ts-node/register/transpile-only');
 require('tsconfig-paths/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const m=require('../src/foodResolution/micronutrients.ts');
+const m=require('../src/nutrition/index.ts');
 
 test('nutrient names in every source\'s wording map to one key, and units convert to the key\'s',()=>{
   for (const [name,key] of [['Magnesium, Mg','magnesiumMg'],['magnesium','magnesiumMg'],['magnesiumMg','magnesiumMg'],

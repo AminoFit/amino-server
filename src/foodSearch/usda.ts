@@ -5,7 +5,7 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
-import { validNutrition } from "@/foodResolution/nutrition"
+import { validNutrition } from "@/nutrition"
 import { UserFoodError } from "@/userFoods/userFoods"
 import { cleanServings } from "@/mealResolution/foodSources"
 

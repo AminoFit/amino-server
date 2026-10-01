@@ -1,13 +1,13 @@
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
-import { COLUMN_NUTRIENTS, nutrientsAt, type Amounts } from "@/userFoods/nutrition"
+import { COLUMN_NUTRIENTS, nutrientsAt, type Amounts } from "@/nutrition"
 
 // The user's own foods and recipes (the app's Foods tab), read as the user: row-level security limits FoodItem to
 // shared foods plus their own, and the queries keep only their own. A recipe's values are per portion.
 
 const columns = `id,name,brand,recipePortions,cookedWeightGram,archivedAt,createdAtDateTime,lastUpdated,isLiquid,
   defaultServingWeightGram,weightUnknown,${Object.values(COLUMN_NUTRIENTS).join(",")},
-  Serving(id,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientAmountPerDefaultServing)`
+  Serving(id,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing)`
 
 type Row = Record<string, any> & { id: number; name: string; recipePortions: number | null; defaultServingWeightGram: number | null }
 

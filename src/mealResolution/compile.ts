@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto"
-import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
+import { foodNutrition, validNutrition, HISTORY_NUTRIENTS, type HistoryNutrition, nutrientsAt } from "@/nutrition"
+const finite=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)
 import type { MealProposal } from "@/mealOperations/contracts"
 import type { MealResolutionInput, MealResolutionResult } from "./resolve"
-import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/foodResolution/history/nutrients"
-import { MICRO_KEYS } from "@/foodResolution/micronutrients"
-import { nutrientsAt } from "@/userFoods/nutrition"
 
 type Nutrition = HistoryNutrition & {kcal:number;proteinG:number|null;carbG:number|null;totalFatG:number|null}
 export type PublishedItem = {logicalItemId:string;foodId:number;grams:number;
@@ -126,18 +124,11 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
       } else {
         grams=quantity.grams;servingAmount=grams;loggedUnit="g"
       }
-      const computed=foodNutrition(food,grams)
-      if (!computed) throw new Error("invalid_catalogue_nutrition")
-      const factor=grams/(food.defaultServingWeightGram??0)
-      // Vitamins and minerals from the food's Nutrient rows, as the tray and recipes price them (none were logged by the
-      // agent's meals from 2026-09-24 until this).
-      const micros=nutrientsAt(food,grams)??{}
-      nutrition={...computed,...Object.fromEntries(MICRO_KEYS.map(key=>[key,micros[key]??null])),
-        satFatG:food.satFatPerServing==null?null:food.satFatPerServing*factor,
-        transFatG:food.transFatPerServing==null?null:food.transFatPerServing*factor,
-        fiberG:food.fiberPerServing==null?null:food.fiberPerServing*factor,
-        sugarG:food.sugarPerServing==null?null:food.sugarPerServing*factor,
-        addedSugarG:food.addedSugarPerServing==null?null:food.addedSugarPerServing*factor}
+      // Every nutrient through the shared pricing (columns and Nutrient rows, vitamins and minerals included).
+      const amounts=nutrientsAt(food,grams)
+      if (!amounts||!finite(amounts.kcal)) throw new Error("invalid_catalogue_nutrition")
+      nutrition={...Object.fromEntries(HISTORY_NUTRIENTS.map(key=>[key,amounts[key]??null])),kcal:amounts.kcal,
+        proteinG:amounts.proteinG??null,carbG:amounts.carbG??null,totalFatG:amounts.totalFatG??null} as Nutrition
     }
     if (!positive(grams)||grams>5000||!validNutrition(grams,nutrition)) throw new Error("invalid_meal_nutrition")
     if (proposed.groupId) {

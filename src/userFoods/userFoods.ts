@@ -4,9 +4,8 @@
 import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
-import { validNutrition } from "@/foodResolution/nutrition"
-import { COLUMN_NUTRIENTS, ROW_NUTRIENTS, columnValues, nutrientRows, nutrientsAt, recipeValues,
-  type Amounts, type FoodBasis } from "./nutrition"
+import { COLUMN_NUTRIENTS, MICRO_KEYS, columnValues, nutrientRows, nutrientsAt, recipeValues, validNutrition,
+  type Amounts, type FoodBasis } from "@/nutrition"
 import { normalizeGtin } from "@/mealResolution/barcode"
 
 type Db = ReturnType<typeof createAdminSupabase>
@@ -29,7 +28,7 @@ function rpcFailure(error:{code?:string;message?:string}):never {
 const text=(max:number)=>z.string().trim().min(1).max(max)
 const amount=z.number().finite().nonnegative().max(45000)
 const servingInput=z.object({unit:text(40),amount:z.number().finite().positive().max(1000),grams:z.number().finite().positive().max(5000)}).strict()
-const microKeys=ROW_NUTRIENTS as unknown as [string,...string[]]
+const microKeys=MICRO_KEYS as unknown as [string,...string[]]
 
 export const customFoodInput=z.object({
   name:z.string().trim().min(2).max(120),brand:z.string().trim().max(120).nullable().optional(),
