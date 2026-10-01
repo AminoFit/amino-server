@@ -41,7 +41,7 @@ CREATE TABLE public."FoodItem" (id serial PRIMARY KEY, name text NOT NULL, brand
   "foodInfoSource" public."FoodInfoSource" NOT NULL DEFAULT 'User', "externalId" text,
   "bgeBaseEmbedding" extensions.vector, description text, verified boolean NOT NULL DEFAULT false,
   "UPC" bigint, "knownAs" text[] DEFAULT ARRAY[]::text[], "weightUnknown" boolean NOT NULL DEFAULT false,
-  "lastUpdated" timestamp NOT NULL DEFAULT now(), UNIQUE (name, brand), UNIQUE ("externalId", "foodInfoSource"));
+  "lastUpdated" timestamp NOT NULL DEFAULT now(), "createdAtDateTime" timestamptz NOT NULL DEFAULT now(), UNIQUE (name, brand), UNIQUE ("externalId", "foodInfoSource"));
 CREATE TABLE public."Serving" (id serial PRIMARY KEY, "foodItemId" integer REFERENCES public."FoodItem"(id),
   "servingName" text NOT NULL, "servingWeightGram" float8, "defaultServingAmount" numeric(10,2) DEFAULT 1);
 CREATE TABLE public."Nutrient" (id serial PRIMARY KEY, "nutrientName" text NOT NULL, "nutrientUnit" text NOT NULL,
@@ -80,7 +80,8 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       for (const file of migrations) await db.query(read(file));
       await db.query('SET check_function_bodies = off');
       await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
-      await db.query(read('20261004010000_drop_replace_meal_with_food.sql'));
+      await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
+      await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'));
       await db.query('RESET check_function_bodies');
       const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0]);
       const save=(user,id,value,{servings=[{name:'portion',grams:value.defaultServingWeightGram,amount:1}],nutrients=[],ingredients=null}={})=>
@@ -154,10 +155,13 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
         '2026-09-30 12:00:00','',item(pasta.food_id,100,100)]),/food_unavailable/)
 
       // With logs, an edit is a new version: past logs keep the old one, the icon and favourites move on.
+      await db.query(`update public."FoodItem" set "createdAtDateTime"='2026-09-29 23:12:00+00' where id=$1`,[pasta.food_id])
       await db.query('insert into public."FoodItemImages"("foodItemId","foodImageId") values ($1,77)',[pasta.food_id])
       await db.query('insert into public."UserFavoriteFoodItem"("userId","foodItemId") values ($1,$2)',[alice,pasta.food_id])
       const v2=await save(alice,pasta.food_id,{...pastaFood,recipePortions:6},{ingredients:[{foodItemId:rice,grams:900}]})
       assert.equal(v2.versioned,true); assert.notEqual(v2.food_id,pasta.food_id); assert.equal(v2.previous_id,pasta.food_id)
+      assert.equal((await one('select count(distinct "createdAtDateTime")::int n from public."FoodItem" where id = any($1)',
+        [[pasta.food_id,v2.food_id]])).n,1,'a new version keeps the date the recipe was created')
       const versions=(await db.query('select id,"archivedAt" is not null archived,"previousVersionId" prev,"recipePortions"::float8 portions from public."FoodItem" where id = any($1) order by id',
         [[pasta.food_id,v2.food_id]])).rows
       assert.deepEqual(versions,[{id:pasta.food_id,archived:true,prev:null,portions:4},{id:v2.food_id,archived:false,prev:pasta.food_id,portions:6}])
