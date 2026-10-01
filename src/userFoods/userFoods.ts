@@ -7,6 +7,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { validNutrition } from "@/foodResolution/nutrition"
 import { COLUMN_NUTRIENTS, ROW_NUTRIENTS, columnValues, nutrientRows, nutrientsAt, recipeValues,
   type Amounts, type FoodBasis } from "./nutrition"
+import { normalizeGtin } from "@/mealResolution/barcode"
 
 type Db = ReturnType<typeof createAdminSupabase>
 
@@ -39,7 +40,9 @@ export const customFoodInput=z.object({
   satFatG:amount.nullable().optional(),transFatG:amount.nullable().optional(),
   /** Other nutrients for the same serving, by logged-nutrient key (e.g. sodiumMg). */
   nutrients:z.partialRecord(z.enum(microKeys),amount).optional(),
-  extraServings:z.array(servingInput).max(8).optional()
+  extraServings:z.array(servingInput).max(8).optional(),
+  /** The package's barcode (scanned from its label, or typed); null clears it. Checked by its check digit. */
+  gtin:z.string().trim().max(20).nullable().optional()
 }).strict()
 export type CustomFoodInput = z.infer<typeof customFoodInput>
 
@@ -71,7 +74,7 @@ export const quantityInput=z.union([
   z.object({portions:z.number().finite().positive().max(1000)}).strict()])
 export type QuantityInput = z.infer<typeof quantityInput>
 
-const foodColumns=`id,name,brand,privateToUserId,archivedAt,recipePortions,cookedWeightGram,previousVersionId,
+const foodColumns=`id,name,brand,gtin,privateToUserId,archivedAt,recipePortions,cookedWeightGram,previousVersionId,
   defaultServingWeightGram,weightUnknown,isLiquid,lastUpdated,${Object.values(COLUMN_NUTRIENTS).join(",")},
   Serving(id,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientAmountPerDefaultServing,nutrientUnit)`
 type ServingRow = {id:number;servingName:string;servingWeightGram:number|null;defaultServingAmount:number|null}
@@ -137,7 +140,16 @@ export async function saveCustomFood(userId:string,foodId:number|null,input:Cust
     fiberG:input.fiberG??null,sugarG:input.sugarG??null,addedSugarG:input.addedSugarG??null,
     satFatG:input.satFatG??null,transFatG:input.transFatG??null,description:"Added by the user",
     bgeBaseEmbedding:await embedding(input.name,input.brand)}
-  return save(db,userId,foodId,food,servings,nutrientRows((input.nutrients??{}) as Amounts),null)
+  const gtin=input.gtin?normalizeGtin(input.gtin):null
+  if (input.gtin&&!gtin) fail("invalid_barcode",422)
+  const saved=await save(db,userId,foodId,food,servings,nutrientRows((input.nutrients??{}) as Amounts),null)
+  // The barcode is set on the saved version (a new version is a new row): the user's own food then answers that barcode
+  // ahead of the shared catalogue's.
+  if (input.gtin!==undefined) {
+    const {error}=await db.from("FoodItem").update({gtin,UPC:gtin?Number(gtin):null}).eq("id",saved.foodId).eq("privateToUserId",userId)
+    if (error) throw error
+  }
+  return saved
 }
 
 /** Creates (foodId null) or edits a recipe: per-portion values from its ingredients, priced now. */
