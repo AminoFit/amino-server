@@ -6,7 +6,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 type Db = ReturnType<typeof createAdminSupabase>
 export const CATALOGUE_PAGE = 1000
 
-const columns = `id,name,brand,knownAs,defaultServingWeightGram,kcalPerServing,totalFatPerServing,satFatPerServing,
+const columns = `id,name,brand,gtin,knownAs,defaultServingWeightGram,kcalPerServing,totalFatPerServing,satFatPerServing,
   transFatPerServing,carbPerServing,sugarPerServing,addedSugarPerServing,proteinPerServing,fiberPerServing,isLiquid,
   defaultServingLiquidMl,weightUnknown,verified,lastUpdated,
   Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount),
