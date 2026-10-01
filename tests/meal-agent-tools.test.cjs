@@ -250,7 +250,8 @@ const lockedDeps=({reads,scene,catalogue=[fruit,bar]})=>{
   const foods=new Map();
   const ev={foods,events:new Map(),discover(){},forget(id){foods.delete(id)},
     async listMealEvents(){return {events:[]}},async prefetchFoods(){return []},
-    async findFoodsByGtin(gtins){return catalogue.filter(food=>gtins.includes(food.gtin))},
+    // Like the real evidence, a food found by barcode has been read.
+    async findFoodsByGtin(gtins){const found=catalogue.filter(food=>gtins.includes(food.gtin));for (const f of found) foods.set(f.id,f);return found},
     async searchFoods(){return {candidates:[],foods:[]}},
     async getFoodsAndServings(ids){const found=catalogue.filter(food=>ids.includes(food.id));for (const f of found) foods.set(f.id,f);return {foods:found}}};
   const sources={sources:new Map(),async barcodeSources(){return []},async createFoodFromSource(){throw new Error('unused')},async searchFoodSources(){return {candidates:[]}}};
@@ -291,6 +292,30 @@ test('meal 30399: a whole bag of a scanned product is not logged as one serving;
     visible:async()=>[{food:'trü frü raspberries in white chocolate',detail:'the whole bag',grams:100}]}).catch(()=>null);
   assert.notEqual(result?.model,'barcode','one 28 g serving is not what a 100 g bag shows');
   assert.ok(agentRuns()>=1||result===null,'the locked product goes to the agent');
+});
+
+test('a barcode chip from the app camera is its product: alone it logs without a model; with words the agent picks the amount',async()=>{
+  const {scannedBarcodes}=require('../src/mealResolution/resolve');
+  const parsed=scannedBarcodes('[barcode:850241008835] half the bag [barcode:4809010272011]');
+  assert.deepEqual([parsed.gtins,parsed.text,parsed.chips.get('00850241008835')],[['00850241008835'],'half the bag','[barcode:850241008835]'],
+    'normalised, a bad check digit dropped, the words without the chips');
+  const chipOnly={...input,originalText:'[barcode:00850241008835]',attachmentIds:[]};
+  const alone=lockedDeps({reads:[],scene:null});
+  const logged=await resolveMeal(chipOnly,{...alone.deps,fastRoute:false});
+  assert.equal(alone.agentRuns(),0);
+  assert.equal(logged.model,'barcode');
+  assert.deepEqual(logged.proposal.items.map(item=>item.foodId),[52001]);
+  assert.equal(logged.proposal.components[0].sourceText,'[barcode:00850241008835]','the chip is the item\'s words: verbatim in the text');
+  const {compileCheckedMealPlan}=require('../src/mealResolution/historyCheck');
+  const plan=await compileCheckedMealPlan(chipOnly,logged,{secondLook:false});
+  assert.equal(plan.items.length,1,'the worker\'s plan check accepts a chip-only meal');
+  const seen=[];
+  const worded=lockedDeps({reads:[],scene:null});
+  const generate=worded.deps.generate;
+  await resolveMeal({...chipOnly,originalText:'[barcode:00850241008835] half the bag'},{...worded.deps,fastRoute:false,
+    generate:async args=>{seen.push(JSON.stringify(args.messages??args.prompt??''));return generate(args)}}).catch(()=>null);
+  assert.ok(worded.agentRuns()>=1,'words with a chip go to the agent');
+  assert.ok(seen.join('').includes('[barcode:00850241008835]'),'the agent sees the chip, which the prompt explains');
 });
 
 test('two barcodes in one photo are two products; the same barcode in two photos is one',async()=>{

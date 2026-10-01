@@ -157,7 +157,7 @@ type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedO
   usda?:typeof getUsdaFoodsInfo;usdaSearch?:typeof searchUsdaBranded;off?:typeof fetchOpenFoodFacts;web?:typeof resolveWebFood;
   jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string}
 
-export function createFoodSources(ctx:{userId:string;messageId:number;signal:AbortSignal;discover:(id:number)=>void;
+export function createFoodSources(ctx:{userId:string;/** The meal being resolved; null for a lookup outside a meal (a barcode scan). */ messageId:number|null;signal:AbortSignal;discover:(id:number)=>void;
   /** A food this meal read earlier was changed by a write: forget the cached copy. */ refresh?:(id:number)=>void;
   /** GTINs decoded by the barcode library from this meal's photos; the only barcodes a source may carry. */
   barcodes?:string[]},deps:Deps={}) {

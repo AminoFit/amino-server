@@ -47,7 +47,9 @@ exclude it. visibleFoods then lists only the rest of the meal: resolve just thos
 are in no database: identify such a product only from legible label text in the photos (readLabel, then addFood with
 that gtin) or ask; never from how the package looks. labelDisagrees lists locked products whose photographed nutrition
 label disagrees with their record: readLabel and addFood that label (it becomes the user's own copy with the label's
-values, same barcode) and log that food instead of the record.
+values, same barcode) and log that food instead of the record. A [barcode:<digits>] chip in the user's text is a
+product the app's camera scanned: it is one of lockedProducts (or unresolvedBarcodes), and its component's sourceText
+is the chip exactly as written; the words around it give the amount ("half the bag").
 barcodes lists retail barcodes that a barcode library decoded from the photos; never read barcode digits
 yourself. Each decoded barcode is a product in the meal, and one item must be the catalogue food carrying that
 exact gtin. A barcodeMatches food is that product: use it. For a barcode with no catalogue match, call
@@ -224,6 +226,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   /** Overrides FeatureFlag.meal_photo_fast_route for this meal (evals and tests). */
   photoFastRoute?:boolean
 }={}):Promise<MealResolutionResult> {
+  // Barcodes the app's camera read travel in the text as [barcode:<GTIN>] chips (docs/barcode-camera-plan.md): facts
+  // like a barcode decoded from a photo. The agent sees the chips (the prompt says what they are); the rest of the
+  // pipeline uses the words around them.
+  const scanned=scannedBarcodes(input.originalText)
   const started=performance.now()
   const controller=new AbortController()
   const evidence=deps.evidence??createMealEvidence(input.userId,controller.signal,undefined,input.timezone)
@@ -261,6 +267,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       const read=await readPhoto(photo.url).catch(()=>({gtins:[] as string[],undecoded:0}))
       return {photoId:photo.id,...read}}))).catch(()=>[] as {photoId:number;gtins:string[];undecoded:number}[])
       // Sources may only carry decoded barcodes: register them as soon as they decode.
+      // Chips read by the app's camera count like a photo's barcodes (photoId -1: no photo).
+      .then(reads=>scanned.gtins.length?[...reads,{photoId:-1,gtins:scanned.gtins,undecoded:0}]:reads)
       .then(reads=>{for (const read of reads) for (const gtin of read.gtins) if (!barcodes.includes(gtin)) barcodes.push(gtin);return reads})
     // A decoded barcode is a fact (barcode-route-plan.md): each one is resolved to its catalogue food up front, on every
     // route (catalogue, then USDA, then Open Food Facts), and locked: no model renames, replaces or duplicates it. A
@@ -275,7 +283,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     }).catch(()=>[] as {gtin:string;food:CatalogFood|null}[])
     // Photos with a barcode get a scene check instead of trusting the first look: it counts barcoded packages without
     // naming them (the first look invented a product for meal 30389) and lists only the rest of the meal.
+    // Scanned chips without photos have no scene to look at: nothing else is in it.
     const sceneLoaded=Promise.all([photosLoaded,decoded]).then(([list,reads])=>
+      !list.length&&scanned.gtins.length?EMPTY_SCENE:
       reads.some(read=>read.gtins.length||read.undecoded)?(deps.scene??sceneCheck)(list.map(photo=>photo.url),input.originalText):null)
       .catch(()=>null)
     // A first look lists what the user is eating while likely foods load, so the first turn can usually answer.
@@ -288,12 +298,12 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const report=(preview:MealPreviewItem[])=>{Promise.resolve(deps.onProgress?.("found",preview)).catch(()=>{})}
     // A plain text meal can skip the agent: Jev matches the listed items while the agent starts, and a plan that
     // passes the check wins the race (FeatureFlag.meal_text_fast_route).
-    const plainText=!!input.originalText.trim()&&!input.attachmentIds.length&&!input.useExistingPhotos&&
+    const plainText=!!input.originalText.trim()&&!input.attachmentIds.length&&!input.useExistingPhotos&&!scanned.gtins.length&&
       !input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
     const fastWanted=plainText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
-    const textListed=Promise.all([photosLoaded,fastWanted]).then(([list,fast])=>list.length||!input.originalText.trim()||
-      !deps.onProgress&&!fast?[]:(deps.textFoods??streamTextFoods)(input.originalText,
+    const textListed=Promise.all([photosLoaded,fastWanted]).then(([list,fast])=>list.length||!scanned.text||
+      !deps.onProgress&&!fast?[]:(deps.textFoods??streamTextFoods)(scanned.text,
         found=>report(buildPreview(found.map(item=>({...item,catalogue:[]})))),{signal:controller.signal}))
       .catch(()=>[] as VisibleFood[])
     if (deps.onProgress) void textListed
@@ -345,7 +355,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const lockedFoods=locked.flatMap(row=>row.food?[row.food]:[])
     // One photo, one barcode that read, nothing unreadable, and a first look that sees only that product: there is
     // nothing else in the scene, so the scene check (13 s of meal 30399's 17 s) isn't waited for.
-    const onlyRead=photos.length===1&&photoBarcodes.length===1&&photoBarcodes[0].gtins.length===1&&!photoBarcodes[0].undecoded
+    const photoReads=photoBarcodes.filter(read=>read.photoId>0)
+    const onlyRead=!scanned.gtins.length&&photos.length===1&&photoReads.length===1&&photoReads[0].gtins.length===1&&!photoReads[0].undecoded
     const simpleScan=onlyRead&&lockedFoods.length===1&&firstLook.length===1&&sharesWords(firstLook[0].food,
       `${lockedFoods[0].brand??""} ${lockedFoods[0].name}`)
     const scene=simpleScan?{barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:[],samePackageViews:false}:await sceneLoaded
@@ -393,9 +404,12 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       historyGroupSelections:[],claims:[],clarification:null,
       items:foods.map(food=>({foodId:food.id,quantity:packageQuantity(food)??labelledServing(food),groupId:null,groupLabel:null,
         evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
-      components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
+      // A scanned chip is the user's own words for its product; a barcode in a photo is an observation.
+      components:foods.map((food,index)=>({sourceText:(food.gtin&&scanned.chips.get(food.gtin))||
+        `photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
         itemIndexes:[index],historySelectionIndexes:[],omitted:false}))})
-    const photosOnly=!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
+    // No words besides scanned chips (a photo meal, or chips alone).
+    const photosOnly=!scanned.text&&!input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
     // Route A: barcodes and nothing else, all found: one labelled serving of each product, no model turn. Only when
     // each product has a real labelled serving: a food stored per 100 g alone would log 100 g of a 1 L carton (meal
     // 30323); the agent then reads the amount from the label, with the product still locked.
@@ -652,6 +666,19 @@ const stepDetail=(step?:AgentStep)=>{const names=(step?.toolCalls??[]).map(call=
  * added through the usual duplicate checks, which attach the barcode to an existing food that is the same. */
 /** The catalogue food a decoded barcode names: the catalogue's, else one created from the barcode's USDA or Open Food
  * Facts record. Null when no database knows it (never guessed). */
+const EMPTY_SCENE={barcodePackages:[],otherPackages:[],otherFoods:[],samePackageViews:false}
+
+const BARCODE_CHIP=/\[barcode:\s*(\d{6,14})\]/gi
+/** The [barcode:…] chips in a meal's text, as valid GTIN-14s (a bad check digit is dropped), and the text without them. */
+export function scannedBarcodes(text:string) {
+  const gtins:string[]=[],chips=new Map<string,string>()
+  for (const match of text.matchAll(BARCODE_CHIP)) {
+    const gtin=normalizeGtin(match[1])
+    if (gtin&&!gtins.includes(gtin)) {gtins.push(gtin);chips.set(gtin,match[0])}
+  }
+  return {gtins,chips,text:text.replace(BARCODE_CHIP," ").replace(/\s+/g," ").trim()}
+}
+
 /** Whether two food descriptions share a meaningful word ("7D Dried Mangoes" and "dried mango"). */
 function sharesWords(a:string,b:string) {
   const words=(value:string)=>new Set(value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g," ").split(/\s+/)
