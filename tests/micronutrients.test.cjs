@@ -32,3 +32,9 @@ test('logs follow their food: empty vitamins fill from the food, and calories th
   assert.deepEqual(staleLogs(food,[{id:1,grams:175,kcal:556},{id:2,grams:175,kcal:180},{id:3,grams:10,kcal:20}]).map(log=>log.id),[1],
     'the ceviche (556 for 175 g of a 1 kcal/g food) is stale; small gaps are not');
 });
+
+test('a fish oil panel\'s EPA and DHA lines are its omega-3 (a printed total wins)',()=>{
+  assert.deepEqual(m.microsFrom([{name:'EPA (eicosapentaenoic acid)',amount:700,unit:'mg'},{name:'DHA (docosahexaenoic acid)',amount:500,unit:'mg'},
+    {name:'Cholesterol',amount:5,unit:'mg'}]),{cholesterolMg:5,omega3Mg:1200});
+  assert.equal(m.microsFrom([{name:'Total Omega-3 Fatty Acids',amount:1300,unit:'mg'},{name:'EPA',amount:700,unit:'mg'}]).omega3Mg,1300);
+});

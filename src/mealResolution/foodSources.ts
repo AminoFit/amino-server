@@ -306,10 +306,13 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       const macro=(value:number|null)=>value??(food.supplement?0:null)
       const [kcal,proteinG,carbG,totalFatG]=[macro(food.kcal),macro(food.proteinG),macro(food.carbG),macro(food.totalFatG)]
       if (kcal==null||proteinG==null||carbG==null||totalFatG==null) return []
+      // A supplement's listed amounts leave out its capsule or softgel shell: it weighs at least its own fat, protein
+      // and carbohydrate, and enough for its calories (Life Extension Super Omega-3: 2.5 g fat in "2.3 g" of contents).
+      const grams=food.supplement?Math.max(food.servingGrams,proteinG+carbG+totalFatG,kcal/9):food.servingGrams
       const candidate:SourceFood={sourceId:`web:${counter++}`,foodInfoSource:"Online",externalId:null,gtin,
-        name:food.name,brand:food.brand||null,defaultServingWeightGram:food.servingGrams,kcal,proteinG,carbG,totalFatG,
+        name:food.name,brand:food.brand||null,defaultServingWeightGram:grams,kcal,proteinG,carbG,totalFatG,
         fiberG:food.fiberG??null,sugarG:food.sugarG??null,satFatG:null,isLiquid:false,
-        servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount}],source:url,
+        servings:[{name:food.servingUnit,grams,amount:food.servingAmount}],source:url,
         micros:microsFrom((food.micronutrients??[]).map(row=>({name:row.name,amount:row.amount,unit:row.unit})))}
       return complete(candidate)?[remember(candidate)]:[]
     })

@@ -33,6 +33,9 @@ export function nutrientKey(name: string): NutrientKey | null {
     niacinamide: "vitaminB3Mg", "pantothenic acid": "vitaminB5Mg", "omega 3": "omega3Mg", "omega 6": "omega6Mg",
     "vitamin b 6": "vitaminB6Mg", "vitamin b 12": "vitaminB12Mcg" }
   if (alias[plain]) return alias[plain]
+  // "Total Omega-3 Fatty Acids", "Omega-3 fatty acids (total)".
+  const omega = /^(total )?omega ?(3|6)( fatty acids)?( total)?$/.exec(plain)
+  if (omega) return omega[2] === "3" ? "omega3Mg" : "omega6Mg"
   const again = getMappedNutrientField(plain)
   return again && (HISTORY_NUTRIENTS as readonly string[]).includes(again) ? again as NutrientKey : null
 }
@@ -47,16 +50,24 @@ export function inKeyUnit(key: NutrientKey, amount: number, unit?: string | null
   return null
 }
 
+/** Omega-3 fatty acids a fish oil or flax label lists one by one ("EPA (eicosapentaenoic acid) 700 mg"): their sum is
+ * the omega-3, unless the label gives a total. */
+const OMEGA3_PARTS = /^(epa|dha|dpa|ala|eicosapentaenoic acid|docosahexaenoic acid|docosapentaenoic acid|alpha-?linolenic acid)\b/i
+const omega3Part = (name: string) => OMEGA3_PARTS.test(name.trim().replace(/^\(|\)$/g, ""))
+
 /** Micronutrients from named amounts (a label's lines, a database's rows): unknown names and units dropped, the first
  * value for a key kept. */
 export function microsFrom(rows: { name: string; amount: number | null | undefined; unit?: string | null }[]): Micros {
   const micros: Micros = {}
+  let omega3 = 0
+  for (const row of rows) if (omega3Part(row.name) && finite(row.amount)) omega3 += inKeyUnit("omega3Mg", row.amount, row.unit) ?? 0
   for (const row of rows) {
     const key = nutrientKey(row.name)
     if (!key || COLUMN_KEYS.has(key) || micros[key] != null || !finite(row.amount)) continue
     const value = inKeyUnit(key, row.amount, row.unit)
     if (value != null) micros[key] = value
   }
+  if (omega3 > 0 && micros.omega3Mg == null) micros.omega3Mg = omega3
   return micros
 }
 

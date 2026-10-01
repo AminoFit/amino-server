@@ -28,6 +28,8 @@ import { MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, sca
 import { nutrientsAt, recipeValues } from "@/userFoods/nutrition"
 
 // The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
+// --third-key: a second run in parallel on its own key.
+if (process.argv.includes("--third-key") && process.env.USDA_THIRD_API_KEY) process.env.USDA_SECOND_API_KEY = process.env.USDA_THIRD_API_KEY
 if (process.env.USDA_SECOND_API_KEY) process.env.USDA_API_KEY = process.env.USDA_SECOND_API_KEY
 const args = process.argv.slice(2)
 const option = (name: string) => { const at = args.indexOf(`--${name}`); return at >= 0 ? args[at + 1] : undefined }
