@@ -464,6 +464,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       let found=gtin?await barcodeSources(gtin):[]
       if (!found.length&&!label) {
         found=gtin?(await barcodeProduct(gtin)).foods:options.web?await webCandidates(text,null):await usdaByName(text).catch(()=>[])
+        // A barcode nothing knows by its digits, with the product's name (from the user or the package): search the name,
+        // the barcode still pinning the exact product.
+        if (gtin&&!found.length&&/[a-z]{3}/i.test(text)) found=await webCandidates(text,gtin)
       }
       const candidates=[...found.map(food=>summary(food,label)),...(label?[summary(label)]:[])]
       return {status:candidates.length?"ok" as const:"empty" as const,candidates}

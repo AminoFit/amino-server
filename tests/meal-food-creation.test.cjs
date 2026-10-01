@@ -594,3 +594,15 @@ test('three 500 mg capsules stay three capsules (small units keep their count)',
   assert.deepEqual(cleanServings([{name:'capsule',grams:1.5,amount:3}]),[{name:'capsule',grams:1.5,amount:3}]);
   assert.deepEqual(cleanServings([{name:'piece',grams:1.5,amount:3}]),[{name:'piece',grams:1.5,amount:1}],'other units keep the old repair');
 });
+
+test('a barcode nothing knows by its digits is searched by the product name the agent gives, keeping the barcode',async()=>{
+  const gtin='00758389081881';
+  const mix={name:'Dried Mangoes & Pineapple Mix',brand:'7D',servingUnit:'pieces',servingAmount:12,servingGrams:42,kcal:140,proteinG:1,carbG:35,totalFatG:0,
+    sourceUrl:'https://shop.example/7d-mix'};
+  const {sources,calls}=harness({barcodes:[gtin],pages:async()=>[],
+    web:async(_s,prompt)=>JSON.parse(prompt).food==='7D Dried Mangoes & Pineapple Mix'?{data:{foods:[mix]},sourceUrls:['https://shop.example/7d-mix'],searches:1}:{data:{foods:[]},sourceUrls:[],searches:1}});
+  const {candidates}=await sources.searchFoodSources('7D Dried Mangoes & Pineapple Mix',{gtin});
+  assert.equal(candidates.length,1);
+  assert.equal(candidates[0].gtin,gtin);
+  assert.equal(JSON.parse(calls.web.at(-1)[1]).barcode,gtin);
+});

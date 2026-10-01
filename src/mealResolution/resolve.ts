@@ -363,10 +363,11 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const scene=simpleScan?{barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:[],samePackageViews:false}:await sceneLoaded
     if (simpleScan) trace.push("scene: skipped, one scanned product")
     const unresolved=locked.filter(row=>!row.food).map(row=>row.gtin)
-    // A scanned chip has no photo whose label the agent could read: a product that isn't food, or that every database
-    // and a web search of its digits missed, fails at once (meals 30404 and 30405 searched for 90 s before failing).
-    const inPhotos=new Set(photoBarcodes.filter(read=>read.photoId>0).flatMap(read=>read.gtins))
-    const chipOnly=locked.filter(row=>!row.food&&!inPhotos.has(row.gtin))
+    // Scanned chips alone (no photo, no words) leave the agent nothing to work from: a product that isn't food, or that
+    // every database and a web search of its digits missed, fails at once (meals 30404 and 30405 searched for 90 s
+    // before failing). With a photo (its label, meal 30411) or the product's name, the agent still can.
+    const chipsAlone=!photos.length&&!scanned.text
+    const chipOnly=chipsAlone?locked.filter(row=>!row.food):[]
     const notFood=chipOnly.find(row=>row.notFood)
     if (notFood) {trace.push(`barcode: not food (${notFood.notFood!.slice(0,40)})`);throw new Error("barcode_not_food")}
     if (chipOnly.some(row=>row.searched)) {trace.push("barcode: unknown product");throw new Error("barcode_unknown")}

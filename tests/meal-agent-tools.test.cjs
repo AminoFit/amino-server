@@ -356,7 +356,7 @@ test('views of one scanned package: a nutrition label that disagrees with the re
 });
 
 test('a scanned chip that is not food, or that nothing knows, fails at once without the agent; a search that never answered still goes to the agent',async()=>{
-  const chip={...input,originalText:'Fibre [barcode:00810014675381]',attachmentIds:[]};
+  const chip={...input,originalText:'[barcode:00810014675381]',attachmentIds:[]};
   for (const [lookup,code] of [[{foods:[],notFood:'a paperback novel',failed:false},'barcode_not_food'],
     [{foods:[],notFood:null,failed:false},'barcode_unknown']]) {
     const {deps,agentRuns}=lockedDeps({reads:[],scene:null});
@@ -368,4 +368,14 @@ test('a scanned chip that is not food, or that nothing knows, fails at once with
   deps.sources.barcodeProduct=async()=>({foods:[],notFood:null,failed:true});
   await resolveMeal(chip,{...deps,fastRoute:false}).catch(()=>null);
   assert.ok(agentRuns()>=1);
+});
+
+test('an unknown scanned chip with a photo or words goes to the agent, which can read the label (meal 30411)',async()=>{
+  for (const [meal,reads] of [[{...input,originalText:'7D mango and pineapple [barcode:00810014675381]',attachmentIds:[]},[]],
+    [{...input,originalText:'[barcode:00810014675381]',attachmentIds:[9000]},[{gtins:[],undecoded:0}]]]) {
+    const {deps,agentRuns}=lockedDeps({reads,scene:onlyBarcodes([0])});
+    deps.sources.barcodeProduct=async()=>({foods:[],notFood:null,failed:false});
+    await resolveMeal(meal,{...deps,fastRoute:false}).catch(()=>null);
+    assert.ok(agentRuns()>=1,meal.originalText);
+  }
 });
