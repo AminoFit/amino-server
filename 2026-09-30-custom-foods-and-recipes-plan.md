@@ -27,10 +27,11 @@ Users can create their own foods and recipes, see and edit them in a new Foods t
 ## Decisions (owner, 2026-09-30)
 
 1. **Foods tab:** a 4th tab between Log and Goals, with a Recipes | Foods switch.
-2. **One row per logged recipe.** A logged recipe is one row with one icon ("Chicken pasta · 1.5 portions"). Tapping it opens the food detail: the portion picker, the foods in it scaled to the logged portion, and "Edit recipe".
+2. **One row per logged recipe.** A logged recipe is one row with one icon ("Chicken pasta · 1.5 portions"). Tapping it opens the food detail: the portion picker for this log, the foods in it (read-only, scaled to the logged portion), and "Open recipe", which goes to the recipe in the Foods tab.
 3. **Edits apply going forward only.** Past logs keep what was eaten: their numbers, their ingredient list, and the result of a later portion change.
-4. **Long-press a meal → "Add as recipe".** This sits next to "Log Again Now". If the meal is already a single recipe log, the menu shows "Open recipe" instead.
-5. **The agent sees your foods and recipes only when relevant.** Using a recipe must never take over an ordinary log (see Phase 4).
+4. **Recipes and custom foods are edited only in the Foods tab.** The Log screen changes a log's portion, never the recipe. "Add as recipe" from the Log opens the Foods tab's recipe editor, pre-filled.
+5. **Long-press a meal → "Add as recipe".** This sits next to "Log Again Now". If the meal is already a single recipe log, the menu shows "Open recipe" instead.
+6. **The agent sees your foods and recipes only when relevant.** Using a recipe must never take over an ordinary log (see Phase 4).
 
 ## Data model
 
@@ -129,7 +130,7 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
   - long-press → "Add as recipe" (or "Open recipe" if the meal is already one recipe log)
   - the editor opens with the meal's rows and asks "These amounts were: one portion / the whole recipe"
   - after saving it offers "Change this meal to 1 portion?" (fixes 30365 and 30388)
-- **Recipe log row:** one icon, with "1.5 portions". The food detail shows the portion picker (portions / whole recipe / grams), the foods in it scaled to the logged portion, and "Edit recipe".
+- **Recipe log row:** one icon, with "1.5 portions". The food detail shows the portion picker for this log (portions / whole recipe / grams), the foods in it (read-only, scaled to the logged portion), and "Open recipe", which goes to the Foods tab. There is no editing from the Log.
 - **Add-food screen:** a "Mine" section listing your recipes and foods, searched locally.
 
 ## Phase 4: agent
