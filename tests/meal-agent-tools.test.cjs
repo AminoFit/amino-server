@@ -354,3 +354,18 @@ test('views of one scanned package: a nutrition label that disagrees with the re
   assert.equal(disagreeing.agentRuns(),1);
   assert.match(prompt,/labelDisagrees.*00850241008835/);
 });
+
+test('a scanned chip that is not food, or that nothing knows, fails at once without the agent; a search that never answered still goes to the agent',async()=>{
+  const chip={...input,originalText:'Fibre [barcode:00810014675381]',attachmentIds:[]};
+  for (const [lookup,code] of [[{foods:[],notFood:'a paperback novel',failed:false},'barcode_not_food'],
+    [{foods:[],notFood:null,failed:false},'barcode_unknown']]) {
+    const {deps,agentRuns}=lockedDeps({reads:[],scene:null});
+    deps.sources.barcodeProduct=async()=>lookup;
+    await assert.rejects(resolveMeal(chip,{...deps,fastRoute:false}),new RegExp(code));
+    assert.equal(agentRuns(),0);
+  }
+  const {deps,agentRuns}=lockedDeps({reads:[],scene:null});
+  deps.sources.barcodeProduct=async()=>({foods:[],notFood:null,failed:true});
+  await resolveMeal(chip,{...deps,fastRoute:false}).catch(()=>null);
+  assert.ok(agentRuns()>=1);
+});

@@ -277,10 +277,11 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const lockedLoaded=decoded.then(async reads=>{
       const gtins=[...new Set(reads.flatMap(read=>read.gtins))]
       if (!gtins.length) return []
-      const resolved=await Promise.all(gtins.map(async gtin=>({gtin,food:await barcodeFood(gtin,evidence,sources).catch(()=>null)})))
+      const resolved=await Promise.all(gtins.map(async gtin=>({gtin,...await barcodeFood(gtin,evidence,sources)
+        .catch(():BarcodeOutcome=>({food:null,notFood:null,searched:false}))})))
       mark("barcode",lockStarted)
       return resolved
-    }).catch(()=>[] as {gtin:string;food:CatalogFood|null}[])
+    }).catch(()=>[] as ({gtin:string}&BarcodeOutcome)[])
     // Photos with a barcode get a scene check instead of trusting the first look: it counts barcoded packages without
     // naming them (the first look invented a product for meal 30389) and lists only the rest of the meal.
     // Scanned chips without photos have no scene to look at: nothing else is in it.
@@ -362,6 +363,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const scene=simpleScan?{barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:[],samePackageViews:false}:await sceneLoaded
     if (simpleScan) trace.push("scene: skipped, one scanned product")
     const unresolved=locked.filter(row=>!row.food).map(row=>row.gtin)
+    // A scanned chip has no photo whose label the agent could read: a product that isn't food, or that every database
+    // and a web search of its digits missed, fails at once (meals 30404 and 30405 searched for 90 s before failing).
+    const inPhotos=new Set(photoBarcodes.filter(read=>read.photoId>0).flatMap(read=>read.gtins))
+    const chipOnly=locked.filter(row=>!row.food&&!inPhotos.has(row.gtin))
+    const notFood=chipOnly.find(row=>row.notFood)
+    if (notFood) {trace.push(`barcode: not food (${notFood.notFood!.slice(0,40)})`);throw new Error("barcode_not_food")}
+    if (chipOnly.some(row=>row.searched)) {trace.push("barcode: unknown product");throw new Error("barcode_unknown")}
     if (scene) {
       // More barcoded packages than barcodes decoded on a photo (or a located barcode that won't read) is a package
       // nobody identified: a leftover, never dropped. Views of the same package count once.
@@ -687,17 +695,21 @@ function sharesWords(a:string,b:string) {
   return [...words(b)].some(word=>left.has(word))
 }
 
+type BarcodeOutcome={food:CatalogFood|null;notFood:string|null;searched:boolean}
 async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvidence>,
-  sources:ReturnType<typeof createFoodSources>):Promise<CatalogFood|null> {
+  sources:ReturnType<typeof createFoodSources>):Promise<BarcodeOutcome> {
   const [known]=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
-  if (known?.gtin===gtin) return known
-  const [source]=await sources.barcodeSources(gtin)
-  if (!source) return null
+  if (known?.gtin===gtin) return {food:known,notFood:null,searched:true}
+  // The databases, then a web search of the digits (supplements are mostly on neither database).
+  const lookup=sources.barcodeProduct?await sources.barcodeProduct(gtin)
+    :{foods:await sources.barcodeSources(gtin),notFood:null,failed:false}
+  const [source]=lookup.foods
+  if (!source) return {food:null,notFood:lookup.notFood,searched:!lookup.failed}
   const added=await sources.createFoodFromSource(source.sourceId)
-  if (added.status!=="created"&&added.status!=="existing") return null
+  if (added.status!=="created"&&added.status!=="existing") return {food:null,notFood:null,searched:false}
   evidence.forget(added.foodId)
   const food=(await evidence.getFoodsAndServings([added.foodId])).foods[0]
-  return food?.gtin===gtin?food:null
+  return {food:food?.gtin===gtin?food:null,notFood:null,searched:false}
 }
 
 /** A tool result as status and IDs only: never names or text, so it can be logged. */

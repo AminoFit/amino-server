@@ -9,7 +9,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,barcodes=[]}={}){
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[]}={}){
   const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
@@ -28,7 +28,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
   const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes,
     signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
-      usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),model:'anthropic/claude-sonnet-5.5',
+      usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),pages:pages??(async()=>{throw new Error('search_unavailable')}),model:'anthropic/claude-sonnet-5.5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
       jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id)});
   return {sources,calls};
@@ -545,4 +545,52 @@ test('a scanned product is created, not held for review, when an unsure check on
   assert.equal((await branded.sources.createFoodFromSource(again.sourceId)).status,'created',
     'another product of the same brand is a new food, decided without a model');
   assert.equal(branded.calls.jev.length,0);
+});
+
+test('a barcode no database knows is read from the pages its digits find; a supplement panel counts as food',async()=>{
+  const gtin='00810014675381';
+  const capsules={name:'Psyllium Husk 500 mg capsules',brand:'Nutricost',servingUnit:'capsule',servingAmount:3,servingGrams:1.5,
+    kcal:5,proteinG:null,carbG:1,totalFatG:null,fiberG:1,sugarG:null,supplement:true,sourceUrl:'https://shop.example/psyllium'};
+  const found=[{url:'https://shop.example/psyllium',title:'Nutricost Psyllium Husk',description:'',facts:'Supplement Facts Serving Size: 3 Capsules Calories 5'},
+    {url:'https://blocked.example/psyllium',title:'Nutricost Psyllium Husk',description:'',facts:null}];
+  const {sources,calls}=harness({barcodes:[gtin],pages:async()=>found,web:async()=>({data:{foods:[capsules]},sourceUrls:[],searches:0})});
+  const lookup=await sources.barcodeProduct(gtin);
+  assert.deepEqual([lookup.foods[0].kcal,lookup.foods[0].proteinG,lookup.foods[0].totalFatG,lookup.foods[0].gtin,lookup.foods[0].source],
+    [5,0,0,gtin,'https://shop.example/psyllium'],'macros a supplement panel leaves out are 0; the page read is the source');
+  assert.equal(calls.web[0][3].engine,'none','the model reads the fetched pages, no search of its own');
+  assert.deepEqual(JSON.parse(calls.web[0][1]).pages,found);
+  await sources.searchFoodSources('Fibre',{gtin});
+  assert.equal(calls.web.length,1,'the agent\'s findFood reuses the barcode\'s lookup');
+  const unread=harness({barcodes:[gtin],pages:async()=>found,
+    web:async()=>({data:{foods:[{...capsules,sourceUrl:'https://blocked.example/psyllium'}]},sourceUrls:[],searches:0})});
+  assert.deepEqual((await unread.sources.barcodeProduct(gtin)).foods,[],'a page whose panel was never read supports nothing');
+  const fallback=harness({barcodes:[gtin],web:async()=>({data:{foods:[capsules]},sourceUrls:['https://shop.example/psyllium'],searches:1})});
+  assert.equal((await fallback.sources.barcodeProduct(gtin)).foods.length,1);
+  assert.deepEqual([JSON.parse(fallback.calls.web[0][1]).food,fallback.calls.web[0][3].engine],['810014675381','native'],
+    'without search, the model searches the digits itself');
+});
+
+test('a food page missing a macro is still dropped; only a supplement fills it with 0',async()=>{
+  const gtin='00810014675381';
+  const food={name:'Granola',brand:'Acme',servingUnit:'cup',servingAmount:1,servingGrams:50,kcal:200,proteinG:null,carbG:30,totalFatG:8,
+    sourceUrl:'https://acme.example/granola'};
+  const {sources}=harness({barcodes:[gtin],web:async()=>({data:{foods:[food]},sourceUrls:['https://acme.example/granola'],searches:1})});
+  assert.deepEqual((await sources.barcodeProduct(gtin)).foods,[]);
+});
+
+test('a barcode the web says is not food comes back as not food',async()=>{
+  const gtin='00737870166917';
+  const {sources}=harness({barcodes:[gtin],web:async()=>({data:{foods:[],notFood:'a paperback novel'},sourceUrls:['https://books.example/1'],searches:1})});
+  assert.deepEqual(await sources.barcodeProduct(gtin),{foods:[],notFood:'a paperback novel',failed:false});
+  const book=harness({barcodes:['09780141036144']});
+  assert.deepEqual(await book.sources.barcodeProduct('9780141036144'),{foods:[],notFood:'a book',failed:false});
+  assert.equal(book.calls.web.length,0,'an ISBN needs no search');
+  const failing=harness({barcodes:[gtin],web:async()=>{throw new Error('timeout')}});
+  assert.equal((await failing.sources.barcodeProduct(gtin)).failed,true,'a search that never answered is not "unknown"');
+});
+
+test('three 500 mg capsules stay three capsules (small units keep their count)',()=>{
+  const {cleanServings}=require('../src/mealResolution/foodSources.ts');
+  assert.deepEqual(cleanServings([{name:'capsule',grams:1.5,amount:3}]),[{name:'capsule',grams:1.5,amount:3}]);
+  assert.deepEqual(cleanServings([{name:'piece',grams:1.5,amount:3}]),[{name:'piece',grams:1.5,amount:1}],'other units keep the old repair');
 });

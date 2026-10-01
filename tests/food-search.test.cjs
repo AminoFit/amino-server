@@ -33,3 +33,17 @@ test('a scanned barcode finds the user\'s food first, then the catalogue\'s, the
   assert.deepEqual(await foodForBarcode('u1','04809010272010',{db:dbWith([]),sources:none}),{status:'unknown',gtin:'04809010272010'});
   await assert.rejects(foodForBarcode('u1','4809010272011',{db:dbWith([]),sources:none}),/invalid_barcode/,'a wrong check digit');
 });
+
+test('barcode pages: a page keeps its facts panel only when it prints the barcode',async()=>{
+  const {barcodePages,factsPanel}=require('../src/foodResolution/barcodePages.ts');
+  const html={
+    'https://a.example/p':'<html><script>var x="Nutrition Facts fake"</script><p>UPC 810014675381</p><div>Supplement Facts</div><td>Serving Size: 3 Capsules</td><td>Calories 5</td></html>',
+    'https://b.example/p':'<p>Supplement Facts Serving Size: 1 Capsule Glycine 1000 mg</p>'};
+  const pages=await barcodePages('00810014675381',undefined,{search:async q=>{assert.equal(q,'810014675381');
+    return Object.keys(html).concat('https://c.example/p').map(url=>({url,title:'Nutricost Psyllium',description:''}))},
+    fetchPage:async url=>html[url]??null});
+  assert.equal(pages[0].facts,'Supplement Facts Serving Size: 3 Capsules Calories 5');
+  assert.equal(pages[1].facts,null,"another product's panel (no barcode on the page) is ignored");
+  assert.equal(pages[2].facts,null);
+  assert.equal(factsPanel('nothing here'),null);
+});
