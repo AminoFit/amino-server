@@ -1,7 +1,11 @@
 # Custom foods and recipes plan
 
 **Date:** 2026-09-30
-**Status:** Phase 1 (server) built and tested locally on 2026-09-30; migration `20261004000000_custom_foods_and_recipes` not applied yet. Phase 2 (app) is next.
+**Status (2026-09-30):**
+
+- Phase 1 (server) is deployed and its migration applied.
+- Phases 2 and 3 (app) are built: amino-mobile 53f56f6 and 0782e5d.
+- Phase 4 (agent, with recipe evals) is next.
 **Scope:** amino-server (database, API, meal agent, MCP) and amino-mobile (new Foods tab, log actions, food detail).
 
 Users can create their own foods and recipes, see and edit them in a new Foods tab, and log them. A recipe is a named group of foods that makes a number of portions ("I ate 1.5 portions"), and it can be saved from a past meal.
@@ -130,8 +134,21 @@ Errors are `{error}` with a code: `name_taken` 409, `food_unavailable` 404, `ing
 
 **Still to do for phase 1:**
 
-- Apply the migration, then deploy.
 - Regenerate `types/supabase-generated.types.ts`, which is stale; the new code uses `as any` for `RecipeIngredient`.
+
+## Phases 2 and 3 as built (amino-mobile, 2026-09-30)
+
+- **Foods tab:** a native tab between Log and Goals (`screens/Foods/`).
+  - `FoodsScreen` has a Recipes | Foods switch (remembered), search, a + menu (New recipe, New food, Scan a nutrition label), and empty states.
+  - `UserFoodScreen` shows a food or recipe for an amount and logs it to the day selected in the log. For a recipe it shows the ingredients, read-only. Edit opens the editors.
+  - `FoodEditorScreen` has the serving, macros, More nutrients and Scan label. Editing keeps the nutrients and servings the form doesn't show. It warns, without blocking, when the macros don't add up to the calories at 4/4/9 kcal per gram.
+  - `RecipeEditorScreen` takes a name, portions, cooked weight, and foods with amounts for the whole recipe, and shows the values per portion live.
+  - `IngredientSearchScreen` lists your foods first, then the catalogue.
+- **Log:**
+  - Press and hold a meal → Add as Recipe (or Open Recipe). Add as Recipe opens the editor with the meal's foods and asks "these amounts were the whole recipe / one portion". Saving offers to change the meal to 1 portion.
+  - A recipe log reads "1.5 Portions". Its detail shows the foods in that amount, read-only, with Open Recipe.
+- **Data:** Watermelon v9 (food_items user-food columns, `recipe_ingredients`). `requestUserFoodsSync` pulls the user's private foods by `lastUpdated`, with servings, icons, ingredients and the ingredients' foods.
+- **Not done yet:** a "Mine" section in the Add Food screen. Recipes reach the agent only in phase 4.
 
 ## Phase 2: app, Foods tab and custom foods
 
