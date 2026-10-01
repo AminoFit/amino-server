@@ -11,6 +11,8 @@
 //   --items-only         only the logged items (no lookups: from the foods' rows as they are now)
 //   --export <file> --ids <a,b,…>   write those foods with their USDA candidates, for judging by hand (or by Claude)
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
+//   --correct            generic foods: replace a vitamin or mineral more than 2x off its USDA match (or 0 where USDA has
+//                        a real amount), then recompute those nutrients on the owner's logs (previous values recorded)
 //
 // Routes, by food: its own USDA record (by its FDC ID); its barcode (USDA, Open Food Facts, the shops' pages); a
 // branded food without a barcode: USDA's branded record when Jev is sure it's the same product; a generic food: USDA's
@@ -22,7 +24,7 @@ import { selectWithJev } from "@/ai/jev"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { createFoodSources } from "@/mealResolution/foodSources"
-import { MICRO_KEYS, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey } from "@/foodResolution/micronutrients"
+import { MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey } from "@/foodResolution/micronutrients"
 import { nutrientsAt, recipeValues } from "@/userFoods/nutrition"
 
 // The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
@@ -235,6 +237,7 @@ async function main() {
     await pg.end(); return
   }
   const foods = await loadFoods([...mine, ...popular])
+  if (args.includes("--correct")) { await correct(pg, foods, sources0); await pg.end(); return }
   // The rest after a first pass: USDA-record foods retried; generic and branded foods exported for judging.
   if (args.includes("--remaining")) {
     const filled = new Set((await pg.query(`SELECT DISTINCT "foodItemId" FROM "FoodMicroFill"`)).rows.map(row => Number(row.foodItemId)))
@@ -363,6 +366,71 @@ async function main() {
     console.log(`logged items: ${changed} filled`)
   }
   await pg.end()
+}
+
+/** Below these, a difference is noise (a trace of copper), not an error. */
+const FLOOR: Record<string, number> = { mg: 2, mcg: 2, g: 0.3, ml: 5 }
+
+async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof createFoodSources>) {
+  const generic = foods.filter(food => !food.brand?.trim() && !food.privateToUserId && food.recipePortions == null &&
+    food.defaultServingWeightGram && !food.weightUnknown)
+  const recorded = new Map((await pg.query(`SELECT DISTINCT ON ("foodItemId") "foodItemId", source FROM "FoodMicroFill"
+    WHERE source ~ '^USDA FoodData Central [0-9]+' ORDER BY "foodItemId", id`)).rows.map(row => [Number(row.foodItemId), String(row.source)]))
+  console.log(`correct: ${generic.length} generic foods, ${generic.filter(food => recorded.has(food.id)).length} with a USDA match`)
+  const corrected: { food: Food; changes: Record<string, { from: number; to: number }> }[] = []
+  for (const food of generic) {
+    const fdcId = recorded.get(food.id)?.match(/USDA FoodData Central (\d+)/)?.[1]
+    const usda = (fdcId ? await usdaRecord(food, fdcId).catch(() => null) : await usdaMatch(food, false).catch(() => null))
+    if (!usda) continue
+    const changes: Record<string, { from: number; to: number }> = {}
+    for (const key of MICRO_KEYS) {
+      const rows = food.Nutrient.filter(row => nutrientKey(row.nutrientName) === key)
+      const to = usda.micros[key], first = rows[0]
+      if (!first || to == null) continue
+      const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
+      const floor = FLOOR[keyUnit(key)] ?? 1
+      if (from == null || to < floor || Math.abs(from - to) < floor) continue
+      if (from === 0 || from > 2 * to || from < to / 2) changes[key] = { from, to }
+    }
+    if (!Object.keys(changes).length) continue
+    corrected.push({ food, changes })
+    console.log(`  ~ ${food.id} ${food.name}: ${Object.entries(changes).map(([key, c]) => `${key} ${Math.round(c.from * 10) / 10}->${Math.round(c.to * 10) / 10}`).join(", ")}`)
+    if (!apply) continue
+    const removed = food.Nutrient.filter(row => (nutrientKey(row.nutrientName) ?? "") in changes)
+    await pg.query("BEGIN")
+    await pg.query(`DELETE FROM "Nutrient" WHERE "foodItemId" = $1 AND "nutrientName" = ANY($2::text[])`, [food.id, removed.map(row => row.nutrientName)])
+    for (const row of microRows(Object.fromEntries(Object.entries(changes).map(([key, c]) => [key, c.to])) as Micros))
+      await pg.query(`INSERT INTO "Nutrient"("foodItemId", "nutrientName", "nutrientUnit", "nutrientAmountPerDefaultServing") VALUES ($1, $2, $3, $4)`,
+        [food.id, row.nutrientName, row.nutrientUnit, row.nutrientAmountPerDefaultServing])
+    await pg.query(`UPDATE "FoodItem" SET "lastUpdated" = now() AT TIME ZONE 'UTC' WHERE id = $1`, [food.id])
+    await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(changes),
+      JSON.stringify({ correction: "more than 2x off USDA", usda: usda.source, changes, removed })])
+    await pg.query("COMMIT")
+  }
+  console.log(`correct: ${corrected.length} foods ${apply ? "corrected" : "would be corrected"}`)
+  if (!apply || !corrected.length) return
+  // The owner's logs of those foods: the corrected nutrients recomputed at each log's grams.
+  let logs = 0
+  await pg.query("BEGIN")
+  await pg.query("SELECT pg_catalog.set_config('app.meal_operation_write', 'true', true)")
+  for (const { food, changes } of corrected) {
+    const fresh = (await pg.query(`SELECT coalesce(json_agg(n), '[]') AS rows FROM "Nutrient" n WHERE n."foodItemId" = $1`, [food.id])).rows[0].rows
+    const items = (await pg.query(`SELECT * FROM "LoggedFoodItem" WHERE "foodItemId" = $1 AND "userId" = $2 AND "deletedAt" IS NULL AND grams > 0`,
+      [food.id, userId])).rows
+    for (const item of items) {
+      const amounts = nutrientsAt({ ...food, Nutrient: fresh }, Number(item.grams))
+      if (!amounts) continue
+      const keys = Object.keys(changes).filter(key => amounts[key as NutrientKey] != null)
+      if (!keys.length) continue
+      await pg.query(`UPDATE "LoggedFoodItem" SET ${keys.map((key, at) => `"${key}" = $${at + 2}`).join(", ")} WHERE id = $1`,
+        [item.id, ...keys.map(key => Math.round(amounts[key as NutrientKey]! * 1e4) / 1e4)])
+      await pg.query(`INSERT INTO "LoggedFoodItemMicroFill"("loggedFoodItemId", filled) VALUES ($1, $2)`,
+        [item.id, JSON.stringify({ correction: "more than 2x off USDA", previous: Object.fromEntries(keys.map(key => [key, item[key]])) })])
+      logs++
+    }
+  }
+  await pg.query("COMMIT")
+  console.log(`correct: ${logs} of the owner's logs recomputed`)
 }
 
 main().catch(error => { console.error(error); process.exit(1) })
