@@ -30,7 +30,7 @@ export type Meal = {
 /** A day's meals; photo paths are swapped for signed URLs before they reach the browser. */
 export type Day = { date: string; meals: Meal[] }
 
-export type DayTotals = { date: string; meals: number; kcal: number; proteinG: number; carbG: number; totalFatG: number; fiberG: number }
+export type DayTotals = { date: string; meals: number; kcal: number; proteinG: number; carbG: number; totalFatG: number; fiberG?: number }
 
 export type TopFood = { id: number; name?: string; brand?: string; icon?: string; times: number; kcal: number }
 

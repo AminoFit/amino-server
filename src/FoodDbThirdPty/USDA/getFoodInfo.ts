@@ -24,6 +24,9 @@ export const foodAttributesToQuery: FoodAttribute[] = [
   { id: 1005, name: "Carbohydrate, by difference", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "carbohydrates" },
   { id: 1080, name: "Fiber, total dietary", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "fiber" },
   { id: 2000, name: "Sugars, total including NLEA", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "sugars" },
+  // The same nutrient as survey (FNDDS) and Foundation records name it: matched by name, they imported without sugar.
+  { id: 2000, name: "Total Sugars", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "sugars" },
+  { id: 1063, name: "Sugars, Total", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "sugars" },
   { id: 1235, name: "Sugars, added", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "addedSugar" },
   { id: 1003, name: "Protein", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "protein" },
   { id: 1051, name: "Water", usdaUnit: "g", targetUnit: "ml", conversionFactor: 1, targetName: "water" },
@@ -148,6 +151,19 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: FoodAttrib
     });
   }
 
+
+  // Omega-3 and omega-6: USDA lists the fatty acids one by one (chia: "PUFA 18:3 n-3 c,c,c (ALA)" 17.8 g per 100 g),
+  // in grams; their sums, in mg, per the default serving like everything above.
+  if (foodItem.foodNutrients) {
+    const sum = (pattern: RegExp) => (foodItem.foodNutrients as any[]).reduce((total, row) =>
+      pattern.test(row.nutrient?.name ?? "") && Number.isFinite(row.amount) ? total + row.amount : total, 0)
+    const scale = default_serving.default_serving_amount / 100 * 1000
+    const omega3 = sum(/^PUFA (18:3 n-3|18:4|20:3 n-3|20:5 n-3|22:5 n-3|22:6 n-3)/)
+    // Arachidonic (20:4) and adrenic (22:4) acids are n-6; SR Legacy often lists them without the suffix.
+    const omega6 = sum(/^PUFA (18:2 n-6|18:3 n-6|20:2 n-6|20:3 n-6|20:4( n-6)?$|22:4( n-6)?$)/)
+    if (omega3 > 0) foodInfo.omega3 = { amount: Math.round(omega3 * scale * 10) / 10, unit: "mg" }
+    if (omega6 > 0) foodInfo.omega6 = { amount: Math.round(omega6 * scale * 10) / 10, unit: "mg" }
+  }
 
   // Filter out the attributes with null values
   const filteredfoodInfo = Object.fromEntries(

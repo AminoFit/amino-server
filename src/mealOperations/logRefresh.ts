@@ -8,7 +8,7 @@
 //    meal per run so each operation sees the meal's latest revision.
 import { randomUUID } from "node:crypto"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { MICRO_KEYS, nutrientsAt, type FoodBasis } from "@/nutrition"
+import { FILL_KEYS, nutrientsAt, type FoodBasis } from "@/nutrition"
 import { acceptMealOperation } from "./service"
 import { dispatchMealOperation } from "./dispatch"
 import type { OperationRequest } from "./contracts"
@@ -31,12 +31,12 @@ async function logsOf(db: Db, foodId: number, columns: string) {
   return rows
 }
 
-/** The empty vitamin and mineral columns of a food's logs, from the food's rows at each log's grams. */
+/** The empty nutrient columns of a food's logs (fibre, sugars, fats, vitamins, minerals), from the food at each log's grams. */
 export function fillsFor(food: FoodBasis, logs: Record<string, unknown>[]) {
   return logs.flatMap(log => {
     const amounts = nutrientsAt(food, Number(log.grams))
     if (!amounts) return []
-    const values = Object.fromEntries(MICRO_KEYS.flatMap(key => log[key] == null && finite(amounts[key])
+    const values = Object.fromEntries(FILL_KEYS.flatMap(key => log[key] == null && finite(amounts[key])
       ? [[key, Math.round(amounts[key]! * 1e4) / 1e4]] : []))
     return Object.keys(values).length ? [{ id: Number(log.id), values }] : []
   })
@@ -48,7 +48,7 @@ export async function fillLogsForRecentFoods(db: Db = createAdminSupabase(), wit
   if (foods.error) throw foods.error
   let filled = 0
   for (const food of (foods.data ?? []) as unknown as (FoodBasis & { id: number })[]) {
-    const rows = fillsFor(food, await logsOf(db, food.id, `id,grams,${MICRO_KEYS.join(",")}`))
+    const rows = fillsFor(food, await logsOf(db, food.id, `id,grams,${FILL_KEYS.join(",")}`))
     for (let at = 0; at < rows.length; at += 300) {
       const result = await (db as any).rpc("fill_logged_micronutrients", { p_rows: rows.slice(at, at + 300) })
       if (result.error) throw result.error

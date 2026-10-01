@@ -23,6 +23,9 @@ export const COLUMN_NUTRIENTS = { kcal: "kcalPerServing", proteinG: "proteinPerS
 export type ColumnKey = keyof typeof COLUMN_NUTRIENTS
 /** Every other nutrient: a FoodItem's Nutrient rows (vitamins, minerals, other fats, water, caffeine, alcohol). */
 export const MICRO_KEYS = HISTORY_NUTRIENTS.filter(key => !(key in COLUMN_NUTRIENTS)) as Exclude<NutrientKey, ColumnKey>[]
+/** What an empty logged-food value can be filled with from its food: every key but energy and the three macros, which
+ * a logged food always has (SQL: nutrition_fill_keys, used by fill_logged_micronutrients). */
+export const FILL_KEYS = HISTORY_NUTRIENTS.filter(key => !["kcal", "proteinG", "carbG", "totalFatG"].includes(key))
 
 /** The unit a key is kept in. */
 export function keyUnit(key: NutrientKey) {
@@ -40,7 +43,7 @@ export const NUTRIENT_NAMES: Record<NutrientKey, string[]> = {
   monounsatFatG: ["monounsaturatedFat", "Fatty acids, total monounsaturated", "Monounsaturated Fat"],
   carbG: ["carb", "carbPerServing", "Carbohydrate, by difference", "Total Carbohydrate"],
   fiberG: ["fiber", "fiberPerServing", "Fiber, total dietary", "Dietary Fiber"],
-  sugarG: ["sugar", "sugarPerServing", "Sugars, total including NLEA", "Sugars", "Sugar"],
+  sugarG: ["sugar", "sugarPerServing", "Sugars, total including NLEA", "Total Sugars", "Sugars, Total", "Sugars", "Sugar"],
   addedSugarG: ["addedSugar", "addedSugarPerServing", "Sugars, added", "Added Sugars"],
   proteinG: ["protein", "proteinPerServing", "Protein"],
   waterMl: ["water", "Water"],

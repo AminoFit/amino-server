@@ -13,6 +13,8 @@
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
 //   --correct            generic foods: replace a vitamin or mineral more than 2x off its USDA match (or 0 where USDA has
 //                        a real amount), then recompute those nutrients on the owner's logs (previous values recorded)
+//   --correct --rescale  instead: a food whose own rows (not the backfill's) are all off USDA by one factor stored a
+//                        portion's values per 100 g (banana potassium x1.18, cucumber x2): those rows become USDA's
 //
 // Routes, by food: its own USDA record (by its FDC ID); its barcode (USDA, Open Food Facts, the shops' pages); a
 // branded food without a barcode: USDA's branded record when Jev is sure it's the same product; a generic food: USDA's
@@ -24,7 +26,7 @@ import { selectWithJev } from "@/ai/jev"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { createFoodSources } from "@/mealResolution/foodSources"
-import { MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey, nutrientsAt, recipeValues } from "@/nutrition"
+import { FILL_KEYS, MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey, nutrientsAt, recipeValues } from "@/nutrition"
 
 // The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
 // --third-key: a second run in parallel on its own key.
@@ -354,7 +356,7 @@ async function main() {
     const food = fresh.get(item.foodItemId)
     const amounts = food ? nutrientsAt(food, item.grams) : null
     if (!amounts) return []
-    const values = Object.fromEntries(MICRO_KEYS.flatMap(key => item[key] == null && finite(amounts[key]) ? [[key, Math.round(amounts[key]! * 1e4) / 1e4]] : []))
+    const values = Object.fromEntries(FILL_KEYS.flatMap(key => item[key] == null && finite(amounts[key]) ? [[key, Math.round(amounts[key]! * 1e4) / 1e4]] : []))
     return Object.keys(values).length ? [{ id: item.id, values, others: item.userId !== userId }] : []
   })
   console.log(`logged items: ${items.length} read, ${rows.length} would gain values (${rows.filter(row => row.others).length} of other users)`)
@@ -379,6 +381,10 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
     WHERE source ~ '^USDA FoodData Central [0-9]+' ORDER BY "foodItemId", id`)).rows.map(row => [Number(row.foodItemId), String(row.source)]))
   console.log(`correct: ${generic.length} generic foods, ${generic.filter(food => recorded.has(food.id)).length} with a USDA match`)
   const corrected: { food: Food; changes: Record<string, { from: number; to: number }> }[] = []
+  const rescale = args.includes("--rescale")
+  const filledKeys = new Map<number, Set<string>>()
+  for (const row of (await pg.query(`SELECT "foodItemId", keys FROM "FoodMicroFill" WHERE source NOT LIKE '{%'`)).rows)
+    for (const key of row.keys as string[]) filledKeys.set(Number(row.foodItemId), (filledKeys.get(Number(row.foodItemId)) ?? new Set()).add(key))
   // --only <file>: the judged corrections, {"<foodId>": ["potassiumMg", …]}; nothing else is changed.
   const only = option("only") ? JSON.parse(readFileSync(option("only")!, "utf8")) as Record<string, string[]> : null
   for (const food of only ? generic.filter(food => only[String(food.id)]) : generic) {
@@ -386,7 +392,29 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
     const usda = (fdcId ? await usdaRecord(food, fdcId).catch(() => null) : await usdaMatch(food, false).catch(() => null))
     if (!usda) continue
     const changes: Record<string, { from: number; to: number }> = {}
-    for (const key of MICRO_KEYS) {
+    if (rescale) {
+      // The food's own rows (the backfill's came from USDA) against USDA, as ratios.
+      const own = MICRO_KEYS.flatMap(key => {
+        const first = food.Nutrient.find(row => nutrientKey(row.nutrientName) === key), to = usda.micros[key]
+        if (!first || to == null || filledKeys.get(food.id)?.has(key)) return []
+        const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
+        const floor = FLOOR[keyUnit(key)] ?? 1
+        return from != null && from > 0 && to >= floor ? [{ key, from, to, ratio: from / to }] : []
+      })
+      const ratios = own.map(row => row.ratio).sort((a, b) => a - b)
+      const median = ratios[Math.floor(ratios.length / 2)]
+      const consistent = ratios.length >= 2 && ratios[ratios.length - 1] / ratios[0] <= 1.3
+      if (consistent && (median > 1.15 || median < 0.87)) for (const row of own) changes[row.key] = { from: row.from, to: row.to }
+      // A 0 where USDA has a real amount, and omega-3 stored in grams (0.02 for an egg).
+      for (const key of MICRO_KEYS) {
+        const first = food.Nutrient.find(row => nutrientKey(row.nutrientName) === key), to = usda.micros[key]
+        if (!first || to == null || changes[key]) continue
+        const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
+        const floor = FLOOR[keyUnit(key)] ?? 1
+        if (from != null && to >= floor && (from === 0 || (key === "omega3Mg" && from < 1))) changes[key] = { from, to }
+      }
+    }
+    for (const key of rescale ? [] : MICRO_KEYS) {
       const rows = food.Nutrient.filter(row => nutrientKey(row.nutrientName) === key)
       const to = usda.micros[key], first = rows[0]
       if (!first || to == null) continue
@@ -407,7 +435,7 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
         [food.id, row.nutrientName, row.nutrientUnit, row.nutrientAmountPerDefaultServing])
     await pg.query(`UPDATE "FoodItem" SET "lastUpdated" = now() AT TIME ZONE 'UTC' WHERE id = $1`, [food.id])
     await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(changes),
-      JSON.stringify({ correction: "more than 2x off USDA", usda: usda.source, changes, removed })])
+      JSON.stringify({ correction: rescale ? "portion values stored per 100 g" : "more than 2x off USDA", usda: usda.source, changes, removed })])
     await pg.query("COMMIT")
   }
   console.log(`correct: ${corrected.length} foods ${apply ? "corrected" : "would be corrected"}`)

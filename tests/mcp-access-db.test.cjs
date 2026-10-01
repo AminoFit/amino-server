@@ -9,6 +9,10 @@ const {assertDisposable}=require('./helpers/mealTestDb.cjs');
 const connectionString=process.env.AMINO_MCP_TEST_DATABASE_URL;
 const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261002000000_mcp_access.sql'),'utf8');
 const dailyMicros=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005000000_mcp_daily_micronutrients.sql'),'utf8');
+const consistency=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005020000_nutrition_consistency.sql'),'utf8');
+// The nutrient keys as src/nutrition/spec.ts lists them, which the SQL list must equal.
+const specKeys=JSON.parse(fs.readFileSync(path.join(__dirname,'../src/nutrition/spec.ts'),'utf8')
+  .match(/HISTORY_NUTRIENTS = (\[[^\]]*\])/)[1].replace(/\s+/g,''));
 
 // Just enough of the Supabase schema: roles, auth.uid() from the JWT claims, the tables with their read policies.
 const BASE=`DO $$ BEGIN
@@ -58,6 +62,12 @@ test('agents read their own meals by local day, with totals, pages, daily sums a
       await db.query(BASE);
       await db.query(migration);
       await db.query(dailyMicros);
+      // Its catalogue functions name types this schema lacks; the day totals below run for real.
+      await db.query('SET check_function_bodies = off'); await db.query(consistency); await db.query('RESET check_function_bodies');
+      assert.deepEqual((await one(db,`SELECT public.nutrition_keys() AS k`)).k,specKeys,'SQL and spec.ts list the same nutrients');
+      const rounded=(await one(db,`SELECT public.nutrition_round('kcal',105.4) a,public.nutrition_round('proteinG',12.345) b,
+        public.nutrition_round('sodiumMg',2312.7) c,public.nutrition_round('vitaminB12Mcg',2.4321) d,public.nutrition_round('copperMg',0.9132) e`));
+      assert.deepEqual(Object.values(rounded).map(Number),[105,12.3,2313,2.43,0.913]);
       const me=randomUUID(),other=randomUUID();
       await db.query(`INSERT INTO public."User"(id,"tzIdentifier") VALUES($1,'America/New_York'),($2,'UTC')`,[me,other]);
       await db.query(`INSERT INTO public."FoodItem"(id,name,brand) VALUES(1,'Oat milk','Oatly'),(2,'Banana',null)`);

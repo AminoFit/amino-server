@@ -18,6 +18,7 @@ import { classifyFoodCategoryQueue } from "@/app/api/queues/classify-food-catego
 export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"|"AgentEstimate";externalId:string|null;
   gtin:string|null;name:string;brand:string|null;defaultServingWeightGram:number;kcal:number;proteinG:number;carbG:number;
   totalFatG:number;fiberG:number|null;sugarG:number|null;satFatG:number|null;isLiquid:boolean;
+  addedSugarG?:number|null;transFatG?:number|null;
   /** name is the unit ("cup", "bottle"); grams describe `amount` of that unit. */
   servings:{name:string;grams:number;amount:number}[];source:string;
   /** Created privately for the user: a personal dish (their recipe) or an unnamed nutrition panel. */
@@ -41,6 +42,7 @@ export const labelFood = z.object({name:z.string().trim().min(2).max(120).descri
   servingGrams:z.number().positive().max(5000),
   kcal:amount,proteinG:amount,carbG:amount,totalFatG:amount,
   fiberG:amount.nullable(),sugarG:amount.nullable(),satFatG:amount.nullable(),
+  addedSugarG:amount.nullable().optional(),transFatG:amount.nullable().optional(),
   gtin:z.string().max(20).nullable(),
   micronutrients:z.array(z.object({name:z.string().max(80),amount:z.number().nonnegative().finite(),unit:z.string().max(10)}).strict()).max(40).optional()
     .describe("Every vitamin and mineral line on the label (sodium, cholesterol, potassium, calcium, iron, vitamins…) for the same serving, as printed: amount and unit, never %DV"),
@@ -220,6 +222,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
         name:food.name,brand:food.brand||null,defaultServingWeightGram:grams,kcal:food.kcalPerServing,
         proteinG:food.proteinPerServing,carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
         fiberG:food.fiberPerServing,sugarG:food.sugarPerServing,satFatG:food.satFatPerServing,isLiquid:food.isLiquid,
+        addedSugarG:food.addedSugarPerServing??null,transFatG:food.transFatPerServing??null,
         servings:food.Serving.flatMap(s=>s.servingWeightGram&&s.servingName?[{name:s.servingName,grams:s.servingWeightGram,
           amount:Number(s.defaultServingAmount)||1}]:[]).slice(0,10),
         source:`USDA FoodData Central ${food.externalId}`,
@@ -260,6 +263,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       name,brand:product.brands?.split(",")[0]?.trim()||null,defaultServingWeightGram:servingGrams,
       kcal:round(kcal*factor),proteinG:round(protein*factor),carbG:round(carb*factor),totalFatG:round(fat*factor),
       fiberG:nullable(value("fiber")),sugarG:nullable(value("sugars")),satFatG:nullable(value("saturated-fat")),
+      addedSugarG:nullable(value("added-sugars")),transFatG:nullable(value("trans-fat")),
       isLiquid:liquid,servings,
       source:`https://world.openfoodfacts.org/product/${gtin.slice(1)}`,micros:scaleMicros(offMicrosPer100g(n),factor)}
     return complete(candidate)?[remember(candidate)]:[]
@@ -545,6 +549,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       const candidate:SourceFood={sourceId:`label:${counter++}`,foodInfoSource:"Label",externalId:null,gtin:barcode(food.gtin),
         name:food.name,brand:food.brand,defaultServingWeightGram:food.servingGrams,kcal:food.kcal,proteinG:food.proteinG,
         carbG:food.carbG,totalFatG:food.totalFatG,fiberG:food.fiberG,sugarG:food.sugarG,satFatG:food.satFatG,isLiquid:false,
+        addedSugarG:food.addedSugarG??null,transFatG:food.transFatG??null,
         servings:[{name:food.servingUnit,grams:food.servingGrams,amount:food.servingAmount},
           ...(food.packageGrams&&Math.abs(food.packageGrams-food.servingGrams)>0.5?[{name:"package",grams:food.packageGrams,amount:1}]:[])],
         source:"Nutrition label in the user's photo",

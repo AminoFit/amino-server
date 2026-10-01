@@ -16,7 +16,9 @@ export type LabelFacts = {
   carbG: number
   totalFatG: number
   satFatG: number | null
+  transFatG: number | null
   sugarG: number | null
+  addedSugarG: number | null
   fiberG: number | null
   /** A Supplement Facts panel: calories and macros it doesn't list are 0. */
   supplement: boolean
@@ -41,10 +43,10 @@ legible false instead of guessing.`
 const number = { type: ["number", "null"] }
 const SCHEMA = { type: "object", additionalProperties: false,
   required: ["legible", "basis", "servingUnit", "servingAmount", "basisGrams", "packageGrams", "kcal", "kj", "proteinG", "carbG",
-    "totalFatG", "satFatG", "sugarG", "fiberG", "supplement", "micronutrients"],
+    "totalFatG", "satFatG", "transFatG", "sugarG", "addedSugarG", "fiberG", "supplement", "micronutrients"],
   properties: { legible: { type: "boolean" }, basis: { type: "string", enum: ["serving", "100g", "package"] },
     servingUnit: { type: ["string", "null"] }, servingAmount: number, basisGrams: number, packageGrams: number, kcal: number, kj: number,
-    proteinG: number, carbG: number, totalFatG: number, satFatG: number, sugarG: number, fiberG: number,
+    proteinG: number, carbG: number, totalFatG: number, satFatG: number, transFatG: number, sugarG: number, addedSugarG: number, fiberG: number,
     supplement: { type: "boolean" },
     micronutrients: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "amount", "unit"],
       properties: { name: { type: "string" }, amount: { type: "number" }, unit: { type: "string" } } } } } }
@@ -115,7 +117,8 @@ async function readOnce(photo: URL, deps: { fetch?: typeof fetch; env?: NodeJS.P
   if (!parsed.legible || kcal == null || !basisGrams || proteinG == null || carbG == null || totalFatG == null) return null
   return { basis: parsed.basis, servingUnit: parsed.servingUnit?.trim() || null, servingAmount: amount(parsed.servingAmount),
     basisGrams, packageGrams: amount(parsed.packageGrams) || null, kcal, kj: amount(parsed.kj), proteinG, carbG, totalFatG,
-    satFatG: amount(parsed.satFatG), sugarG: amount(parsed.sugarG), fiberG: amount(parsed.fiberG), supplement, micronutrients }
+    satFatG: amount(parsed.satFatG), transFatG: amount(parsed.transFatG), sugarG: amount(parsed.sugarG),
+    addedSugarG: amount(parsed.addedSugarG), fiberG: amount(parsed.fiberG), supplement, micronutrients }
 }
 
 /** The label as a label source (proposeLabelFood's input): the column read becomes the serving; a per-100 g column
@@ -125,5 +128,5 @@ export function labelSourceInput(facts: LabelFacts, product: { name: string; bra
   const amount = facts.basis === "100g" ? 100 : facts.basis === "package" ? 1 : facts.servingAmount || 1
   return { ...product, servingUnit: unit, servingAmount: amount, servingGrams: facts.basisGrams, kcal: facts.kcal!,
     proteinG: facts.proteinG, carbG: facts.carbG, totalFatG: facts.totalFatG, fiberG: facts.fiberG, sugarG: facts.sugarG,
-    satFatG: facts.satFatG, packageGrams: facts.packageGrams, micronutrients: facts.micronutrients ?? [] }
+    satFatG: facts.satFatG, transFatG: facts.transFatG, addedSugarG: facts.addedSugarG, packageGrams: facts.packageGrams, micronutrients: facts.micronutrients ?? [] }
 }

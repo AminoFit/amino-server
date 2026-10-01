@@ -29,6 +29,10 @@ test('logs follow their food: empty vitamins fill from the food, and calories th
     Nutrient:[{nutrientName:'Magnesium, Mg',nutrientUnit:'mg',nutrientAmountPerDefaultServing:30},{nutrientName:'potassium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:400}]};
   assert.deepEqual(fillsFor(food,[{id:1,grams:50,magnesiumMg:null,potassiumMg:999},{id:2,grams:200,magnesiumMg:60,potassiumMg:800}]),
     [{id:1,values:{magnesiumMg:15}}],'only empty columns, scaled by grams; a full log is left alone');
+  // A food that comes to know its sugars passes them on too (Iced Tea / Lemonade, imported without them).
+  assert.deepEqual(fillsFor({...food,Nutrient:[],sugarPerServing:7.2},[{id:3,grams:240,sugarG:null,kcal:82}]),[{id:3,values:{sugarG:17.28}}]);
+  assert.ok(!m.FILL_KEYS.includes('kcal')&&!m.FILL_KEYS.includes('proteinG'),'energy and macros are never filled');
+  assert.equal(m.nutrientKey('Total Sugars'),'sugarG','USDA survey records\' sugar name');
   assert.deepEqual(staleLogs(food,[{id:1,grams:175,kcal:556},{id:2,grams:175,kcal:180},{id:3,grams:10,kcal:20}]).map(log=>log.id),[1],
     'the ceviche (556 for 175 g of a 1 kcal/g food) is stale; small gaps are not');
 });

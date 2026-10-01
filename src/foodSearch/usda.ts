@@ -26,7 +26,8 @@ function catalogueFood(food: UsdaFood) {
   return { food: { name: food.name, brand: food.brand || null, foodInfoSource: "USDA", externalId: food.externalId,
     defaultServingWeightGram: grams, kcal: food.kcalPerServing, proteinG: food.proteinPerServing, carbG: food.carbPerServing,
     totalFatG: food.totalFatPerServing, fiberG: food.fiberPerServing, sugarG: food.sugarPerServing,
-    satFatG: food.satFatPerServing, isLiquid: food.isLiquid, source: `USDA FoodData Central ${food.externalId}` },
+    satFatG: food.satFatPerServing, transFatG: food.transFatPerServing ?? null, addedSugarG: food.addedSugarPerServing ?? null,
+    isLiquid: food.isLiquid, source: `USDA FoodData Central ${food.externalId}` },
     servings: food.Serving.flatMap(s => s.servingWeightGram && s.servingName ? [{ name: s.servingName,
       grams: s.servingWeightGram, amount: Number(s.defaultServingAmount) || 1 }] : []).slice(0, 10) }
 }
