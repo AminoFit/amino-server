@@ -93,7 +93,8 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     /** Catalogue foods carrying a barcode decoded from this meal's photos. */
     async findFoodsByGtin(gtins:string[]) {
       if (!gtins.length) return []
-      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible)
+      // Never an archived version of a user's food (recipes carry no barcode).
+      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).is("archivedAt",null)
         .order("privateToUserId",{ascending:true,nullsFirst:false}).order("id").limit(10).abortSignal(signal)
       if (result.error) throw new Error("catalogue_unavailable")
       const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
@@ -144,12 +145,15 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
      * similar variant ("core power vanilla" is the regular shake they log, not the Elite one). */
     async recentFoods() {
       const since=new Date(Date.now()-60*86400000).toISOString()
-      const result=await db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand)")
+      const result=await db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand,archivedAt,recipePortions)")
         .eq("userId",userId).is("deletedAt",null).gte("createdAt",since)
         .order("createdAt",{ascending:false}).limit(400).abortSignal(signal)
       if (result.error) throw new Error("history_unavailable")
       const seen=new Set<number>()
-      return ((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
+      // Archived versions are replaced by their newer version, and recipes wait for the recipe check (plan phase 4),
+      // so neither is a fast-route candidate even when the user logged it recently.
+      return ((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt&&
+        row.FoodItem.recipePortions==null&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
         .map(row=>({id:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null}))
     },
     async getMealEvent(messageId:number) {

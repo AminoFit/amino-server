@@ -3,7 +3,7 @@
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { FoodItemToLog } from "@/utils/loggedFoodItemInterface"
 
-const nutrientMappingConfig: { [key: string]: string[] } = {
+export const nutrientMappingConfig: { [key: string]: string[] } = {
   kcal: ["kcal", "energy", "Energy", "Calories"],
   totalFatG: ["totalFat", "totalFatPerServing", "Total lipid (fat)", "Fat", "Total Fat"],
   satFatG: ["satFat", "satFatPerServing", "Fatty acids, total saturated", "Saturated Fat"],
@@ -49,7 +49,7 @@ const nutrientMappingConfig: { [key: string]: string[] } = {
 };
 
 
-function getMappedNutrientField(nutrientName: string): string | null {
+export function getMappedNutrientField(nutrientName: string): string | null {
   const normalize = (name: string) =>
     name
       .toLowerCase()

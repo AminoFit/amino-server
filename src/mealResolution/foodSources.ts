@@ -276,7 +276,7 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     const label=food.brand?`${food.name} - ${food.brand}`:food.name
     const [[vector],byName,byGtin]=await Promise.all([embed("BGE_BASE",[label]),
       (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0,p_user_id:ctx.userId}).abortSignal(ctx.signal),
-      food.gtin?db().from("FoodItem").select("id").eq("gtin",food.gtin).or(visible).limit(1).abortSignal(ctx.signal):Promise.resolve({data:[],error:null})])
+      food.gtin?db().from("FoodItem").select("id").eq("gtin",food.gtin).or(visible).is("archivedAt",null).limit(1).abortSignal(ctx.signal):Promise.resolve({data:[],error:null})])
     const near=await (db() as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8,p_user_id:ctx.userId}).abortSignal(ctx.signal)
     if (near.error||byGtin.error) throw new Error("catalogue_unavailable")
     const ids=[...new Set([...(byGtin.data??[]),...(byName.error?[]:byName.data??[]),...(near.data??[])]

@@ -1,7 +1,7 @@
 # Custom foods and recipes plan
 
 **Date:** 2026-09-30
-**Status:** planned. Phase 1 (server) is next.
+**Status:** Phase 1 (server) built and tested locally on 2026-09-30; migration `20261004000000_custom_foods_and_recipes` not applied yet. Phase 2 (app) is next.
 **Scope:** amino-server (database, API, meal agent, MCP) and amino-mobile (new Foods tab, log actions, food detail).
 
 Users can create their own foods and recipes, see and edit them in a new Foods tab, and log them. A recipe is a named group of foods that makes a number of portions ("I ate 1.5 portions"), and it can be saved from a past meal.
@@ -35,7 +35,7 @@ Users can create their own foods and recipes, see and edit them in a new Foods t
 
 ## Data model
 
-**A recipe is a private `FoodItem`** with `foodInfoSource = 'Recipe'`. Its servings:
+**A recipe is a private `FoodItem`** with `recipePortions` set (and `foodInfoSource = 'User'`). Its servings:
 
 - **"portion"**, the default serving. `defaultServingWeightGram` is the weight of one portion, so nutrients per serving are per portion.
 - **"whole recipe"**.
@@ -45,7 +45,6 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
 
 **Migration:**
 
-- Add `Recipe` to the `FoodInfoSource` enum.
 - Add these `FoodItem` columns:
   - `archivedAt timestamptz`: hidden from search, lists and the agent. Past logs still show it.
   - `previousVersionId int`: the version this one replaced.
@@ -80,30 +79,59 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
 
 ---
 
-## Phase 1: server
+## Phase 1: server (built 2026-09-30)
 
-1. **Migration**, as above, with SQL tests on a disposable database:
-   - per-owner names, and archived versions don't clash
-   - another user can't read your recipe or its ingredients
-   - a catalogue merge repoints ingredients
-2. **Routes** under `/api/protected/user/`:
-   - `foods`: create and edit a custom food, and archive it. Fields:
-     - name, brand
-     - the serving (unit plus grams or ml)
-     - kcal, protein, carbs and fat
-     - optional fibre, sugars, sat fat and sodium
-     - extra servings
-   - `foods/read-label`: read a label photo with the existing Sonnet label reader and return a pre-filled draft. Barcode digits come only from the decoding library.
-   - `recipes`: create and edit (ingredients, portions, cooked weight), and archive.
-   - `recipes/from-meal`: return a draft built from a meal's rows, plus `loggedAmountsAre: portion | whole`. If the logged amounts were one portion, ingredients × portions.
-   - `recipes/{id}/log`: `{portions | servingId+amount | grams, consumedOn}`. Creates a resolved meal with one row.
-   - **Meal → recipe portion:** a structured meal operation that replaces a meal's rows with one row of a recipe. This has to be a meal operation because agent meals are operation-owned.
-3. **New foods get the existing treatment:**
-   - an embedding, so search finds them
-   - a category
-   - an icon from the queue; a new version reuses the old icon
-4. **Agent visibility:** private foods with `foodInfoSource = 'Recipe'` are left out of every agent and fast-route search until Phase 4. This uses FeatureFlag `recipes_in_agent`, seeded 'off'. Custom foods keep today's private-food behaviour.
-5. **Types:** regenerate `types/supabase-generated.types.ts` (it is stale) and the app's copy.
+**Migration `20261004000000_custom_foods_and_recipes`:**
+
+- The `FoodItem` columns and `RecipeIngredient` table above. A recipe is marked by `recipePortions`, not a new `FoodInfoSource` value (an enum value can't be used in the migration that adds it).
+- A check keeps archiving and recipes to private foods.
+- Names:
+  - Current foods keep a partial unique (name, brand, owner) index.
+  - Recipes get their own unique index by identity per owner.
+  - `save_user_food` also refuses a name the owner already uses for any current food or recipe, when a food is created or renamed. A rename-free edit is never blocked by a private estimate the agent made since.
+- Searches:
+  - `search_meal_food_catalogue`, `get_cosine_results` and `search_food_catalogue_nearest` skip archived rows, and skip recipes unless FeatureFlag `recipes_in_agent` (seeded 'off') allows the user. `user_flag_enabled` mirrors `fastRouteFlag.ts`.
+  - `create_catalogue_food` never reuses or enriches an archived food or a recipe.
+- Functions (service role only):
+  - `save_user_food`: create, or edit in place, or a new version. A new version archives the old one, then copies its icon (same name), its barcode and favourites.
+  - `archive_user_food`.
+  - `log_food_as_meal`: a new resolved meal with one row; idempotent on the app's `localId`.
+  - `replace_meal_with_food`: only the rows the user saw, never a protocol-owned or busy meal. The new row joins the meal's `publishedRevision`.
+  - `merge_catalogue_food` moves ingredients and version links, and refuses recipes.
+- Agent meals created through the takeover path are not operation-owned once published, so replacing their rows is a direct write. A structured meal operation wasn't needed.
+
+**Server code:**
+
+- `src/userFoods/nutrition.ts`: values per serving and per portion. Micronutrients are stored as `Nutrient` rows named so `calculateNutrientData` reads them back.
+- `src/userFoods/userFoods.ts`: request schemas, saving, logging, drafts.
+- `src/userFoods/labelDraft.ts`: scan label.
+- New foods and renamed versions go to the category and icon queues.
+- The agent's barcode lookups and the fast route's recent foods skip archived versions and recipes (`evidence.ts`, `foodSources.ts`).
+
+**Routes** under `/api/protected/user/`, all for the signed-in user:
+
+| Route | Does |
+|---|---|
+| `POST foods` | Create: `{kind:"food", name, brand?, serving:{unit, amount, grams}, kcal, proteinG, carbG, totalFatG, fiberG?, sugarG?, addedSugarG?, satFatG?, transFatG?, nutrients?:{sodiumMg…}, extraServings?, isLiquid?}` or `{kind:"recipe", name, portions, cookedWeightGram?, ingredients:[{foodItemId, grams} or {foodItemId, servingId, amount}]}` |
+| `GET foods/{id}` | The food with servings, nutrients and ingredients (archived versions too) |
+| `PUT foods/{id}` | Edit (same body). Returns `{foodId, versioned}`: with logs, `foodId` is the new version |
+| `DELETE foods/{id}` | Archive |
+| `POST foods/{id}/log` | `{quantity:{portions} or {servingId, amount} or {grams}, consumedOn, localId}` → a new meal |
+| `POST foods/from-meal` | `{messageId, portions, loggedAmountsAre:"portion" or "whole"}` → a recipe draft (recipes logged in the meal are listed in `skipped`) |
+| `POST foods/read-label` | `{imagePath}` (the user's upload) → a draft plus `existingFood` when the barcode is already in the catalogue |
+| `POST meals/{id}/replace-with-food` | `{expectedItemIds, foodId, quantity}` → "change this meal to 1 portion" |
+
+Errors are `{error}` with a code: `name_taken` 409, `food_unavailable` 404, `ingredient_unavailable` 422, `values_do_not_fit_serving` 422, `meal_changed` 409, `meal_busy` 409, `invalid_request` 422.
+
+**Tests:**
+
+- `tests/user-foods.test.cjs` (pricing, quantities, request bodies).
+- `tests/user-foods-db.test.cjs` covers ownership, names, versions, search visibility, logging, replacing a meal and merges. Run it with `AMINO_USER_FOODS_TEST_DATABASE_URL` set to a disposable local database.
+
+**Still to do for phase 1:**
+
+- Apply the migration, then deploy.
+- Regenerate `types/supabase-generated.types.ts`, which is stale; the new code uses `as any` for `RecipeIngredient`.
 
 ## Phase 2: app, Foods tab and custom foods
 
@@ -160,6 +188,8 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
 
    Then the full eval (~$1.30) before the flag goes from your ID to 'all'.
 
+7. **History and versions:** "same as yesterday" copies the logged rows, so it re-logs the recipe version eaten then, even if the recipe has since been edited. Decide whether a history copy of a recipe row should switch to the current version.
+
 ## Phase 5: MCP and web
 
 - MCP: `list_recipes` and `get_recipe` now. Logging a recipe comes with the meal write tools.
@@ -171,3 +201,4 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
 - Sharing a recipe with another user.
 - A recipe's ingredients as a group inside a meal ("my smoothie without the banana" still uses history groups).
 - "Log Again Now" copies `publishedRevision`/`logicalItemId` and uses `getUserId()`. Tidy this when the Log screen is touched in Phase 3.
+- Icons for private foods come from the shared icon queue. An icon generated for a private food (its description is the food's name) can later be reused for someone else's food. This already applies to the agent's private foods.
