@@ -80,6 +80,7 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       for (const file of migrations) await db.query(read(file));
       await db.query('SET check_function_bodies = off');
       await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
+      await db.query(read('20261004070000_log_foods_as_meal.sql'))
       await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
       await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'))
       await db.query(read('20261004040000_search_own_foods.sql'));
@@ -164,6 +165,29 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       assert.deepEqual(meal,{status:'RESOLVED',itemsToProcess:1,role:'User',messageType:'FOOD_LOG_REQUEST'})
       await assert.rejects(one('select * from public.log_food_as_meal($1,$2,$3,$4,$5)',[bob,'22222222-2222-4222-8222-222222222222',
         '2026-09-30 12:00:00','',item(pasta.food_id,100,100)]),/food_unavailable/)
+
+      // Add Food's tray: several picked foods become one resolved meal, each row priced as sent; a retry returns it.
+      const trayLocal='44444444-4444-4444-8444-444444444444'
+      const tray=await one('select * from public.log_foods_as_meal($1,$2,$3,$4,$5)',[alice,trayLocal,'2026-09-30 08:00:00',
+        'Overnight oats (1 serving), Chicken pasta (0.5 portions)',
+        JSON.stringify([item(oats.food_id,200,180),{...item(pasta.food_id,125,250),servingAmount:0.5,loggedUnit:'portion'}])])
+      assert.equal(tray.created,true)
+      assert.equal(tray.logged_food_item_ids.length,2)
+      const trayRetry=await one('select * from public.log_foods_as_meal($1,$2,$3,$4,$5)',[alice,trayLocal,'2026-09-30 08:00:00','x',
+        JSON.stringify([item(oats.food_id,1,1)])])
+      assert.deepEqual(trayRetry,{...tray,created:false})
+      const trayMeal=await one('select status::text,"itemsToProcess" from public."Message" where id=$1',[tray.message_id])
+      assert.deepEqual(trayMeal,{status:'RESOLVED',itemsToProcess:2})
+      const trayRows=await db.query('select "foodItemId",grams,kcal,local_id from public."LoggedFoodItem" where "messageId"=$1 order by id',
+        [tray.message_id])
+      assert.deepEqual(trayRows.rows.map(row=>[row.foodItemId,row.grams,row.kcal]),[[oats.food_id,200,180],[pasta.food_id,125,250]])
+      assert.equal(new Set(trayRows.rows.map(row=>row.local_id)).size,2,'each row has its own local id')
+      // Someone else's private food, or an empty tray, is refused and nothing is saved.
+      await assert.rejects(one('select * from public.log_foods_as_meal($1,$2,$3,$4,$5)',[bob,'55555555-5555-4555-8555-555555555555',
+        '2026-09-30 12:00:00','',JSON.stringify([item(pasta.food_id,100,100)])]),/food_unavailable/)
+      assert.equal((await one(`select count(*)::int n from public."Message" where local_id='55555555-5555-4555-8555-555555555555'`)).n,0)
+      await assert.rejects(one('select * from public.log_foods_as_meal($1,$2,$3,$4,$5)',[alice,'66666666-6666-4666-8666-666666666666',
+        '2026-09-30 12:00:00','',JSON.stringify([])]),/Invalid meal/)
 
       // With logs, an edit is a new version: past logs keep the old one, the icon and favourites move on.
       await db.query(`update public."FoodItem" set "createdAtDateTime"='2026-09-29 23:12:00+00' where id=$1`,[pasta.food_id])

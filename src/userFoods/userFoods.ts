@@ -234,6 +234,25 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
+/** Logs foods the user picked themselves (Add Food's tray) as one new meal, each priced here. localId makes a retry
+ * return the meal already created. */
+export async function logFoodsAsMeal(userId:string,items:{foodItemId:number;quantity:QuantityInput}[],consumedOn:string,
+  localId:string,db:Db=createAdminSupabase()) {
+  if (!items.length||items.length>50) fail("invalid_meal",422)
+  const foods=await loadFoods(db,userId,[...new Set(items.map(item=>item.foodItemId))])
+  const priced=items.map(item=>{
+    const food=foods.get(item.foodItemId)
+    if (!food) fail("food_unavailable",404)
+    return {food:food!,item:pricedItem(food!,item.quantity)}
+  })
+  const {data,error}=await (db as any).rpc("log_foods_as_meal",{p_user_id:userId,p_local_id:localId,
+    p_consumed_on:utcWallClock(consumedOn),p_content:priced.map(entry=>describe(entry.food,entry.item)).join(", "),
+    p_items:priced.map(entry=>entry.item)})
+  if (error) rpcFailure(error)
+  const row=(data as {message_id:number;logged_food_item_ids:number[];created:boolean}[])[0]
+  return {messageId:row.message_id,loggedFoodItemIds:row.logged_food_item_ids,created:row.created}
+}
+
 /** A recipe draft from a past meal: its foods and amounts as logged. The user says in the app how many portions those
  * amounts make, and names it, before saving. */
 export async function recipeDraftFromMeal(userId:string,messageId:number,db:Db=createAdminSupabase()) {
