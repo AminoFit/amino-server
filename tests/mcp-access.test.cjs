@@ -81,8 +81,11 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   };
   const listed=await call('tools/list',{},1);
   const tools=Object.fromEntries(listed.result.tools.map(tool=>[tool.name,tool]));
-  assert.deepEqual(Object.keys(tools).sort(),['get_daily_summary','get_meals','get_profile','list_meals','sync_meals',
-    'update_body_stats','update_goals']);
+  assert.deepEqual(Object.keys(tools).sort(),['get_daily_summary','get_meals','get_my_food','get_profile','list_meals',
+    'list_my_foods','sync_meals','update_body_stats','update_goals']);
+  assert.equal(tools.list_my_foods.annotations.readOnlyHint,true);
+  assert.deepEqual(tools.list_my_foods.inputSchema.properties.kind.enum,['recipes','foods','all']);
+  assert.deepEqual(tools.get_my_food.inputSchema.required,['id']);
   assert.equal(tools.list_meals.annotations.readOnlyHint,true);
   assert.equal(tools.update_goals.annotations.readOnlyHint,false);
   assert.deepEqual(tools.list_meals.inputSchema.required,['from']);

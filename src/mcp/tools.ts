@@ -4,6 +4,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { userDatabase, type UserDatabase } from "./auth"
 import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChanges } from "./meals"
 import { ACTIVITY_LEVELS, SEXES, getProfile, updateBody, updateGoals } from "./profile"
+import { getMyFood, listMyFoods } from "./userFoods"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
 nutrition), daily totals, goals and body stats, and can update the goals and body stats.
@@ -11,7 +12,9 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Nutrient names carry their unit: kcal, proteinG (grams), sodiumMg (milligrams), vitaminDMcg (micrograms), waterMl.
 - For questions about intake over time, start with get_daily_summary; use list_meals for what was eaten.
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
-- Body stats are metric: convert pounds, feet and inches before calling update_body_stats.`
+- Body stats are metric: convert pounds, feet and inches before calling update_body_stats.
+- The user's own recipes and foods (list_my_foods, get_my_food) are what they saved in the app. A recipe's values are
+  for one portion; a meal shows it as one food with an amount in portions.`
 
 const RATE_LIMIT_PER_MINUTE = 120
 const date = z.iso.date().describe("Local date, YYYY-MM-DD")
@@ -124,6 +127,28 @@ export function registerAminoTools(server: McpServer) {
     const page = await mealChanges(db, { cursor, limit, allNutrients })
     return { data: page, rows: page.changes.length }
   }))
+
+  server.registerTool("list_my_foods", {
+    title: "List my recipes and foods",
+    description: "The user's own recipes and custom foods (saved in the app), most recently edited first: name, kind " +
+      "(recipe or food), what the values are for (one portion of a recipe, else the food's serving), energy, macros, " +
+      "fibre, sugar and sodium, servings, and when each was created and last edited.",
+    inputSchema: z.object({ kind: z.enum(["recipes", "foods", "all"]).default("all"),
+      query: z.string().max(100).optional().describe("Only names containing this text") }),
+    annotations: READ
+  }, ({ kind, query }, ctx) => run("list_my_foods", ctx.http?.authInfo, async ({ db, userId }) => {
+    const foods = await listMyFoods(db, userId, { kind, query })
+    return { data: { foods }, rows: foods.length }
+  }))
+
+  server.registerTool("get_my_food", {
+    title: "Get one of my recipes or foods",
+    description: "One of the user's own recipes or foods by id, with every nutrient. A recipe also lists its foods " +
+      "and their amounts for the whole recipe (all its portions).",
+    inputSchema: z.object({ id: z.number().int().positive() }),
+    annotations: READ
+  }, ({ id }, ctx) => run("get_my_food", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await getMyFood(db, userId, id), rows: 1 })))
 
   server.registerTool("update_goals", {
     title: "Update goals",
