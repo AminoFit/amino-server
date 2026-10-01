@@ -22,3 +22,13 @@ test('Open Food Facts keeps micronutrients in grams per 100 g; rows are written 
   assert.equal(per100.magnesiumMg,12000);
   assert.deepEqual(m.microRows({magnesiumMg:120}),[{nutrientName:'magnesium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:120}]);
 });
+
+test('logs follow their food: empty vitamins fill from the food, and calories that no longer match are stale',()=>{
+  const {fillsFor,staleLogs}=require('../src/mealOperations/logRefresh.ts');
+  const food={defaultServingWeightGram:100,kcalPerServing:100,proteinPerServing:20,carbPerServing:5,totalFatPerServing:0,
+    Nutrient:[{nutrientName:'Magnesium, Mg',nutrientUnit:'mg',nutrientAmountPerDefaultServing:30},{nutrientName:'potassium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:400}]};
+  assert.deepEqual(fillsFor(food,[{id:1,grams:50,magnesiumMg:null,potassiumMg:999},{id:2,grams:200,magnesiumMg:60,potassiumMg:800}]),
+    [{id:1,values:{magnesiumMg:15}}],'only empty columns, scaled by grams; a full log is left alone');
+  assert.deepEqual(staleLogs(food,[{id:1,grams:175,kcal:556},{id:2,grams:175,kcal:180},{id:3,grams:10,kcal:20}]).map(log=>log.id),[1],
+    'the ceviche (556 for 175 g of a 1 kcal/g food) is stale; small gaps are not');
+});

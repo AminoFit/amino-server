@@ -8,6 +8,7 @@
 //   --apply              do it
 //   --limit <n>          at most n foods looked up (a trial run)
 //   --foods-only         skip the logged items
+//   --items-only         only the logged items (no lookups: from the foods' rows as they are now)
 //   --export <file> --ids <a,b,…>   write those foods with their USDA candidates, for judging by hand (or by Claude)
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
 //
@@ -24,10 +25,12 @@ import { createFoodSources } from "@/mealResolution/foodSources"
 import { MICRO_KEYS, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey } from "@/foodResolution/micronutrients"
 import { nutrientsAt, recipeValues } from "@/userFoods/nutrition"
 
+// The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
+if (process.env.USDA_SECOND_API_KEY) process.env.USDA_API_KEY = process.env.USDA_SECOND_API_KEY
 const args = process.argv.slice(2)
 const option = (name: string) => { const at = args.indexOf(`--${name}`); return at >= 0 ? args[at + 1] : undefined }
 const userId = option("user"), popularCount = Number(option("popular") ?? 100), limit = Number(option("limit") ?? Infinity)
-const apply = args.includes("--apply"), foodsOnly = args.includes("--foods-only")
+const apply = args.includes("--apply"), foodsOnly = args.includes("--foods-only"), itemsOnly = args.includes("--items-only")
 if (!userId || !/^[0-9a-f-]{36}$/.test(userId)) throw new Error("--user <uuid> is required")
 
 type NutrientRow = { nutrientName: string; nutrientUnit: string | null; nutrientAmountPerDefaultServing: number }
@@ -90,7 +93,30 @@ async function usdaQueries(food: Food): Promise<string[]> {
   } catch { return [food.name] }
 }
 
+// A USDA key allows 3,600 requests an hour: at most one per 1.2 s (2.6 s on production's key).
+let usdaNext = 0
+async function usdaTurn() {
+  const wait = usdaNext - Date.now()
+  usdaNext = Math.max(Date.now(), usdaNext) + (process.env.USDA_SECOND_API_KEY ? 1200 : 2600)
+  if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait))
+}
+
+/** USDA calls wait out the hourly limit (429): a minute at a time, at most 15 times. */
+async function patiently<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try { return await call() } catch (error) {
+      if (attempt >= 15 || !String(error instanceof Error ? error.message : error).includes("429")) throw error
+      console.log("  (USDA limit reached: waiting a minute)")
+      await new Promise(resolve => setTimeout(resolve, 60_000))
+    }
+  }
+}
+
 async function searchUsda(query: string, dataType: string) {
+  return patiently(() => searchUsdaOnce(query, dataType))
+}
+async function searchUsdaOnce(query: string, dataType: string) {
+  await usdaTurn()
   // POST: USDA's front end rejects some plain GET queries (a bare "Cookie" gets an nginx 400).
   const url = new URL("https://api.nal.usda.gov/fdc/v1/foods/search")
   url.search = new URLSearchParams({ api_key: process.env.USDA_API_KEY ?? "" }).toString()
@@ -108,10 +134,10 @@ let jevCost = 0, jevCalls = 0, webLookups = 0
 /** USDA's candidates for a food: its branded records, or the generic foods for its name and Flash's descriptions. */
 async function candidatesFor(food: Food, branded: boolean) {
   const searches = branded ? [searchUsda(`${food.brand} ${food.name}`, "Branded"), searchUsda(food.name, "Branded")]
-    : (await usdaQueries(food)).flatMap(query => [searchUsda(query, "Foundation,SR Legacy"), searchUsda(query, "Survey (FNDDS)")])
+    : (await usdaQueries(food)).map(query => searchUsda(query, "Foundation,SR Legacy,Survey (FNDDS)"))
   const seen = new Set<number>()
   return (await Promise.all(searches.map(search => search.catch(() => [])))).flat()
-    .filter(hit => !seen.has(hit.fdcId) && seen.add(hit.fdcId)).slice(0, 10)
+    .filter(hit => !seen.has(hit.fdcId) && seen.add(hit.fdcId)).slice(0, 12)
 }
 
 /** USDA's record for a food, chosen by Jev among the search hits; its micronutrients per the food's own serving. */
@@ -137,7 +163,7 @@ async function usdaMatch(food: Food, branded: boolean): Promise<{ micros: Micros
 }
 
 async function usdaRecord(food: Food, fdcId: string): Promise<{ micros: Micros; source: string } | null> {
-  const [record] = (await getUsdaFoodsInfo({ fdcIds: [fdcId] })) ?? []
+  const [record] = (await patiently(async () => { await usdaTurn(); return getUsdaFoodsInfo({ fdcIds: [fdcId] }) })) ?? []
   const grams = record?.defaultServingWeightGram
   // Some Foundation records have no energy value: their macros give it.
   const kcal = record?.kcalPerServing || 4 * (record?.proteinPerServing ?? 0) + 4 * (record?.carbPerServing ?? 0) + 9 * (record?.totalFatPerServing ?? 0)
@@ -209,6 +235,40 @@ async function main() {
     await pg.end(); return
   }
   const foods = await loadFoods([...mine, ...popular])
+  // The rest after a first pass: USDA-record foods retried; generic and branded foods exported for judging.
+  if (args.includes("--remaining")) {
+    const filled = new Set((await pg.query(`SELECT DISTINCT "foodItemId" FROM "FoodMicroFill"`)).rows.map(row => Number(row.foodItemId)))
+    const open = foods.filter(food => !filled.has(food.id))
+    const lacksCore = (food: Food) => !CORE.every(key => have(food).has(key))
+    const records = open.filter(food => routeOf(food) === "usda_record" && lacksCore(food))
+    const judge = open.filter(food => (routeOf(food) === "usda_generic" && lacksCore(food)) ||
+      (routeOf(food) === "usda_branded" && have(food).size < 3))
+    console.log(`remaining: ${records.length} USDA records to retry, ${judge.length} foods to judge`)
+    if (!apply) { await pg.end(); return }
+    let retried = 0
+    for (const food of records) {
+      const found = await usdaRecord(food, food.externalId!).catch(() => null)
+      const owned = have(food)
+      const missing = found ? Object.fromEntries(Object.entries(found.micros).filter(([key]) => !owned.has(key as NutrientKey))) as Micros : {}
+      if (!Object.keys(missing).length) continue
+      if (await sources0.fillMicros(food.id, { defaultServingWeightGram: food.defaultServingWeightGram!, micros: missing })) {
+        await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(missing), found!.source])
+        retried++
+      }
+    }
+    console.log(`records: ${retried} filled`)
+    const out = []
+    for (const food of judge) {
+      const per = kcalPerGram(food)
+      out.push({ foodId: food.id, name: food.name, brand: food.brand, servingGrams: food.defaultServingWeightGram,
+        kcalPer100g: per == null ? null : Math.round(per * 1000) / 10,
+        candidates: await candidatesFor(food, routeOf(food) === "usda_branded").catch(() => []) })
+      if (out.length % 25 === 0) console.log(`  exported ${out.length}/${judge.length}`)
+    }
+    writeFileSync(option("out") ?? "remaining.json", JSON.stringify(out, null, 1))
+    console.log(`exported ${out.length} foods`)
+    await pg.end(); return
+  }
   const routes = new Map<Route, Food[]>()
   for (const food of foods) routes.set(routeOf(food), [...(routes.get(routeOf(food)) ?? []), food])
   console.log(`foods: ${mine.length} yours + ${popular.length} popular`)
@@ -227,7 +287,7 @@ async function main() {
   // Foods: look up their sources and fill what's missing.
   const sources = createFoodSources({ userId: userId!, messageId: null, signal: AbortSignal.timeout(3_600_000), discover: () => {} })
   const outcome = { filled: 0, keys: 0, noMatch: 0, nothingNew: 0, failed: 0 }
-  if (apply) {
+  if (apply && !itemsOnly) {
     const queue = lookups.slice(0, limit)
     // A lookup that never settles must not end the run silently (Node exits when nothing is pending): each gets two
     // minutes, and a heartbeat keeps the process alive and shows what's in flight.

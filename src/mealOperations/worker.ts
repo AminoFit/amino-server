@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto"
 import { utcInstant } from "./instant"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { foodNutrition, validNutrition } from "@/foodResolution/nutrition"
+import { validNutrition } from "@/foodResolution/nutrition"
+import { nutrientsAt, type FoodBasis } from "@/userFoods/nutrition"
 import { type PublishedPlan } from "@/mealResolution/compile"
 import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
 import { resolveMeal } from "@/mealResolution/resolve"
@@ -112,7 +113,9 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
     const prior=copied.items[index]
     if(input.foodId!==undefined&&input.foodId!==prior.foodId) throw new Error("meal_food_changed")
     const db=createAdminSupabase()
-    const food=await db.from("FoodItem").select("id,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing")
+    // Every nutrient the food records (fibre, sugars, fats, vitamins and minerals), not only the macros: a new amount
+    // used to keep calories and macros and lose the rest.
+    const food=await db.from("FoodItem").select("id,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,satFatPerServing,transFatPerServing,Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing)")
       .eq("id",prior.foodId).maybeSingle()
     if(food.error||!food.data)
       throw new Error("food_evidence_unavailable")
@@ -126,7 +129,9 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
       grams=servingAmount*serving.data.servingWeightGram/serving.data.defaultServingAmount
       servingId=serving.data.id;loggedUnit=serving.data.servingName
     } else {servingAmount=grams;loggedUnit="g"}
-    const nutrition=foodNutrition(food.data,grams)
+    const amounts=nutrientsAt(food.data as unknown as FoodBasis,grams)
+    const nutrition=amounts?{...Object.fromEntries(HISTORY_NUTRIENTS.map(key=>[key,amounts[key]??null])),kcal:amounts.kcal??0,
+      proteinG:amounts.proteinG??null,carbG:amounts.carbG??null,totalFatG:amounts.totalFatG??null}:null
     if(!nutrition||!validNutrition(grams,nutrition)) throw new Error("invalid_meal_nutrition")
     copied.items[index]={...prior,grams,servingId,servingAmount,loggedUnit,nutrition,
       origin:"catalogue",sourceItemId:undefined,catalogueUpdatedAt:food.data.lastUpdated,
