@@ -159,7 +159,9 @@ export async function saveRecipe(userId:string,foodId:number|null,input:RecipeIn
   const food={name:input.name,brand:null,defaultServingWeightGram:values.portionGrams,isLiquid:false,
     ...columnValues(values.perPortion),recipePortions:input.portions,cookedWeightGram:input.cookedWeightGram??null,
     description:"Recipe",bgeBaseEmbedding:await embedding(input.name,null)}
-  const servings=[{name:"portion",grams:values.portionGrams,amount:1},{name:"whole recipe",grams:values.wholeGrams,amount:1}]
+  // Recipes are thought of in portions only (owner): a "whole recipe" serving was the same as a portion for a
+  // one-portion recipe and only confused the picker. Grams remain for logging by weight.
+  const servings=[{name:"portion",grams:values.portionGrams,amount:1}]
   return save(db,userId,foodId,food,servings,nutrientRows(values.perPortion),priced.map(item=>({foodItemId:item.food.id,
     grams:item.grams,servingId:item.servingId,servingAmount:item.servingAmount,loggedUnit:item.loggedUnit})))
 }
@@ -232,10 +234,9 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
-/** A recipe draft from a past meal: its foods and amounts. If the logged amounts were one portion, they are scaled up
- * to the whole recipe. The user reviews and names it in the app before saving. */
-export async function recipeDraftFromMeal(userId:string,messageId:number,portions:number,loggedAmountsAre:"portion"|"whole",
-  db:Db=createAdminSupabase()) {
+/** A recipe draft from a past meal: its foods and amounts as logged. The user says in the app how many portions those
+ * amounts make, and names it, before saving. */
+export async function recipeDraftFromMeal(userId:string,messageId:number,db:Db=createAdminSupabase()) {
   const meal=await db.from("Message").select("id,content").eq("id",messageId).eq("userId",userId).is("deletedAt",null).maybeSingle()
   if (meal.error) throw meal.error
   if (!meal.data) fail("meal_unavailable",404)
@@ -243,18 +244,17 @@ export async function recipeDraftFromMeal(userId:string,messageId:number,portion
     .select("id,foodItemId,grams,servingId,servingAmount,loggedUnit,FoodItem(id,name,brand,recipePortions,privateToUserId)")
     .eq("messageId",messageId).eq("userId",userId).is("deletedAt",null).order("id").limit(51)
   if (rows.error) throw rows.error
-  const scale=loggedAmountsAre==="portion"?portions:1
   // A recipe logged in the meal can't be an ingredient (no nested recipes): it is reported, not silently dropped.
   const logged=(rows.data??[]) as any[]
   const skipped=logged.filter(row=>!row.FoodItem||row.FoodItem.recipePortions!==null)
     .map(row=>({loggedFoodItemId:row.id as number,name:(row.FoodItem?.name??null) as string|null}))
   const ingredients=logged.filter(row=>row.FoodItem&&row.FoodItem.recipePortions===null).map(row=>({
     foodItemId:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null,
-    grams:row.grams*scale,
-    ...(row.servingId&&row.servingAmount?{servingId:row.servingId as number,amount:row.servingAmount*scale,unit:row.loggedUnit as string|null}:{})}))
+    grams:row.grams as number,
+    ...(row.servingId&&row.servingAmount?{servingId:row.servingId as number,amount:row.servingAmount as number,unit:row.loggedUnit as string|null}:{})}))
   if (!ingredients.length) fail("meal_has_no_foods",422)
   const content=(meal.data!.content??"").trim()
   // A short meal text is usually a dish name ("Chicken pasta"); a long one is a description, so the first food names it.
   return {messageId,
-    name:content.length>=2&&content.length<=40?content:ingredients[0].name,portions,loggedAmountsAre,ingredients,skipped}
+    name:content.length>=2&&content.length<=40?content:ingredients[0].name,ingredients,skipped}
 }

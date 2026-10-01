@@ -56,10 +56,9 @@ test('nutrient rows are named so the existing nutrient mapping reads every one b
 
 test('quantities: servings, grams, and portions of a recipe log the portion serving',()=>{
   const recipe={...chicken,id:9,name:'Chicken pasta',recipePortions:12,defaultServingWeightGram:250,
-    Serving:[{id:31,servingName:'portion',servingWeightGram:250,defaultServingAmount:1},
-      {id:32,servingName:'whole recipe',servingWeightGram:3000,defaultServingAmount:1}]}
+    Serving:[{id:31,servingName:'portion',servingWeightGram:250,defaultServingAmount:1}]}
   assert.deepEqual(plain(userFoods.quantityOf(recipe,{portions:1.5})),{grams:375,servingId:31,servingAmount:1.5,loggedUnit:'portion'})
-  assert.deepEqual(plain(userFoods.quantityOf(recipe,{servingId:32,amount:0.5})),{grams:1500,servingId:32,servingAmount:0.5,loggedUnit:'whole recipe'})
+  assert.deepEqual(plain(userFoods.quantityOf(recipe,{servingId:31,amount:0.5})),{grams:125,servingId:31,servingAmount:0.5,loggedUnit:'portion'})
   assert.deepEqual(plain(userFoods.quantityOf(recipe,{grams:80})),{grams:80,servingId:null,servingAmount:80,loggedUnit:'g'})
   assert.throws(()=>userFoods.quantityOf(recipe,{servingId:99,amount:1}),/serving_unavailable/)
   const item=userFoods.pricedItem(recipe,{portions:2})
