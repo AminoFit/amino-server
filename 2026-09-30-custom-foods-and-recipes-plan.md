@@ -36,6 +36,8 @@ Users can create their own foods and recipes, see and edit them in a new Foods t
 4. **Recipes and custom foods are edited only in the Foods tab.** The Log screen changes a log's portion, never the recipe. "Add as recipe" from the Log opens the Foods tab's recipe editor, pre-filled.
 5. **Long-press a meal → "Add as recipe".** This sits next to "Log Again Now". If the meal is already a single recipe log, the menu shows "Open recipe" instead.
 6. **The agent sees your foods and recipes only when relevant.** Using a recipe must never take over an ordinary log (see Phase 4).
+8. **Recipes are in portions only** (owner, 2026-09-30). No "whole recipe" serving, and the editor asks one question: how many portions do these amounts make (1 for a meal you ate). Migration `20261004030000` removed the one existing whole-recipe serving.
+9. **Foods and recipes show the date they were created.** A new version keeps the original date (trigger in `20261004020000`).
 7. **Already logged meals are kept as they are** (owner, 2026-09-30). Saving a recipe from a meal never changes that meal: no "change this meal to 1 portion".
 
 ## Data model
@@ -122,7 +124,7 @@ Because a recipe is a food, logging, search, totals, sync, the MCP server and th
 | `PUT foods/{id}` | Edit (same body). Returns `{foodId, versioned}`: with logs, `foodId` is the new version |
 | `DELETE foods/{id}` | Archive |
 | `POST foods/{id}/log` | `{quantity:{portions} or {servingId, amount} or {grams}, consumedOn, localId}` → a new meal |
-| `POST foods/from-meal` | `{messageId, portions, loggedAmountsAre:"portion" or "whole"}` → a recipe draft (recipes logged in the meal are listed in `skipped`) |
+| `POST foods/from-meal` | `{messageId}` → a recipe draft with the meal's amounts as logged (recipes logged in the meal are listed in `skipped`) |
 | `POST foods/read-label` | `{imagePath}` (the user's upload) → a draft plus `existingFood` when the barcode is already in the catalogue |
 
 Errors are `{error}` with a code: `name_taken` 409, `food_unavailable` 404, `ingredient_unavailable` 422, `values_do_not_fit_serving` 422, `meal_changed` 409, `meal_busy` 409, `invalid_request` 422.
@@ -145,11 +147,7 @@ Errors are `{error}` with a code: `name_taken` 409, `food_unavailable` 404, `ing
   - `RecipeEditorScreen` takes a name, portions, cooked weight, and foods with amounts for the whole recipe, and shows the values per portion live.
   - `IngredientSearchScreen` lists your foods first, then the catalogue.
 - **Log:**
-  - Press and hold a meal → Add as Recipe (or Open Recipe). Add as Recipe opens the editor with the meal's foods and first asks "What did you log?":
-    - **The whole recipe**: then "How many portions does it make?".
-    - **One portion**: the recipe is that meal, as one portion; no portions question.
-
-    Saving opens the recipe's page. The meal itself is never changed.
+  - Press and hold a meal → Add as Recipe (or Open Recipe). Add as Recipe opens the editor with the meal's foods as logged and asks how many portions they make (default 1). Saving opens the recipe's page. The meal itself is never changed.
   - Cooked weight is behind "Weighed it after cooking?". Otherwise a portion weighs the foods' total divided by the portions.
   - A recipe log reads "1.5 Portions". Its detail shows the foods in that amount, read-only, with Open Recipe.
 - **Data:** Watermelon v9 (food_items user-food columns, `recipe_ingredients`). `requestUserFoodsSync` pulls the user's private foods by `lastUpdated`, with servings, icons, ingredients and the ingredients' foods.
