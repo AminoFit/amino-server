@@ -183,7 +183,9 @@ export async function getUserFood(userId:string,foodId:number,db:Db=createAdminS
     if (error) throw error
     ingredients=data??[]
   }
-  return {...food!,ingredients}
+  // Values per default serving by logged-nutrient key (sodiumMg…), so an editor can keep the ones it doesn't show.
+  const perServing=food!.defaultServingWeightGram?nutrientsAt(food!,food!.defaultServingWeightGram):null
+  return {...food!,perServing,ingredients}
 }
 
 /** Grams, serving and unit for a quantity of a food. */
