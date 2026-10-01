@@ -7,6 +7,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { validNutrition } from "@/foodResolution/nutrition"
 import { UserFoodError } from "@/userFoods/userFoods"
+import { cleanServings } from "@/mealResolution/foodSources"
 
 type Db = ReturnType<typeof createAdminSupabase>
 const normalize = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
@@ -64,7 +65,7 @@ export async function foodFromUsda(userId: string, fdcId: number, db: Db = creat
   const label = mapped.food.brand ? `${mapped.food.name} - ${mapped.food.brand}` : mapped.food.name
   const [vector] = await getCachedOrFetchEmbeddings("BGE_BASE", [label])
   const { data, error } = await (db as any).rpc("create_catalogue_food", { p_user_id: userId, p_message_id: null,
-    p_food: { ...mapped.food, bgeBaseEmbedding: JSON.stringify(vector.embedding) }, p_servings: mapped.servings })
+    p_food: { ...mapped.food, bgeBaseEmbedding: JSON.stringify(vector.embedding) }, p_servings: cleanServings(mapped.servings) })
   if (error) throw error
   const row = (data as { food_id: number; created: boolean }[])[0]
   if (row.created) {

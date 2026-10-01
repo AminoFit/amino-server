@@ -81,6 +81,7 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       await db.query('SET check_function_bodies = off');
       await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
       await db.query(read('20261004070000_log_foods_as_meal.sql'))
+      await db.query(read('20261004080000_no_builtin_unit_servings.sql'))
       await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
       await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'))
       await db.query(read('20261004040000_search_own_foods.sql'));
@@ -188,6 +189,16 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       assert.equal((await one(`select count(*)::int n from public."Message" where local_id='55555555-5555-4555-8555-555555555555'`)).n,0)
       await assert.rejects(one('select * from public.log_foods_as_meal($1,$2,$3,$4,$5)',[alice,'66666666-6666-4666-8666-666666666666',
         '2026-09-30 12:00:00','',JSON.stringify([])]),/Invalid meal/)
+
+      // Servings that only repeat the app's g or oz units are never stored, whichever path writes them.
+      const servingNames=async foodId=>(await db.query('select "servingName" n from public."Serving" where "foodItemId"=$1 order by id',[foodId])).rows.map(r=>r.n)
+      await db.query(`insert into public."Serving"("foodItemId","servingName","servingWeightGram","defaultServingAmount") values
+        ($1,'g',56,56),($1,'ONZ',56.7,2),($1,'wt. oz',28.35,1),($1,'cup dry',56,1.5),($1,'8 OZA',240,1),($1,'grams',100,1)`,[oats.food_id])
+      const kept=await servingNames(oats.food_id)
+      assert.ok(!kept.includes('g')&&!kept.includes('ONZ')&&!kept.includes('wt. oz'),'unit-only servings are skipped')
+      assert.ok(kept.includes('cup dry')&&kept.includes('8 OZA')&&kept.includes('grams'),'real servings stay ("grams" at 100 g each is a portion)')
+      await db.query(`update public."Serving" set "servingName"='g',"defaultServingAmount"=56 where "foodItemId"=$1 and "servingName"='cup dry'`,[oats.food_id])
+      assert.ok((await servingNames(oats.food_id)).includes('cup dry'),'an edit into a unit-only serving is refused')
 
       // With logs, an edit is a new version: past logs keep the old one, the icon and favourites move on.
       await db.query(`update public."FoodItem" set "createdAtDateTime"='2026-09-29 23:12:00+00' where id=$1`,[pasta.food_id])
