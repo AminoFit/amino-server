@@ -244,7 +244,7 @@ test('the agent still handles barcodes with text, other visible foods, no source
 });
 
 // Barcode route plan: a decoded barcode is locked; vision never names or replaces it.
-const bar={...fruit,id:52001,name:'trü frü raspberries in white & milk chocolate',brand:'trü frü',gtin:'00850241008835',
+const bar={...fruit,id:52001,name:'trü frü raspberries in white & milk chocolate',brand:'trü frü',gtin:'00850241008835',defaultServingWeightGram:28,kcalPerServing:90,
   Serving:[{id:701,foodItemId:52001,servingName:'pouch',servingWeightGram:28,defaultServingAmount:1}]};
 const lockedDeps=({reads,scene,catalogue=[fruit,bar]})=>{
   const foods=new Map();
@@ -294,4 +294,21 @@ test('a barcode that will not read, or another package, goes to the agent with t
     assert.match(prompt,/lockedProducts.*52001/,label);
     assert.doesNotMatch(prompt,/LesserEvil/,`${label}: the invented name never reaches the agent`);
   }
+});
+
+test('views of one scanned package: a nutrition label that disagrees with the record goes to the agent to log the label',async()=>{
+  const views={reads:[{gtins:['00850241008835'],undecoded:0},{gtins:[],undecoded:0}],scene:onlyBarcodes([1,0],true)};
+  // trü frü record: 90 kcal per 28 g (3.2 kcal/g). The label photo says 130 kcal per 28 g: the label wins.
+  const label=kcal=>async()=>({basis:'serving',servingUnit:'pouch',servingAmount:1,basisGrams:28,packageGrams:null,kcal,kj:null,
+    proteinG:1,carbG:14,totalFatG:5,satFatG:3,sugarG:12,fiberG:1});
+  const agreeing=lockedDeps(views);
+  const same=await resolveMeal(photoInput,{...agreeing.deps,readLabel:label(92)});
+  assert.equal(same.model,'barcode');
+  assert.equal(agreeing.agentRuns(),0);
+  const disagreeing=lockedDeps(views);
+  let prompt;
+  await resolveMeal(photoInput,{...disagreeing.deps,readLabel:label(130),
+    generate:async options=>{prompt=JSON.stringify(options.messages);return disagreeing.deps.generate()}});
+  assert.equal(disagreeing.agentRuns(),1);
+  assert.match(prompt,/labelDisagrees.*00850241008835/);
 });

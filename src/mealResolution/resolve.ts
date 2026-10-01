@@ -45,7 +45,9 @@ facts. Each is one item in the plan (one labelled serving unless the user's word
 amount 2): never rename, replace, duplicate or add another item for them, and never omit one unless the user's words
 exclude it. visibleFoods then lists only the rest of the meal: resolve just those. unresolvedBarcodes were decoded but
 are in no database: identify such a product only from legible label text in the photos (readLabel, then addFood with
-that gtin) or ask; never from how the package looks.
+that gtin) or ask; never from how the package looks. labelDisagrees lists locked products whose photographed nutrition
+label disagrees with their record: readLabel and addFood that label (it becomes the user's own copy with the label's
+values, same barcode) and log that food instead of the record.
 barcodes lists retail barcodes that a barcode library decoded from the photos; never read barcode digits
 yourself. Each decoded barcode is a product in the meal, and one item must be the catalogue food carrying that
 exact gtin. A barcodeMatches food is that product: use it. For a barcode with no catalogue match, call
@@ -357,6 +359,24 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         .then(found=>({...item,catalogue:(found.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
     }
     if (lockedFoods.length) trace.push(`locked: ${lockedFoods.map(food=>`food ${food.id}`).join(", ")}${unresolved.length?`; unresolved ${unresolved.length}`:""}`)
+    if (scene) trace.push(`scene: ${visible.length} leftovers, ${visible.filter(item=>item.food==="unidentified package").length} unidentified, ${
+      scene.samePackageViews?"same package views":"separate packages"}`)
+    // Several views of one scanned package (front, label, barcode): when a view without a barcode shows its nutrition
+    // label and the label's energy density disagrees with the product's record by more than 15%, the label wins
+    // (barcode-route-plan.md item 13): the agent reads it and logs the user's copy with the label's values.
+    const labelDisagrees:string[]=[]
+    if (scene?.samePackageViews&&lockedFoods.length===1&&photos.length>1) {
+      const food=lockedFoods[0]
+      const unscanned=photos.filter(photo=>!photoBarcodes.find(row=>row.photoId===photo.id)?.gtins.length)
+      const facts=await Promise.all(unscanned.slice(0,2).map(photo=>(deps.readLabel??readNutritionLabel)(photo.url,{signal:controller.signal}).catch(()=>null)))
+      const recordDensity=(food.kcalPerServing??0)/(food.defaultServingWeightGram||1)
+      for (const fact of facts) {
+        const kcal=fact?.kcal??(fact?.kj!=null?fact.kj/4.184:null)
+        if (!fact||kcal==null||!(fact.basisGrams>0)||!(recordDensity>0)) continue
+        if (Math.abs(kcal/fact.basisGrams-recordDensity)/recordDensity>0.15) {labelDisagrees.push(food.gtin!);break}
+      }
+      if (labelDisagrees.length) trace.push("label disagrees with the barcode's record")
+    }
     const lockedProposal=(foods:CatalogFood[]):MealProposal=>({schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,
       historyGroupSelections:[],claims:[],clarification:null,
       items:foods.map(food=>({foodId:food.id,quantity:labelledServing(food),groupId:null,groupLabel:null,
@@ -369,7 +389,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // 30323); the agent then reads the amount from the label, with the product still locked.
     const servingKnown=(food:CatalogFood)=>{const quantity=labelledServing(food)
       return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
-    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)) {
+    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)&&!labelDisagrees.length) {
       const proposal=lockedProposal(lockedFoods)
       trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
       const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
@@ -385,7 +405,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // products; any unidentified package or unresolved barcode leaves the meal to the agent.
     const leftoverPackages=visible.some(item=>/package/.test(item.detail))
     const plainPhoto=photosOnly&&photos.length>0&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS&&
-      (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages&&lockedFoods.every(servingKnown)))
+      (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages&&lockedFoods.every(servingKnown)&&!labelDisagrees.length))
     const photoFastStarted=performance.now()
     const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??photoFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false))
       .then(async enabled=>{
@@ -399,7 +419,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
           components:[...base.components,...fastProposal.components.map(component=>({...component,
             itemIndexes:component.itemIndexes.map(index=>index+base.items.length)}))]}
         const quick:MealResolutionResult={proposal:merged,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
-          model:"photo-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[...barcodes],checked:true,timeline,trace}
+          // Its own route name on the dashboard when barcode products were locked in (route C).
+          model:lockedFoods.length?"barcode-photo-fast-route":"photo-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,
+          barcodes:[...barcodes],checked:true,timeline,trace}
         // The plan covers every component of the first look one to one, so the second look has nothing to add.
         const problem=await compileCheckedMealPlan(input,quick,{secondLook:false}).then(()=>null,
           (error:unknown)=>error instanceof Error?error.message:"invalid_plan")
@@ -428,7 +450,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       recentMeals:recent,barcodes:[...barcodes],barcodeMatches:barcodeMatches.map(foodSummary),
       lockedProducts:lockedFoods.map(food=>({gtin:food.gtin,foodId:food.id,name:food.name,brand:food.brand,
         servings:foodSummary(food).servings,servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing})),
-      unresolvedBarcodes:unresolved,
+      unresolvedBarcodes:unresolved,labelDisagrees,
       // The grams estimate only feeds the preview: the agent sizes portions from its own evidence.
       visibleFoods:visibleFoods.map(({grams:_,estimate:__,...item})=>item),outputGuide})
     const request={
