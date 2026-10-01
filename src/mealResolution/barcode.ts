@@ -54,6 +54,58 @@ async function read(image: Buffer, tryHarder: boolean) {
   return null
 }
 
+/** Every retail barcode ZXing reads in one image, each with the box it was found in. */
+async function readAll(image: Buffer) {
+  ensureReader()
+  const results = await readBarcodes(new Uint8Array(image), { ...RETAIL, maxNumberOfSymbols: 8, tryHarder: true, tryDownscale: true })
+  return results.flatMap(result => {
+    const gtin = result.isValid ? normalizeGtin(result.text, result.format) : null
+    if (!gtin) return []
+    const corners = [result.position.topLeft, result.position.topRight, result.position.bottomLeft, result.position.bottomRight]
+    const xs = corners.map(point => point.x), ys = corners.map(point => point.y)
+    const box: Box = { left: Math.min(...xs), top: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) }
+    return [{ gtin, format: result.format, box }]
+  })
+}
+
+/** Whether two boxes overlap (a located barcode is one already read). */
+const overlaps = (a: Box, b: Box) => a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height
+
+/** Every barcode in one photo (several products can share a photo): all the whole image reads, then any barcode the
+ * locator boxes that wasn't read, from a full-resolution crop. Boxes that still don't decode are returned, not dropped:
+ * a package is there that nobody identified. Without any whole-image read, the single-barcode chain (tiles, lighting)
+ * runs as before. Digits only ever come from ZXing; the locator only says where to look. */
+export async function decodeBarcodes(photo: Buffer, deps: { locate?: (jpeg: Buffer, width: number, height: number) => Promise<Box[]> } = {}):
+  Promise<{ reads: BarcodeRead[]; undecodedBoxes: Box[] }> {
+  const started = performance.now()
+  const full = await sharp(photo).rotate().grayscale().jpeg({ quality: 95 }).toBuffer()
+  const { width: fullW = 0, height: fullH = 0 } = await sharp(full).metadata()
+  const jpeg = fullW > 1600 || fullH > 1600 ? await sharp(full).resize({ width: 1600, height: 1600, fit: "inside" }).jpeg({ quality: 90 }).toBuffer() : full
+  const { width = 0, height = 0 } = jpeg === full ? { width: fullW, height: fullH } : await sharp(jpeg).metadata()
+  const [whole, boxes] = await Promise.all([readAll(jpeg), deps.locate ? deps.locate(jpeg, width, height).catch(() => [] as Box[]) : Promise.resolve([] as Box[])])
+  const ms = () => Math.round(performance.now() - started)
+  const reads: BarcodeRead[] = whole.map(hit => ({ gtin: hit.gtin, format: hit.format, method: "whole", ms: ms() }))
+  if (!whole.length) {
+    const single = await decodeBarcode(photo, { locate: deps.locate ? async () => boxes : undefined })
+    if (single) reads.push(single)
+  }
+  // Located barcodes that no whole-image read covers: a crop each, at full resolution.
+  const undecodedBoxes: Box[] = []
+  const scale = fullW / width
+  for (const box of boxes.slice(0, 6)) {
+    if (whole.some(hit => overlaps(hit.box, box)) || (!whole.length && reads.length && boxes.length === 1)) continue
+    const padX = box.width * 0.2, padY = box.height * 0.2
+    const region = await crop(full, { left: (box.left - padX) * scale, top: (box.top - padY) * scale,
+      width: (box.width + 2 * padX) * scale, height: (box.height + 2 * padY) * scale }, fullW, fullH)
+    const hit = region && await read(region, true)
+    if (hit) reads.push({ ...hit, method: "located", ms: ms() })
+    else undecodedBoxes.push(box)
+  }
+  // The same barcode twice in one photo is one product.
+  const seen = new Set<string>()
+  return { reads: reads.filter(read => !seen.has(read.gtin) && seen.add(read.gtin)), undecodedBoxes }
+}
+
 /** Pixel box in the oriented image. */
 export type Box = { left: number; top: number; width: number; height: number }
 export type BarcodeRead = { gtin: string; format: string; method: "whole" | "located" | "tiles" | "flattened"; ms: number }

@@ -125,3 +125,69 @@ export async function missingFromVisibleList(visible: VisibleFood[], logged: { n
     return (parsed.missing ?? []).flatMap(item => typeof item === "string" && item.trim() ? [item.trim().slice(0, 60)] : []).slice(0, 5)
   } catch { return [] }
 }
+
+export type SceneCheck = {
+  /** Packages showing a barcode, per photo (by count only: the barcode, not the model, says what they are). */
+  barcodePackages: { photo: number; count: number }[]
+  /** Other packages, with their printed name only when it is legible ("unlabelled package" otherwise). */
+  otherPackages: { photo: number; legibleText: string | null }[]
+  /** Everything else being eaten (plates, fruit, drinks the text mentions), like the first look. */
+  otherFoods: VisibleFood[]
+  /** Whether the photos are several views of the same package (front, label, barcode). */
+  samePackageViews: boolean
+}
+
+const SCENE = `These photos are of a meal; some show packaged products with a barcode. Barcodes are read separately by a
+barcode library, so never name a product from its barcode, its digits or its colours, and never guess a brand.
+Return:
+- barcodePackages: for each photo (0-based index), how many packages show a barcode (count only).
+- otherPackages: packages without a visible barcode that the user is eating, with legibleText only when the product name
+  is printed and readable in the photo, else null.
+- otherFoods: every other food or drink the user is eating (a plate, fruit, a bowl), with a short plain name, where it
+  is, an estimated amount in grams (a drink: mL) and estimated kcal, protein, carbs and fat for that amount.
+- samePackageViews: true when the photos show the same package from different sides (front, nutrition label, barcode).
+Ignore tableware, other people's food, and drinks unless the user's text mentions them.`
+
+/** The first look for photos that contain barcodes (barcode-route-plan.md): counts barcoded packages without naming
+ * them, names other packages only from legible text, and lists the rest of the meal. One Flash call. */
+export async function sceneCheck(photoUrls: URL[], userText: string,
+  deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<SceneCheck | null> {
+  const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
+  if (!key || !photoUrls.length) return null
+  const started = performance.now()
+  const number = { type: "number" }
+  const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({ model: FOOD_MODEL, reasoning: { effort: "minimal", exclude: true }, provider: providerPreferences(FOOD_MODEL),
+      max_tokens: 900, response_format: { type: "json_schema", json_schema: { name: "scene", strict: true, schema: {
+        type: "object", additionalProperties: false, required: ["barcodePackages", "otherPackages", "otherFoods", "samePackageViews"],
+        properties: {
+          barcodePackages: { type: "array", items: { type: "object", additionalProperties: false, required: ["photo", "count"],
+            properties: { photo: { type: "integer" }, count: { type: "integer" } } } },
+          otherPackages: { type: "array", items: { type: "object", additionalProperties: false, required: ["photo", "legibleText"],
+            properties: { photo: { type: "integer" }, legibleText: { type: ["string", "null"] } } } },
+          otherFoods: { type: "array", items: { type: "object", additionalProperties: false,
+            required: ["food", "detail", "estimatedGrams", "estimatedKcal", "estimatedProteinG", "estimatedCarbG", "estimatedFatG"],
+            properties: { food: { type: "string" }, detail: { type: "string" }, estimatedGrams: number, estimatedKcal: number,
+              estimatedProteinG: number, estimatedCarbG: number, estimatedFatG: number } } },
+          samePackageViews: { type: "boolean" } } } } },
+      messages: [{ role: "user", content: [
+        { type: "text", text: `${SCENE}\n\nUser text (data): ${JSON.stringify(userText)}` },
+        ...photoUrls.map(url => ({ type: "image_url", image_url: { url: url.toString() } }))] }] })
+  }).catch(recordFailure("scene_check", FOOD_MODEL, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("scene_check", FOOD_MODEL, started, null, `http_${response.status}`); return null }
+  try {
+    const body = await response.json()
+    recordOpenRouterResponse("scene_check", FOOD_MODEL, started, body, "ok")
+    const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}")
+    const photo = (value: unknown) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value < photoUrls.length
+    return {
+      barcodePackages: (parsed.barcodePackages ?? []).filter((row: any) => photo(row.photo) && row.count > 0 && row.count < 20)
+        .map((row: any) => ({ photo: row.photo, count: row.count })),
+      otherPackages: (parsed.otherPackages ?? []).filter((row: any) => photo(row.photo)).slice(0, 6)
+        .map((row: any) => ({ photo: row.photo, legibleText: typeof row.legibleText === "string" && row.legibleText.trim() ? row.legibleText.trim().slice(0, 120) : null })),
+      otherFoods: (parsed.otherFoods ?? []).flatMap((item: Record<string, unknown>) => { const food = visibleFood(item); return food ? [food] : [] }).slice(0, 8),
+      samePackageViews: parsed.samePackageViews === true }
+  } catch { return null }
+}

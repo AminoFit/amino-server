@@ -5,9 +5,9 @@ import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
 import { createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
 import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
-import { decodeBarcode, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
+import { decodeBarcodes, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
 import { compileCheckedMealPlan, refersToPastMeal } from "./historyCheck"
-import { listVisibleFoods, missingVisibleFoods, type VisibleFood } from "./coverageCheck"
+import { listVisibleFoods, missingVisibleFoods, sceneCheck, type VisibleFood } from "./coverageCheck"
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
 import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, textFastProposal } from "./textFastRoute"
@@ -40,6 +40,12 @@ consumedOnLocal are on that same clock. Write consumedOn as UTC ("...Z").
 visibleFoods is a first look at the photos: each component the user is eating, with catalogue candidates when
 found. Log every one of them (use a candidate when it has the right identity, preparation and variant; findFood only
 for the rest), leaving one out only when it is clearly not eaten; the backend checks the plan covers them.
+lockedProducts are the products a barcode library decoded from the photos and the backend already resolved: verified
+facts. Each is one item in the plan (one labelled serving unless the user's words give an amount; "2 of these" is
+amount 2): never rename, replace, duplicate or add another item for them, and never omit one unless the user's words
+exclude it. visibleFoods then lists only the rest of the meal: resolve just those. unresolvedBarcodes were decoded but
+are in no database: identify such a product only from legible label text in the photos (readLabel, then addFood with
+that gtin) or ask; never from how the package looks.
 barcodes lists retail barcodes that a barcode library decoded from the photos; never read barcode digits
 yourself. Each decoded barcode is a product in the meal, and one item must be the catalogue food carrying that
 exact gtin. A barcodeMatches food is that product: use it. For a barcode with no catalogue match, call
@@ -164,10 +170,12 @@ const proposalOutput=Output.object({schema:jsonSchema<MealProposal>(
 
 const MAX_STEPS=10
 
-async function readPhotoBarcode(url:URL):Promise<string|null> {
+/** Every barcode in one photo, and how many located barcodes didn't decode (a package nobody identified). */
+async function readPhotoBarcodes(url:URL):Promise<{gtins:string[];undecoded:number}> {
   const response=await fetch(url,{signal:AbortSignal.timeout(8000)})
-  if (!response.ok) {await response.body?.cancel();return null}
-  return (await decodeBarcode(Buffer.from(await response.arrayBuffer()),{locate:locateBarcodesWithFlash}))?.gtin??null
+  if (!response.ok) {await response.body?.cancel();return {gtins:[],undecoded:0}}
+  const {reads,undecodedBoxes}=await decodeBarcodes(Buffer.from(await response.arrayBuffer()),{locate:locateBarcodesWithFlash})
+  return {gtins:reads.map(read=>read.gtin),undecoded:undecodedBoxes.length}
 }
 
 export type MealResolutionInput = {
@@ -203,6 +211,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   onTool?:(name:string,input:unknown,output:unknown)=>void;
   loadPhotos?:typeof loadMealPhotos;deadlineMs?:number;
   sources?:ReturnType<typeof createFoodSources>;readBarcode?:(url:URL)=>Promise<string|null>;
+  /** Every barcode in a photo (defaults to the multi-barcode decoder; readBarcode, when given, reads one). */
+  readBarcodes?:(url:URL)=>Promise<{gtins:string[];undecoded:number}>;
+  /** The barcode-aware first look (evals and tests). */
+  scene?:typeof sceneCheck;
   /** Decoded GTINs are pushed here; pass the same array to injected sources. */
   barcodes?:string[]
   /** Overrides FeatureFlag.meal_text_fast_route for this meal (evals and tests). */
@@ -240,24 +252,30 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // Photos, likely foods and recent meals load in parallel before the first turn.
     const now=Date.parse(input.submittedAt)
     const photosLoaded=(deps.loadPhotos??loadMealPhotos)(input.userId,input.messageId,input.attachmentIds,input.useExistingPhotos??false)
-    // Barcode digits come only from the decoding library, one read per photo, in parallel.
+    // Barcode digits come only from the decoding library: every barcode in every photo, in parallel.
+    const readOne=deps.readBarcode
+    const readPhoto=deps.readBarcodes??(readOne?async(url:URL)=>{const gtin=await readOne(url);return {gtins:gtin?[gtin]:[],undecoded:0}}:readPhotoBarcodes)
     const decoded=photosLoaded.then(list=>Promise.all(list.map(async photo=>{
-      const gtin=await (deps.readBarcode??readPhotoBarcode)(photo.url).catch(()=>null)
-      return gtin?{photoId:photo.id,gtin}:null}))).then(reads=>reads.filter((read):read is {photoId:number;gtin:string}=>read!==null)).catch(()=>[])
+      const read=await readPhoto(photo.url).catch(()=>({gtins:[] as string[],undecoded:0}))
+      return {photoId:photo.id,...read}}))).catch(()=>[] as {photoId:number;gtins:string[];undecoded:number}[])
       // Sources may only carry decoded barcodes: register them as soon as they decode.
-      .then(reads=>{for (const read of reads) if (!barcodes.includes(read.gtin)) barcodes.push(read.gtin);return reads})
-    // Photos of barcodes and nothing else: each package is the product its barcode names, found in the catalogue or
-    // a barcode database without a model turn. This starts as soon as the barcodes decode, alongside the first look,
-    // and is used only if the first look then sees nothing else. Anything else (text, a repair) goes to the agent.
-    const barcodeOnly=!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length
-    const fastStarted=performance.now()
-    const early=barcodeOnly?Promise.all([photosLoaded,decoded]).then(async([list,reads])=>{
-      if (!list.length||reads.length!==list.length) return null
-      const gtins=[...new Set(reads.map(read=>read.gtin))]
-      const proposal=await barcodeProposal(input,gtins,await evidence.findFoodsByGtin(gtins).catch(()=>[]),evidence,sources)
-      mark("barcode",fastStarted)
-      return proposal
-    }).catch(()=>null):Promise.resolve(null)
+      .then(reads=>{for (const read of reads) for (const gtin of read.gtins) if (!barcodes.includes(gtin)) barcodes.push(gtin);return reads})
+    // A decoded barcode is a fact (barcode-route-plan.md): each one is resolved to its catalogue food up front, on every
+    // route (catalogue, then USDA, then Open Food Facts), and locked: no model renames, replaces or duplicates it. A
+    // barcode found in no database stays unresolved, never guessed.
+    const lockStarted=performance.now()
+    const lockedLoaded=decoded.then(async reads=>{
+      const gtins=[...new Set(reads.flatMap(read=>read.gtins))]
+      if (!gtins.length) return []
+      const resolved=await Promise.all(gtins.map(async gtin=>({gtin,food:await barcodeFood(gtin,evidence,sources).catch(()=>null)})))
+      mark("barcode",lockStarted)
+      return resolved
+    }).catch(()=>[] as {gtin:string;food:CatalogFood|null}[])
+    // Photos with a barcode get a scene check instead of trusting the first look: it counts barcoded packages without
+    // naming them (the first look invented a product for meal 30389) and lists only the rest of the meal.
+    const sceneLoaded=Promise.all([photosLoaded,decoded]).then(([list,reads])=>
+      reads.some(read=>read.gtins.length||read.undecoded)?(deps.scene??sceneCheck)(list.map(photo=>photo.url),input.originalText):null)
+      .catch(()=>null)
     // A first look lists what the user is eating while likely foods load, so the first turn can usually answer.
     const visibleLoaded=photosLoaded.then(list=>list.length?(deps.visible??listVisibleFoods)(list.map(photo=>photo.url),input.originalText):[])
       .catch(()=>[] as VisibleFood[])
@@ -299,7 +317,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       return {...quick,durationMs:performance.now()-started}
     }).catch(()=>null)
     const prefetchStarted=performance.now()
-    const [photos,prefetched,yours,recent,photoBarcodes,visible]=await Promise.all([
+    const [photos,prefetched,yours,recent,photoBarcodes,firstLook]=await Promise.all([
       photosLoaded,
       Promise.resolve().then(()=>evidence.prefetchFoods(input.originalText)).catch(()=>[]),
       // The user's own foods and recipes named in their words (none for a photo alone).
@@ -309,8 +327,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         new Date(now+60000).toISOString())).then(result=>result.events).catch(()=>[]),
       decoded,visibleLoaded])
     mark("prefetch",prefetchStarted)
+    let visible=firstLook
     const visibleStarted=performance.now()
-    const visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)
+    let visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)
       .then(found=>({...item,catalogue:(found.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
     if (visible.length) {
       mark("visible",visibleStarted)
@@ -319,24 +338,50 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     }
     const barcodeMatches=barcodes.length?await evidence.findFoodsByGtin(barcodes).catch(()=>[]):[]
     controller.signal.throwIfAborted()
-    if (barcodeOnly&&visible.length<=barcodes.length) {
-      const proposal=await early
-      if (proposal) {
-        trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
-        const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
-          model:"barcode",provider:"server",durationMs:performance.now()-started,steps:0,toolCalls:0,barcodes:[...barcodes],
-          // A decoded barcode is a fact, not a guess: the first look's names for these packages (invented from the
-          // packaging's colours, as for meal 30389) must not send it back for a repair. This route only runs with no
-          // text and no more first-look items than barcodes; compile still checks every barcode is logged.
-          checked:true,timeline,trace}
-        Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
-        return finished=resolved
-      }
+    // Reconcile: the locked products, and the leftovers (everything else in the photos) that still need resolving.
+    const [locked,scene]=await Promise.all([lockedLoaded,sceneLoaded])
+    const lockedFoods=locked.flatMap(row=>row.food?[row.food]:[])
+    const unresolved=locked.filter(row=>!row.food).map(row=>row.gtin)
+    if (scene) {
+      // More barcoded packages than barcodes decoded on a photo (or a located barcode that won't read) is a package
+      // nobody identified: a leftover, never dropped. Views of the same package count once.
+      const unidentified=scene.samePackageViews?0:photos.reduce((sum,photo,index)=>{
+        const read=photoBarcodes.find(row=>row.photoId===photo.id)
+        const seen=scene.barcodePackages.find(row=>row.photo===index)?.count??0
+        return sum+Math.max(seen-(read?.gtins.length??0),read?.undecoded??0,0)},0)
+      visible=[...scene.otherFoods,
+        ...(scene.samePackageViews&&lockedFoods.length?[]:scene.otherPackages.map(row=>({food:row.legibleText??"unlabelled package",
+          detail:`a package in photo ${row.photo+1} without a readable barcode`,grams:null}))),
+        ...Array.from({length:unidentified},()=>({food:"unidentified package",detail:"a barcode that couldn't be read",grams:null}))]
+      visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)
+        .then(found=>({...item,catalogue:(found.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
+    }
+    if (lockedFoods.length) trace.push(`locked: ${lockedFoods.map(food=>`food ${food.id}`).join(", ")}${unresolved.length?`; unresolved ${unresolved.length}`:""}`)
+    const lockedProposal=(foods:CatalogFood[]):MealProposal=>({schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,
+      historyGroupSelections:[],claims:[],clarification:null,
+      items:foods.map(food=>({foodId:food.id,quantity:labelledServing(food),groupId:null,groupLabel:null,
+        evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
+      components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
+        itemIndexes:[index],historySelectionIndexes:[],omitted:false}))})
+    const photosOnly=!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
+    // Route A: barcodes and nothing else, all found: one labelled serving of each product, no model turn.
+    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length) {
+      const proposal=lockedProposal(lockedFoods)
+      trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
+      const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
+        model:"barcode",provider:"server",durationMs:performance.now()-started,steps:0,toolCalls:0,barcodes:[...barcodes],
+        // The scene check found nothing else, so a second look has nothing to add; compile still checks every barcode.
+        checked:true,timeline,trace}
+      Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
+      return finished=resolved
     }
     // A photo meal without text can skip the agent too: Jev matches the first look's components while the agent starts
     // (FeatureFlag.meal_photo_fast_route). Photos with a barcode keep the barcode route or the agent.
-    const plainPhoto=!input.originalText.trim()&&photos.length>0&&!input.validationErrorCode&&!input.answers?.length&&
-      input.previousMeal==null&&!barcodes.length&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS
+    // With locked barcode products (route C), the fast route resolves only the leftovers and the plan adds the locked
+    // products; any unidentified package or unresolved barcode leaves the meal to the agent.
+    const leftoverPackages=visible.some(item=>/package/.test(item.detail))
+    const plainPhoto=photosOnly&&photos.length>0&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS&&
+      (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages))
     const photoFastStarted=performance.now()
     const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??photoFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false))
       .then(async enabled=>{
@@ -344,16 +389,23 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         const outcome=await photoFastProposal(input,visible,evidence,{signal:controller.signal})
         mark("photo_fast_route",photoFastStarted)
         if (!outcome.proposal) {trace.push(`photo_fast_route: ${outcome.reason}`);return null}
-        const quick:MealResolutionResult={proposal:outcome.proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
-          model:"photo-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[],checked:true,timeline,trace}
+        // Locked barcode products first, then the leftovers the fast route matched.
+        const base=lockedProposal(lockedFoods),fastProposal=outcome.proposal
+        const merged:MealProposal={...fastProposal,items:[...base.items,...fastProposal.items],
+          components:[...base.components,...fastProposal.components.map(component=>({...component,
+            itemIndexes:component.itemIndexes.map(index=>index+base.items.length)}))]}
+        const quick:MealResolutionResult={proposal:merged,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
+          model:"photo-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[...barcodes],checked:true,timeline,trace}
         // The plan covers every component of the first look one to one, so the second look has nothing to add.
         const problem=await compileCheckedMealPlan(input,quick,{secondLook:false}).then(()=>null,
           (error:unknown)=>error instanceof Error?error.message:"invalid_plan")
         if (problem) {trace.push(`photo_fast_route: check ${problem.slice(0,60)}`);return null}
         // The agent's plans get a second look at the photos for anything the plan misses; so does this one, and anything
         // missing (or a failed look) leaves the meal to the agent.
-        const missing=await missingVisibleFoods(photos.map(photo=>photo.url),"",outcome.proposal.items.map(item=>
-          ({name:evidence.foods.get(item.foodId!)?.name??`food ${item.foodId}`}))).catch(()=>["second_look_failed"])
+        const missing=await missingVisibleFoods(photos.map(photo=>photo.url),"",merged.items.map(item=>{
+          const food=evidence.foods.get(item.foodId!)
+          return food?.gtin&&barcodes.includes(food.gtin)?{name:food.name,contains:"Identified by its decoded barcode: this is the packaged product in the photo, whatever its packaging looks like."}
+            :{name:food?.name??`food ${item.foodId}`}})).catch(()=>["second_look_failed"])
         if (missing.length) {trace.push("photo_fast_route: second look found more");return null}
         trace.push(`photo_fast_route: ${outcome.foods.map(food=>`food ${food.foodId}`).join(", ")}`)
         const resolved={...quick,durationMs:performance.now()-started}
@@ -369,7 +421,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       attachmentIds:photos.map(photo=>photo.id),answers:input.answers??[],previousMeal:input.previousMeal,
       validationErrorCode:input.validationErrorCode,clarificationAllowed:input.clarificationAllowed??true,prefetchedFoods:prefetched.map(foodSummary),
       yourFoods:yours.map(foodSummary),
-      recentMeals:recent,barcodes:photoBarcodes,barcodeMatches:barcodeMatches.map(foodSummary),
+      recentMeals:recent,barcodes:[...barcodes],barcodeMatches:barcodeMatches.map(foodSummary),
+      lockedProducts:lockedFoods.map(food=>({gtin:food.gtin,foodId:food.id,name:food.name,brand:food.brand,
+        servings:foodSummary(food).servings,servingGrams:food.defaultServingWeightGram,kcal:food.kcalPerServing})),
+      unresolvedBarcodes:unresolved,
       // The grams estimate only feeds the preview: the agent sizes portions from its own evidence.
       visibleFoods:visibleFoods.map(({grams:_,estimate:__,...item})=>item),outputGuide})
     const request={
@@ -554,29 +609,20 @@ const stepDetail=(step?:AgentStep)=>{const names=(step?.toolCalls??[]).map(call=
 /** One default serving of each barcoded product, or null when a product needs the agent (no source, or a
  * possible duplicate to judge). The catalogue food carrying the barcode first; else USDA or Open Food Facts,
  * added through the usual duplicate checks, which attach the barcode to an existing food that is the same. */
-async function barcodeProposal(input:MealResolutionInput,barcodes:string[],matches:CatalogFood[],
-  evidence:ReturnType<typeof createMealEvidence>,sources:ReturnType<typeof createFoodSources>):Promise<MealProposal|null> {
-  const foods:CatalogFood[]=[]
-  for (const gtin of barcodes) {
-    let food=matches.find(match=>match.gtin===gtin)
-    if (!food) {
-      const [source]=await sources.barcodeSources(gtin)
-      if (!source) return null
-      const added=await sources.createFoodFromSource(source.sourceId)
-      if (added.status!=="created"&&added.status!=="existing") return null
-      evidence.forget(added.foodId)
-      food=(await evidence.getFoodsAndServings([added.foodId])).foods[0]
-    }
-    if (!food||food.gtin!==gtin) return null
-    foods.push(food)
-  }
-  return {schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,historyGroupSelections:[],claims:[],clarification:null,
-    items:foods.map(food=>({foodId:food.id,quantity:labelledServing(food),groupId:null,groupLabel:null,
-      evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
-    components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
-      itemIndexes:[index],historySelectionIndexes:[],omitted:false}))}
+/** The catalogue food a decoded barcode names: the catalogue's, else one created from the barcode's USDA or Open Food
+ * Facts record. Null when no database knows it (never guessed). */
+async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvidence>,
+  sources:ReturnType<typeof createFoodSources>):Promise<CatalogFood|null> {
+  const [known]=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
+  if (known?.gtin===gtin) return known
+  const [source]=await sources.barcodeSources(gtin)
+  if (!source) return null
+  const added=await sources.createFoodFromSource(source.sourceId)
+  if (added.status!=="created"&&added.status!=="existing") return null
+  evidence.forget(added.foodId)
+  const food=(await evidence.getFoodsAndServings([added.foodId])).foods[0]
+  return food?.gtin===gtin?food:null
 }
-
 
 /** A tool result as status and IDs only: never names or text, so it can be logged. */
 function toolOutcome(value:unknown):string {

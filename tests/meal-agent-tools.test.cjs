@@ -205,6 +205,9 @@ const barcodeDeps=(overrides={})=>{
     async searchFoodSources(){return {candidates:[]}}};
   return {created,deps:{evidence:ev,sources,loadPhotos:async()=>[{id:8414,url:new URL('https://example.com/p.jpg')}],
     readBarcode:async()=>'00195515039802',visible:async()=>overrides.visible??[{food:'frozen fruit'}],
+    // The barcode-aware first look: one barcoded package, plus whatever else the case puts in the photo.
+    scene:async()=>({barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:(overrides.visible??[]).slice(1).map(item=>({...item,detail:'',grams:150})),
+      samePackageViews:false}),
     generate:async()=>{throw new Error('the agent must not run')},model:()=>({id:'test',provider:'test',model:{}})}};
 };
 
@@ -237,5 +240,58 @@ test('the agent still handles barcodes with text, other visible foods, no source
     const result=await resolveMeal(run.input??photoInput,{...deps,generate:async()=>{agent++;return {output:agentPlan,response:{messages:[]}}}});
     assert.equal(agent,1,label);
     assert.equal(result.proposal.outcome,'needs_clarification',label);
+  }
+});
+
+// Barcode route plan: a decoded barcode is locked; vision never names or replaces it.
+const bar={...fruit,id:52001,name:'trü frü raspberries in white & milk chocolate',brand:'trü frü',gtin:'00850241008835',
+  Serving:[{id:701,foodItemId:52001,servingName:'pouch',servingWeightGram:28,defaultServingAmount:1}]};
+const lockedDeps=({reads,scene,catalogue=[fruit,bar]})=>{
+  const foods=new Map();
+  const ev={foods,events:new Map(),discover(){},forget(id){foods.delete(id)},
+    async listMealEvents(){return {events:[]}},async prefetchFoods(){return []},
+    async findFoodsByGtin(gtins){return catalogue.filter(food=>gtins.includes(food.gtin))},
+    async searchFoods(){return {candidates:[],foods:[]}},
+    async getFoodsAndServings(ids){const found=catalogue.filter(food=>ids.includes(food.id));for (const f of found) foods.set(f.id,f);return {foods:found}}};
+  const sources={sources:new Map(),async barcodeSources(){return []},async createFoodFromSource(){throw new Error('unused')},async searchFoodSources(){return {candidates:[]}}};
+  let agentRuns=0;
+  return {agentRuns:()=>agentRuns,deps:{evidence:ev,sources,
+    loadPhotos:async()=>reads.map((_,index)=>({id:9000+index,url:new URL(`https://example.com/${index}.jpg`)})),
+    readBarcodes:async url=>reads[Number(url.pathname.match(/(\d+)\.jpg/)[1])],
+    // The first look invents a product for the bag, as it did for meal 30389.
+    visible:async()=>[{food:'LesserEvil Himalayan Pink Salt Popcorn',detail:'identified by barcode',grams:28}],
+    scene:async()=>scene,photoFastRoute:false,
+    generate:async()=>{agentRuns++;return {output:{schemaVersion:1,outcome:'needs_clarification',consumedOn:input.consumedOn,
+      historyGroupSelections:[],items:[],components:[],claims:[],clarification:'Which product is the other package?'},response:{messages:[]}}},
+    model:()=>({id:'test',provider:'test',model:{}})}};
+};
+const onlyBarcodes=(counts,same=false)=>({barcodePackages:counts.map((count,photo)=>({photo,count})),otherPackages:[],otherFoods:[],samePackageViews:same});
+
+test('meal 30389: a barcode alone is its product, whatever the first look calls the bag',async()=>{
+  const {deps,agentRuns}=lockedDeps({reads:[{gtins:['00850241008835'],undecoded:0}],scene:onlyBarcodes([1])});
+  const result=await resolveMeal(photoInput,deps);
+  assert.equal(agentRuns(),0);
+  assert.equal(result.model,'barcode');
+  assert.deepEqual(result.proposal.items.map(item=>item.foodId),[52001]);
+  assert.equal(result.checked,true,'no second look to overrule it');
+});
+
+test('two barcodes in one photo are two products; the same barcode in two photos is one',async()=>{
+  const two=await resolveMeal(photoInput,lockedDeps({reads:[{gtins:['00850241008835','00195515039802'],undecoded:0}],scene:onlyBarcodes([2])}).deps);
+  assert.deepEqual(two.proposal.items.map(item=>item.foodId).sort(),[52000,52001]);
+  const views=await resolveMeal(photoInput,lockedDeps({reads:[{gtins:['00850241008835'],undecoded:0},{gtins:['00850241008835'],undecoded:0}],
+    scene:onlyBarcodes([1,1],true)}).deps);
+  assert.deepEqual(views.proposal.items.map(item=>item.foodId),[52001]);
+});
+
+test('a barcode that will not read, or another package, goes to the agent with the product locked',async()=>{
+  for (const [label,reads,scene] of [['undecoded',[{gtins:['00850241008835'],undecoded:1}],onlyBarcodes([1])],
+    ['second package',[{gtins:['00850241008835'],undecoded:0}],{...onlyBarcodes([1]),otherPackages:[{photo:0,legibleText:null}]}]]) {
+    const {deps,agentRuns}=lockedDeps({reads,scene});
+    let prompt;
+    await resolveMeal(photoInput,{...deps,generate:async options=>{prompt=JSON.stringify(options.messages);return deps.generate()}});
+    assert.equal(agentRuns(),1,label);
+    assert.match(prompt,/lockedProducts.*52001/,label);
+    assert.doesNotMatch(prompt,/LesserEvil/,`${label}: the invented name never reaches the agent`);
   }
 });

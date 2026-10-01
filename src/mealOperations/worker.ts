@@ -26,7 +26,7 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "legacy_meal_nutrition_unavailable","structured_action_requires_published_snapshot",
   "meal_item_unavailable","meal_food_changed","food_evidence_unavailable",
   "serving_evidence_unavailable","unsupported_structured_action",
-  "delete_last_item_requires_meal_delete","clarification_unavailable","barcode_not_covered","history_not_referenced","recipe_not_referenced","missing_meal_coverage","duplicate_meal_mention",
+  "delete_last_item_requires_meal_delete","clarification_unavailable","barcode_not_covered","duplicate_barcode_item","history_not_referenced","recipe_not_referenced","missing_meal_coverage","duplicate_meal_mention",
   "unsupported_meal_mention","omitted_mention_has_food","dropped_meal_mention",
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group"])
 /** Foods without an icon go to the icon queue, which links a close existing icon or generates one. */

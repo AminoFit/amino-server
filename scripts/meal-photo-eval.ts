@@ -33,7 +33,18 @@ const needs = (...checks: Check[]) => (plan: Plan, foods: Map<number, CatalogFoo
   if (minK != null && kcal < minK || maxK != null && kcal > maxK) return [`${label} ${Math.round(kcal)} kcal, expected ${minK ?? 0}-${maxK ?? "any"}`]
   return []
 })
+// Exactly the barcode's product and nothing else (barcode-route-plan.md): an invented look-alike is a failure.
+const onlyBarcode = (gtin: string, label: string) => (plan: Plan, foods: Map<number, CatalogFood>) => {
+  const items = named(plan, foods)
+  return items.length === 1 && items[0].food?.gtin === gtin ? [] : [`${label}: expected only ${gtin}, got ${items.map(item =>
+    `${item.food?.name ?? item.foodId}${item.food?.gtin ? ` (${item.food.gtin})` : ""}`).join(", ") || "nothing"}`]
+}
 const CASES: Case[] = [
+  // Meal 30389: the back of a trü frü bag, barcode only. The first look named it Siete cookies and LesserEvil popcorn and
+  // the repair logged phantom popcorn: one item, the barcode's product.
+  { messageId: 30389, expect: onlyBarcode("00850241008835", "trü frü bag") },
+  // Meal 30390: front, nutrition label and barcode of the same bag: still one item.
+  { messageId: 30390, expect: onlyBarcode("00850241008835", "trü frü bag, 3 views") },
   // "Naya bowl with pita. Rice, vermicelli and rotisserie chicken": each listed food is covered by a food that includes
   // it ("Vermicelli rice" covers both; a "Rice Pilaf" covers only the rice, so vermicelli must be its own item).
   { messageId: 30345, expect: needs([/rice/i, "rice"], [/vermicelli|noodle/i, "vermicelli"], [/chicken/i, "chicken"], [/pita/i, "pita"]) },
