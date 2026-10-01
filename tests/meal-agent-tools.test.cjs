@@ -276,6 +276,23 @@ test('meal 30389: a barcode alone is its product, whatever the first look calls 
   assert.equal(result.checked,true,'no second look to overrule it');
 });
 
+test('meal 30399: one scanned product alone in the photo is logged without waiting for the scene check',async()=>{
+  const {deps,agentRuns}=lockedDeps({reads:[{gtins:['00850241008835'],undecoded:0}],scene:onlyBarcodes([1])});
+  const result=await resolveMeal(photoInput,{...deps,scene:()=>new Promise(()=>{}),
+    visible:async()=>[{food:'trü frü raspberries in white chocolate',detail:'a pouch',grams:28}]});
+  assert.equal(agentRuns(),0);
+  assert.equal(result.model,'barcode');
+  assert.deepEqual(result.proposal.items.map(item=>[item.foodId,item.quantity.kind]),[[52001,'serving']]);
+});
+
+test('meal 30399: a whole bag of a scanned product is not logged as one serving; the agent picks the amount',async()=>{
+  const {deps,agentRuns}=lockedDeps({reads:[{gtins:['00850241008835'],undecoded:0}],scene:onlyBarcodes([1])});
+  const result=await resolveMeal(photoInput,{...deps,
+    visible:async()=>[{food:'trü frü raspberries in white chocolate',detail:'the whole bag',grams:100}]}).catch(()=>null);
+  assert.notEqual(result?.model,'barcode','one 28 g serving is not what a 100 g bag shows');
+  assert.ok(agentRuns()>=1||result===null,'the locked product goes to the agent');
+});
+
 test('two barcodes in one photo are two products; the same barcode in two photos is one',async()=>{
   const two=await resolveMeal(photoInput,lockedDeps({reads:[{gtins:['00850241008835','00195515039802'],undecoded:0}],scene:onlyBarcodes([2])}).deps);
   assert.deepEqual(two.proposal.items.map(item=>item.foodId).sort(),[52000,52001]);

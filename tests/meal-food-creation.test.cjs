@@ -217,15 +217,25 @@ test('barcodes decide duplicates outright, and Jev sees the facts that separate 
   [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
   assert.equal((await h.sources.createFoodFromSource(candidate.sourceId)).status,'created');
   assert.equal(h.calls.jev.length,0);
-  // Without barcodes on the candidate, Jev decides with serving and density facts.
+  // A barcoded record is never decided by a model: another product of the same brand without a barcode is a new food.
   h=harness({usda:[],web,barcodes:['00818290015617'],near:[{id:7923,name:'Zero Sugar Greek Yogurt',brand:'Chobani',defaultServingWeightGram:150,
     kcalPerServing:60,proteinPerServing:11,Serving:[{servingName:'container',servingWeightGram:150,defaultServingAmount:1}]}],
-    jev:{status:'ok',choice:'none',confidence:0.95}});
+    jev:{status:'ok',choice:'food_7923',confidence:0.99}});
   [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  assert.equal((await h.sources.createFoodFromSource(candidate.sourceId)).status,'created');
+  assert.equal(h.calls.jev.length,0);
+  // The same brand and name without a barcode yet is this product: it gains the barcode.
+  h=harness({usda:[],web,barcodes:['00818290015617'],near:[{id:7924,name:'Protein Drink, Tropical Punch',brand:'Chobani'}]});
+  [candidate]=(await h.sources.searchFoodSources('Chobani drink',{gtin:'00818290015617'})).candidates;
+  assert.deepEqual(await h.sources.createFoodFromSource(candidate.sourceId).then(result=>[result.status,result.foodId]),['existing',7924]);
+  // Without a barcode, Jev decides with serving and density facts.
+  h=harness({usda:[],web,near:[{id:7923,name:'Zero Sugar Greek Yogurt',brand:'Chobani',defaultServingWeightGram:150,
+    kcalPerServing:60,proteinPerServing:11,Serving:[{servingName:'container',servingWeightGram:150,defaultServingAmount:1}]}],
+    jev:{status:'ok',choice:'none',confidence:0.95}});
+  [candidate]=(await h.sources.searchFoodSources('Chobani drink',{web:true})).candidates;
   assert.equal((await h.sources.createFoodFromSource(candidate.sourceId)).status,'created');
   const state=h.calls.jev[0].state;
   assert.deepEqual(state.newFood.servings,[{unit:'bottle',amount:1,grams:207}]);
-  assert.equal(state.newFood.barcode,'00818290015617');
   assert.deepEqual(state.catalogue[0].servings,[{unit:'container',amount:1,grams:150}]);
   assert.equal(state.catalogue[0].kcalPer100g,40);
 });
@@ -532,6 +542,7 @@ test('a scanned product is created, not held for review, when an unsure check on
   const branded=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,
     near:[...generic,{id:5000,name:'Mango Blueberry Blend',brand:'Amazon Fresh'}],jev:{status:'ok',choice:'food_5000',confidence:0.6}});
   const [again]=await branded.sources.barcodeSources('00195515039802');
-  assert.equal((await branded.sources.createFoodFromSource(again.sourceId)).status,'possible_duplicates',
-    'a same-brand candidate is still a real question');
+  assert.equal((await branded.sources.createFoodFromSource(again.sourceId)).status,'created',
+    'another product of the same brand is a new food, decided without a model');
+  assert.equal(branded.calls.jev.length,0);
 });

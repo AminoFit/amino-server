@@ -290,6 +290,23 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
 
   const isEstimate=(f?:{foodInfoSource?:string})=>f?.foodInfoSource==="GPT4"||f?.foodInfoSource==="AgentEstimate"
 
+  /** One product written twice: the same brand (or a brandless row whose name carries the brand, like "cheez it baked
+   * snack crackers") and the same name, ignoring the brand's own words, case, punctuation and plurals. */
+  function sameProduct(food:{name:string;brand:string|null},other:{name:string;brand?:string|null}) {
+    const squash=(value:string|null|undefined)=>(value??"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g,"")
+    const brand=squash(food.brand)
+    if (!brand) return false
+    const otherBrand=squash(other.brand)
+    const words=(value:string)=>value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(Boolean)
+    const brandWords=new Set([...words(food.brand??""),...words(other.brand??"")])
+    if (otherBrand?!(otherBrand.includes(brand)||brand.includes(otherBrand)):!squash(other.name).includes(brand)) return false
+    const filler=new Set(["and","with","of","the","in","a","n"])
+    const key=(name:string)=>[...new Set(words(name).filter(word=>!brandWords.has(word)&&!brand.includes(word)&&word.length>1&&!filler.has(word))
+      .map(word=>word.length>3?word.replace(/(es|s)$/,""):word))].sort().join(" ")
+    const a=key(food.name),b=key(other.name)
+    return !!a&&a===b
+  }
+
   async function duplicateOf(food:SourceFood,facts:Facts[]):Promise<{status:"none"}|{status:"existing";foodId:number;estimate:boolean}|
     {status:"possible_duplicates";candidates:{id:number;name:string;brand:string|null;servingGrams:number|null;kcal:number|null;proteinG:number|null}[]}> {
     if (!facts.length) return {status:"none"}
@@ -303,13 +320,15 @@ export function createFoodSources(ctx:{userId:string;messageId:number;signal:Abo
     const brand=brandOf(food.brand)
     // "Undercover" and "Undercover Snacks" are one brand.
     const sameBrand=(other:string|null|undefined)=>{const b=brandOf(other);return !!b&&!!brand&&(b.includes(brand)||brand.includes(b))}
-    // A barcoded, branded product is never a generic food: a brandless row stays a candidate only when its name carries
-    // the brand ("cheez it baked snack crackers" for Cheez-It). Meal 30399's 7D Dried Mangoes was judged "same" as the
-    // generic "dried mango" (0.91) and stamped its barcode on it, so every later scan logged the generic food.
-    const nameHasBrand=(name:string)=>!!brand&&brandOf(name).includes(brand)
-    const candidates=facts.filter(f=>!(food.gtin&&f.gtin&&f.gtin!==food.gtin)&&
-      (!brand||sameBrand(f.brand)||(f.gtin!=null&&f.gtin===food.gtin)||
-        (!brandOf(f.brand)&&(!food.gtin||nameHasBrand(f.name)))))
+    // A barcoded record is decided without a model (barcode-route-plan.md): the same barcode is this food (above); the
+    // same brand and the same name is this product before it had its barcode; anything else is a new product. Meal
+    // 30399's 7D Dried Mangoes was judged "same" as the generic "dried mango" by the model check (0.91) and stamped its
+    // barcode on it, so every later scan logged the generic food.
+    if (food.gtin) {
+      const same=facts.find(f=>!(f.gtin&&f.gtin!==food.gtin)&&sameProduct(food,f))
+      return same?{status:"existing",foodId:same.id,estimate:isEstimate(same)}:{status:"none"}
+    }
+    const candidates=facts.filter(f=>!brand||!brandOf(f.brand)||sameBrand(f.brand))
     if (!candidates.length) return {status:"none"}
     const options:Record<string,unknown>={none:null},criteria:Record<string,string>={none:"No candidate is the same food."}
     for (const c of candidates) {options[`food_${c.id}`]=c.id;criteria[`food_${c.id}`]=`Catalogue food ${c.id}.`}

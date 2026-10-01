@@ -10,7 +10,7 @@ import { compileCheckedMealPlan, refersToPastMeal } from "./historyCheck"
 import { listVisibleFoods, missingVisibleFoods, sceneCheck, type VisibleFood } from "./coverageCheck"
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
-import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, textFastProposal } from "./textFastRoute"
+import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, photoQuantity, textFastProposal } from "./textFastRoute"
 import { photoFastRouteEnabled, textFastRouteEnabled } from "./fastRouteFlag"
 import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
@@ -341,8 +341,15 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const barcodeMatches=barcodes.length?await evidence.findFoodsByGtin(barcodes).catch(()=>[]):[]
     controller.signal.throwIfAborted()
     // Reconcile: the locked products, and the leftovers (everything else in the photos) that still need resolving.
-    const [locked,scene]=await Promise.all([lockedLoaded,sceneLoaded])
+    const locked=await lockedLoaded
     const lockedFoods=locked.flatMap(row=>row.food?[row.food]:[])
+    // One photo, one barcode that read, nothing unreadable, and a first look that sees only that product: there is
+    // nothing else in the scene, so the scene check (13 s of meal 30399's 17 s) isn't waited for.
+    const onlyRead=photos.length===1&&photoBarcodes.length===1&&photoBarcodes[0].gtins.length===1&&!photoBarcodes[0].undecoded
+    const simpleScan=onlyRead&&lockedFoods.length===1&&firstLook.length===1&&sharesWords(firstLook[0].food,
+      `${lockedFoods[0].brand??""} ${lockedFoods[0].name}`)
+    const scene=simpleScan?{barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:[],samePackageViews:false}:await sceneLoaded
+    if (simpleScan) trace.push("scene: skipped, one scanned product")
     const unresolved=locked.filter(row=>!row.food).map(row=>row.gtin)
     if (scene) {
       // More barcoded packages than barcodes decoded on a photo (or a located barcode that won't read) is a package
@@ -377,9 +384,14 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       }
       if (labelDisagrees.length) trace.push("label disagrees with the barcode's record")
     }
+    // A scanned product alone in the photo is logged at the serving nearest the first look's estimate, but only when
+    // that estimate is about one serving: a whole bag (meal 30399: about 100 g against a 42 g serving) goes to the agent,
+    // which picks the amount with the product locked. Otherwise one labelled serving.
+    const packageQuantity=(food:CatalogFood)=>lockedFoods.length===1&&firstLook.length===1&&firstLook[0].grams
+      ?photoQuantity({...food,brand:food.brand||"scanned product"},firstLook[0].grams,firstLook[0].food):labelledServing(food)
     const lockedProposal=(foods:CatalogFood[]):MealProposal=>({schemaVersion:1,outcome:"resolved",consumedOn:input.consumedOn,
       historyGroupSelections:[],claims:[],clarification:null,
-      items:foods.map(food=>({foodId:food.id,quantity:labelledServing(food),groupId:null,groupLabel:null,
+      items:foods.map(food=>({foodId:food.id,quantity:packageQuantity(food)??labelledServing(food),groupId:null,groupLabel:null,
         evidence:[`barcode:${food.gtin}`,`food:${food.id}`]})),
       components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
         itemIndexes:[index],historySelectionIndexes:[],omitted:false}))})
@@ -389,7 +401,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // 30323); the agent then reads the amount from the label, with the product still locked.
     const servingKnown=(food:CatalogFood)=>{const quantity=labelledServing(food)
       return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
-    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)&&!labelDisagrees.length) {
+    const amountAgrees=lockedFoods.every(food=>packageQuantity(food)!==null)
+    if (!amountAgrees) trace.push("barcode: the photo shows more than one serving")
+    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)&&
+        !labelDisagrees.length&&amountAgrees) {
       const proposal=lockedProposal(lockedFoods)
       trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
       const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
@@ -637,6 +652,14 @@ const stepDetail=(step?:AgentStep)=>{const names=(step?.toolCalls??[]).map(call=
  * added through the usual duplicate checks, which attach the barcode to an existing food that is the same. */
 /** The catalogue food a decoded barcode names: the catalogue's, else one created from the barcode's USDA or Open Food
  * Facts record. Null when no database knows it (never guessed). */
+/** Whether two food descriptions share a meaningful word ("7D Dried Mangoes" and "dried mango"). */
+function sharesWords(a:string,b:string) {
+  const words=(value:string)=>new Set(value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g," ").split(/\s+/)
+    .filter(word=>word.length>=4).map(word=>word.replace(/(es|s)$/,"")))
+  const left=words(a)
+  return [...words(b)].some(word=>left.has(word))
+}
+
 async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvidence>,
   sources:ReturnType<typeof createFoodSources>):Promise<CatalogFood|null> {
   const [known]=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
