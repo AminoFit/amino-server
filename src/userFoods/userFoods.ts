@@ -1,6 +1,6 @@
 // A user's own foods and recipes (plan: 2026-09-30-custom-foods-and-recipes-plan.md). The server prices everything;
 // save_user_food decides in one transaction whether an edit is in place or a new version (edits only apply going
-// forward), and log_food_as_meal / replace_meal_with_food write logged rows with the nutrients priced here.
+// forward), and log_food_as_meal writes a logged row with the nutrients priced here. Logged meals are never rewritten.
 import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
@@ -232,17 +232,6 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
-/** Replaces the meal's rows (exactly those the user saw) with one food, e.g. "change this meal to 1 portion". */
-export async function replaceMealWithFood(userId:string,messageId:number,expectedItemIds:number[],foodId:number,
-  quantity:QuantityInput,db:Db=createAdminSupabase()) {
-  const food=(await loadFoods(db,userId,[foodId])).get(foodId)
-  if (!food) fail("food_unavailable",404)
-  const {data,error}=await (db as any).rpc("replace_meal_with_food",{p_user_id:userId,p_message_id:messageId,
-    p_expected_item_ids:expectedItemIds,p_item:pricedItem(food!,quantity)})
-  if (error) rpcFailure(error)
-  return {loggedFoodItemId:data as number}
-}
-
 /** A recipe draft from a past meal: its foods and amounts. If the logged amounts were one portion, they are scaled up
  * to the whole recipe. The user reviews and names it in the app before saving. */
 export async function recipeDraftFromMeal(userId:string,messageId:number,portions:number,loggedAmountsAre:"portion"|"whole",
@@ -266,6 +255,6 @@ export async function recipeDraftFromMeal(userId:string,messageId:number,portion
   if (!ingredients.length) fail("meal_has_no_foods",422)
   const content=(meal.data!.content??"").trim()
   // A short meal text is usually a dish name ("Chicken pasta"); a long one is a description, so the first food names it.
-  return {messageId,loggedItemIds:logged.map(row=>row.id as number),
+  return {messageId,
     name:content.length>=2&&content.length<=40?content:ingredients[0].name,portions,loggedAmountsAre,ingredients,skipped}
 }

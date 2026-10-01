@@ -79,7 +79,8 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
       await db.query(fixture);
       for (const file of migrations) await db.query(read(file));
       await db.query('SET check_function_bodies = off');
-      await db.query(read('20261004000000_custom_foods_and_recipes.sql'));
+      await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
+      await db.query(read('20261004010000_drop_replace_meal_with_food.sql'));
       await db.query('RESET check_function_bodies');
       const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0]);
       const save=(user,id,value,{servings=[{name:'portion',grams:value.defaultServingWeightGram,amount:1}],nutrients=[],ingredients=null}={})=>
@@ -182,21 +183,7 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
         '2026-09-30 12:00:00','',item(v2.food_id,100,100)]),/food_unavailable/)
       assert.ok(!(await search(alice,'Chicken pasta')).includes(v2.food_id))
 
-      // Replacing a meal's foods with one portion: only the rows the user saw, never a busy or protocol-owned meal.
       const recipe3=await save(alice,null,food('Chicken tomato pasta',{defaultServingWeightGram:200,recipePortions:12}),{ingredients:[{foodItemId:rice,grams:2400}]})
-      const dinner=(await one(`insert into public."Message"("userId",status,"consumedOn","publishedRevision","itemsToProcess","itemsProcessed")
-        values ($1,'RESOLVED','2026-09-29 23:12:48',3,2,2) returning id`,[alice])).id
-      const rows=(await db.query(`insert into public."LoggedFoodItem"("userId","messageId","foodItemId",grams,kcal,"consumedOn","publishedRevision")
-        values ($1,$2,$3,100,130,'2026-09-29 23:12:48',3),($1,$2,$3,50,65,'2026-09-29 23:12:48',3) returning id`,[alice,dinner,rice])).rows.map(r=>r.id)
-      const portion={...item(recipe3.food_id,200,220),servingAmount:1,loggedUnit:'portion'}
-      await assert.rejects(one('select public.replace_meal_with_food($1,$2,$3,$4) id',[alice,dinner,[rows[0]],portion]),/meal_changed/)
-      await assert.rejects(one('select public.replace_meal_with_food($1,$2,$3,$4) id',[bob,dinner,rows,portion]),/meal_unavailable/)
-      const replaced=(await one('select public.replace_meal_with_food($1,$2,$3,$4) id',[alice,dinner,rows,portion])).id
-      const live=(await db.query('select id,"foodItemId" f,"publishedRevision"::int rev,"consumedOn"::text at from public."LoggedFoodItem" where "messageId"=$1 and "deletedAt" is null',[dinner])).rows
-      assert.deepEqual(live,[{id:replaced,f:recipe3.food_id,rev:3,at:'2026-09-29 23:12:48'}])
-      assert.equal((await one('select "itemsToProcess" n from public."Message" where id=$1',[dinner])).n,1)
-      await db.query('update public."Message" set "operationOwned"=true where id=$1',[dinner])
-      await assert.rejects(one('select public.replace_meal_with_food($1,$2,$3,$4) id',[alice,dinner,[replaced],portion]),/meal_busy/)
 
       // Catalogue merges move recipe ingredients, and never merge a recipe.
       const rice2=(await one(`insert into public."FoodItem"(name,"defaultServingWeightGram","kcalPerServing") values ('Rice, jasmine',100,130) returning id`)).id
