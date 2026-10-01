@@ -1,6 +1,7 @@
 // Live evaluation of recipe matching (plan phase 4): a user's own recipes are logged, in portions, when their words
 // name them, and never because a generic word or another dish resembles them. Uses a fixture catalogue plus the user's
-// own recipes and food, the real agent, Jev recipe check and compile; makes no database writes.
+// own recipes and food, the real agent, Jev recipe check and compile; makes no database writes. yourFoods mimics
+// search_own_foods: name mostly in the text, best match first, then the latest.
 // EVAL_FAST_ROUTE=1 lets the text fast route race the agent (as in production).
 // Run: npx ts-node -r tsconfig-paths/register scripts/meal-recipe-eval.ts [caseId...]  (EVAL_CONCURRENCY=2)
 import { resolveMeal } from "@/mealResolution/resolve"
@@ -20,7 +21,7 @@ const recipe=(id:number,name:string,portions:number,portionGrams:number,kcal:num
   food(id,name,kcal,protein,carb,fat,[["portion",portionGrams]],{defaultServingWeightGram:portionGrams,privateToUserId:USER,recipePortions:portions})
 
 const C={pastaCooked:1,chicken:2,chiliFlakes:3,chiliConCarne:4,egg:5,banana:6,oats:7,milk:8,shakeShared:9,bread:10,
-  chickenPasta:101,turkeyChili:102,overnightOats:103,myShake:104}
+  chickenPasta:101,turkeyChili:102,overnightOats:103,myShake:104,pastaSauce:105,pastaBake:106}
 const shared=[food(C.pastaCooked,"Pasta, cooked",158,5.8,31,0.9,[["cup",140]]),food(C.chicken,"Chicken breast, cooked",165,31,0,3.6),
   food(C.chiliFlakes,"Crushed red pepper flakes",318,12,57,17,[["tsp",1.8]]),
   food(C.chiliConCarne,"Chili con carne with beans",105,8,9,4.5,[["cup",250]]),food(C.egg,"Egg, fried",196,14,0.8,15,[["egg",46]]),
@@ -29,12 +30,16 @@ const shared=[food(C.pastaCooked,"Pasta, cooked",158,5.8,31,0.9,[["cup",140]]),f
   food(C.bread,"Garlic bread",350,8,42,16,[["slice",40]])]
 const own=[recipe(C.chickenPasta,"Chicken pasta",12,250,420,32,45,11),recipe(C.turkeyChili,"Turkey chili",8,300,330,30,25,10),
   recipe(C.overnightOats,"Overnight oats",1,320,410,18,62,9),
+  // A saved name with a date, as users write them, and a similar recipe (the closest name wins).
+  recipe(C.pastaSauce,"Chicken Pasta Sauce - 9/30/26",12,180,160,14,9,7),recipe(C.pastaBake,"Chicken pasta bake",6,300,520,34,48,20),
   food(C.myShake,"Protein shake",160,30,6,2,[["bottle",330]],{defaultServingWeightGram:330,privateToUserId:USER,brand:"Homemade"})]
 const all=[...shared,...own]
 const byId=new Map(all.map(f=>[f.id,f]))
 const words=(text:string)=>text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z]+/).filter(w=>w.length>=3)
 
-type Case={id:string;text:string;expected:number[];grams?:Record<number,[number,number]>}
+/** expected: exactly these foods. avoid: foods that must not be logged (a clarification is fine too). */
+type Case={id:string;text:string;expected?:number[];avoid?:number[];grams?:Record<number,[number,number]>}
+const recipes=[C.chickenPasta,C.turkeyChili,C.overnightOats,C.pastaSauce,C.pastaBake]
 const cases:Case[]=[
   // Named recipes, in portions.
   {id:"portions",text:"1.5 portions of my chicken pasta",expected:[C.chickenPasta],grams:{[C.chickenPasta]:[370,380]}},
@@ -43,11 +48,14 @@ const cases:Case[]=[
   {id:"mine_single",text:"my overnight oats",expected:[C.overnightOats],grams:{[C.overnightOats]:[315,325]}},
   {id:"recipe_plus_food",text:"1 portion of chicken pasta and a banana",expected:[C.chickenPasta,C.banana]},
   {id:"es_portions",text:"una porción y media de mi pasta con pollo",expected:[C.chickenPasta],grams:{[C.chickenPasta]:[370,380]}},
+  {id:"usual_dated_name",text:"my usual chicken pasta sauce",expected:[C.pastaSauce],grams:{[C.pastaSauce]:[175,185]}},
+  {id:"closest_name",text:"2 portions of chicken pasta bake",expected:[C.pastaBake],grams:{[C.pastaBake]:[595,605]}},
   // A shared word is not the recipe.
-  {id:"restaurant_pasta",text:"a plate of pasta at Olive Garden",expected:[C.pastaCooked]},
+  {id:"restaurant_pasta",text:"a plate of pasta at Olive Garden",avoid:recipes},
   {id:"chili_flakes",text:"2 fried eggs with chili flakes",expected:[C.egg,C.chiliFlakes]},
   {id:"deli_chili",text:"a cup of chili con carne from the deli",expected:[C.chiliConCarne]},
   {id:"oats_with_milk",text:"a cup of oats with milk",expected:[C.oats,C.milk]},
+  {id:"separate_foods",text:"grilled chicken breast with a cup of pasta",avoid:recipes},
   // The user's own (non-recipe) food is preferred, as before.
   {id:"own_food",text:"a bottle of my homemade protein shake",expected:[C.myShake]}
 ]
@@ -66,8 +74,9 @@ async function evaluate(item:Case) {
       return {status:"ok",candidates:ranked.map(({id,name,brand})=>({id,name,brand,knownAs:[]})),foods:ranked.map(foodSummary),nextCursor:null}},
     async prefetchFoods(){return remember(shared)},
     // Like search_own_foods: the user's foods whose name is (mostly) in the text.
-    async yourFoods(text:string){const t=words(text)
-      return remember(own.filter(f=>{const n=words(f.name);return n.length>0&&n.filter(w=>t.includes(w)).length/n.length>=0.6}))},
+    async yourFoods(text:string){const t=words(text),score=(f:CatalogFood)=>{const n=words(f.name)
+        return n.length?n.filter(w=>t.includes(w)).length/n.length:0}
+      return remember(own.filter(f=>score(f)>=0.6).sort((a,b)=>score(b)-score(a)||b.id-a.id))},
     async recentFoods(){return own.map(({id,name,brand})=>({id,name,brand}))},
     async findFoodsByGtin(){return []},
     async getFoodsAndServings(ids:number[]){const found=remember(ids.flatMap(id=>byId.has(id)?[byId.get(id)!]:[]))
@@ -88,7 +97,11 @@ async function evaluate(item:Case) {
   const gramsOk=Object.entries(item.grams??{}).every(([id,[low,high]])=>{
     const grams=plan?.items.filter(i=>i.foodId===Number(id)).reduce((sum,i)=>sum+i.grams,0)??0
     return grams>=low&&grams<=high})
-  const pass=!error&&JSON.stringify(Array.from(new Set(ids)).sort((a,b)=>a-b))===JSON.stringify([...item.expected].sort((a,b)=>a-b))&&gramsOk
+  const sameFoods=!item.expected||JSON.stringify(Array.from(new Set(ids)).sort((a,b)=>a-b))===JSON.stringify([...item.expected].sort((a,b)=>a-b))
+  const avoided=!(item.avoid??[]).some(id=>ids.includes(id))
+  // A near-miss may also ask which dish it was; a named recipe must be resolved.
+  const outcomeOk=item.expected?resolved.proposal.outcome==="resolved":true
+  const pass=!error&&sameFoods&&avoided&&outcomeOk&&gramsOk
   return {id:item.id,pass,foodIds:ids,expected:item.expected,error,outcome:resolved.proposal.outcome,
     grams:plan?.items.map(i=>Math.round(i.grams)),units:plan?.items.map(i=>`${i.servingAmount} ${i.loggedUnit}`),
     steps:resolved.steps,ms:Date.now()-started,route:resolved.model,trace:resolved.trace?.slice(-3),

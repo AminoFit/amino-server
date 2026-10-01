@@ -101,7 +101,10 @@ export function parseAmount(quote: string): { amount: number; rest: string[] } |
 export function itemQuantity(quote: string, food: CatalogFood, estimatedGrams: number):
   MealProposal["items"][number]["quantity"] | null {
   const parsed = parseAmount(quote)
-  const estimate = { kind: "estimated_mass" as const, grams: Math.round(estimatedGrams * 10) / 10,
+  // A recipe is counted in portions: only an amount read for sure (portions, or a mass) is logged here. No amount, or
+  // words this parser doesn't read ("una porción y media", "a bowl"), go to the agent, never the listing's estimate.
+  const recipe = food.recipePortions != null
+  const estimate = recipe ? null : { kind: "estimated_mass" as const, grams: Math.round(estimatedGrams * 10) / 10,
     basis: `Estimated amount for "${quote.slice(0, 200)}"` }
   if (!parsed) return estimate
   const unit = parsed.rest[0] ? singular(parsed.rest[0]) : ""

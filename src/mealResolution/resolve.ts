@@ -88,7 +88,9 @@ food, use yours. yourFoods lists the user's own foods and recipes whose names ap
 none do. A food marked recipe is the user's own dish, logged in portions: its "portion" serving is one portion, so
 "1.5 portions" (or "one and a half bowls" of it) is amount 1.5 of that serving and "half of my chili" is 0.5. Use a
 recipe only when the user names it or calls it theirs; never for a photo alone or a generic word it shares (the
-backend checks). A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
+backend checks). When the user names one of their recipes ("my usual chicken pasta sauce"), log that recipe rather than
+copying a past meal. yourFoods is ordered best name match first, then most recently edited: when several could be
+meant, use the closest name, and on a tie the first (the latest). A personal dish with no source (the user's own recipe or combination) is estimated with personal true: it is saved
 for this user only. Name a new food as the food itself, never with the portion ("Cheeseburger", not "1/2 Cheeseburger"; "Hard-boiled
 egg", not "Two hard-boiled eggs"): the portion is the item's quantity. Search for the food itself too.
 prefetchedFoods and recentMeals were read before this turn. When prefetchedFoods cover every food with the right

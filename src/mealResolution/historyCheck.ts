@@ -20,10 +20,13 @@ export async function refersToPastMeal(input: Pick<MealResolutionInput, "origina
   return decision.status === "ok" && decision.choice === "yes" && (decision.confidence ?? 0) >= 0.9
 }
 
-const RECIPE_POLICY = `Decide whether the user's words mean the named recipe: their own dish, saved under that name.
-They mean it when they name it (exactly or nearly, in any language) or call it theirs ("my chili", "a bowl of the
-pasta I made"). A generic dish word that merely shares a word with the recipe name does not ("pasta at a restaurant"
-is not their "Chicken pasta"; "chili flakes" is not their "Chili"). Empty text is never a reference.`
+const RECIPE_POLICY = `The user has a saved recipe with this name: a dish they make. Decide whether the food they describe IS that saved dish.
+Yes when their words name it: the recipe name (or a close variant, spelling, or translation in any language) appears as
+the dish they ate, with or without "my", "a bowl of", "a portion of", "half a portion of" or other amounts. Yes for
+"my <dish>" and "my usual <dish>". Saved names may carry dates or notes ("Chili - 9/30") that the user leaves out.
+No when they describe a different dish: only a shared generic word ("pasta at a restaurant" is not "Chicken pasta";
+"chili flakes" is not "Turkey chili"), separate foods that happen to share its words ("grilled chicken with pasta
+salad"), or a version clearly not theirs ("from the restaurant", "from the deli"). Empty text is never the recipe.`
 
 /** True only when Jev is confident the user's words mean this recipe of theirs. */
 export async function refersToRecipe(input: Pick<MealResolutionInput, "originalText" | "answers">, recipeName: string,
