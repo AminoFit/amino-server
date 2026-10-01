@@ -506,6 +506,21 @@ test('an Open Food Facts record for another code, or without usable nutrition, i
   assert.deepEqual(await sources.barcodeSources('00195515039802'),[],'only a barcode decoded from the photo is looked up');
 });
 
+test('a scanned product never becomes a generic food, even when the check is sure (message 30399, 7D mangoes)',async()=>{
+  const generic=[{id:1329,name:'dried mango',brand:null},{id:66,name:'Mango',brand:null}];
+  const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,near:generic,
+    jev:{status:'ok',choice:'food_1329',confidence:0.91}});
+  const [food]=await sources.barcodeSources('00195515039802');
+  const result=await sources.createFoodFromSource(food.sourceId);
+  assert.equal(result.status,'created','the product is created, not stamped onto the generic food');
+  assert.equal(calls.enrich?.length??0,0,'no generic food is enriched with the barcode');
+  // A brandless row whose name carries the brand is the same product written without a brand field.
+  const named=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,
+    near:[{id:7000,name:'Amazon Fresh mangoes blueberries',brand:null}],jev:{status:'ok',choice:'food_7000',confidence:0.95}});
+  const [again]=await named.sources.barcodeSources('00195515039802');
+  assert.equal((await named.sources.createFoodFromSource(again.sourceId)).status,'existing');
+});
+
 test('a scanned product is created, not held for review, when an unsure check only finds generic foods (message 30353)',async()=>{
   const generic=[{id:3927,name:'Fruit Mixture, Frozen',brand:null},{id:4100,name:'Mango, frozen',brand:null}];
   const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],off:async()=>offFruit,near:generic,
