@@ -364,8 +364,12 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       components:foods.map((food,index)=>({sourceText:`photo: ${food.brand?`${food.brand} `:""}${food.name}`.slice(0,300),
         itemIndexes:[index],historySelectionIndexes:[],omitted:false}))})
     const photosOnly=!input.originalText.trim()&&!input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
-    // Route A: barcodes and nothing else, all found: one labelled serving of each product, no model turn.
-    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length) {
+    // Route A: barcodes and nothing else, all found: one labelled serving of each product, no model turn. Only when
+    // each product has a real labelled serving: a food stored per 100 g alone would log 100 g of a 1 L carton (meal
+    // 30323); the agent then reads the amount from the label, with the product still locked.
+    const servingKnown=(food:CatalogFood)=>{const quantity=labelledServing(food)
+      return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
+    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)) {
       const proposal=lockedProposal(lockedFoods)
       trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
       const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
@@ -381,7 +385,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // products; any unidentified package or unresolved barcode leaves the meal to the agent.
     const leftoverPackages=visible.some(item=>/package/.test(item.detail))
     const plainPhoto=photosOnly&&photos.length>0&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS&&
-      (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages))
+      (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages&&lockedFoods.every(servingKnown)))
     const photoFastStarted=performance.now()
     const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??photoFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false))
       .then(async enabled=>{

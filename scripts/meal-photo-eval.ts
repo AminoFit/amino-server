@@ -40,10 +40,8 @@ const onlyBarcode = (gtin: string, label: string) => (plan: Plan, foods: Map<num
     `${item.food?.name ?? item.foodId}${item.food?.gtin ? ` (${item.food.gtin})` : ""}`).join(", ") || "nothing"}`]
 }
 const CASES: Case[] = [
-  // Meal 30389: the back of a trü frü bag, barcode only. The first look named it Siete cookies and LesserEvil popcorn and
-  // the repair logged phantom popcorn: one item, the barcode's product.
-  { messageId: 30389, expect: onlyBarcode("00850241008835", "trü frü bag") },
-  // Meal 30390: front, nutrition label and barcode of the same bag: still one item.
+  // Meal 30390: front, nutrition label and barcode of a trü frü bag: one item. (Its twin 30389, the barcode alone, that
+  // logged phantom popcorn, was deleted with its photo.)
   { messageId: 30390, expect: onlyBarcode("00850241008835", "trü frü bag, 3 views") },
   // "Naya bowl with pita. Rice, vermicelli and rotisserie chicken": each listed food is covered by a food that includes
   // it ("Vermicelli rice" covers both; a "Rice Pilaf" covers only the rice, so vermicelli must be its own item).
