@@ -130,7 +130,11 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
       servingId=serving.data.id;loggedUnit=serving.data.servingName
     } else {servingAmount=grams;loggedUnit="g"}
     const amounts=nutrientsAt(food.data as unknown as FoodBasis,grams)
-    const nutrition=amounts?{...Object.fromEntries(HISTORY_NUTRIENTS.map(key=>[key,amounts[key]??null])),kcal:amounts.kcal??0,
+    // A nutrient the food doesn't record keeps the logged value, scaled (as the app's preview shows it).
+    const scale=prior.grams>0?grams/prior.grams:null
+    const kept=(key:typeof HISTORY_NUTRIENTS[number])=>{const value=(prior.nutrition as Record<string,number|null|undefined>)[key]
+      return value!=null&&scale!=null?value*scale:null}
+    const nutrition=amounts?{...Object.fromEntries(HISTORY_NUTRIENTS.map(key=>[key,amounts[key]??kept(key)])),kcal:amounts.kcal??0,
       proteinG:amounts.proteinG??null,carbG:amounts.carbG??null,totalFatG:amounts.totalFatG??null}:null
     if(!nutrition||!validNutrition(grams,nutrition)) throw new Error("invalid_meal_nutrition")
     copied.items[index]={...prior,grams,servingId,servingAmount,loggedUnit,nutrition,
