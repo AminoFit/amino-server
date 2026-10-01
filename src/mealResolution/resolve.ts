@@ -125,8 +125,9 @@ are copied through source IDs and validated by the backend.
 If clarificationAllowed is false, never ask: resolve with explicit assumptions (estimated_mass with a clear
 basis for uncertain portions, the most likely variant for identity) instead of needs_clarification.
 If validationErrorCode is present, it is a fixed backend validation result from a prior attempt.
-missing_visible_food: <foods> means a second look at the photos found those foods eaten but not logged:
-find and log each (search, create if needed) with a reasonable estimated portion, unless a logged food truly covers it.
+missing_visible_food: <foods> is a second opinion from a look at the photos: those foods may be eaten but not logged.
+Log each (search, create if needed) with a reasonable estimated portion, unless a logged food covers it or it is a
+packaged product already identified by its decoded barcode; then return the same plan.
 history_not_referenced means the user's words do not refer to a past meal: resolve this meal from what the
 photos and text show, without copying historical items. recipe_not_referenced means the user's words don't name that
 recipe of theirs: log what they describe with catalogue foods instead. barcode_not_covered means a decoded barcode's
@@ -324,7 +325,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
         const resolved:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),
           model:"barcode",provider:"server",durationMs:performance.now()-started,steps:0,toolCalls:0,barcodes:[...barcodes],
-          checked:false,timeline,trace}
+          // A decoded barcode is a fact, not a guess: the first look's names for these packages (invented from the
+          // packaging's colours, as for meal 30389) must not send it back for a repair. This route only runs with no
+          // text and no more first-look items than barcodes; compile still checks every barcode is logged.
+          checked:true,timeline,trace}
         Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
         return finished=resolved
       }

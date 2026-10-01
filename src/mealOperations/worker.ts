@@ -252,15 +252,26 @@ async function deliverMealOperation(operationId:string,workerToken:string,claim:
         const code=error instanceof Error?error.message:"invalid_plan"
         // missing_visible_food carries the names the second look found.
         if(!safeErrorCodes.has(code)&&!code.startsWith("missing_visible_food:")) throw error
-        const repaired=await resolveMeal({...input,validationErrorCode:code},budgetFor())
-        if(repaired.proposal.outcome==="needs_clarification") {
+        // The second look is a soft check: when only it objected and the repair then fails (it ran out of time), the
+        // original plan, which passed every structural check, is published rather than retrying the whole meal.
+        const soft=code.startsWith("missing_visible_food:")
+        const repaired=await resolveMeal({...input,validationErrorCode:code},budgetFor()).catch(repairError=>{
+          if(!soft) throw repairError
+          console.warn("meal_repair_failed_original_published",{operationId,
+            error:repairError instanceof Error?repairError.message:"unknown"})
+          return null
+        })
+        if(repaired?.proposal.outcome==="needs_clarification") {
           if(!input.clarificationAllowed) throw new Error("meal_needs_clarification")
           await finishMealOperation(operationId,workerToken,"needs_clarification",
             "ambiguous_meal",null,{question:repaired.proposal.clarification})
           return {state:"needs_clarification"}
         }
         // No second look on the repair: a minor omission never fails the meal.
-        plan=await compileCheckedMealPlan(input,repaired,{secondLook:false})
+        plan=repaired?await compileCheckedMealPlan(input,repaired,{secondLook:false}).catch(repairError=>{
+          if(!soft) throw repairError
+          return compileCheckedMealPlan(input,result,{secondLook:false})
+        }):await compileCheckedMealPlan(input,result,{secondLook:false})
       }
     } else plan=await structuredPlan(claim)
     delivered.plan=plan

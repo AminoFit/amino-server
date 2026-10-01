@@ -43,3 +43,13 @@ test('with a first look at the photos, the final check compares text instead of 
   assert.equal((await compileCheckedMealPlan(input,{...result(photos),visibleFoods:[]},{missingFromList:async()=>{throw new Error('unused')},missing:async()=>{looked++;return []}})).items.length,1);
   assert.equal(looked,1,'without a first look the photos are checked as before');
 });
+
+test('a product found by its decoded barcode covers its package in the second look (meal 30389)',async()=>{
+  const photos=[new URL('https://photos.example/1.jpg')];
+  const bag={...food(1,'trü frü raspberries in white & milk chocolate',null),gtin:'00850241008835'};
+  let logged;
+  const withBarcode={...result(photos),barcodes:['00850241008835'],visibleFoods:[{food:'LesserEvil popcorn',detail:'pink bag'}],
+    evidence:{foods:new Map([[1,bag]]),events:new Map()}};
+  await compileCheckedMealPlan(input,withBarcode,{missingFromList:async(visible,list)=>{logged=list;return []}});
+  assert.match(logged[0].contains,/Identified by its decoded barcode/);
+});

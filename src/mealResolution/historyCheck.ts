@@ -67,8 +67,12 @@ export async function compileCheckedMealPlan(input: MealResolutionInput, result:
   if (recipes.length) throw Object.assign(new Error("recipe_not_referenced"),
     { detail: `the user's words don't name ${recipes.join(", ")}: log what they describe with catalogue foods instead` })
   if (deps.secondLook !== false && result.photoUrls?.length) {
+    const decoded = new Set(result.barcodes ?? [])
     const logged = plan.items.map(item => {
       const food = result.evidence.foods.get(item.foodId)
+      // A product found by its decoded barcode is the package in the photo, whatever the first look called it.
+      if (food?.gtin && decoded.has(food.gtin)) return { name: food.name,
+        contains: "Identified by its decoded barcode: this is the packaged product in the photo, whatever its packaging looks like." }
       const name = food?.name ?? result.evidence.events.get(item.sourceItemId?.messageId ?? 0)?.foods
         .find(row => row.id === item.sourceItemId?.loggedFoodItemId)?.name ?? `food ${item.foodId}`
       // Descriptions of sourced foods are "Source: <url>"; only real descriptions say what a dish contains.
