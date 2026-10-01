@@ -137,7 +137,6 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     ...({} as Partial<FoodItemWithServings>)
   } as FoodItemWithServings
 
-  console.log("usdaFoodItem", usdaFoodItem.foodInfo)
 
   // calculate kcalPerServing if not present
   if (!usdaFoodItem.foodInfo.calories) {
