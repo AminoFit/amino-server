@@ -77,3 +77,19 @@ test('without Jev only a very close name is reused',async()=>{
   assert.deepEqual({...await icons.chooseFoodIcon({name:'Flour Tortillas'},tortillas,{select:down.select})},
     {kind:'reuse',imageId:13551,similarity:0.9,confidence:null})
 })
+
+test('a "none" with a strong name match gets the yes/no look; the serving unit goes to Jev',async()=>{
+  const milk={name:'1% Lowfat Milk',servingUnit:'cup'}
+  const asked=[]
+  const select=async task=>{asked.push(task);return task.options.yes?{status:'ok',choice:'yes',confidence:0.99}:{status:'ok',choice:'none',confidence:0.8}}
+  const close=await icons.chooseFoodIcon(milk,[{id:7,description:'2% Reduced Fat Milk',similarity:0.9}],{select})
+  assert.equal(close.kind,'reuse')
+  assert.equal(close.imageId,7)
+  assert.equal(asked[0].state.servingUnit,'cup')
+  assert.equal(asked[1].state.iconDrawnFor,'2% Reduced Fat Milk')
+  const far=await icons.chooseFoodIcon(milk,[{id:8,description:'Oat milk',similarity:0.7}],{select})
+  assert.deepEqual(far,{kind:'generate',reason:'none_fits'},'a weaker match after "none" is drawn without a second look')
+  const no=await icons.chooseFoodIcon(milk,[{id:7,description:'2% Reduced Fat Milk',similarity:0.9}],
+    {select:async task=>task.options.yes?{status:'ok',choice:'no',confidence:0.9}:{status:'ok',choice:'none',confidence:0.8}})
+  assert.deepEqual(no,{kind:'generate',reason:'none_fits'})
+})

@@ -60,7 +60,8 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   })
   if (candidatesError) throw candidatesError
   const choice = await chooseFoodIcon(
-    { name: foodItem.name, brand: foodItem.brand, category: foodItem.foodItemCategoryName },
+    { name: foodItem.name, brand: foodItem.brand, category: foodItem.foodItemCategoryName,
+      servingUnit: foodItem.Serving?.[0]?.servingName ?? null },
     candidates.map(row => ({
       id: row.food_image_id, description: row.image_description, similarity: row.cosine_similarity
     }))
@@ -128,7 +129,8 @@ export const forceGenerateNewFoodIconQueue = Queue(
 
 // Retrieves a single food item from the database by ID
 async function getFoodItem(foodId: number) {
-  const { data, error } = await supabase.from("FoodItem").select("*, FoodItemImages(*)").eq("id", foodId).single()
+  const { data, error } = await supabase.from("FoodItem").select("*, FoodItemImages(*), Serving(servingName)").eq("id", foodId)
+    .limit(1, { foreignTable: "Serving" }).single()
 
   if (error) {
     console.error(error)
