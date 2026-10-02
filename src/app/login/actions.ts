@@ -36,7 +36,8 @@ export async function loginWithGoogle(formData: FormData) {
 }
 
 export async function logout() {
-  await createClient().auth.signOut()
+  // This browser only: signing out of the web shouldn't sign the phone out too.
+  await createClient().auth.signOut({ scope: 'local' })
   revalidatePath('/', 'layout')
   redirect('/login')
 }
