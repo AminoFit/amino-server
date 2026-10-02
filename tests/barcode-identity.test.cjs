@@ -88,3 +88,18 @@ test('UPCitemdb: the paid API with UPCDB_API_KEY, else the free trial; a failure
     assert.equal(await upcItemDb(DIGITS,undefined,{}),null);
   } finally {global.fetch=realFetch}
 });
+
+test('a split choice is confirmed on the pick alone; a product database\'s title names it; site names go from either end',async()=>{
+  const listings=[{title:'Amazon.com : Undercover Chocolate Co Dark Chocolate & Sea Salt Quinoa Crisps, 5 OZ : Grocery & Gourmet Food',
+    description:'',url:'https://www.amazon.com/dp/1'}];
+  const upc=async()=>({title:'Undercover Snacks Dark Chocolate + Sea Salt Crisps - 5oz/10ct',description:'',url:null,brand:'Undercover'});
+  const asked=[];
+  const select=task=>{asked.push(task);return task.options.yes?{status:'ok',choice:'yes',confidence:0.95}:{status:'ok',choice:'listing_1',confidence:0.43}};
+  const named=await identify(select,{search:async()=>listings,upc});
+  assert.deepEqual(named,{status:'identified',gtin:GTIN,name:'Undercover Snacks Dark Chocolate + Sea Salt Crisps - 5oz/10ct',brand:'Undercover'});
+  assert.equal(asked.length,2,'the unsure pick was confirmed');
+  const doubted=await identify(task=>task.options.yes?{status:'ok',choice:'no',confidence:0.9}:{status:'ok',choice:'listing_0',confidence:0.4},
+    {search:async()=>listings});
+  assert.equal(doubted.status,'unknown');
+  assert.equal(productName(listings[0],DIGITS,GTIN),'Undercover Chocolate Co Dark Chocolate & Sea Salt Quinoa Crisps, 5 OZ - Grocery & Gourmet Food');
+});
