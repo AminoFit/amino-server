@@ -18,6 +18,18 @@ type Row = { id: number; name: string; defaultServingWeightGram: number | null; 
 const normalize = (text: string) => text.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
 const nameWords = (text: string) => new Set(normalize(text).split(/[^\p{L}\p{N}]+/u).filter(word => word.length >= 4))
 
+const squash = (value: string | null | undefined) => (value ?? "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+
+/** One brand written two ways: "Undercover" and "Undercover Snacks", or a record that lost its accented letters instead
+ * of folding them (USDA's "Tr Fr" for Trü Frü): the same consonants, the shorter spelling only missing vowels. */
+export function brandsMatch(a: string | null | undefined, b: string | null | undefined) {
+  const x = squash(a), y = squash(b)
+  if (!x || !y) return false
+  if (x.includes(y) || y.includes(x)) return true
+  const consonants = (value: string) => value.replace(/[aeiouy]/g, "")
+  return consonants(x).length >= 3 && consonants(x) === consonants(y)
+}
+
 /** The same nutrition per gram: within 3% for energy, 0.02 g per gram for each macro. */
 export function samePerGram(food: Facts, row: Row) {
   const grams = Number(row.defaultServingWeightGram)
@@ -46,7 +58,8 @@ export async function siblingsOf(db: any, food: Facts, signal?: AbortSignal): Pr
 
 const NAMING_PROMPT = `You name packaged foods for a food log. The product's name as imported may be cut short or only the
 pack's marketing words. Reply with the name people should see in their log.
-- Say what the food is, using only words from the data below: with categories "Chocolate covered fruits", "Nature's
+- Say what the food is, using only words from the data below (webListing is how shops list this barcode, often the
+  fullest name): with categories "Chocolate covered fruits", "Nature's
   Blueberries" becomes "Chocolate Covered Blueberries". Never add an ingredient, flavour, size or claim the data doesn't give.
 - Keep the product's own words for its flavour and variant.
 - Leave the brand out unless it is what the product is called ("Cheerios", "Doritos Nacho Cheese").
@@ -71,18 +84,19 @@ export function withPack(name: string, product: { servings: { name: string; gram
 /** The name to give a scanned product: Flash's (the imported one when it's unavailable or slow), with the pack when
  * another pack has the same name. */
 export async function catalogueName(product: { name: string; brand: string | null; categories?: string | null
-  servings: { name: string; grams: number; amount: number }[]; siblings: Sibling[]; isLiquid?: boolean },
+  servings: { name: string; grams: number; amount: number }[]; siblings: Sibling[]; isLiquid?: boolean; webName?: string | null },
   deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; signal?: AbortSignal } = {}): Promise<string> {
   return withPack(await flashName(product, deps), product)
 }
 
 async function flashName(product: { name: string; brand: string | null; categories?: string | null
-  servings: { name: string; grams: number; amount: number }[]; siblings: Sibling[] },
+  servings: { name: string; grams: number; amount: number }[]; siblings: Sibling[]; webName?: string | null },
   deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; signal?: AbortSignal } = {}): Promise<string> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key) return product.name
   const started = performance.now()
   const data = { importedName: product.name, brand: product.brand, categories: product.categories?.slice(0, 200) ?? null,
+    webListing: product.webName?.slice(0, 160) ?? null,
     servings: product.servings.slice(0, 4).map(serving => `${serving.amount} ${serving.name} (${serving.grams} g)`),
     otherPacks: product.siblings.slice(0, 6).map(sibling => sibling.name) }
   try {

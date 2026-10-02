@@ -676,12 +676,14 @@ test('a scanned product is named for what it is (its imported name kept as known
   const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],near:[],
     off:async()=>({...offFruit,categories:'Frozen foods, Frozen fruits'}),
     siblings:async()=>[{id:7,name:'Mango Blend',imageId:null},{id:8,name:'Mango Blend 4 lb',imageId:321}],
+    name:async()=>({status:'identified',name:'Amazon Fresh Frozen Mango & Blueberry Blend, 3 lb'}),
     catalogueName:async product=>{asked.push(product);return 'Frozen Mango & Blueberry Blend'}});
   const [food]=await sources.barcodeSources('00195515039802');
   const result=await sources.createFoodFromSource(food.sourceId);
   assert.equal(result.status,'created');
   assert.equal(asked[0].categories,'Frozen foods, Frozen fruits','the namer sees the categories');
   assert.equal(asked[0].siblings.length,2,'and the sibling packs');
+  assert.equal(asked[0].webName,'Amazon Fresh Frozen Mango & Blueberry Blend, 3 lb','and the shops\' name for the barcode');
   assert.equal(calls.create[0].p_food.name,'Frozen Mango & Blueberry Blend');
   assert.equal(calls.create[0].p_food.categories,undefined,'categories are not a column');
   assert.deepEqual(calls.updates,[{knownAs:['Mangoes, Blueberries and Blueberries']}]);
@@ -708,5 +710,15 @@ test('a pack another pack shares its name with gets its size; nutrition is compa
   assert.ok(samePerGram(cheerios,row(28,100,3.6,20.7,1.8)),'the same cereal per a smaller serving');
   assert.ok(!samePerGram(cheerios,row(39,150,5,29,2.5)),'7% more energy is another product');
   assert.ok(!samePerGram(cheerios,row(0,0,0,0,0)));
+});
+
+test('one brand written two ways: a longer name, or a record that dropped its accented letters',()=>{
+  const {brandsMatch}=require('../src/mealResolution/catalogueNaming.ts');
+  assert.ok(brandsMatch('Undercover','Undercover Snacks'));
+  assert.ok(brandsMatch('Trü Frü','Tr Fr'),'USDA dropped the ü');
+  assert.ok(brandsMatch('Tru Fru','Tr Fr'));
+  assert.ok(!brandsMatch('Kind','Fairlife'));
+  assert.ok(!brandsMatch('Oreo',null));
+  assert.ok(!brandsMatch('Bare','Bear'),'too short to judge by consonants');
 });
 

@@ -1,10 +1,10 @@
 import { z } from "zod"
-import { catalogueName, siblingsOf } from "./catalogueNaming"
+import { brandsMatch, catalogueName, siblingsOf } from "./catalogueNaming"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { resolveWebFood, citedSource } from "@/foodResolution/webFood"
-import { barcodePages } from "@/foodResolution/barcodePages"
+import { anySignal, barcodePages } from "@/foodResolution/barcodePages"
 import { kjToKcal, microRows, microsFrom, nutrientKey, offMicrosPer100g, scaleMicros, type Micros, validNutrition } from "@/nutrition"
 import { selectWithJev } from "@/ai/jev"
 import { creationModel } from "@/ai/models"
@@ -449,7 +449,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     const otherBrand=squash(other.brand)
     const words=(value:string)=>value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(Boolean)
     const brandWords=new Set([...words(food.brand??""),...words(other.brand??"")])
-    if (otherBrand?!(otherBrand.includes(brand)||brand.includes(otherBrand)):!squash(other.name).includes(brand)) return false
+    if (otherBrand?!brandsMatch(food.brand,other.brand):!squash(other.name).includes(brand)) return false
     const filler=new Set(["and","with","of","the","in","a","n"])
     const key=(name:string)=>[...new Set(words(name).filter(word=>!brandWords.has(word)&&!brand.includes(word)&&word.length>1&&!filler.has(word))
       .map(word=>word.length>3?word.replace(/(es|s)$/,""):word))].sort().join(" ")
@@ -468,8 +468,8 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     // kept a label food from ever being created.
     const brandOf=(value:string|null|undefined)=>(value??"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g,"")
     const brand=brandOf(food.brand)
-    // "Undercover" and "Undercover Snacks" are one brand.
-    const sameBrand=(other:string|null|undefined)=>{const b=brandOf(other);return !!b&&!!brand&&(b.includes(brand)||brand.includes(b))}
+    // "Undercover" and "Undercover Snacks" are one brand, and so are USDA's "Tr Fr" and Trü Frü.
+    const sameBrand=(other:string|null|undefined)=>brandsMatch(food.brand,other)
     // A barcoded record is decided without a model (barcode-route-plan.md): the same barcode is this food (above); the
     // same brand and the same name is this product before it had its barcode; anything else is a new product. Meal
     // 30399's 7D Dried Mangoes was judged "same" as the generic "dried mango" by the model check (0.91) and stamped its
@@ -688,8 +688,12 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       }
       // A scanned product is named for what it is (the imported name kept in knownAs), and a sibling pack lends its icon.
       const scanned=!!food.gtin&&!food.personal&&(food.foodInfoSource==="Online"||food.foodInfoSource==="USDA")
-      const siblings=scanned?await (deps.siblings??siblingsOf)(db(),{...food,gtin:food.gtin!},ctx.signal).catch(()=>[]):[]
-      const name=scanned?await (deps.catalogueName??catalogueName)({...food,siblings},{signal:ctx.signal}).catch(()=>food.name):food.name
+      // The shops' name for the barcode (UPCitemdb, Brave's listings) is often fuller than a database's.
+      const [siblings,web]=scanned?await Promise.all([
+        (deps.siblings??siblingsOf)(db(),{...food,gtin:food.gtin!},ctx.signal).catch(()=>[]),
+        (deps.name??((value,signal)=>nameBarcode(value,{signal})))(food.gtin!,anySignal(ctx.signal,5000)).catch(()=>null)]):[[],null]
+      const webName=web?.status==="identified"?web.name??null:null
+      const name=scanned?await (deps.catalogueName??catalogueName)({...food,siblings,webName},{signal:ctx.signal}).catch(()=>food.name):food.name
       const named=name===food.name?food:{...food,name}
       const created=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
         p_food:await payload(named,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)
