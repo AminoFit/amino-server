@@ -31,6 +31,12 @@ const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
 export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", async (payload: string) => {
   const job = parseIconJob(payload)
   if (!job) throw new Error("Invalid icon job")
+  await fillFoodIcon(job)
+})
+
+/** Gives a food its icon: a supplement's shared one, else an existing icon that looks the same (Jev), else a new
+ * drawing. Nothing when it already has one. The queue's job, also run directly (a backfill). */
+export async function fillFoodIcon(job: NonNullable<ReturnType<typeof parseIconJob>>) {
   const foodItemId = job.foodId
 
   // Retrieve the food item from the database
@@ -82,7 +88,7 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
   await generateAndUploadIcon(foodName, foodItem.id)
 
   console.log("Done generating food icon for:", foodItem.name)
-})
+}
 
 /** Links the shared icon for the supplement's form, drawing it the first time any supplement of that form needs it. */
 async function linkSupplementIcon(foodItemId: number, supplement: SupplementIconJob["supplement"]) {
