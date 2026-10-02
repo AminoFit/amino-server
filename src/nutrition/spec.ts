@@ -47,7 +47,7 @@ export const NUTRIENT_NAMES: Record<NutrientKey, string[]> = {
   addedSugarG: ["addedSugar", "addedSugarPerServing", "Sugars, added", "Added Sugars"],
   proteinG: ["protein", "proteinPerServing", "Protein"],
   waterMl: ["water", "Water"],
-  vitaminAMcg: ["vitaminA", "Vitamin A, IU", "Vitamin A", "Vitamin A, RAE"],
+  vitaminAMcg: ["vitaminA", "Vitamin A", "Vitamin A, RAE"],
   vitaminCMg: ["vitaminC", "Vitamin C", "Vitamin C, total ascorbic acid"],
   vitaminDMcg: ["vitaminD", "Vitamin D", "Vitamin D (D2 + D3), International Units", "Vitamin D (D2 + D3)"],
   vitaminEMg: ["vitaminE", "Vitamin E", "Vitamin E, IU", "Vitamin E (alpha-tocopherol)"],

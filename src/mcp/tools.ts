@@ -11,6 +11,8 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Dates are the user's local calendar days in their profile timezone (get_profile). eatenAt is UTC.
 - Nutrient names carry their unit: kcal, proteinG (grams), sodiumMg (milligrams), vitaminDMcg (micrograms), waterMl.
 - For questions about intake over time, start with get_daily_summary; use list_meals for what was eaten.
+- Foods record only the nutrients their source gives (a label often lists a few vitamins). A day's total marked
+  \`incomplete\` sums only the foods that record it: say it is partial rather than judging intake from it.
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
 - Body stats are metric: convert pounds, feet and inches before calling update_body_stats.
 - The user's own recipes and foods (list_my_foods, get_my_food) are what they saved in the app. A recipe's values are
@@ -109,7 +111,10 @@ export function registerAminoTools(server: McpServer) {
     description: "Totals per local day (kcal, protein, carbs, fat, saturated fat, fibre, sugar, sodium, alcohol, " +
       "caffeine, water) and the user's goals, for up to 366 days. Days with nothing logged are left out. With " +
       "allNutrients, each day also has `nutrients`: its vitamins and minerals (and other fats, cholesterol, omega-3/6), " +
-      "each summed over the foods that record it. Each day has the `goals` it had (goals change over time); top-level " +
+      "each summed over the foods that record it. `foods` is how many foods the day has; `incomplete` lists every total " +
+      "shown that only some of them record (\"zincMg\": \"8 of 20 foods\"): that total is a lower bound, not the day's " +
+      "intake, so don't read it as low intake. A nutrient no food records is absent (unknown), never 0. " +
+      "Each day has the `goals` it had (goals change over time); top-level " +
       "`goals` are today's, and `goalChanges` lists changes inside the range.",
     inputSchema: z.object({ from: date, to: date, allNutrients }),
     annotations: READ

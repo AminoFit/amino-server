@@ -30,11 +30,12 @@ export const foodAttributesToQuery: FoodAttribute[] = [
   { id: 1235, name: "Sugars, added", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "addedSugar" },
   { id: 1003, name: "Protein", usdaUnit: "g", targetUnit: "g", conversionFactor: 1, targetName: "protein" },
   { id: 1051, name: "Water", usdaUnit: "g", targetUnit: "ml", conversionFactor: 1, targetName: "water" },
-  // Vitamins A, D and E in USDA's own units first (most records); IU only where that is all a record has.
+  // Vitamins D and E in USDA's own units first (most records); IU only where that is all a record has. Vitamin A only
+  // as RAE: its IU is retinol (0.3 µg) or a plant's beta-carotene (0.05 µg RAE) and a record doesn't say which, so an
+  // IU-only record leaves it unknown (blueberries' 54 IU per 100 g are 3 µg RAE, not 16 or 54).
   { id: 1106, name: "Vitamin A, RAE", usdaUnit: "µg", targetUnit: "mcg", conversionFactor: 1, targetName: "vitaminA" },
   { id: 1114, name: "Vitamin D (D2 + D3)", usdaUnit: "µg", targetUnit: "mcg", conversionFactor: 1, targetName: "vitaminD" },
   { id: 1109, name: "Vitamin E (alpha-tocopherol)", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "vitaminE" },
-  { id: 1104, name: "Vitamin A, IU", usdaUnit: "IU", targetUnit: "mcg", conversionFactor: 0.3, targetName: "vitaminA" },
   { id: 1162, name: "Vitamin C, total ascorbic acid", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "vitaminC" },
   { id: 1110,name: "Vitamin D (D2 + D3), International Units",usdaUnit: "IU",targetUnit: "mcg",conversionFactor: 0.025,targetName: "vitaminD"},
   { id: 1124, name: "Vitamin E, IU", usdaUnit: "IU", targetUnit: "mg", conversionFactor: 0.67, targetName: "vitaminE" },
@@ -46,6 +47,8 @@ export const foodAttributesToQuery: FoodAttribute[] = [
   { id: 1175, name: "Vitamin B-6", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "vitaminB6" },
   { id: 1176, name: "Biotin", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1, targetName: "biotin" },
   { id: 1190, name: "Folate, DFE", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1, targetName: "folate" },
+  // Foundation records give only the total (baby spinach): the same as DFE for food without added folic acid.
+  { id: 1187, name: "Folate, total", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1, targetName: "folate" },
   { id: 1178, name: "Vitamin B-12", usdaUnit: "mcg", targetUnit: "mcg", conversionFactor: 1, targetName: "vitaminB12" },
   { id: 1087, name: "Calcium, Ca", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "calcium" },
   { id: 1089, name: "Iron, Fe", usdaUnit: "mg", targetUnit: "mg", conversionFactor: 1, targetName: "iron" },
@@ -132,37 +135,38 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: FoodAttrib
     }
   }
 
-  // if foodNutrients exists, use it to calculate the nutrients
+  // if foodNutrients exists, use it to calculate the nutrients: per nutrient, the first of its attributes the record
+  // has (RAE before IU, DFE before total), whatever order the record lists them in. A measured 0 is a value.
   if (foodItem.foodNutrients) {
-    foodItem.foodNutrients.forEach((foodNutrient: any) => {
-      const attribute = foodAttributesToQuery.find(attr => attr.name === foodNutrient.nutrient.name)
-      if (attribute && !foodInfo[attribute.targetName].amount) {
-        if (foodNutrient.nutrient.name !== "Energy" || foodNutrient.nutrient.unitName === "kcal") {
-          const normalizedAmount = foodNutrient.amount * (default_serving.default_serving_amount / 100) * attribute.conversionFactor;
-          // Four decimals: two significant figures stored 486 kcal as 490 and 16.54 g protein as 17.
-          const roundedAmount = Math.round(normalizedAmount * 1e4) / 1e4;
-          
-          foodInfo[attribute.targetName] = {
-            amount: roundedAmount,
-            unit: attribute.targetUnit
-          };
-        }
-      }
-    });
+    for (const attribute of foodAttributesToQuery) {
+      if (foodInfo[attribute.targetName].amount != null) continue
+      const foodNutrient = (foodItem.foodNutrients as any[]).find(row => row.nutrient?.name === attribute.name &&
+        Number.isFinite(row.amount) && (attribute.name !== "Energy" || row.nutrient.unitName === "kcal"))
+      if (!foodNutrient) continue
+      const normalizedAmount = foodNutrient.amount * (default_serving.default_serving_amount / 100) * attribute.conversionFactor
+      // Four decimals: two significant figures stored 486 kcal as 490 and 16.54 g protein as 17.
+      foodInfo[attribute.targetName] = { amount: Math.round(normalizedAmount * 1e4) / 1e4, unit: attribute.targetUnit }
+    }
   }
 
 
   // Omega-3 and omega-6: USDA lists the fatty acids one by one (chia: "PUFA 18:3 n-3 c,c,c (ALA)" 17.8 g per 100 g),
   // in grams; their sums, in mg, per the default serving like everything above.
   if (foodItem.foodNutrients) {
-    const sum = (pattern: RegExp) => (foodItem.foodNutrients as any[]).reduce((total, row) =>
-      pattern.test(row.nutrient?.name ?? "") && Number.isFinite(row.amount) ? total + row.amount : total, 0)
+    const rows = (foodItem.foodNutrients as any[]).filter(row => Number.isFinite(row.amount))
+    const named = (pattern: RegExp) => rows.filter(row => pattern.test(row.nutrient?.name ?? ""))
+    const sum = (pattern: RegExp) => named(pattern).reduce((total, row) => total + row.amount, 0)
     const scale = default_serving.default_serving_amount / 100 * 1000
-    const omega3 = sum(/^PUFA (18:3 n-3|18:4|20:3 n-3|20:5 n-3|22:5 n-3|22:6 n-3)/)
+    // SR Legacy often gives linoleic (18:2) and linolenic (18:3) acid only as a total ("PUFA 18:2", blueberries,
+    // spinach): almost all n-6 and n-3 in food, so the total counts when the record has no n-6 or n-3 split of it.
+    const linoleic = named(/^PUFA 18:2 n-6/).length ? 0 : sum(/^PUFA 18:2$/)
+    const linolenic = named(/^PUFA 18:3 n-3/).length ? 0 : sum(/^PUFA 18:3$/)
+    const omega3 = sum(/^PUFA (18:3 n-3|18:4|20:3 n-3|20:5 n-3|22:5 n-3|22:6 n-3)/) + linolenic
     // Arachidonic (20:4) and adrenic (22:4) acids are n-6; SR Legacy often lists them without the suffix.
-    const omega6 = sum(/^PUFA (18:2 n-6|18:3 n-6|20:2 n-6|20:3 n-6|20:4( n-6)?$|22:4( n-6)?$)/)
-    if (omega3 > 0) foodInfo.omega3 = { amount: Math.round(omega3 * scale * 10) / 10, unit: "mg" }
-    if (omega6 > 0) foodInfo.omega6 = { amount: Math.round(omega6 * scale * 10) / 10, unit: "mg" }
+    const omega6 = sum(/^PUFA (18:2 n-6|18:3 n-6|20:2 n-6|20:3 n-6|20:4( n-6)?$|22:4( n-6)?$)/) + linoleic
+    // Listed and 0 is a measured 0; not listed stays unknown.
+    if (omega3 > 0 || named(/^PUFA 18:3/).length) foodInfo.omega3 = { amount: Math.round(omega3 * scale * 10) / 10, unit: "mg" }
+    if (omega6 > 0 || named(/^PUFA 18:2/).length) foodInfo.omega6 = { amount: Math.round(omega6 * scale * 10) / 10, unit: "mg" }
   }
 
   // Filter out the attributes with null values

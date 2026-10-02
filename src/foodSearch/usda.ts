@@ -5,9 +5,9 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
-import { validNutrition } from "@/nutrition"
+import { microsFrom, validNutrition } from "@/nutrition"
 import { UserFoodError } from "@/userFoods/userFoods"
-import { cleanServings } from "@/mealResolution/foodSources"
+import { cleanServings, createFoodSources } from "@/mealResolution/foodSources"
 
 type Db = ReturnType<typeof createAdminSupabase>
 const normalize = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
@@ -69,6 +69,13 @@ export async function foodFromUsda(userId: string, fdcId: number, db: Db = creat
     p_food: { ...mapped.food, bgeBaseEmbedding: JSON.stringify(vector.embedding) }, p_servings: cleanServings(mapped.servings) })
   if (error) throw error
   const row = (data as { food_id: number; created: boolean }[])[0]
+  // Its vitamins and minerals, as the meal agent's USDA foods get them (a recipe picked from here priced its zinc and
+  // folate from nothing): only those the food has none of, so an existing food's own values stay.
+  const micros = microsFrom(((record as { Nutrient?: { nutrientName: string; nutrientUnit: string | null;
+    nutrientAmountPerDefaultServing: number }[] }).Nutrient ?? []).map(n => ({ name: n.nutrientName, amount: n.nutrientAmountPerDefaultServing, unit: n.nutrientUnit })))
+  await createFoodSources({ userId, messageId: null, signal: AbortSignal.timeout(10_000), discover: () => {} })
+    .fillMicros(row.food_id, { micros, defaultServingWeightGram: mapped.food.defaultServingWeightGram })
+    .catch(error => console.error("USDA food created, but its micronutrients were not filled", { foodId: row.food_id, error }))
   if (row.created) {
     const [{ classifyFoodCategoryQueue }, { generateFoodIconQueue }] = await Promise.all([
       import("@/app/api/queues/classify-food-category/classify-food-category"),

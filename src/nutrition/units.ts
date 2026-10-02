@@ -16,8 +16,10 @@ export const kjToKcal = (kj: number) => kj / 4.184
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
 const GRAMS: Record<string, number> = { g: 1, mg: 1e-3, mcg: 1e-6, "µg": 1e-6, ug: 1e-6 }
-/** International units per key unit: vitamin A as retinol (0.3 µg), D (0.025 µg), E as natural tocopherol (0.67 mg). */
-const IU: Partial<Record<NutrientKey, number>> = { vitaminAMcg: 0.3, vitaminDMcg: 0.025, vitaminEMg: 0.67 }
+/** International units per key unit: D (0.025 µg), E as natural tocopherol (0.67 mg). Not vitamin A: an IU of it is
+ * 0.3 µg as retinol but 0.05 µg RAE as a plant's beta-carotene, and the unit doesn't say which, so it stays unknown
+ * (blueberries' 54 IU per 100 g are 3 µg RAE). */
+const IU: Partial<Record<NutrientKey, number>> = { vitaminDMcg: 0.025, vitaminEMg: 0.67 }
 
 /** A nutrient's key from any of its names ("Magnesium, Mg", "magnesium", "magnesiumMg"); null when unknown. */
 export function nutrientKey(name: string): NutrientKey | null {

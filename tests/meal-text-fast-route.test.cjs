@@ -37,6 +37,10 @@ test('amounts at the start of the user words',()=>{
   assert.deepEqual(amount('½ cup milk'),[0.5,'cup milk'])
   assert.equal(fast.parseAmount('Banana'),null)
   assert.equal(fast.parseAmount('0 g'),null)
+  // A household unit without a number is one of it (meal 30393: "tbsp avocado oil").
+  assert.deepEqual(amount('tbsp avocado oil'),[1,'tbsp avocado oil'])
+  assert.deepEqual(amount('cup of rice'),[1,'cup rice'])
+  assert.equal(fast.parseAmount('g chicken'),null)
 })
 
 test('a stated mass is computed, a named serving is used, anything else is an estimate',()=>{
@@ -48,6 +52,9 @@ test('a stated mass is computed, a named serving is used, anything else is an es
   assert.equal(plain(fast.itemQuantity('chicken breast',chicken,150)).kind,'estimated_mass')
   // A misread amount (200 lb for a 200 g estimate) goes to the agent.
   assert.equal(fast.itemQuantity('200 lb chicken',chicken,200),null)
+  assert.deepEqual(plain(fast.itemQuantity('tbsp olive oil',oil,14)),{kind:'serving',servingId:20,amount:1})
+  // The user's unit against a listing guess a third of it: the agent decides, not the guess.
+  assert.equal(fast.itemQuantity('tbsp olive oil',oil,4),null)
 })
 
 test('the user words are found in the text in their own case',()=>{

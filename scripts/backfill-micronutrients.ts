@@ -12,22 +12,28 @@
 //   --export <file> --ids <a,b,…>   write those foods with their USDA candidates, for judging by hand (or by Claude)
 //   --ids <a,b,…>        (without --export) look up only these foods
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
+//   --as-estimates       with --matches: branded commodities given their generic food, recorded as estimates
 //   --correct            generic foods: replace a vitamin or mineral more than 2x off its USDA match (or 0 where USDA has
 //                        a real amount), then recompute those nutrients on the owner's logs (previous values recorded)
 //   --correct --rescale  instead: a food whose own rows (not the backfill's) are all off USDA by one factor stored a
 //                        portion's values per 100 g (banana potassium x1.18, cucumber x2): those rows become USDA's
+//   --generic-estimates  branded foods that are plainly a commodity (egg whites, bagged spinach, chia seeds): nutrients
+//                        their own sources don't give, from the generic USDA food, recorded as estimates. Never for
+//                        a product whose brand or process changes its nutrients (fortified, ultra-filtered, flavoured)
 //
 // Routes, by food: its own USDA record (by its FDC ID); its barcode (USDA, Open Food Facts, the shops' pages); a
 // branded food without a barcode: USDA's branded record when Jev is sure it's the same product; a generic food: USDA's
 // Foundation, SR Legacy or survey food when Jev is sure it's the same food in the same state. Recipes recompute from
-// their ingredients. The user's own typed foods stay as typed.
+// their ingredients (their values replaced, not filled: they are a sum). The user's own typed foods stay as typed.
 import { readFileSync, writeFileSync } from "node:fs"
 import { Client } from "pg"
 import { selectWithJev } from "@/ai/jev"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
 import { createFoodSources } from "@/mealResolution/foodSources"
-import { FILL_KEYS, MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey, nutrientsAt, recipeValues } from "@/nutrition"
+import { FILL_KEYS, MICRO_KEYS, inKeyUnit, keyUnit, microRows, microsFrom, nutrientKey, scaleMicros, type Micros, type NutrientKey, nutrientsAt } from "@/nutrition"
+import { refreshRecipe } from "@/userFoods/recipeRefresh"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 // The backfill has its own USDA key, so it never eats into production's hourly quota (this process only).
 // --third-key: a second run in parallel on its own key.
@@ -52,6 +58,12 @@ const GENERIC_POLICY = `Is one of the USDA foods the same food as ours, in the s
 raw vs cooked, dried vs fresh, with or without skin, drained vs packed in liquid, whole vs skim, plain vs flavoured. A close
 cousin is not the same food (a nectarine is not a peach, white rice is not brown rice, a fried egg is not a boiled egg).
 Calories per 100 g should be close. Choose none unless you are sure.`
+const COMMODITY_POLICY = `Our food is a branded product. Is it nutritionally just the plain food one of the USDA generic
+foods describes, so that the brand changes nothing about its vitamins and minerals? Yes for plain produce (bagged
+spinach), eggs and egg whites, plain meat and fish, plain grains, dry beans, nuts and seeds, plain oils. Not when the
+product is fortified or enriched, filtered or concentrated (ultra-filtered milk), flavoured or sweetened, a mix, a
+prepared or baked food, or made by a process that changes its nutrients; and the USDA food must be the same food in the
+same state (raw vs cooked, dried vs fresh). Choose none unless you are sure.`
 const BRANDED_POLICY = `Is one of the USDA branded records exactly our product? Same brand, product, flavour, variant and
 form; calories per 100 g close. A sibling flavour or size is not the same product. Choose none unless you are sure.`
 
@@ -147,7 +159,7 @@ async function candidatesFor(food: Food, branded: boolean) {
 }
 
 /** USDA's record for a food, chosen by Jev among the search hits; its micronutrients per the food's own serving. */
-async function usdaMatch(food: Food, branded: boolean): Promise<{ micros: Micros; source: string } | null> {
+async function usdaMatch(food: Food, branded: boolean, commodity = false): Promise<{ micros: Micros; source: string } | null> {
   const hits = await candidatesFor(food, branded)
   if (!hits.length) return null
   const options: Record<string, unknown> = { none: null }, criteria: Record<string, string> = { none: "None is the same food." }
@@ -157,20 +169,24 @@ async function usdaMatch(food: Food, branded: boolean): Promise<{ micros: Micros
   const decision = await selectWithJev({ options, state: {
     ours: { name: food.name, brand: food.brand, kcalPer100g: ours == null ? null : Math.round(ours * 1000) / 10 },
     usda: hits.map(hit => ({ id: `usda_${hit.fdcId}`, description: hit.description, brand: hit.brand, kcalPer100g: hit.kcalPer100g })) },
-    questions: { selection: { type: "choice", instructions: branded ? BRANDED_POLICY : GENERIC_POLICY, criteria } } },
+    questions: { selection: { type: "choice", instructions: commodity ? COMMODITY_POLICY : branded ? BRANDED_POLICY : GENERIC_POLICY, criteria } } },
     AbortSignal.timeout(30_000))
   jevCost += decision.costUsd ?? 0
   if (!(decision.status === "ok" && decision.choice?.startsWith("usda_"))) return null
   // Sure (0.9), or fairly sure with calories within 20% (two equally right records split Jev's confidence: kiwi).
   const confidence = decision.confidence ?? 0, chosen = hits.find(hit => `usda_${hit.fdcId}` === decision.choice)
   const gap = chosen?.kcalPer100g != null ? kcalGap(food, chosen.kcalPer100g, 100) : null
-  if (!(confidence >= 0.9 || (!branded && confidence >= 0.65 && gap != null && gap <= 0.2))) return null
+  // An estimate for a branded food needs both: sure, and calories within 20%.
+  if (commodity ? !(confidence >= 0.9 && gap != null && gap <= 0.2)
+    : !(confidence >= 0.9 || (!branded && confidence >= 0.65 && gap != null && gap <= 0.2))) return null
   return usdaRecord(food, decision.choice.slice(5))
 }
 
 async function usdaRecord(food: Food, fdcId: string): Promise<{ micros: Micros; source: string } | null> {
   const [record] = (await patiently(async () => { await usdaTurn(); return getUsdaFoodsInfo({ fdcIds: [fdcId] }) })) ?? []
-  const grams = record?.defaultServingWeightGram
+  // A liquid's record is per mL (Fairlife: 240 mL), with no gram weight: a mL is close enough to a gram for the
+  // calorie check and the scaling (milk is 1.03 g/mL).
+  const grams = record?.defaultServingWeightGram ?? record?.defaultServingLiquidMl
   // Some Foundation records have no energy value: their macros give it.
   const kcal = record?.kcalPerServing || 4 * (record?.proteinPerServing ?? 0) + 4 * (record?.carbPerServing ?? 0) + 9 * (record?.totalFatPerServing ?? 0)
   if (!record || !grams || !agrees(food, kcal, grams)) return null
@@ -232,7 +248,9 @@ async function main() {
       const missing = Object.fromEntries(Object.entries(found.micros).filter(([key]) => !owned.has(key as NutrientKey))) as Micros
       const added = Object.keys(missing).length ? await sources0.fillMicros(food.id, { defaultServingWeightGram: food.defaultServingWeightGram!, micros: missing }) : 0
       if (added) {
-        await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(missing), `${found.source} (judged)`])
+        await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(missing),
+          args.includes("--as-estimates") ? JSON.stringify({ estimate: "generic profile for a branded commodity", usda: found.source, judged: true })
+            : `${found.source} (judged)`])
         filled++
         console.log(`  + ${food.id} ${food.name}: ${added} from ${found.source}`)
       }
@@ -244,6 +262,7 @@ async function main() {
   const chosenIds = option("ids") ? new Set((option("ids") ?? "").split(",").map(Number).filter(Boolean)) : null
   const foods = await loadFoods(chosenIds ? [...chosenIds] : [...mine, ...popular])
   if (args.includes("--correct")) { await correct(pg, foods, sources0); await pg.end(); return }
+  if (args.includes("--generic-estimates")) { await genericEstimates(pg, foods, sources0); await pg.end(); return }
   // The rest after a first pass: USDA-record foods retried; generic and branded foods exported for judging.
   if (args.includes("--remaining")) {
     const filled = new Set((await pg.query(`SELECT DISTINCT "foodItemId" FROM "FoodMicroFill"`)).rows.map(row => Number(row.foodItemId)))
@@ -328,24 +347,8 @@ async function main() {
     }
     await Promise.all(Array.from({ length: 5 }, work))
     clearInterval(heartbeat)
-    // Recipes: per portion from their ingredients (now richer).
-    for (const recipe of routes.get("recipe") ?? []) {
-      const ingredients = (await pg.query(`SELECT "foodItemId", grams::float8 AS grams FROM "RecipeIngredient" WHERE "recipeFoodItemId" = $1`, [recipe.id])).rows
-      const parts = await loadFoods(ingredients.map(row => Number(row.foodItemId)))
-      try {
-        const values = recipeValues(ingredients.map(row => ({ food: parts.find(part => part.id === Number(row.foodItemId))!, grams: Number(row.grams) })),
-          recipe.recipePortions!)
-        const micros = Object.fromEntries(MICRO_KEYS.flatMap(key => finite(values.perPortion[key]) ? [[key, values.perPortion[key]]] : [])) as Micros
-        const owned = have(recipe)
-        const missing = Object.fromEntries(Object.entries(micros).filter(([key]) => !owned.has(key as NutrientKey))) as Micros
-        const added = Object.keys(missing).length ? await sources.fillMicros(recipe.id, { defaultServingWeightGram: recipe.defaultServingWeightGram!, micros: missing }) : 0
-        if (added) {
-          await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [recipe.id, Object.keys(missing), "Recipe ingredients"])
-          outcome.filled++; outcome.keys += added
-          console.log(`  + recipe ${recipe.id} ${recipe.name}: ${added}`)
-        }
-      } catch (error) { console.warn(`  ! recipe ${recipe.id}: ${error instanceof Error ? error.message : error}`) }
-    }
+    // Recipes: recomputed from their ingredients (now richer), replacing their values.
+    await refreshRecipes(routes.get("recipe") ?? [])
     console.log(`foods: ${outcome.filled} filled (${outcome.keys} nutrients), ${outcome.noMatch} no confident match, ` +
       `${outcome.nothingNew} nothing new, ${outcome.failed} failed; Jev ${jevCalls} calls $${jevCost.toFixed(3)}, ${webLookups} barcode lookups`)
   }
@@ -374,7 +377,45 @@ async function main() {
   await pg.end()
 }
 
-/** Below these, a difference is noise (a trace of copper), not an error. */
+/** Recipes recomputed from their ingredients as they are now (refresh_recipe_values backs up what they had). */
+async function refreshRecipes(recipes: Food[]) {
+  const db = createAdminSupabase()
+  let refreshed = 0
+  for (const recipe of recipes) {
+    try { if (await refreshRecipe(db, recipe.id)) { refreshed++; console.log(`  ~ recipe ${recipe.id} ${recipe.name}: recomputed`) } }
+    catch (error) { console.warn(`  ! recipe ${recipe.id}: ${error instanceof Error ? error.message : error}`) }
+  }
+  console.log(`recipes: ${refreshed} of ${recipes.length} recomputed`)
+}
+
+/** Branded foods that are plainly a commodity, still missing core nutrients after their own sources: the rest from the
+ * generic USDA food, fill-only (their own values win), recorded as estimates with the USDA food and the reason. */
+async function genericEstimates(pg: Client, foods: Food[], sources: ReturnType<typeof createFoodSources>) {
+  const branded = foods.filter(food => food.brand?.trim() && !food.privateToUserId && food.recipePortions == null &&
+    food.foodInfoSource !== "User" && food.defaultServingWeightGram && !food.weightUnknown &&
+    !CORE.every(key => have(food).has(key)))
+  console.log(`generic estimates: ${branded.length} branded foods missing core nutrients${apply ? "" : " (dry run: Jev only, no writes)"}`)
+  let filled = 0
+  for (const food of branded) {
+    const found = await usdaMatch(food, false, true).catch(() => null)
+    if (!found) { console.log(`  - ${food.id} ${food.name} (${food.brand})`); continue }
+    const owned = have(food)
+    const missing = Object.fromEntries(Object.entries(found.micros).filter(([key]) => !owned.has(key as NutrientKey))) as Micros
+    if (!Object.keys(missing).length) continue
+    console.log(`  + ${food.id} ${food.name} (${food.brand}): ${Object.keys(missing).length} from ${found.source}`)
+    if (!apply) continue
+    if (await sources.fillMicros(food.id, { defaultServingWeightGram: food.defaultServingWeightGram!, micros: missing })) {
+      await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(missing),
+        JSON.stringify({ estimate: "generic profile for a branded commodity", usda: found.source })])
+      filled++
+    }
+  }
+  console.log(`generic estimates: ${filled} foods ${apply ? "filled" : "would be filled"}; Jev ${jevCalls} calls $${jevCost.toFixed(3)}`)
+}
+
+/** Below these per 100 g, a difference is noise (a trace of copper), not an error. Per 100 g, not per serving: a
+ * blueberry's 1.36 g serving put every nutrient under the floor, so its vitamin A in IU (37.8 µg for 70 g) was never
+ * compared. */
 const FLOOR: Record<string, number> = { mg: 2, mcg: 2, g: 0.3, ml: 5 }
 
 async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof createFoodSources>) {
@@ -395,6 +436,8 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
     const usda = (fdcId ? await usdaRecord(food, fdcId).catch(() => null) : await usdaMatch(food, false).catch(() => null))
     if (!usda) continue
     const changes: Record<string, { from: number; to: number }> = {}
+    // Floors compare per 100 g; values stay per serving.
+    const per100 = 100 / food.defaultServingWeightGram!
     if (rescale) {
       // The food's own rows (the backfill's came from USDA) against USDA, as ratios.
       const own = MICRO_KEYS.flatMap(key => {
@@ -402,7 +445,7 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
         if (!first || to == null || filledKeys.get(food.id)?.has(key)) return []
         const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
         const floor = FLOOR[keyUnit(key)] ?? 1
-        return from != null && from > 0 && to >= floor ? [{ key, from, to, ratio: from / to }] : []
+        return from != null && from > 0 && to * per100 >= floor ? [{ key, from, to, ratio: from / to }] : []
       })
       const ratios = own.map(row => row.ratio).sort((a, b) => a - b)
       const median = ratios[Math.floor(ratios.length / 2)]
@@ -414,7 +457,7 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
         if (!first || to == null || changes[key]) continue
         const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
         const floor = FLOOR[keyUnit(key)] ?? 1
-        if (from != null && to >= floor && (from === 0 || (key === "omega3Mg" && from < 1))) changes[key] = { from, to }
+        if (from != null && to * per100 >= floor && (from === 0 || (key === "omega3Mg" && from * per100 < 1))) changes[key] = { from, to }
       }
     }
     for (const key of rescale ? [] : MICRO_KEYS) {
@@ -423,7 +466,7 @@ async function correct(pg: Client, foods: Food[], sources: ReturnType<typeof cre
       if (!first || to == null) continue
       const from = inKeyUnit(key, first.nutrientAmountPerDefaultServing, first.nutrientUnit)
       const floor = FLOOR[keyUnit(key)] ?? 1
-      if (from == null || to < floor || Math.abs(from - to) < floor) continue
+      if (from == null || to * per100 < floor || Math.abs(from - to) * per100 < floor) continue
       if ((from === 0 || from > 2 * to || from < to / 2) && (!only || only[String(food.id)].includes(key))) changes[key] = { from, to }
     }
     // Only the judged nutrients.

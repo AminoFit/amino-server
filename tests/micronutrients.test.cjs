@@ -42,3 +42,44 @@ test('a fish oil panel\'s EPA and DHA lines are its omega-3 (a printed total win
     {name:'Cholesterol',amount:5,unit:'mg'}]),{cholesterolMg:5,omega3Mg:1200});
   assert.equal(m.microsFrom([{name:'Total Omega-3 Fatty Acids',amount:1300,unit:'mg'},{name:'EPA',amount:700,unit:'mg'}]).omega3Mg,1300);
 });
+
+test('USDA records: RAE over IU, folate total when no DFE, a measured 0 kept, linoleic and linolenic totals as omega-6 and -3',()=>{
+  const {extractFoodInfo,foodAttributesToQuery}=require('../src/FoodDbThirdPty/USDA/getFoodInfo.ts');
+  const row=(name,amount,unitName='µg')=>({nutrient:{name,unitName},amount});
+  const read=rows=>extractFoodInfo({description:'Food',dataType:'SR Legacy',fdcId:1,foodNutrients:rows},foodAttributesToQuery).foodInfo;
+  // Blueberries (SR Legacy 171711) list IU first: 54 IU per 100 g are 3 µg RAE, never 54 µg or 16 µg.
+  const berries=read([row('Vitamin A, IU',54,'IU'),row('Vitamin A, RAE',3),row('Vitamin D (D2 + D3)',0),
+    row('PUFA 18:2',0.088,'g'),row('PUFA 18:3',0.058,'g')]);
+  assert.equal(berries.vitaminA.amount,3);
+  assert.equal(berries.vitaminD.amount,0,'a measured 0 is a value, not missing');
+  assert.equal(berries.omega6.amount,88);assert.equal(berries.omega3.amount,58);
+  // An IU-only record leaves vitamin A unknown: retinol or beta-carotene can't be told apart.
+  assert.equal(read([row('Vitamin A, IU',417,'IU')]).vitaminA,undefined);
+  // Baby spinach (Foundation 1999632) gives only the total folate.
+  assert.equal(read([row('Folate, total',116.5)]).folate.amount,116.5);
+  assert.equal(read([row('Folate, total',150),row('Folate, DFE',190)]).folate.amount,190,'DFE first');
+  // An egg's 18:2 split into n-6 and CLAs: the split counts, not the total as well.
+  const egg=read([row('PUFA 18:2',1.555,'g'),row('PUFA 18:2 n-6 c,c',1.531,'g'),row('PUFA 20:4',0.188,'g')]);
+  assert.equal(egg.omega6.amount,1719);
+});
+
+test('vitamin A in IU is unknown wherever it comes from; D and E convert',()=>{
+  assert.equal(m.inKeyUnit('vitaminAMcg',54,'IU'),null);
+  assert.equal(m.nutrientKey('Vitamin A, IU'),null);
+  assert.equal(m.inKeyUnit('vitaminEMg',10,'IU'),6.7);
+});
+
+test('a recipe is its ingredients\' sum, recomputed when one gains a value',()=>{
+  const {valuesDiffer}=require('../src/userFoods/recipeRefresh.ts');
+  const food=(kcal,rows)=>({defaultServingWeightGram:100,kcalPerServing:kcal,proteinPerServing:1,carbPerServing:1,totalFatPerServing:1,
+    Nutrient:rows.map(([nutrientName,nutrientAmountPerDefaultServing])=>({nutrientName,nutrientUnit:'mcg',nutrientAmountPerDefaultServing}))});
+  // Recipe 15315: the chicken knew vitamin A, the sauce only later.
+  const chicken=food(160,[['vitaminA',26.8]]),sauce=food(48,[]);
+  const before=m.recipeValues([{food:chicken,grams:227},{food:sauce,grams:108.7}],1).perPortion;
+  sauce.Nutrient.push({nutrientName:'vitaminA',nutrientUnit:'mcg',nutrientAmountPerDefaultServing:241.9});
+  const after=m.recipeValues([{food:chicken,grams:227},{food:sauce,grams:108.7}],1).perPortion;
+  assert.equal(Math.round(before.vitaminAMcg*10)/10,60.8);
+  assert.equal(Math.round(after.vitaminAMcg*10)/10,323.8);
+  assert.equal(valuesDiffer(before,after),true);
+  assert.equal(valuesDiffer(after,{...after}),false);
+});
