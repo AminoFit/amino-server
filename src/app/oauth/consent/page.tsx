@@ -60,7 +60,31 @@ export default async function ConsentPage({ searchParams }: { searchParams: { au
 
   const host = headers().get("x-forwarded-host") ?? headers().get("host") ?? "amino.fit"
   const approveUrl = `https://${host}/oauth/approve?authorization_id=${authorizationId}`
-  const next = encodeURIComponent(`/oauth/consent?authorization_id=${authorizationId}`)
+  const appUrl = `fit.amino://oauth/approve?authorization_id=${authorizationId}`
+  const signInUrl = `/login?next=${encodeURIComponent(`/oauth/consent?authorization_id=${authorizationId}`)}`
+  const primary = "flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+
+  // An agent on a phone (ChatGPT's app, say) opens this in its own browser, where a QR code can't be scanned: on an
+  // iPhone the app approves and this page carries on once it has; on other phones signing in here is the way.
+  const userAgent = headers().get("user-agent") ?? ""
+  if (/iPhone|iPad|iPod/.test(userAgent)) return (
+    <Shell>
+      <h1 className="text-xl font-bold text-gray-900">Approve in the Amino app</h1>
+      <p className="mt-2 text-sm text-gray-600">Amino opens to ask you, then brings you back here.</p>
+      <a className={`mt-6 ${primary}`} href={appUrl}>Open Amino</a>
+      <div className="mt-6 text-center"><WaitForApp authorizationId={authorizationId} /></div>
+      <p className="mt-8 border-t border-gray-100 pt-6 text-center text-sm">
+        <a className="text-gray-600 hover:text-gray-900" href={signInUrl}>Sign in with email or Google instead</a></p>
+    </Shell>
+  )
+  if (/Android|Mobi/.test(userAgent)) return (
+    <Shell>
+      <h1 className="text-xl font-bold text-gray-900">Sign in to Amino</h1>
+      <p className="mt-2 text-sm text-gray-600">Sign in to choose whether to connect this agent.</p>
+      <a className={`mt-6 ${primary}`} href={signInUrl}>Sign in</a>
+    </Shell>
+  )
+
   return (
     <Shell>
       <h1 className="text-xl font-bold text-gray-900">Approve in the Amino app</h1>
@@ -72,8 +96,8 @@ export default async function ConsentPage({ searchParams }: { searchParams: { au
       <div className="mt-6 text-center"><WaitForApp authorizationId={authorizationId} /></div>
       <div className="mt-8 space-y-2 border-t border-gray-100 pt-6 text-center text-sm">
         <p><a className="font-semibold text-indigo-600 hover:text-indigo-500"
-          href={`fit.amino://oauth/approve?authorization_id=${authorizationId}`}>On your iPhone? Open Amino</a></p>
-        <p><a className="text-gray-600 hover:text-gray-900" href={`/login?next=${next}`}>
+          href={appUrl}>On your iPhone? Open Amino</a></p>
+        <p><a className="text-gray-600 hover:text-gray-900" href={signInUrl}>
           Sign in with email or Google instead</a></p>
       </div>
     </Shell>
