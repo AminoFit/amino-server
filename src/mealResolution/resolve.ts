@@ -363,12 +363,18 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       `${lockedFoods[0].brand??""} ${lockedFoods[0].name}`)
     const scene=simpleScan?{barcodePackages:[{photo:0,count:1}],otherPackages:[],otherFoods:[],samePackageViews:false}:await sceneLoaded
     if (simpleScan) trace.push("scene: skipped, one scanned product")
-    const unresolved=locked.filter(row=>!row.food).map(row=>row.gtin)
+    // A chip nothing knows or names (Google's scanner misread digits: two in meal 30440 used its whole time budget) or
+    // that isn't food is no product the user ate: it's dropped from a meal that has anything else in it.
+    const dropped=lockedFoods.length||photos.length||scanned.text?locked.filter(row=>!row.food&&(row.unnamed||row.notFood)):[]
+    if (dropped.length) trace.push(`barcode: dropped ${dropped.length} unreadable or not food`)
+    // Nor does the plan have to cover them (compile's barcode_not_covered).
+    for (const row of dropped) if (barcodes.includes(row.gtin)) barcodes.splice(barcodes.indexOf(row.gtin),1)
+    const unresolved=locked.filter(row=>!row.food&&!dropped.includes(row)).map(row=>row.gtin)
     // Scanned chips alone (no photo, no words) leave the agent nothing to work from: a product that isn't food, or that
     // every database and a web search of its digits missed, fails at once (meals 30404 and 30405 searched for 90 s
     // before failing). With a photo (its label, meal 30411) or the product's name, the agent still can.
     const chipsAlone=!photos.length&&!scanned.text
-    const chipOnly=chipsAlone?locked.filter(row=>!row.food):[]
+    const chipOnly=chipsAlone?locked.filter(row=>!row.food&&!dropped.includes(row)):[]
     const notFood=chipOnly.find(row=>row.notFood)
     if (notFood) {trace.push(`barcode: not food (${notFood.notFood!.slice(0,40)})`);throw new Error("barcode_not_food")}
     if (chipOnly.some(row=>row.searched)) {trace.push("barcode: unknown product");throw new Error("barcode_unknown")}
@@ -697,7 +703,8 @@ function sharesWords(a:string,b:string) {
   return [...words(b)].some(word=>left.has(word))
 }
 
-type BarcodeOutcome={food:CatalogFood|null;notFood:string|null;searched:boolean}
+type BarcodeOutcome={food:CatalogFood|null;notFood:string|null;searched:boolean
+  /** Nothing knows or names the digits: a misread. */ unnamed?:boolean}
 async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvidence>,
   sources:ReturnType<typeof createFoodSources>):Promise<BarcodeOutcome> {
   const [known]=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
@@ -706,7 +713,7 @@ async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvid
   const lookup=sources.barcodeProduct?await sources.barcodeProduct(gtin)
     :{foods:await sources.barcodeSources(gtin),notFood:null,failed:false}
   const [source]=lookup.foods
-  if (!source) return {food:null,notFood:lookup.notFood,searched:!lookup.failed}
+  if (!source) return {food:null,notFood:lookup.notFood,searched:!lookup.failed,unnamed:lookup.unnamed===true}
   const added=await sources.createFoodFromSource(source.sourceId)
   if (added.status!=="created"&&added.status!=="existing") return {food:null,notFood:null,searched:false}
   evidence.forget(added.foodId)

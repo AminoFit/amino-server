@@ -379,3 +379,16 @@ test('an unknown scanned chip with a photo or words goes to the agent, which can
     assert.ok(agentRuns()>=1,meal.originalText);
   }
 });
+
+test('meal 30440: a misread chip (nothing knows or names it) is dropped from a meal with words; alone it still fails',async()=>{
+  const meal={...input,originalText:'I had all these [barcode:00850241008835] [barcode:00851620080428]',attachmentIds:[]};
+  const {deps}=lockedDeps({reads:[],scene:null});
+  deps.sources.barcodeProduct=async()=>({foods:[],notFood:null,failed:false,unnamed:true});
+  const asked=[];const generate=deps.generate;deps.generate=async(...args)=>{asked.push(JSON.stringify(args));return generate(...args)};
+  const result=await resolveMeal(meal,{...deps,fastRoute:false});
+  assert.ok(result.trace.some(line=>line==='barcode: dropped 1 unreadable or not food'),result.trace.join(' | '));
+  assert.ok(!result.barcodes.includes('00851620080428'),'the plan needn\'t cover it');
+  assert.ok(result.barcodes.includes('00850241008835'));
+  const alone={...input,originalText:'[barcode:00851620080428]',attachmentIds:[]};
+  await assert.rejects(resolveMeal(alone,{...deps,fastRoute:false}),/barcode_unknown/);
+});
