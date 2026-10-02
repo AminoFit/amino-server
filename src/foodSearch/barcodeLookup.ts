@@ -10,14 +10,8 @@ type Db=ReturnType<typeof createAdminSupabase>
  * (the route allows 60 s, the app waits 60 s). The fast answer comes first from identifyBarcode. */
 const LOOKUP_MS=52_000
 
-/** The catalogue food with this barcode: the user's own first, else a shared one. */
-export async function catalogueFoodForGtin(db:Db,userId:string,gtin:string) {
-  const known=await db.from("FoodItem").select("id").eq("gtin",gtin).is("archivedAt",null)
-    .or(`privateToUserId.is.null,privateToUserId.eq.${userId}`).order("privateToUserId",{ascending:true,nullsFirst:false})
-    .order("id").limit(1)
-  if (known.error) throw known.error
-  return ((known.data??[])[0] as {id:number}|undefined)?.id??null
-}
+import { catalogueFoodForGtin } from "./barcodeCatalogue"
+export { catalogueFoodForGtin }
 
 /** The food for a barcode the app's camera read (docs/barcode-camera-plan.md), decided without a model: the user's own
  * food with that barcode, else the shared catalogue's, else a USDA, Open Food Facts or web record (a web search of the

@@ -94,10 +94,14 @@ test('a split choice is confirmed on the pick alone; a product database\'s title
     description:'',url:'https://www.amazon.com/dp/1'}];
   const upc=async()=>({title:'Undercover Snacks Dark Chocolate + Sea Salt Crisps - 5oz/10ct',description:'',url:null,brand:'Undercover'});
   const asked=[];
-  const select=task=>{asked.push(task);return task.options.yes?{status:'ok',choice:'yes',confidence:0.95}:{status:'ok',choice:'listing_1',confidence:0.43}};
+  const select=task=>{asked.push(task);return task.options.yes?{status:'ok',choice:'yes',confidence:0.95}:{status:'ok',choice:'listing_0',confidence:0.43}};
   const named=await identify(select,{search:async()=>listings,upc});
   assert.deepEqual(named,{status:'identified',gtin:GTIN,name:'Undercover Snacks Dark Chocolate + Sea Salt Crisps - 5oz/10ct',brand:'Undercover'});
-  assert.equal(asked.length,2,'the unsure pick was confirmed');
+  assert.equal(asked.length,1,'a UPCitemdb record is the product: only "is it food?" is asked');
+  asked.length=0;
+  const fromListing=await identify(select,{search:async()=>listings});
+  assert.equal(fromListing.status,'identified');
+  assert.equal(asked.length,2,'without it, the unsure pick is confirmed');
   const doubted=await identify(task=>task.options.yes?{status:'ok',choice:'no',confidence:0.9}:{status:'ok',choice:'listing_0',confidence:0.4},
     {search:async()=>listings});
   assert.equal(doubted.status,'unknown');
@@ -124,4 +128,14 @@ test('the icon sweep queues foods without an icon, newest first, and keeps going
   assert.deepEqual(asked.is,[['FoodItemImages',null],['archivedAt',null]]);
   assert.deepEqual(asked.order,['id',{ascending:false}]);
   assert.equal(asked.limit,25);
+});
+
+test('UPCitemdb\'s record decides: food is named from it, a confident no is not food, an unsure answer falls back to the listings',async()=>{
+  const upc=async()=>({title:'Phil Wood Bottom Bracket Bearings',description:'',url:null,brand:'Phil Wood'});
+  const no=await identify(task=>task.options.yes?{status:'ok',choice:'no',confidence:0.95}:{status:'ok',choice:'none',confidence:0.9},{upc});
+  assert.equal(no.status,'not_food');
+  const unsure=await identify(task=>task.options.yes?{status:'ok',choice:'yes',confidence:0.4}:{status:'ok',choice:'listing_1',confidence:0.9},{upc});
+  assert.equal(unsure.status,'identified','the listing path still names it');
+  assert.equal(productName({title:'Amazon.com: YUP! Low Fat Milk, Strawberry',description:'',url:'https://www.amazon.com/dp/1'},DIGITS,GTIN),
+    'YUP! Low Fat Milk, Strawberry','"Amazon.com:" goes even without a space before the colon');
 });

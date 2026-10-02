@@ -9,6 +9,7 @@ import { selectWithJev } from "@/ai/jev"
 import { creationModel } from "@/ai/models"
 import { normalizeGtin } from "./barcode"
 import { classifyFoodCategoryQueue } from "@/app/api/queues/classify-food-category/classify-food-category"
+import { nameBarcode } from "@/foodSearch/barcodeIdentity"
 
 // Every logged item ends up as a FoodItem. When the catalogue has no match the
 // agent adds one from the barcode's USDA record, USDA by name, a cited web page,
@@ -196,6 +197,8 @@ async function fetchOpenFoodFacts(gtin:string):Promise<OffProduct|null> {
 type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedOrFetchEmbeddings;
   usda?:typeof getUsdaFoodsInfo;usdaSearch?:typeof searchUsdaBranded;off?:typeof fetchOpenFoodFacts;pages?:typeof barcodePages;web?:typeof resolveWebFood;
   jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string
+  /** A barcode's product name from the web (UPCitemdb, Brave + Jev), for searching by name when its digits find nothing. */
+  name?:(gtin:string,signal:AbortSignal)=>Promise<{status:string;name?:string}|null>
   /** Queues a new supplement's icon (the shared one for its form). */
   enqueueSupplementIcon?:(id:number,supplement:{name:string;unit:string})=>Promise<unknown>}
 
@@ -359,8 +362,18 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     if (known.length) return {foods:known,notFood:null,failed:false}
     // The shops' pages for the digits; the model's own web search only when search is unavailable.
     if (!barcodeWeb.has(gtin)) barcodeWeb.set(gtin,pageLookup(gtin)
-      .then(found=>found??webLookup(gtin.replace(/^0+(?=\d{8})/,""),gtin)))
+      .then(found=>found??webLookup(gtin.replace(/^0+(?=\d{8})/,""),gtin))
+      .then(found=>found.foods.length||found.notFood?found:byName(gtin,found)))
     return barcodeWeb.get(gtin)!
+  }
+
+  /** Digits nothing reads (the shops' pages block readers or show no panel: fairlife YUP! strawberry) but the product
+   * has a name: the web is searched by that name, the barcode still pinning the product. */
+  async function byName(gtin:string,digitsResult:WebLookup):Promise<WebLookup> {
+    const named=await (deps.name??((value,signal)=>nameBarcode(value,{signal})))(gtin,ctx.signal).catch(()=>null)
+    if (named?.status!=="identified"||!named.name) return digitsResult
+    const foods=await webCandidates(named.name,gtin)
+    return foods.length?{foods,notFood:null,failed:false}:digitsResult
   }
 
   type Facts={id:number;name:string;brand:string|null;gtin:string|null;foodInfoSource?:string;defaultServingWeightGram:number|null;

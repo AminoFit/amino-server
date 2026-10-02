@@ -3,7 +3,7 @@ import { normalizeGtin } from "@/mealResolution/barcode"
 import { anySignal, braveSearch } from "@/foodResolution/barcodePages"
 import { selectWithJev, type DecisionTask } from "@/ai/jev"
 import { UserFoodError } from "@/userFoods/userFoods"
-import { catalogueFoodForGtin } from "./barcodeLookup"
+import { catalogueFoodForGtin } from "./barcodeCatalogue"
 
 // A scanned barcode's identity in a second or two, before its facts (foodForBarcode reads the shops' pages, which can
 // take half a minute): the catalogue's food, else what the web calls it. The digits are searched on Brave and, as a
@@ -19,6 +19,8 @@ export type BarcodeIdentity=
   | {status:"not_food";gtin:string}
   | {status:"unknown";gtin:string}
 
+/** UPCitemdb's record is the product with this barcode: Jev only says whether it's food, this sure. */
+const EDIBLE_CONFIDENCE=0.6
 /** Jev's pick must be at least this sure to name the product, else it's asked about the pick alone (two listings of the
  * same product split the choice: UPCitemdb's and Amazon's Undercover crisps, 0.43); "not food" needs more. */
 const NAME_CONFIDENCE=0.5
@@ -33,28 +35,46 @@ export async function identifyBarcode(userId:string,code:string,options:{db?:Db;
   const db=options.db??createAdminSupabase()
   const known=await catalogueFoodForGtin(db,userId,gtin)
   if (known) return {status:"found",gtin,foodId:known}
+  return nameBarcode(gtin,options)
+}
+
+/** What the web calls a barcode's product (no catalogue): UPCitemdb's record when it has one (Jev only checks it's
+ * food), else the Brave listing Jev picks, else not food or unknown. The full lookup's fallback uses it too. */
+export async function nameBarcode(gtin:string,options:{signal?:AbortSignal;search?:typeof braveSearch;upc?:typeof upcItemDb;
+  select?:typeof selectWithJev}={}):Promise<Exclude<BarcodeIdentity,{status:"found"}>> {
   // Bookland and ISSN prefixes are books and magazines.
   if (/^097[789]/.test(gtin)) return {status:"not_food",gtin}
   const digits=gtin.replace(/^0+(?=\d{12})/,"")
   const signal=options.signal??AbortSignal.timeout(8000)
+  const select=options.select??selectWithJev
   const [web,upc]=await Promise.all([
     (options.search??braveSearch)(digits,signal).catch(()=>[]),
     (options.upc??upcItemDb)(digits,signal).catch(()=>null)])
+  // A product database's record for these digits is the product (fairlife YUP! strawberry: the web's listings were
+  // phone-number pages); only whether it's food is asked.
+  if (upc) {
+    const edible=await select(edibleTask(digits,upc),signal,{timeoutMs:4000})
+    if (edible.status==="ok"&&edible.choice==="yes"&&(edible.confidence??0)>=EDIBLE_CONFIDENCE) {
+      const name=productName(upc,digits,gtin)
+      if (name) return {status:"identified",gtin,name,brand:upc.brand??null}
+    }
+    if (edible.status==="ok"&&edible.choice==="no"&&(edible.confidence??0)>=NOT_FOOD_CONFIDENCE) return {status:"not_food",gtin}
+  }
   const listings:Listing[]=[...(upc?[upc]:[]),...web.slice(0,LISTINGS)]
   if (!listings.length) return {status:"unknown",gtin}
-  const result=await (options.select??selectWithJev)(identityTask(digits,listings),signal,{timeoutMs:4000})
+  const result=await select(identityTask(digits,listings),signal,{timeoutMs:4000})
   if (result.status!=="ok"||!result.choice) return {status:"unknown",gtin}
   if (result.choice==="not_food") {
     if ((result.confidence??0)>=NOT_FOOD_CONFIDENCE) return {status:"not_food",gtin}
     // An unsure "not food" (CeraVe eye cream: 0.3) is asked directly about the top listing.
-    const edible=await (options.select??selectWithJev)(edibleTask(digits,listings[0]),signal,{timeoutMs:4000})
+    const edible=await select(edibleTask(digits,listings[0]),signal,{timeoutMs:4000})
     return edible.status==="ok"&&edible.choice==="no"&&(edible.confidence??0)>=NOT_FOOD_CONFIDENCE
       ?{status:"not_food",gtin}:{status:"unknown",gtin}
   }
   const picked=result.choice.startsWith("listing_")?listings[Number(result.choice.slice("listing_".length))]:undefined
   if (!picked) return {status:"unknown",gtin}
   if ((result.confidence??0)<NAME_CONFIDENCE) {
-    const confirmed=await (options.select??selectWithJev)(confirmationTask(digits,picked),signal,{timeoutMs:4000})
+    const confirmed=await select(confirmationTask(digits,picked),signal,{timeoutMs:4000})
     if (confirmed.status!=="ok"||confirmed.choice!=="yes"||(confirmed.confidence??0)<CONFIRM_CONFIDENCE) return {status:"unknown",gtin}
   }
   // A product database's title is the cleanest name (a shop's page title carries its site and category).
@@ -105,7 +125,7 @@ export function identityTask(digits:string,listings:Listing[]):DecisionTask {
 export function productName(listing:Listing,digits:string,gtin:string):string|null {
   const host=listing.url?safeHost(listing.url):null
   const isSite=(part:string)=>{const key=part.toLowerCase().replace(/[^a-z0-9]/g,"");return !!host&&key.length>=3&&host.includes(key)}
-  const parts=listing.title.split(/\s*\|\s*|\s+[-–—:]\s+/).filter(Boolean)
+  const parts=listing.title.split(/\s*\|\s*|\s+[-–—]\s+|\s*:\s+/).filter(Boolean)
   while (parts.length>1&&isSite(parts[parts.length-1])) parts.pop()
   while (parts.length>1&&isSite(parts[0])) parts.shift()
   let name=parts.join(" - ")

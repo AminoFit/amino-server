@@ -9,7 +9,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[]}={}){
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[],name}={}){
   const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],supplementIcons:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
@@ -31,7 +31,8 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
       usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),pages:pages??(async()=>{throw new Error('search_unavailable')}),model:'anthropic/claude-sonnet-5.5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
       jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id),
-      enqueueSupplementIcon:async(id,supplement)=>calls.supplementIcons.push([id,supplement])});
+      enqueueSupplementIcon:async(id,supplement)=>calls.supplementIcons.push([id,supplement]),
+      name:name??(async()=>null)});
   return {sources,calls};
 }
 
@@ -651,4 +652,20 @@ test('a new supplement queues the shared icon for its form, and the flag never r
   assert.equal(created.status,'created');
   assert.deepEqual(calls.supplementIcons,[[99001,{name:'Glycine 1,000 mg',unit:'capsule'}]]);
   assert.equal('supplement' in calls.create[0].p_food,false);
+});
+
+test('digits nothing reads but a known name: the web is searched by that name, the barcode kept',async()=>{
+  const gtin='00811620020435';
+  const milk={name:'YUP! Low Fat Ultra-Filtered Milk, Very Strawberry',brand:'fairlife',servingUnit:'bottle',servingAmount:1,
+    servingGrams:414,kcal:220,proteinG:13,carbG:30,totalFatG:5,sourceUrl:'https://fairlife.example/yup-strawberry'};
+  const {sources,calls}=harness({barcodes:[gtin],pages:async()=>[{url:'https://shop.example/x',title:'x',description:'',facts:null}],
+    name:async()=>({status:'identified',name:'fairlife YUP! Low Fat Ultra-Filtered Milk, Strawberry'}),
+    web:async(_s,prompt)=>JSON.parse(prompt).food==='fairlife YUP! Low Fat Ultra-Filtered Milk, Strawberry'
+      ?{data:{foods:[milk]},sourceUrls:['https://fairlife.example/yup-strawberry'],searches:1}:{data:{foods:[]},sourceUrls:[],searches:1}});
+  const {foods}=await sources.barcodeProduct(gtin);
+  assert.equal(foods.length,1);
+  assert.equal(foods[0].gtin,gtin);
+  assert.equal(JSON.parse(calls.web.at(-1)[1]).barcode,gtin);
+  const unnamed=harness({barcodes:[gtin],pages:async()=>[],name:async()=>({status:'unknown'})});
+  assert.deepEqual((await unnamed.sources.barcodeProduct(gtin)).foods,[]);
 });
