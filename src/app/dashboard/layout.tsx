@@ -2,14 +2,12 @@
 import DashNav from "@/components/DashNav"
 
 
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 import { Database } from "types/supabase-generated.types"
 import { redirect } from 'next/navigation'
 
 export default async function Example({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore })
+  const supabase = createClient()
 
   const {
     data: { user }
@@ -17,7 +15,7 @@ export default async function Example({ children }: { children: React.ReactNode 
 
   if (!user) {
     console.log("no user found")
-    return redirect("/signup")
+    return redirect("/login")
   }
 
   return (

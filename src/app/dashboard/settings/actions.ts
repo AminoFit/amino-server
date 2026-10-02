@@ -1,6 +1,5 @@
 "use server"
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 
 
 export type UserSettingsProps = {
@@ -12,7 +11,7 @@ export type UserSettingsProps = {
 }
 
 export async function updateUserSettings(updatedSettings: UserSettingsProps) {
-  const supabase = createServerActionClient({ cookies })
+  const supabase = createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()
@@ -32,7 +31,7 @@ export type UserPreferencesProps = {
 }
 
 export async function updateUserPreferences(updatedSettings: UserPreferencesProps) {
-  const supabase = createServerActionClient({ cookies })
+  const supabase = createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()

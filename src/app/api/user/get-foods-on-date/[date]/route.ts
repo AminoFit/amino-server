@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic"
-import { createRouteHandlerClient, createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 
 import moment from "moment-timezone"
 import { NextResponse } from "next/server"

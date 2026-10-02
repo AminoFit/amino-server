@@ -24,6 +24,7 @@ const routePath = 'app/api/protected/user/update-logged-food-item-serving/route.
 test('serving auth verifies the access token without fetching the full profile', async () => {
   let verified = 0
   const api = load('utils/supabase/GetUserIdFromRequest.ts', {
+    'node:crypto': require('node:crypto'),
     'next/headers': { cookies: () => ({ get: () => ({ value: 'valid-token' }) }) },
     './serverAdmin': { createAdminSupabase: () => ({
       auth: { getUser: async token => { verified++; assert.equal(token, 'valid-token'); return { data: { user: { id: 'owner' } }, error: null } } },

@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "11.2.0 (c820efb)"
   }
   public: {
     Tables: {
@@ -168,6 +148,33 @@ export type Database = {
         }
         Relationships: []
       }
+      CatalogueAuditBackup: {
+        Row: {
+          audit: string
+          before: Json
+          createdAt: string
+          id: number
+          rowId: number
+          tableName: string
+        }
+        Insert: {
+          audit: string
+          before: Json
+          createdAt?: string
+          id?: number
+          rowId: number
+          tableName: string
+        }
+        Update: {
+          audit?: string
+          before?: Json
+          createdAt?: string
+          id?: number
+          rowId?: number
+          tableName?: string
+        }
+        Relationships: []
+      }
       ExpoPushTokens: {
         Row: {
           created_at: string
@@ -196,6 +203,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      FeatureFlag: {
+        Row: {
+          name: string
+          updatedAt: string
+          value: string
+        }
+        Insert: {
+          name: string
+          updatedAt?: string
+          value: string
+        }
+        Update: {
+          name?: string
+          updatedAt?: string
+          value?: string
+        }
+        Relationships: []
       }
       foodEmbeddingCache: {
         Row: {
@@ -227,6 +252,7 @@ export type Database = {
           downvotes: number
           id: number
           imageDescription: string | null
+          originalPath: string | null
           pathToImage: string
         }
         Insert: {
@@ -234,6 +260,7 @@ export type Database = {
           downvotes?: number
           id?: number
           imageDescription?: string | null
+          originalPath?: string | null
           pathToImage: string
         }
         Update: {
@@ -241,6 +268,7 @@ export type Database = {
           downvotes?: number
           id?: number
           imageDescription?: string | null
+          originalPath?: string | null
           pathToImage?: string
         }
         Relationships: []
@@ -249,9 +277,11 @@ export type Database = {
         Row: {
           adaEmbedding: string | null
           addedSugarPerServing: number | null
+          archivedAt: string | null
           bgeBaseEmbedding: string | null
           brand: string | null
           carbPerServing: number
+          cookedWeightGram: number | null
           createdAtDateTime: string
           defaultServingLiquidMl: number | null
           defaultServingWeightGram: number | null
@@ -261,6 +291,7 @@ export type Database = {
           foodInfoSource: Database["public"]["Enums"]["FoodInfoSource"]
           foodItemCategoryID: string | null
           foodItemCategoryName: string | null
+          gtin: string | null
           id: number
           isLiquid: boolean
           kcalPerServing: number
@@ -268,7 +299,10 @@ export type Database = {
           lastUpdated: string
           messageId: number | null
           name: string
+          previousVersionId: number | null
+          privateToUserId: string | null
           proteinPerServing: number
+          recipePortions: number | null
           satFatPerServing: number | null
           sugarPerServing: number | null
           totalFatPerServing: number
@@ -281,9 +315,11 @@ export type Database = {
         Insert: {
           adaEmbedding?: string | null
           addedSugarPerServing?: number | null
+          archivedAt?: string | null
           bgeBaseEmbedding?: string | null
           brand?: string | null
           carbPerServing?: number
+          cookedWeightGram?: number | null
           createdAtDateTime?: string
           defaultServingLiquidMl?: number | null
           defaultServingWeightGram?: number | null
@@ -293,6 +329,7 @@ export type Database = {
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           foodItemCategoryID?: string | null
           foodItemCategoryName?: string | null
+          gtin?: string | null
           id?: number
           isLiquid?: boolean
           kcalPerServing?: number
@@ -300,7 +337,10 @@ export type Database = {
           lastUpdated?: string
           messageId?: number | null
           name?: string
+          previousVersionId?: number | null
+          privateToUserId?: string | null
           proteinPerServing?: number
+          recipePortions?: number | null
           satFatPerServing?: number | null
           sugarPerServing?: number | null
           totalFatPerServing?: number
@@ -313,9 +353,11 @@ export type Database = {
         Update: {
           adaEmbedding?: string | null
           addedSugarPerServing?: number | null
+          archivedAt?: string | null
           bgeBaseEmbedding?: string | null
           brand?: string | null
           carbPerServing?: number
+          cookedWeightGram?: number | null
           createdAtDateTime?: string
           defaultServingLiquidMl?: number | null
           defaultServingWeightGram?: number | null
@@ -325,6 +367,7 @@ export type Database = {
           foodInfoSource?: Database["public"]["Enums"]["FoodInfoSource"]
           foodItemCategoryID?: string | null
           foodItemCategoryName?: string | null
+          gtin?: string | null
           id?: number
           isLiquid?: boolean
           kcalPerServing?: number
@@ -332,7 +375,10 @@ export type Database = {
           lastUpdated?: string
           messageId?: number | null
           name?: string
+          previousVersionId?: number | null
+          privateToUserId?: string | null
           proteinPerServing?: number
+          recipePortions?: number | null
           satFatPerServing?: number | null
           sugarPerServing?: number | null
           totalFatPerServing?: number
@@ -351,10 +397,52 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "FoodItem_previousVersionId_fkey"
+            columns: ["previousVersionId"]
+            isOneToOne: false
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "FoodItem_userId_fkey"
             columns: ["userId"]
             isOneToOne: false
             referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      FoodItemConflict: {
+        Row: {
+          createdAt: string
+          existing: Json
+          foodItemId: number
+          id: number
+          proposed: Json
+          source: string
+        }
+        Insert: {
+          createdAt?: string
+          existing: Json
+          foodItemId: number
+          id?: number
+          proposed: Json
+          source: string
+        }
+        Update: {
+          createdAt?: string
+          existing?: Json
+          foodItemId?: number
+          id?: number
+          proposed?: Json
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FoodItemConflict_foodItemId_fkey"
+            columns: ["foodItemId"]
+            isOneToOne: false
+            referencedRelation: "FoodItem"
             referencedColumns: ["id"]
           },
         ]
@@ -397,6 +485,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      FoodMicroFill: {
+        Row: {
+          createdAt: string
+          foodItemId: number
+          id: number
+          keys: string[]
+          source: string
+        }
+        Insert: {
+          createdAt?: string
+          foodItemId: number
+          id?: number
+          keys: string[]
+          source: string
+        }
+        Update: {
+          createdAt?: string
+          foodItemId?: number
+          id?: number
+          keys?: string[]
+          source?: string
+        }
+        Relationships: []
       }
       IconQueue: {
         Row: {
@@ -457,6 +569,7 @@ export type Database = {
           kcal: number | null
           local_id: string | null
           loggedUnit: string | null
+          logicalItemId: string | null
           magnesiumMg: number | null
           manganeseMg: number | null
           messageId: number | null
@@ -467,6 +580,7 @@ export type Database = {
           polyunsatFatG: number | null
           potassiumMg: number | null
           proteinG: number | null
+          publishedRevision: number
           satFatG: number | null
           seleniumMcg: number | null
           servingAmount: number | null
@@ -518,6 +632,7 @@ export type Database = {
           kcal?: number | null
           local_id?: string | null
           loggedUnit?: string | null
+          logicalItemId?: string | null
           magnesiumMg?: number | null
           manganeseMg?: number | null
           messageId?: number | null
@@ -528,6 +643,7 @@ export type Database = {
           polyunsatFatG?: number | null
           potassiumMg?: number | null
           proteinG?: number | null
+          publishedRevision?: number
           satFatG?: number | null
           seleniumMcg?: number | null
           servingAmount?: number | null
@@ -579,6 +695,7 @@ export type Database = {
           kcal?: number | null
           local_id?: string | null
           loggedUnit?: string | null
+          logicalItemId?: string | null
           magnesiumMg?: number | null
           manganeseMg?: number | null
           messageId?: number | null
@@ -589,6 +706,7 @@ export type Database = {
           polyunsatFatG?: number | null
           potassiumMg?: number | null
           proteinG?: number | null
+          publishedRevision?: number
           satFatG?: number | null
           seleniumMcg?: number | null
           servingAmount?: number | null
@@ -655,8 +773,352 @@ export type Database = {
           },
         ]
       }
+      LoggedFoodItemMicroFill: {
+        Row: {
+          createdAt: string
+          filled: Json
+          id: number
+          loggedFoodItemId: number
+        }
+        Insert: {
+          createdAt?: string
+          filled: Json
+          id?: number
+          loggedFoodItemId: number
+        }
+        Update: {
+          createdAt?: string
+          filled?: Json
+          id?: number
+          loggedFoodItemId?: number
+        }
+        Relationships: []
+      }
+      McpRequest: {
+        Row: {
+          clientId: string | null
+          createdAt: string
+          durationMs: number
+          errorCode: string | null
+          id: number
+          ok: boolean
+          rows: number | null
+          tool: string
+          userId: string
+        }
+        Insert: {
+          clientId?: string | null
+          createdAt?: string
+          durationMs: number
+          errorCode?: string | null
+          id?: never
+          ok: boolean
+          rows?: number | null
+          tool: string
+          userId: string
+        }
+        Update: {
+          clientId?: string | null
+          createdAt?: string
+          durationMs?: number
+          errorCode?: string | null
+          id?: never
+          ok?: boolean
+          rows?: number | null
+          tool?: string
+          userId?: string
+        }
+        Relationships: []
+      }
+      MealChange: {
+        Row: {
+          changedAt: string
+          messageId: number
+          userId: string
+        }
+        Insert: {
+          changedAt?: string
+          messageId: number
+          userId: string
+        }
+        Update: {
+          changedAt?: string
+          messageId?: number
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MealChange_messageId_fkey"
+            columns: ["messageId"]
+            isOneToOne: true
+            referencedRelation: "Message"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      MealOperation: {
+        Row: {
+          action: string
+          answers: Json
+          attempts: number
+          clientMealId: string
+          completedAt: string | null
+          createdAt: string
+          errorCode: string | null
+          expectedPublishedRevision: number | null
+          generation: number
+          id: string
+          input: Json
+          leaseUntil: string | null
+          messageId: number
+          nextAttemptAt: string | null
+          payloadHash: string
+          plan: Json | null
+          result: Json | null
+          state: string
+          updatedAt: string
+          userId: string
+          version: number
+          workerToken: string | null
+        }
+        Insert: {
+          action: string
+          answers?: Json
+          attempts?: number
+          clientMealId: string
+          completedAt?: string | null
+          createdAt?: string
+          errorCode?: string | null
+          expectedPublishedRevision?: number | null
+          generation: number
+          id: string
+          input: Json
+          leaseUntil?: string | null
+          messageId: number
+          nextAttemptAt?: string | null
+          payloadHash: string
+          plan?: Json | null
+          result?: Json | null
+          state?: string
+          updatedAt?: string
+          userId: string
+          version?: number
+          workerToken?: string | null
+        }
+        Update: {
+          action?: string
+          answers?: Json
+          attempts?: number
+          clientMealId?: string
+          completedAt?: string | null
+          createdAt?: string
+          errorCode?: string | null
+          expectedPublishedRevision?: number | null
+          generation?: number
+          id?: string
+          input?: Json
+          leaseUntil?: string | null
+          messageId?: number
+          nextAttemptAt?: string | null
+          payloadHash?: string
+          plan?: Json | null
+          result?: Json | null
+          state?: string
+          updatedAt?: string
+          userId?: string
+          version?: number
+          workerToken?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MealOperation_messageId_fkey"
+            columns: ["messageId"]
+            isOneToOne: false
+            referencedRelation: "Message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "MealOperation_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      MealOutbox: {
+        Row: {
+          attempts: number
+          availableAt: string
+          createdAt: string
+          generation: number
+          id: number
+          kind: string
+          operationId: string
+          state: string
+        }
+        Insert: {
+          attempts?: number
+          availableAt?: string
+          createdAt?: string
+          generation: number
+          id?: never
+          kind: string
+          operationId: string
+          state?: string
+        }
+        Update: {
+          attempts?: number
+          availableAt?: string
+          createdAt?: string
+          generation?: number
+          id?: never
+          kind?: string
+          operationId?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MealOutbox_operationId_fkey"
+            columns: ["operationId"]
+            isOneToOne: false
+            referencedRelation: "MealOperation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      MealRevision: {
+        Row: {
+          messageId: number
+          operationId: string
+          publishedAt: string
+          revision: number
+          snapshot: Json
+          userId: string
+        }
+        Insert: {
+          messageId: number
+          operationId: string
+          publishedAt?: string
+          revision: number
+          snapshot: Json
+          userId: string
+        }
+        Update: {
+          messageId?: number
+          operationId?: string
+          publishedAt?: string
+          revision?: number
+          snapshot?: Json
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MealRevision_messageId_fkey"
+            columns: ["messageId"]
+            isOneToOne: false
+            referencedRelation: "Message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "MealRevision_operationId_fkey"
+            columns: ["operationId"]
+            isOneToOne: true
+            referencedRelation: "MealOperation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "MealRevision_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      MealRun: {
+        Row: {
+          action: string
+          attempt: number
+          completionTokens: number
+          costUsd: number | null
+          createdAt: string
+          durationMs: number
+          errorCode: string | null
+          id: number
+          itemCount: number | null
+          messageId: number
+          modelCalls: number
+          models: Json
+          operationId: string
+          photoCount: number
+          promptTokens: number
+          resolutions: Json
+          route: string | null
+          state: string
+          toolCalls: number
+          tools: Json
+          userId: string
+        }
+        Insert: {
+          action: string
+          attempt: number
+          completionTokens?: number
+          costUsd?: number | null
+          createdAt?: string
+          durationMs: number
+          errorCode?: string | null
+          id?: never
+          itemCount?: number | null
+          messageId: number
+          modelCalls?: number
+          models?: Json
+          operationId: string
+          photoCount?: number
+          promptTokens?: number
+          resolutions?: Json
+          route?: string | null
+          state: string
+          toolCalls?: number
+          tools?: Json
+          userId: string
+        }
+        Update: {
+          action?: string
+          attempt?: number
+          completionTokens?: number
+          costUsd?: number | null
+          createdAt?: string
+          durationMs?: number
+          errorCode?: string | null
+          id?: never
+          itemCount?: number | null
+          messageId?: number
+          modelCalls?: number
+          models?: Json
+          operationId?: string
+          photoCount?: number
+          promptTokens?: number
+          resolutions?: Json
+          route?: string | null
+          state?: string
+          toolCalls?: number
+          tools?: Json
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MealRun_operationId_fkey"
+            columns: ["operationId"]
+            isOneToOne: false
+            referencedRelation: "MealOperation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Message: {
         Row: {
+          activeOperationId: string | null
           consumedOn: string | null
           content: string
           createdAt: string
@@ -670,12 +1132,17 @@ export type Database = {
           itemsToProcess: number | null
           local_id: string | null
           messageType: Database["public"]["Enums"]["MessageType"]
+          operationGeneration: number
+          operationOwned: boolean
+          progress: Json | null
+          publishedRevision: number
           resolvedAt: string | null
           role: Database["public"]["Enums"]["Role"]
           status: Database["public"]["Enums"]["MessageStatus"]
           userId: string
         }
         Insert: {
+          activeOperationId?: string | null
           consumedOn?: string | null
           content: string
           createdAt?: string
@@ -689,12 +1156,17 @@ export type Database = {
           itemsToProcess?: number | null
           local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
+          operationGeneration?: number
+          operationOwned?: boolean
+          progress?: Json | null
+          publishedRevision?: number
           resolvedAt?: string | null
           role: Database["public"]["Enums"]["Role"]
           status?: Database["public"]["Enums"]["MessageStatus"]
           userId: string
         }
         Update: {
+          activeOperationId?: string | null
           consumedOn?: string | null
           content?: string
           createdAt?: string
@@ -708,6 +1180,10 @@ export type Database = {
           itemsToProcess?: number | null
           local_id?: string | null
           messageType?: Database["public"]["Enums"]["MessageType"]
+          operationGeneration?: number
+          operationOwned?: boolean
+          progress?: Json | null
+          publishedRevision?: number
           resolvedAt?: string | null
           role?: Database["public"]["Enums"]["Role"]
           status?: Database["public"]["Enums"]["MessageStatus"]
@@ -755,6 +1231,24 @@ export type Database = {
           },
         ]
       }
+      OAuthConsentHandoff: {
+        Row: {
+          authorizationId: string
+          createdAt: string
+          redirectUrl: string
+        }
+        Insert: {
+          authorizationId: string
+          createdAt?: string
+          redirectUrl: string
+        }
+        Update: {
+          authorizationId?: string
+          createdAt?: string
+          redirectUrl?: string
+        }
+        Relationships: []
+      }
       OpenAiUsage: {
         Row: {
           completionTimeMs: number | null
@@ -795,6 +1289,64 @@ export type Database = {
             columns: ["userId"]
             isOneToOne: false
             referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      RecipeIngredient: {
+        Row: {
+          createdAt: string
+          foodItemId: number
+          grams: number
+          id: number
+          loggedUnit: string | null
+          position: number
+          recipeFoodItemId: number
+          servingAmount: number | null
+          servingId: number | null
+        }
+        Insert: {
+          createdAt?: string
+          foodItemId: number
+          grams: number
+          id?: number
+          loggedUnit?: string | null
+          position?: number
+          recipeFoodItemId: number
+          servingAmount?: number | null
+          servingId?: number | null
+        }
+        Update: {
+          createdAt?: string
+          foodItemId?: number
+          grams?: number
+          id?: number
+          loggedUnit?: string | null
+          position?: number
+          recipeFoodItemId?: number
+          servingAmount?: number | null
+          servingId?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "RecipeIngredient_foodItemId_fkey"
+            columns: ["foodItemId"]
+            isOneToOne: false
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "RecipeIngredient_recipeFoodItemId_fkey"
+            columns: ["recipeFoodItemId"]
+            isOneToOne: false
+            referencedRelation: "FoodItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "RecipeIngredient_servingId_fkey"
+            columns: ["servingId"]
+            isOneToOne: false
+            referencedRelation: "Serving"
             referencedColumns: ["id"]
           },
         ]
@@ -1039,15 +1591,7 @@ export type Database = {
           unitPreference?: Database["public"]["Enums"]["UnitPreference"] | null
           weightKg?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "User_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       UserFavoriteFoodItem: {
         Row: {
@@ -1094,6 +1638,50 @@ export type Database = {
           },
           {
             foreignKeyName: "UserFavoriteFoodItem_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      UserGoalHistory: {
+        Row: {
+          calorieGoal: number | null
+          carbsGoal: number | null
+          createdAt: string
+          effectiveOn: string
+          fatGoal: number | null
+          id: number
+          proteinGoal: number | null
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          calorieGoal?: number | null
+          carbsGoal?: number | null
+          createdAt?: string
+          effectiveOn: string
+          fatGoal?: number | null
+          id?: never
+          proteinGoal?: number | null
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          calorieGoal?: number | null
+          carbsGoal?: number | null
+          createdAt?: string
+          effectiveOn?: string
+          fatGoal?: number | null
+          id?: never
+          proteinGoal?: number | null
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "UserGoalHistory_userId_fkey"
             columns: ["userId"]
             isOneToOne: false
             referencedRelation: "User"
@@ -1213,124 +1801,542 @@ export type Database = {
         }
         Relationships: []
       }
+      WebSignIn: {
+        Row: {
+          browser: string | null
+          browserSecretHash: string
+          code: string
+          createdAt: string
+          decidedAt: string | null
+          id: string
+          place: string | null
+          status: string
+          tokenHash: string | null
+          userId: string | null
+        }
+        Insert: {
+          browser?: string | null
+          browserSecretHash: string
+          code: string
+          createdAt?: string
+          decidedAt?: string | null
+          id: string
+          place?: string | null
+          status?: string
+          tokenHash?: string | null
+          userId?: string | null
+        }
+        Update: {
+          browser?: string | null
+          browserSecretHash?: string
+          code?: string
+          createdAt?: string
+          decidedAt?: string | null
+          id?: string
+          place?: string | null
+          status?: string
+          tokenHash?: string | null
+          userId?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      replace_food_from_history: {
-        Args: { p_user_id: string; p_message_id: number; p_consumed_on: string; p_expected: Json; p_source: Json; p_food_ids: number[] }
+      accept_meal_operation: {
+        Args: {
+          p_action: string
+          p_client_meal_id: string
+          p_expected_revision: number
+          p_input: Json
+          p_message_id: number
+          p_operation_id: string
+          p_payload_hash: string
+          p_user_id: string
+        }
         Returns: Json
       }
-
-      calculate_user_streak: {
+      admin_catalogue_stats: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      admin_food_usage: { Args: { p_food_id: number }; Returns: Json }
+      admin_meal_stats: {
+        Args: { p_from: string; p_to: string; p_user_id?: string }
+        Returns: Json
+      }
+      admin_meals: {
         Args: {
-          user_id: string
+          p_date_field?: string
+          p_deleted?: string
+          p_from?: string
+          p_kind?: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_route?: string
+          p_sort?: string
+          p_state?: string
+          p_to?: string
+          p_user_id?: string
         }
         Returns: {
-          localdate: string
-          dailycount: number
+          attempts: number
+          consumedOn: string
+          content: string
+          createdAt: string
+          deletedAt: string
+          durationMs: number
+          edits: number
+          email: string
+          errorCode: string
+          foods: Json
+          hasImages: boolean
+          id: number
+          isAudio: boolean
+          itemCount: number
+          kcal: number
+          opAction: string
+          operations: number
+          opId: string
+          opState: string
+          photos: number
+          resolvedAt: string
+          route: string
+          status: string
+          total: number
+          userId: string
         }[]
       }
-      get_branded_usda_embedding: {
+      admin_overview: { Args: never; Returns: Json }
+      admin_search_foods: {
         Args: {
-          embeddingId: number
+          p_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_sort?: string
+          p_source?: string
         }
         Returns: {
-          fdcId: number
-          foodName: string
-          foodBrand: string
+          brand: string
+          carbPerServing: number
+          createdAtDateTime: string
+          defaultServingWeightGram: number
+          foodInfoSource: string
+          gtin: string
+          icon: string
+          id: number
+          kcalPerServing: number
+          lastLogged: string
+          logs: number
+          logs30d: number
+          name: string
+          privateToUserId: string
+          proteinPerServing: number
+          total: number
+          totalFatPerServing: number
+          users: number
+          verified: boolean
+        }[]
+      }
+      admin_similar_foods: {
+        Args: { p_food_id: number; p_limit?: number }
+        Returns: {
+          brand: string
+          defaultServingWeightGram: number
+          foodInfoSource: string
+          id: number
+          kcalPerServing: number
+          name: string
+          privateToUserId: string
+          similarity: number
+        }[]
+      }
+      admin_users: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_sort?: string
+        }
+        Returns: {
+          email: string
+          failed30d: number
+          firstMessageAt: string
+          foods30d: number
+          fullName: string
+          id: string
+          lastMessageAt: string
+          meals30d: number
+          meals7d: number
+          subscriptionType: string
+          total: number
+          totalFoods: number
+          totalMeals: number
+          tzIdentifier: string
+        }[]
+      }
+      answer_meal_operation: {
+        Args: {
+          p_answer: string
+          p_expected_version: number
+          p_operation_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      archive_user_food: {
+        Args: { p_food_id: number; p_user_id: string }
+        Returns: boolean
+      }
+      calculate_user_streak: {
+        Args: { user_id: string }
+        Returns: {
+          dailycount: number
+          localdate: string
+        }[]
+      }
+      cancel_meal_operation: {
+        Args: {
+          p_expected_version: number
+          p_operation_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      claim_meal_operation: {
+        Args: {
+          p_lease_seconds?: number
+          p_operation_id: string
+          p_worker_token: string
+        }
+        Returns: Json
+      }
+      create_catalogue_food: {
+        Args: {
+          p_food: Json
+          p_message_id: number
+          p_private?: boolean
+          p_servings: Json
+          p_user_id: string
+          p_variant?: boolean
+        }
+        Returns: {
+          created: boolean
+          enrichment: Json
+          food_id: number
+        }[]
+      }
+      enrich_catalogue_food: {
+        Args: { p_food: Json; p_food_id: number; p_servings: Json }
+        Returns: Json
+      }
+      fill_logged_micronutrients: { Args: { p_rows: Json }; Returns: number }
+      finish_meal_operation: {
+        Args: {
+          p_error_code: string
+          p_next_attempt?: string
+          p_operation_id: string
+          p_result?: Json
+          p_state: string
+          p_worker_token: string
+        }
+        Returns: Json
+      }
+      food_icon_candidates: {
+        Args: { p_embedding_cache_id: number; p_limit?: number }
+        Returns: {
+          cosine_similarity: number
+          food_image_id: number
+          image_description: string
+        }[]
+      }
+      food_identity_key: {
+        Args: { p_brand: string; p_name: string }
+        Returns: string
+      }
+      food_identity_part: { Args: { p_value: string }; Returns: string }
+      food_identity_parts: { Args: { p_values: string[] }; Returns: string[] }
+      get_branded_usda_embedding: {
+        Args: { embeddingId: number }
+        Returns: {
           bgeBaseEmbedding: string
           cosineSimilarity: number
+          fdcId: number
+          foodBrand: string
+          foodName: string
         }[]
       }
       get_cosine_results: {
         Args: {
-          p_embedding_cache_id: number
           amount_of_results?: number
+          p_embedding_cache_id: number
+          p_include_recipes?: boolean
+          p_user_id?: string
         }
         Returns: {
+          brand: string
+          cosine_similarity: number
+          embedding: string
+          externalId: string
+          foodInfoSource: string
           id: number
           name: string
-          brand: string
-          foodInfoSource: string
-          externalId: string
-          embedding: string
-          cosine_similarity: number
         }[]
       }
-      get_current_timestamp: {
-        Args: Record<PropertyKey, never>
+      get_current_timestamp: { Args: never; Returns: Json }
+      get_top_foodimage_embedding_similarity: {
+        Args: { p_embedding_cache_id: number }
+        Returns: {
+          cosine_similarity: number
+          food_image_id: number
+          image_description: string
+        }[]
+      }
+      get_top_foodimage_foodid_similarity: {
+        Args: { food_item_id: number }
+        Returns: {
+          cosine_similarity: number
+          food_icon_id: number
+        }[]
+      }
+      get_unbranded_usda_embedding: {
+        Args: { embeddingId: number }
+        Returns: {
+          bgeBaseEmbedding: string
+          cosineSimilarity: number
+          fdcId: number
+          foodBrand: string
+          foodName: string
+        }[]
+      }
+      gtin14: { Args: { p_code: string }; Returns: string }
+      insert_priced_food_row: {
+        Args: {
+          p_consumed_on: string
+          p_item: Json
+          p_local_id: string
+          p_message_id: number
+          p_revision: number
+          p_user_id: string
+        }
+        Returns: number
+      }
+      log_food_as_meal: {
+        Args: {
+          p_consumed_on: string
+          p_content: string
+          p_item: Json
+          p_local_id: string
+          p_user_id: string
+        }
+        Returns: {
+          created: boolean
+          logged_food_item_id: number
+          message_id: number
+        }[]
+      }
+      log_foods_as_meal: {
+        Args: {
+          p_consumed_on: string
+          p_content: string
+          p_items: Json
+          p_local_id: string
+          p_user_id: string
+        }
+        Returns: {
+          created: boolean
+          logged_food_item_ids: number[]
+          message_id: number
+        }[]
+      }
+      mcp_daily_summary: {
+        Args: { p_all?: boolean; p_from: string; p_to: string }
         Returns: Json
+      }
+      mcp_get_meals: { Args: { p_ids: number[] }; Returns: Json[] }
+      mcp_is_meal: {
+        Args: { m: Database["public"]["Tables"]["Message"]["Row"] }
+        Returns: boolean
+      }
+      mcp_list_meals: {
+        Args: {
+          p_after_eaten?: string
+          p_after_id?: number
+          p_all?: boolean
+          p_from: string
+          p_limit?: number
+          p_to: string
+        }
+        Returns: {
+          eaten: string
+          id: number
+          meal: Json
+        }[]
+      }
+      mcp_meal_changes: {
+        Args: {
+          p_after_at?: string
+          p_after_id?: number
+          p_all?: boolean
+          p_limit?: number
+        }
+        Returns: {
+          changedAt: string
+          id: number
+          meal: Json
+        }[]
+      }
+      mcp_meal_json: {
+        Args: {
+          m: Database["public"]["Tables"]["Message"]["Row"]
+          p_all: boolean
+          p_tz: string
+        }
+        Returns: Json
+      }
+      mcp_user_timezone: { Args: never; Returns: string }
+      merge_catalogue_food: {
+        Args: { p_audit: string; p_drop: number; p_keep: number }
+        Returns: Json
+      }
+      nutrition_day_totals: {
+        Args: { p_from: string; p_to: string; p_zone: string }
+        Returns: {
+          day: string
+          foods: number
+          meals: number
+          totals: Json
+        }[]
+      }
+      nutrition_fill_keys: { Args: never; Returns: string[] }
+      nutrition_keys: { Args: never; Returns: string[] }
+      nutrition_round: {
+        Args: { p_key: string; p_value: number }
+        Returns: number
+      }
+      prune_mcp_requests: { Args: never; Returns: number }
+      prune_meal_runs: { Args: never; Returns: number }
+      publish_meal_operation: {
+        Args: { p_operation_id: string; p_plan: Json; p_worker_token: string }
+        Returns: Json
+      }
+      replace_food_from_history: {
+        Args: {
+          p_consumed_on: string
+          p_expected: Json
+          p_food_ids: number[]
+          p_message_id: number
+          p_source: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      report_meal_operation_progress: {
+        Args: {
+          p_operation_id: string
+          p_progress: Json
+          p_worker_token: string
+        }
+        Returns: boolean
+      }
+      save_user_food: {
+        Args: {
+          p_food: Json
+          p_food_id: number
+          p_ingredients: Json
+          p_nutrients: Json
+          p_servings: Json
+          p_user_id: string
+        }
+        Returns: {
+          created: boolean
+          food_id: number
+          previous_id: number
+          versioned: boolean
+        }[]
       }
       search_food_catalogue_nearest: {
         Args: {
           p_embedding_cache_id: number
+          p_include_recipes?: boolean
           p_limit?: number
           p_user_id?: string
         }
         Returns: {
+          brand: string
+          id: number
+          knownAs: string[]
+          name: string
+        }[]
+      }
+      search_meal_food_catalogue: {
+        Args: {
+          p_include_recipes?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_query: string
+          p_threshold?: number
+          p_user_id?: string
+        }
+        Returns: {
+          brand: string
+          id: number
+          knownAs: string[]
+          name: string
+        }[]
+      }
+      search_own_foods: {
+        Args: { p_limit?: number; p_text: string; p_user_id: string }
+        Returns: {
+          brand: string
           id: number
           name: string
-          brand: string
-          knownAs: string[]
-        }[]
-      }
-      food_icon_candidates: {
-        Args: {
-          p_embedding_cache_id: number
-          p_limit?: number
-        }
-        Returns: {
-          food_image_id: number
-          image_description: string
-          cosine_similarity: number
-        }[]
-      }
-      get_top_foodimage_embedding_similarity: {
-        Args: {
-          p_embedding_cache_id: number
-        }
-        Returns: {
-          food_image_id: number
-          image_description: string
-          cosine_similarity: number
-        }[]
-      }
-      get_top_foodimage_foodid_similarity: {
-        Args: {
-          food_item_id: number
-        }
-        Returns: {
-          food_icon_id: number
-          cosine_similarity: number
-        }[]
-      }
-      get_unbranded_usda_embedding: {
-        Args: {
-          embeddingId: number
-        }
-        Returns: {
-          fdcId: number
-          foodName: string
-          foodBrand: string
-          bgeBaseEmbedding: string
-          cosineSimilarity: number
+          score: number
         }[]
       }
       search_usda_database: {
-        Args: {
-          embedding_id: number
-          limit_amount?: number
-        }
+        Args: { embedding_id: number; limit_amount?: number }
         Returns: {
-          fdcId: number
-          foodName: string
-          foodBrand: string
           brandOwner: string
           cosineSimilarity: number
+          fdcId: number
+          foodBrand: string
+          foodName: string
         }[]
       }
+      serving_repeats_builtin_unit: {
+        Args: { p_amount: number; p_grams: number; p_name: string }
+        Returns: boolean
+      }
+      supersede_catalogue_estimate: {
+        Args: { p_food: Json; p_food_id: number; p_servings: Json }
+        Returns: Json
+      }
+      user_flag_enabled: {
+        Args: { p_flag: string; p_user_id: string }
+        Returns: boolean
+      }
+      valid_timezone: { Args: { p_name: string }; Returns: string }
+      web_agent_usage: { Args: { p_days?: number }; Returns: Json }
+      web_dashboard: { Args: { p_date?: string }; Returns: Json }
+      web_day: { Args: { p_date: string }; Returns: Json }
+      web_days: { Args: { p_from: string; p_to: string }; Returns: Json }
+      web_food_icon: { Args: { p_food_id: number }; Returns: string }
+      web_me: {
+        Args: never
+        Returns: {
+          email: string
+          goals: Json
+          name: string
+          today: string
+          tz: string
+        }[]
+      }
+      web_stats: { Args: never; Returns: Json }
     }
     Enums: {
       ActivityLevel:
@@ -1350,6 +2356,8 @@ export type Database = {
         | "USDA"
         | "FATSECRET"
         | "NUTRITIONIX"
+        | "AgentEstimate"
+        | "Label"
       gender_enum: "male" | "female" | "other"
       GenerateIconResult: "NOT_STARTED" | "STARTED" | "FAILED" | "SUCCESS"
       MessageDirection: "Inbound" | "Outbound"
@@ -1368,334 +2376,35 @@ export type Database = {
       [_ in never]: never
     }
   }
-  storage: {
-    Tables: {
-      buckets: {
-        Row: {
-          allowed_mime_types: string[] | null
-          avif_autodetection: boolean | null
-          created_at: string | null
-          file_size_limit: number | null
-          id: string
-          name: string
-          owner: string | null
-          owner_id: string | null
-          public: boolean | null
-          updated_at: string | null
-        }
-        Insert: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id: string
-          name: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          updated_at?: string | null
-        }
-        Update: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id?: string
-          name?: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      migrations: {
-        Row: {
-          executed_at: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Insert: {
-          executed_at?: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Update: {
-          executed_at?: string | null
-          hash?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
-      objects: {
-        Row: {
-          bucket_id: string | null
-          created_at: string | null
-          id: string
-          last_accessed_at: string | null
-          metadata: Json | null
-          name: string | null
-          owner: string | null
-          owner_id: string | null
-          path_tokens: string[] | null
-          updated_at: string | null
-          version: string | null
-        }
-        Insert: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          version?: string | null
-        }
-        Update: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          version?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "objects_bucketId_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          in_progress_size: number
-          key: string
-          owner_id: string | null
-          upload_signature: string
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id: string
-          in_progress_size?: number
-          key: string
-          owner_id?: string | null
-          upload_signature: string
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          in_progress_size?: number
-          key?: string
-          owner_id?: string | null
-          upload_signature?: string
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads_parts: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          etag: string
-          id: string
-          key: string
-          owner_id: string | null
-          part_number: number
-          size: number
-          upload_id: string
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          etag: string
-          id?: string
-          key: string
-          owner_id?: string | null
-          part_number: number
-          size?: number
-          upload_id: string
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          etag?: string
-          id?: string
-          key?: string
-          owner_id?: string | null
-          part_number?: number
-          size?: number
-          upload_id?: string
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
-            columns: ["upload_id"]
-            isOneToOne: false
-            referencedRelation: "s3_multipart_uploads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      can_insert_object: {
-        Args: {
-          bucketid: string
-          name: string
-          owner: string
-          metadata: Json
-        }
-        Returns: undefined
-      }
-      extension: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      filename: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      foldername: {
-        Args: {
-          name: string
-        }
-        Returns: string[]
-      }
-      get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          size: number
-          bucket_id: string
-        }[]
-      }
-      list_multipart_uploads_with_delimiter: {
-        Args: {
-          bucket_id: string
-          prefix_param: string
-          delimiter_param: string
-          max_keys?: number
-          next_key_token?: string
-          next_upload_token?: string
-        }
-        Returns: {
-          key: string
-          id: string
-          created_at: string
-        }[]
-      }
-      list_objects_with_delimiter: {
-        Args: {
-          bucket_id: string
-          prefix_param: string
-          delimiter_param: string
-          max_keys?: number
-          start_after?: string
-          next_token?: string
-        }
-        Returns: {
-          name: string
-          id: string
-          metadata: Json
-          updated_at: string
-        }[]
-      }
-      search: {
-        Args: {
-          prefix: string
-          bucketname: string
-          limits?: number
-          levels?: number
-          offsets?: number
-          search?: string
-          sortcolumn?: string
-          sortorder?: string
-        }
-        Returns: {
-          name: string
-          id: string
-          updated_at: string
-          created_at: string
-          last_accessed_at: string
-          metadata: Json
-        }[]
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1703,20 +2412,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1724,20 +2437,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1745,14 +2462,77 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      ActivityLevel: [
+        "None",
+        "Light Exercise",
+        "Moderate Exercise",
+        "Very Active",
+        "Extremely Active",
+      ],
+      bug_type_enum: ["bad_match", "bad_food_icon", "bad_food_info"],
+      FoodInfoSource: [
+        "User",
+        "Online",
+        "GPT3",
+        "GPT4",
+        "LLAMA",
+        "LLAMA2",
+        "USDA",
+        "FATSECRET",
+        "NUTRITIONIX",
+        "AgentEstimate",
+        "Label",
+      ],
+      gender_enum: ["male", "female", "other"],
+      GenerateIconResult: ["NOT_STARTED", "STARTED", "FAILED", "SUCCESS"],
+      MessageDirection: ["Inbound", "Outbound"],
+      MessageStatus: ["RECEIVED", "PROCESSING", "RESOLVED", "FAILED"],
+      MessageType: [
+        "CONVERSATION",
+        "ASSISTANT",
+        "FOOD_LOG_REQUEST",
+        "SHOW_FOOD_LOG",
+        "LOG_EXERCISE",
+        "UPDATE_USER_INFO",
+      ],
+      Role: ["Assistant", "User", "System", "Function"],
+      UnitPreference: ["IMPERIAL", "METRIC"],
+    },
+  },
+} as const

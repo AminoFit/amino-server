@@ -1,9 +1,8 @@
 "use server"
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 
 export async function deleteSavedFood(loggedFoodItemId: number) {
-  const supabase = createServerActionClient({ cookies })
+  const supabase = createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()

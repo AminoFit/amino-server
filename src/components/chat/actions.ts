@@ -1,14 +1,11 @@
 "use server"
 
 import { QuickLogMessage } from "@/app/api/processMessage"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 
 export async function QuickLogFoodMessage(newMessage: string) {
   if (!newMessage) return { error: "No message provided" }
-
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()
