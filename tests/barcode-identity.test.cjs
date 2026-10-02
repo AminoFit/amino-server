@@ -111,3 +111,17 @@ test('an unsure "not food" is asked directly about the top listing',async()=>{
   assert.equal((await identify(answer('no'),{search:async()=>cream})).status,'not_food');
   assert.equal((await identify(answer('yes'),{search:async()=>cream})).status,'unknown','a "yes" leaves it to the full lookup');
 });
+
+test('the icon sweep queues foods without an icon, newest first, and keeps going past a failed job',async()=>{
+  const {queueMissingFoodIcons}=require('../src/foodSearch/iconSweep');
+  const asked={};
+  const db={from:()=>{const q={select:s=>{asked.select=s;return q},is:(c,v)=>{(asked.is??=[]).push([c,v]);return q},
+    order:(c,o)=>{asked.order=[c,o];return q},limit:async n=>{asked.limit=n;return {data:[{id:3},{id:2},{id:1}],error:null}}};return q}};
+  const queued=[];
+  const result=await queueMissingFoodIcons({db,enqueue:async id=>{if(id===2) throw new Error('queue down');queued.push(id)}});
+  assert.deepEqual(result,{missing:3,queued:2});
+  assert.deepEqual(queued,[3,1]);
+  assert.deepEqual(asked.is,[['FoodItemImages',null],['archivedAt',null]]);
+  assert.deepEqual(asked.order,['id',{ascending:false}]);
+  assert.equal(asked.limit,25);
+});

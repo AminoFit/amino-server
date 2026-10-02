@@ -3,7 +3,10 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
       ]
     }
   ],
@@ -19,6 +22,10 @@
     {
       "path": "/api/meal-log-reprice-cron",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/food-icon-sweep-cron",
+      "schedule": "41 * * * *"
     }
   ]
 }
