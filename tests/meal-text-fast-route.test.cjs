@@ -153,3 +153,25 @@ test('a scanned package logs its label serving, not the 100 g per-100 g default'
   const other=food(21,'Snack',[['bag',30]],'Brand');other.defaultServingWeightGram=45
   assert.deepEqual(plain(fast.labelledServing(other)),{kind:'mass',grams:45})
 })
+
+test('a branded food logged once does not stand for a plain item; a named brand or a habit does (meal 30449)',async()=>{
+  const generic=food(1897,'avocado oil',[['tsp',4.5]]),chosen=food(12023,'Avocado Oil',[['Tbsp',14]],'Chosen Foods')
+  const tsp={originalText:'1tsp avocado oil',consumedOn:input.consumedOn}
+  const run=async(text,logs)=>{
+    const history=[{id:12023,name:'Avocado Oil',brand:'Chosen Foods',logs}]
+    const {select,tasks}=jev([{choice:'food_1897',confidence:0.95}])
+    await fast.textFastProposal(text,[{food:'avocado oil',quote:text.originalText,detail:'',grams:4.5}],evidenceWith([generic,chosen],history),{select})
+    return tasks[0].questions.selection
+  }
+  const once=await run(tsp,1)
+  assert.doesNotMatch(once.criteria.food_12023,/logged this before/)
+  assert.match(once.instructions,/names no brand, the item is the generic food/)
+  assert.match((await run(tsp,3)).criteria.food_12023,/logged this before/)
+  assert.match((await run({originalText:'1tsp chosen foods avocado oil',consumedOn:input.consumedOn},1)).criteria.food_12023,/logged this before/)
+})
+
+test('unbranded history always fits; a brand fits when named without spaces',()=>{
+  assert.equal(fast.historyFits({id:1,name:'Oat milk',brand:null,logs:1},'oat milk'),true)
+  assert.equal(fast.historyFits({id:2,name:'Avocado Oil',brand:'Chosen Foods',logs:2},'avocado oil'),false)
+  assert.equal(fast.historyFits({id:3,name:'Milk Shake',brand:'Core Power'},'Vanilla corepower'),true)
+})

@@ -82,6 +82,10 @@ For a packaged product with no stated amount: a single-serve package (a bottle, 
 person) is the whole package; a multi-serve package (a carton, large bottle or box) is one labelled serving.
 Every logged item must reference a catalogue food. findFood searches the catalogue (any language or spelling;
 details included); the catalogue is the cache of every food found before, so use it whenever it has the food.
+An item the user names without a brand is the generic food: choose a catalogue food without a brand over a branded
+product of the same food, and when it lacks the user's unit, log it by grams (a teaspoon of oil is about 4.5 g) rather
+than take a branded food for its serving. A brand the user names, a scanned or pictured package, or a branded food
+their recent meals show they keep logging is the exception.
 When no catalogue food has the same identity, call findFood again for that food with includeSources true: it
 returns USDA records. Only if none is the same food, call it once more with includeSources for a cited web search
 (slow, the last resort). addFood the best source. addFood may return an existing food instead: use it. If it returns

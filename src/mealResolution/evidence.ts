@@ -171,12 +171,16 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
         .order("createdAt",{ascending:false}).limit(400).abortSignal(signal),
         userFlagEnabled(RECIPES_FLAG,userId,db).catch(()=>false)])
       if (result.error) throw new Error("history_unavailable")
-      const seen=new Set<number>()
       // Archived versions are replaced by their newer version; recipes are candidates only behind RECIPES_FLAG (the
-      // recipe check then gates each use).
-      return ((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt&&
-        (recipes||row.FoodItem.recipePortions==null)&&!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
-        .map(row=>({id:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null}))
+      // recipe check then gates each use). Each food once, newest first, with how often it was logged.
+      const rows=((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt&&
+        (recipes||row.FoodItem.recipePortions==null))
+      const logs=new Map<number,number>()
+      for (const row of rows) logs.set(row.foodItemId,(logs.get(row.foodItemId)??0)+1)
+      const seen=new Set<number>()
+      return rows.filter(row=>!seen.has(row.foodItemId)&&seen.add(row.foodItemId))
+        .map(row=>({id:row.foodItemId as number,name:row.FoodItem.name as string,brand:(row.FoodItem.brand??null) as string|null,
+          logs:logs.get(row.foodItemId)!}))
     },
     async getMealEvent(messageId:number) {
       if (!Number.isSafeInteger(messageId)||messageId<=0) throw new Error("invalid_history_id")
