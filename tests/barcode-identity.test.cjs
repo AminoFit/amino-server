@@ -103,3 +103,11 @@ test('a split choice is confirmed on the pick alone; a product database\'s title
   assert.equal(doubted.status,'unknown');
   assert.equal(productName(listings[0],DIGITS,GTIN),'Undercover Chocolate Co Dark Chocolate & Sea Salt Quinoa Crisps, 5 OZ - Grocery & Gourmet Food');
 });
+
+test('an unsure "not food" is asked directly about the top listing',async()=>{
+  const cream=[{title:'CeraVe Eye Repair Cream for Dark Circles and Puffiness .5 oz',description:'',url:'https://shop.example/eye'}];
+  const answer=edible=>task=>task.criteria?null:task.questions.selection.criteria.no?.startsWith('Something else')
+    ?{status:'ok',choice:edible,confidence:0.92}:{status:'ok',choice:'not_food',confidence:0.35};
+  assert.equal((await identify(answer('no'),{search:async()=>cream})).status,'not_food');
+  assert.equal((await identify(answer('yes'),{search:async()=>cream})).status,'unknown','a "yes" leaves it to the full lookup');
+});
