@@ -3,7 +3,7 @@ require('tsconfig-paths/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {encodeCursor,decodeCursor,pageOf,daysBetween,McpInputError}=require('../src/mcp/meals');
-const {goalPatch,goalNote,shapeProfile,birthDateOf,storedBirthDate}=require('../src/mcp/profile');
+const {goalPatch,goalNote,shapeProfile,birthDateOf,storedBirthDate,goalsOnDay,withDayGoals}=require('../src/mcp/profile');
 const {oauthClaims}=require('../src/mcp/auth');
 const {safeNextPath}=require('../src/app/login/nextPath');
 const {isAuthorizationId}=require('../src/utils/supabase/oauthServer');
@@ -109,6 +109,8 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
       if(url.pathname==='/rest/v1/McpRequest') return json(null,201);
       if(url.pathname==='/rest/v1/User'&&req.method==='PATCH'){user={...user,...JSON.parse(body)};return json(user)}
       if(url.pathname==='/rest/v1/User') return json(user);
+      if(url.pathname==='/rest/v1/UserGoalHistory') return json([{effectiveOn:'2026-09-01',calorieGoal:2000,proteinGoal:100,
+        carbsGoal:250,fatGoal:67}]);
       if(url.pathname==='/rest/v1/rpc/mcp_list_meals') return json([{eaten:'2026-09-30 12:00:00',id:7,meal:{id:7}},
         {eaten:'2026-09-30 13:00:00',id:8,meal:{id:8}}]);
       json({message:'unexpected'},404);
@@ -133,6 +135,8 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
     const profile=await call('get_profile',{});
     assert.equal(profile.isError,undefined,JSON.stringify(profile));
     assert.equal(profile.structuredContent.body.dateOfBirth,'1990-05-15','a London birth date saved in summer time');
+    assert.deepEqual(profile.structuredContent.goalHistory,[{from:'2026-09-01',calories:2000,proteinG:100,carbsG:250,fatG:67}]);
+    assert.equal(seen.find(r=>r.path==='/rest/v1/UserGoalHistory').auth,'Bearer user-token','history is read as the user');
     assert.equal(seen.find(r=>r.path==='/rest/v1/User').auth,'Bearer user-token','reads use the agent\'s own token');
     assert.equal(seen.find(r=>r.path==='/rest/v1/McpRequest'&&r.method==='POST').body.clientId,'claude');
 
@@ -154,4 +158,19 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
     process.env=env;
     server.close();
   }
+});
+
+test('daily summaries judge each day against the goals it had', () => {
+  const current={calories:2000,proteinG:150,carbsG:200,fatG:70};
+  const history=[{from:'2026-09-01',calories:2500,proteinG:140,carbsG:250,fatG:80},
+    {from:'2026-09-20',calories:2100,proteinG:null,carbsG:210,fatG:70}];
+  assert.equal(goalsOnDay(history,'2026-09-10',current).calories,2500);
+  assert.equal(goalsOnDay(history,'2026-09-20',current).calories,2100,'a change applies from its own day');
+  assert.equal(goalsOnDay(history,'2026-09-20',current).proteinG,150,'an empty goal falls back to today\'s');
+  assert.equal(goalsOnDay(history,'2026-08-01',current).calories,2500,'before history: the earliest known');
+  assert.deepEqual(goalsOnDay([],'2026-09-10',current),current);
+  const {days,goalChanges}=withDayGoals([{date:'2026-09-19',kcal:1800},{date:'2026-09-21',kcal:2000}],history,current,
+    '2026-09-15','2026-09-30');
+  assert.deepEqual(days.map(day=>day.goals.calories),[2500,2100]);
+  assert.deepEqual(goalChanges.map(change=>change.from),['2026-09-20']);
 });

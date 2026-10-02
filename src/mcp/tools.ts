@@ -3,7 +3,7 @@ import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { userDatabase, type UserDatabase } from "./auth"
 import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChanges } from "./meals"
-import { ACTIVITY_LEVELS, SEXES, getProfile, updateBody, updateGoals } from "./profile"
+import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
 import { getMyFood, listMyFoods } from "./userFoods"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
@@ -72,11 +72,14 @@ export function registerAminoTools(server: McpServer) {
   server.registerTool("get_profile", {
     title: "Get profile",
     description: "The user's timezone, display units, daily calorie and macro goals, and body stats (weight, height, " +
-      "date of birth and age, sex, activity level).",
+      "date of birth and age, sex, activity level). goalHistory lists the goals from each date they changed (local " +
+      "dates, oldest first); the first entry is where history starts.",
     inputSchema: z.object({}),
     annotations: READ
-  }, (_args, ctx) => run("get_profile", ctx.http?.authInfo, async ({ db, userId }) =>
-    ({ data: await getProfile(db, userId) })))
+  }, (_args, ctx) => run("get_profile", ctx.http?.authInfo, async ({ db, userId }) => {
+    const [profile, history] = await Promise.all([getProfile(db, userId), goalHistory(db, userId)])
+    return { data: { ...profile, goalHistory: history } }
+  }))
 
   server.registerTool("list_meals", {
     title: "List meals",
@@ -106,13 +109,17 @@ export function registerAminoTools(server: McpServer) {
     description: "Totals per local day (kcal, protein, carbs, fat, saturated fat, fibre, sugar, sodium, alcohol, " +
       "caffeine, water) and the user's goals, for up to 366 days. Days with nothing logged are left out. With " +
       "allNutrients, each day also has `nutrients`: its vitamins and minerals (and other fats, cholesterol, omega-3/6), " +
-      "each summed over the foods that record it.",
+      "each summed over the foods that record it. Each day has the `goals` it had (goals change over time); top-level " +
+      "`goals` are today's, and `goalChanges` lists changes inside the range.",
     inputSchema: z.object({ from: date, to: date, allNutrients }),
     annotations: READ
   }, ({ from, to, allNutrients }, ctx) => run("get_daily_summary", ctx.http?.authInfo, async ({ db, userId }) => {
     checkRange(from, to, 366)
-    const [summary, profile] = await Promise.all([dailySummary(db, from, to, allNutrients), getProfile(db, userId)])
-    return { data: { ...summary, goals: profile.goals }, rows: summary.days.length }
+    const [summary, profile, history] = await Promise.all([dailySummary(db, from, to, allNutrients), getProfile(db, userId),
+      goalHistory(db, userId)])
+    const { macrosSetByHand: _, ...current } = profile.goals
+    return { data: { ...summary, ...withDayGoals(summary.days, history, current, from, to), goals: profile.goals },
+      rows: summary.days.length }
   }))
 
   server.registerTool("sync_meals", {

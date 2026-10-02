@@ -53,6 +53,44 @@ export async function getProfile(db: UserDatabase, userId: string) {
   return shapeProfile(await profileRow(db, userId))
 }
 
+/** The goals from a day (`from`, the user's local date) until the next change: UserGoalHistory, written whenever the
+ * goals change. The first entry is where history starts, not a change. */
+export type GoalHistoryEntry = { from: string; calories: number | null; proteinG: number | null; carbsG: number | null
+  fatG: number | null }
+
+export async function goalHistory(db: UserDatabase, userId: string): Promise<GoalHistoryEntry[]> {
+  const { data, error } = await (db as any).from("UserGoalHistory")
+    .select("effectiveOn,calorieGoal,proteinGoal,carbsGoal,fatGoal").eq("userId", userId).order("effectiveOn")
+  if (error) throw error
+  return (data ?? []).map((row: { effectiveOn: string; calorieGoal: number | null; proteinGoal: number | null
+    carbsGoal: number | null; fatGoal: number | null }) => ({ from: row.effectiveOn, calories: row.calorieGoal,
+    proteinG: row.proteinGoal, carbsG: row.carbsGoal, fatG: row.fatGoal }))
+}
+
+type DayGoals = { calories: number | null; proteinG: number | null; carbsG: number | null; fatG: number | null }
+
+/** The goals that applied on `day` (YYYY-MM-DD): the latest entry on or before it; before history starts, the earliest
+ * known; with no history, the current goals. */
+export function goalsOnDay(history: readonly GoalHistoryEntry[], day: string, current: DayGoals): DayGoals {
+  let applied = history[0]
+  for (const entry of history) {
+    if (entry.from > day) break
+    applied = entry
+  }
+  if (!applied) return current
+  return { calories: applied.calories ?? current.calories, proteinG: applied.proteinG ?? current.proteinG,
+    carbsG: applied.carbsG ?? current.carbsG, fatG: applied.fatG ?? current.fatG }
+}
+
+/** Each day with the goals it had, and the goal changes inside [from, to]. */
+export function withDayGoals<D extends { date?: unknown }>(days: D[], history: readonly GoalHistoryEntry[],
+  current: DayGoals, from: string, to: string) {
+  return {
+    days: days.map(day => ({ ...day, goals: goalsOnDay(history, String(day.date), current) })),
+    goalChanges: history.slice(1).filter(entry => entry.from >= from && entry.from <= to)
+  }
+}
+
 async function updateProfile(db: UserDatabase, userId: string, patch: Record<string, unknown>) {
   const { data, error } = await db.from("User").update(patch).eq("id", userId).select(PROFILE_COLUMNS).single()
   if (error) throw error
