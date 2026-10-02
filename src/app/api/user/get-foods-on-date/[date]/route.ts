@@ -1,5 +1,4 @@
 export const dynamic = "force-dynamic"
-import { createClient } from "@/utils/supabase/server"
 
 import moment from "moment-timezone"
 import { NextResponse } from "next/server"
