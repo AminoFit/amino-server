@@ -754,3 +754,14 @@ test('a new shared food is named for its state and keeps its old name as knownAs
   assert.equal(calls.create[0].p_food.name,'White Rice, Cooked');
   assert.deepEqual(calls.updates,[{knownAs:['White Rice']}]);
 });
+
+test('a generic source is never a duplicate of a branded catalogue food (USDA avocado oil vs Chosen Foods)',async()=>{
+  const oil={...usdaFood,externalId:'171412',name:'Oil, avocado',brand:'',defaultServingWeightGram:14,kcalPerServing:124,
+    proteinPerServing:0,carbPerServing:0,totalFatPerServing:14,fiberPerServing:0,sugarPerServing:0,satFatPerServing:1.6,
+    Serving:[{servingName:'tbsp',servingWeightGram:14}]};
+  const {sources,calls}=harness({usda:[oil],near:[{id:12023,name:'Avocado Oil',brand:'Chosen Foods'}],
+    jev:{status:'ok',choice:'food_12023',confidence:0.97}});
+  const [candidate]=(await sources.searchFoodSources('avocado oil')).candidates;
+  assert.equal((await sources.createFoodFromSource(candidate.sourceId)).status,'created');
+  assert.equal(calls.jev.length,0);
+});

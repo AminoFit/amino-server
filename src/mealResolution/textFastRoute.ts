@@ -8,7 +8,8 @@ import { usableServing, type CatalogFood } from "./evidence"
  * agent's plan is used instead. In an experiment on the text eval and real meals this routed 15/17 and 5/11 meals with
  * no wrong food, in about 2 s against the agent's 5-55 s. */
 
-export type FastCandidate = { id: number; name: string; brand: string | null; mine?: boolean }
+/** logs: how often the user logged it in the last 60 days (history only). */
+export type FastCandidate = { id: number; name: string; brand: string | null; mine?: boolean; logs?: number }
 export type FastRouteEvidence = {
   searchFoods(query: string): Promise<{ candidates: FastCandidate[] }>
   getFoodsAndServings(ids: number[]): Promise<{ foods: CatalogFood[] }>
@@ -25,7 +26,9 @@ const MAX_ITEMS = 6
 const MATCH_RULES =
   "It must be the same food in the same state: cooked vs dry or raw, packed in oil vs water, and the brand or product " +
   "line when the user names one. A word in a food's name that the user didn't say and that marks a product variant " +
-  "(Elite, Zero, Light, Max, Diet, Keto, Plus) makes it a different product: don't choose it for the plain item."
+  "(Elite, Zero, Light, Max, Diet, Keto, Plus) makes it a different product: don't choose it for the plain item. When " +
+  "the user names no brand, the item is the generic food: choose a food without a brand over a branded product, " +
+  "unless the branded one is marked as logged before."
 
 export function foodChoiceTask(mealText: string, item: string, candidates: FastCandidate[]): DecisionTask {
   const criteria: Record<string, string> = { none: "None of these catalogue foods is this item." }
@@ -139,18 +142,30 @@ export function verbatim(text: string, ...phrases: (string | undefined)[]): stri
   return null
 }
 
+const HABIT_LOGS = 3
+const compact = (text: string) => text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+
+/** A branded food from the user's history stands for an item only when the user names its brand ("corepower" names
+ * Core Power) or logs it out of habit (3+ times in 60 days): "avocado oil" is the generic oil, not the Chosen Foods
+ * bottle logged once. Unbranded foods always do. */
+export function historyFits(food: FastCandidate, itemText: string) {
+  const brand = compact(food.brand ?? "")
+  return !brand || compact(itemText).includes(brand) || (food.logs ?? 0) >= HABIT_LOGS
+}
+
 const words = (text: string) => new Set(text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, " ")
   .split(/\s+/).filter(word => word.length >= 3))
 
 /** Jev picks the catalogue food for one item: the search's top 8 plus the user's recent foods that share a word
- * (marked "logged before"); a pick under 0.9 gets its own yes/no question. */
+ * (marked "logged before", if historyFits); a pick under 0.9 gets its own yes/no question. */
 export async function matchFood(context: string, item: string, words_: string, history: FastCandidate[],
   evidence: FastRouteEvidence, select: typeof selectWithJev, signal: AbortSignal):
   Promise<{ food: CatalogFood; confidence: number } | { reason: string }> {
   const found = (await evidence.searchFoods(item)).candidates.slice(0, 8)
   const itemWords = words(`${item} ${words_}`)
-  const mine = new Set(history.map(food => food.id))
-  const related = history.filter(food => [...words(`${food.name} ${food.brand ?? ""}`)].some(word => itemWords.has(word)))
+  const fits = history.filter(food => historyFits(food, `${item} ${words_}`))
+  const mine = new Set(fits.map(food => food.id))
+  const related = fits.filter(food => [...words(`${food.name} ${food.brand ?? ""}`)].some(word => itemWords.has(word)))
   const seen = new Set<number>()
   const candidates = [...found.map(food => mine.has(food.id) ? { ...food, mine: true } : food),
     ...related.slice(0, 8).map(food => ({ ...food, mine: true }))].filter(food => !seen.has(food.id) && seen.add(food.id))

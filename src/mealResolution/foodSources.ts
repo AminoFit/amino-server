@@ -479,7 +479,8 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       const same=facts.find(f=>!(f.gtin&&f.gtin!==food.gtin)&&sameProduct(food,f))
       return same?{status:"existing",foodId:same.id,estimate:isEstimate(same)}:{status:"none"}
     }
-    const candidates=facts.filter(f=>!brand||!brandOf(f.brand)||sameBrand(f.brand))
+    // A generic food is never a branded product either: USDA's avocado oil is not Chosen Foods' at the same 884 kcal.
+    const candidates=facts.filter(f=>brand?!brandOf(f.brand)||sameBrand(f.brand):!brandOf(f.brand))
     if (!candidates.length) return {status:"none"}
     const options:Record<string,unknown>={none:null},criteria:Record<string,string>={none:"No candidate is the same food."}
     for (const c of candidates) {options[`food_${c.id}`]=c.id;criteria[`food_${c.id}`]=`Catalogue food ${c.id}.`}

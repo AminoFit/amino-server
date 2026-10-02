@@ -34,3 +34,10 @@ test('without meaning results the text search order is kept, and the list is cap
   assert.deepEqual([...blendSearch('zzz',text,[]).map(r=>r.id)],text.slice(0,20).map(r=>r.id))
   assert.equal(containsQuery('  ',row(1,'Apple')),false)
 })
+
+test('generic foods come before brands the query does not name',()=>{
+  const text=[row(12023,'Avocado Oil','Chosen Foods'),row(1897,'avocado oil'),row(15128,'Avocado Oil Spray','Chosen Foods'),row(6435,'Avocado Oil Mayonnaise')]
+  assert.deepEqual([...blendSearch('avocado oil',text,[]).map(r=>r.id)],[1897,12023,6435,15128])
+  // A named brand keeps its place: it is the only exact hit.
+  assert.deepEqual([...blendSearch('chosen foods avocado oil',text,[]).map(r=>r.id)].slice(0,1),[12023])
+})
