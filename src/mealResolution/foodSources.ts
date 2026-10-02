@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { catalogueName, siblingsOf } from "./catalogueNaming"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
@@ -27,7 +28,9 @@ export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"
   /** Vitamins and minerals per defaultServingWeightGram, as the source gives them (docs/micronutrients-plan.md). */
   micros?:Micros
   /** A dietary supplement read from its Supplement Facts: it gets the shared icon for its form, not a drawing of its own. */
-  supplement?:boolean}
+  supplement?:boolean
+  /** The source's own categories (Open Food Facts: "Frozen foods, Chocolate covered fruits"), to name it well. */
+  categories?:string|null}
 
 export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),
   brand:z.string().trim().max(80).nullable(),per100g:z.object({kcal:z.number().nonnegative().finite(),
@@ -182,12 +185,12 @@ async function searchUsdaBranded(query:string):Promise<UsdaHit[]> {
   return ((await response.json()).foods??[]) as UsdaHit[]
 }
 
-type OffProduct={code?:string;product_name?:string;product_name_en?:string;brands?:string;serving_size?:string;
+type OffProduct={code?:string;product_name?:string;product_name_en?:string;brands?:string;categories?:string;serving_size?:string;
   serving_quantity?:number|string;serving_quantity_unit?:string;product_quantity?:number|string;product_quantity_unit?:string;
   nutriments?:Record<string,number|string|undefined>}
 /** Open Food Facts' product for a barcode (null when it has none). Its data is ODbL: credit Open Food Facts. */
 async function fetchOpenFoodFacts(gtin:string):Promise<OffProduct|null> {
-  const fields="code,product_name,product_name_en,brands,serving_size,serving_quantity,serving_quantity_unit,product_quantity,product_quantity_unit,nutriments"
+  const fields="code,product_name,product_name_en,brands,categories,serving_size,serving_quantity,serving_quantity_unit,product_quantity,product_quantity_unit,nutriments"
   const response=await fetch(`https://world.openfoodfacts.org/api/v2/product/${gtin.slice(1)}.json?fields=${fields}`,
     {headers:{"User-Agent":"Amino/1.0 (https://www.amino.fit)"},signal:AbortSignal.timeout(5000)})
   if (response.status===404) {await response.body?.cancel();return null}
@@ -202,7 +205,9 @@ type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedO
   /** A barcode's product name from the web (UPCitemdb, Brave + Jev), for searching by name when its digits find nothing. */
   name?:(gtin:string,signal:AbortSignal)=>Promise<{status:string;name?:string}|null>
   /** Queues a new supplement's icon (the shared one for its form). */
-  enqueueSupplementIcon?:(id:number,supplement:{name:string;unit:string})=>Promise<unknown>}
+  enqueueSupplementIcon?:(id:number,supplement:{name:string;unit:string})=>Promise<unknown>
+  /** A scanned product's name for the catalogue and its sibling packs (catalogueNaming.ts). */
+  catalogueName?:typeof catalogueName;siblings?:typeof siblingsOf}
 
 const enqueueSupplementIcon=async(id:number,supplement:{name:string;unit:string})=>
   (await import("@/app/api/queues/generate-food-icon/generate-food-icon")).enqueueFoodIcon(id,supplement)
@@ -305,7 +310,8 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       fiberG:nullable(value("fiber")),sugarG:nullable(value("sugars")),satFatG:nullable(value("saturated-fat")),
       addedSugarG:nullable(value("added-sugars")),transFatG:nullable(value("trans-fat")),
       isLiquid:liquid,servings,
-      source:`https://world.openfoodfacts.org/product/${gtin.slice(1)}`,micros:scaleMicros(offMicrosPer100g(n),factor)}
+      source:`https://world.openfoodfacts.org/product/${gtin.slice(1)}`,micros:scaleMicros(offMicrosPer100g(n),factor),
+      categories:product.categories?.slice(0,200)??null}
     return complete(candidate)?[remember(candidate)]:[]
   }
 
@@ -535,7 +541,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     console.error("food_micronutrients_not_filled",{foodId,error:error instanceof Error?error.message:"unknown"});return 0})
 
   const payload=async(food:SourceFood,withEmbedding:boolean)=>{
-    const {sourceId:_,servings:__,personal:___,micros:____,supplement:_____,...fields}=food
+    const {sourceId:_,servings:__,personal:___,micros:____,supplement:_____,categories:______,...fields}=food
     if (!withEmbedding) return fields
     const [vector]=await embed("BGE_BASE",[food.brand?`${food.name} - ${food.brand}`:food.name])
     return {...fields,bgeBaseEmbedding:JSON.stringify(vector.embedding)}
@@ -680,10 +686,20 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
         for (const c of duplicate.candidates) ctx.discover(c.id)
         return {...duplicate,next:"Call addFood again with sameAs: the candidate that is the same food (same product, brand and variant), or null when none is."}
       }
+      // A scanned product is named for what it is (the imported name kept in knownAs), and a sibling pack lends its icon.
+      const scanned=!!food.gtin&&!food.personal&&(food.foodInfoSource==="Online"||food.foodInfoSource==="USDA")
+      const siblings=scanned?await (deps.siblings??siblingsOf)(db(),{...food,gtin:food.gtin!},ctx.signal).catch(()=>[]):[]
+      const name=scanned?await (deps.catalogueName??catalogueName)({...food,siblings},{signal:ctx.signal}).catch(()=>food.name):food.name
+      const named=name===food.name?food:{...food,name}
       const created=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
-        p_food:await payload(food,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)
+        p_food:await payload(named,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)
       const row=(created.data as {food_id:number;created:boolean;enrichment:unknown}[]|null)?.[0]
       if (created.error||!row) throw new Error("food_creation_unavailable")
+      if (row.created&&named!==food) await db().from("FoodItem").update({knownAs:[food.name]}).eq("id",row.food_id)
+        .abortSignal(ctx.signal).then(({error})=>{if (error) console.error("Food renamed, but its imported name wasn't kept",{foodId:row.food_id})})
+      const icon=food.supplement?null:siblings.find(sibling=>sibling.imageId!=null)?.imageId
+      if (row.created&&icon!=null) await db().from("FoodItemImages").insert([{foodItemId:row.food_id,foodImageId:icon,similarity:1}])
+        .abortSignal(ctx.signal).then(({error})=>{if (error) console.error("Sibling icon not linked",{foodId:row.food_id})})
       await fillQuietly(row.food_id,food)
       ctx.discover(row.food_id)
       if (row.created) await (deps.enqueue??(id=>classifyFoodCategoryQueue.enqueue(String(id))))(row.food_id)

@@ -9,10 +9,11 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[],name}={}){
-  const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],supplementIcons:[],web:[],jev:[],rpc:[],visibility:[]};
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[],name,catalogueName,siblings}={}){
+  const calls={updates:[],inserts:[],create:[],enrich:[],supersede:[],discovered:[],enqueued:[],supplementIcons:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
+    update:fields=>{calls.updates.push(fields);return q},insert:rows=>{calls.inserts.push(rows);return q},
     abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
     rpc:(name,args)=>{
     calls.rpc.push([name,args]);
@@ -32,7 +33,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
       jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id),
       enqueueSupplementIcon:async(id,supplement)=>calls.supplementIcons.push([id,supplement]),
-      name:name??(async()=>null)});
+      name:name??(async()=>null),catalogueName:catalogueName??(async product=>product.name),siblings:siblings??(async()=>[])});
   return {sources,calls};
 }
 
@@ -669,3 +670,43 @@ test('digits nothing reads but a known name: the web is searched by that name, t
   const unnamed=harness({barcodes:[gtin],pages:async()=>[],name:async()=>({status:'unknown'})});
   assert.deepEqual((await unnamed.sources.barcodeProduct(gtin)).foods,[]);
 });
+
+test('a scanned product is named for what it is (its imported name kept as knownAs) and takes a sibling pack\'s icon',async()=>{
+  const asked=[];
+  const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],near:[],
+    off:async()=>({...offFruit,categories:'Frozen foods, Frozen fruits'}),
+    siblings:async()=>[{id:7,name:'Mango Blend',imageId:null},{id:8,name:'Mango Blend 4 lb',imageId:321}],
+    catalogueName:async product=>{asked.push(product);return 'Frozen Mango & Blueberry Blend'}});
+  const [food]=await sources.barcodeSources('00195515039802');
+  const result=await sources.createFoodFromSource(food.sourceId);
+  assert.equal(result.status,'created');
+  assert.equal(asked[0].categories,'Frozen foods, Frozen fruits','the namer sees the categories');
+  assert.equal(asked[0].siblings.length,2,'and the sibling packs');
+  assert.equal(calls.create[0].p_food.name,'Frozen Mango & Blueberry Blend');
+  assert.equal(calls.create[0].p_food.categories,undefined,'categories are not a column');
+  assert.deepEqual(calls.updates,[{knownAs:['Mangoes, Blueberries and Blueberries']}]);
+  assert.deepEqual(calls.inserts,[[{foodItemId:99001,foodImageId:321,similarity:1}]]);
+});
+
+test('a name kept as imported adds no alias, and without a sibling\'s icon none is linked',async()=>{
+  const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],near:[],off:async()=>offFruit});
+  const [food]=await sources.barcodeSources('00195515039802');
+  await sources.createFoodFromSource(food.sourceId);
+  assert.equal(calls.create[0].p_food.name,'Mangoes, Blueberries and Blueberries');
+  assert.deepEqual([calls.updates,calls.inserts],[[],[]]);
+});
+
+test('a pack another pack shares its name with gets its size; nutrition is compared per gram',()=>{
+  const {withPack,samePerGram}=require('../src/mealResolution/catalogueNaming.ts');
+  const cup={servings:[{name:'container',grams:51,amount:1}],siblings:[{name:'Honey Nut Cheerios'}]};
+  assert.equal(withPack('Honey Nut Cheerios',cup),'Honey Nut Cheerios, 51 g Container');
+  assert.equal(withPack('Honey Nut Cheerios',{...cup,siblings:[{name:'Cheerios'}]}),'Honey Nut Cheerios','no namesake: unchanged');
+  assert.equal(withPack('Honey Nut Cheerios',{...cup,servings:[{name:'cup',grams:37,amount:1.5}]}),'Honey Nut Cheerios, 25 g Cup');
+  assert.equal(withPack('Honey Nut Cheerios',{...cup,servings:[{name:'g',grams:100,amount:100}]}),'Honey Nut Cheerios','no pack serving');
+  const cheerios={gtin:'00016000275287',name:'Cheerios',brand:null,defaultServingWeightGram:39,kcal:140,proteinG:5,carbG:29,totalFatG:2.5};
+  const row=(grams,kcal,p,c,f)=>({id:1,name:'x',defaultServingWeightGram:grams,kcalPerServing:kcal,proteinPerServing:p,carbPerServing:c,totalFatPerServing:f,FoodItemImages:[]});
+  assert.ok(samePerGram(cheerios,row(28,100,3.6,20.7,1.8)),'the same cereal per a smaller serving');
+  assert.ok(!samePerGram(cheerios,row(39,150,5,29,2.5)),'7% more energy is another product');
+  assert.ok(!samePerGram(cheerios,row(0,0,0,0,0)));
+});
+
