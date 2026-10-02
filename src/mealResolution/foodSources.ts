@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { brandsMatch, catalogueName, siblingsOf } from "./catalogueNaming"
+import { isCurrentStyle } from "@/app/api/queues/generate-food-icon/iconStyle"
 import { withState } from "./foodState"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
@@ -704,7 +705,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       if (created.error||!row) throw new Error("food_creation_unavailable")
       if (row.created&&named!==food) await db().from("FoodItem").update({knownAs:[food.name]}).eq("id",row.food_id)
         .abortSignal(ctx.signal).then(({error})=>{if (error) console.error("Food renamed, but its imported name wasn't kept",{foodId:row.food_id})})
-      const icon=food.supplement?null:siblings.find(sibling=>sibling.imageId!=null)?.imageId
+      const icon=food.supplement?null:siblings.find(sibling=>sibling.imageId!=null&&isCurrentStyle(sibling.imageId))?.imageId
       if (row.created&&icon!=null) await db().from("FoodItemImages").insert([{foodItemId:row.food_id,foodImageId:icon,similarity:1}])
         .abortSignal(ctx.signal).then(({error})=>{if (error) console.error("Sibling icon not linked",{foodId:row.food_id})})
       await fillQuietly(row.food_id,food)

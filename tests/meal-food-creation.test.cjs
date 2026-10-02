@@ -675,19 +675,20 @@ test('a scanned product is named for what it is (its imported name kept as known
   const asked=[];
   const {sources,calls}=harness({usda:[],barcodes:['00195515039802'],near:[],
     off:async()=>({...offFruit,categories:'Frozen foods, Frozen fruits'}),
-    siblings:async()=>[{id:7,name:'Mango Blend',imageId:null},{id:8,name:'Mango Blend 4 lb',imageId:321}],
+    // An old-style icon (before image 13302) is never lent; the next sibling's current one is.
+    siblings:async()=>[{id:7,name:'Mango Blend',imageId:null},{id:6,name:'Mango Blend 2 lb',imageId:321},{id:8,name:'Mango Blend 4 lb',imageId:14321}],
     name:async()=>({status:'identified',name:'Amazon Fresh Frozen Mango & Blueberry Blend, 3 lb'}),
     catalogueName:async product=>{asked.push(product);return 'Frozen Mango & Blueberry Blend'}});
   const [food]=await sources.barcodeSources('00195515039802');
   const result=await sources.createFoodFromSource(food.sourceId);
   assert.equal(result.status,'created');
   assert.equal(asked[0].categories,'Frozen foods, Frozen fruits','the namer sees the categories');
-  assert.equal(asked[0].siblings.length,2,'and the sibling packs');
+  assert.equal(asked[0].siblings.length,3,'and the sibling packs');
   assert.equal(asked[0].webName,'Amazon Fresh Frozen Mango & Blueberry Blend, 3 lb','and the shops\' name for the barcode');
   assert.equal(calls.create[0].p_food.name,'Frozen Mango & Blueberry Blend');
   assert.equal(calls.create[0].p_food.categories,undefined,'categories are not a column');
   assert.deepEqual(calls.updates,[{knownAs:['Mangoes, Blueberries and Blueberries']}]);
-  assert.deepEqual(calls.inserts,[[{foodItemId:99001,foodImageId:321,similarity:1}]]);
+  assert.deepEqual(calls.inserts,[[{foodItemId:99001,foodImageId:14321,similarity:1}]]);
 });
 
 test('a name kept as imported adds no alias, and without a sibling\'s icon none is linked',async()=>{

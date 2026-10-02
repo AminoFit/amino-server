@@ -15,6 +15,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { SUPPLEMENT_FORMS, parseIconJob, supplementForm, type SupplementIconJob } from "./supplementIcon"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { chooseFoodIcon } from "./chooseFoodIcon"
+import { isCurrentStyle } from "./iconStyle"
 
 const BUCKET_NAME = "foodimages"
 
@@ -35,7 +36,8 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
 })
 
 /** Gives a food its icon: a supplement's shared one, else an existing icon that looks the same (Jev), else a new
- * drawing. Nothing when it already has one. The queue's job, also run directly (a backfill). */
+ * drawing. Nothing when it already has one in the current style; a food with only old-style icons gets a new one (the
+ * newest image is the one shown). The queue's job, also run directly (a backfill). */
 export async function fillFoodIcon(job: NonNullable<ReturnType<typeof parseIconJob>>) {
   const foodItemId = job.foodId
 
@@ -43,15 +45,19 @@ export async function fillFoodIcon(job: NonNullable<ReturnType<typeof parseIconJ
   const foodItem = await getFoodItem(foodItemId)
   if (!foodItem) throw new Error("No Food Item with that ID")
 
-  // Check if food item already has an image
-  if (foodItem?.FoodItemImages?.length > 0) {
-    console.log(
-      `Food item already has ${foodItem?.FoodItemImages?.length} image(s), skipping icon generation for:`,
-      foodItem.name
-    )
+  if (foodItem.FoodItemImages.some(link => isCurrentStyle(link.foodImageId))) {
+    console.log("food_icon_present", { foodItemId })
     return
   }
+  await giveIcon(foodItem, job)
+  // The app's on-device catalogue syncs foods by lastUpdated: a new icon reaches it only with a bump.
+  const { error } = await supabase.from("FoodItem").update({ lastUpdated: new Date().toISOString() }).eq("id", foodItemId)
+  if (error) console.error("food_icon_not_synced", { foodItemId, error: error.message })
+}
 
+async function giveIcon(foodItem: NonNullable<Awaited<ReturnType<typeof getFoodItem>>>,
+  job: NonNullable<ReturnType<typeof parseIconJob>>) {
+  const foodItemId = foodItem.id
   if (job.supplement) {
     await linkSupplementIcon(foodItemId, job.supplement)
     return
@@ -62,13 +68,13 @@ export async function fillFoodIcon(job: NonNullable<ReturnType<typeof parseIconJ
   const embeddingId = (await getCachedOrFetchEmbeddings("BGE_BASE", [foodItem.name]))[0].id
   const { data: candidates, error: candidatesError } = await supabase.rpc("food_icon_candidates", {
     p_embedding_cache_id: embeddingId,
-    p_limit: 8
+    p_limit: 16
   })
   if (candidatesError) throw candidatesError
   const choice = await chooseFoodIcon(
     { name: foodItem.name, brand: foodItem.brand, category: foodItem.foodItemCategoryName,
       servingUnit: foodItem.Serving?.[0]?.servingName ?? null },
-    candidates.map(row => ({
+    candidates.filter(row => isCurrentStyle(row.food_image_id)).slice(0, 8).map(row => ({
       id: row.food_image_id, description: row.image_description, similarity: row.cosine_similarity
     }))
   )
@@ -159,8 +165,10 @@ export async function generateAndUploadIcon(foodName: string, foodId: number, lo
 export const iconPrompt = (foodName: string, look?: string) =>
   `Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. ` +
   (look ? `The real product looks like this; use its shape and colours only: ${look} ` : "") +
-  `Show only ${foodName} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it; ` +
-  `use a plate, bowl, cup or glass only if the food is normally eaten from one. A plain drink, oil, spread or powder ` +
+  `Show only ${foodName} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it. ` +
+  `Show it the way it is bought or used, so the kind of food is obvious at a glance: shredded cheese as a loose pile ` +
+  `of shreds, sliced deli meat as folded slices, oil in a bottle. Use a bowl or plate only for a dish that is served ` +
+  `in one (soup, cereal, salad, a stew, yogurt); never put an ingredient in a bowl. A plain drink, oil, spread or powder ` +
   `that would look like others may show one small whole ingredient beside it (almonds for almond milk). Keep it simple so it stays useful ` +
   `for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so ` +
   `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`

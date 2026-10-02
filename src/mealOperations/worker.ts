@@ -30,13 +30,14 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group",
   // A scanned product that isn't food, or that no database or web search knows: retrying finds nothing new.
   "barcode_not_food","barcode_unknown"])
-/** Foods without an icon go to the icon queue, which links a close existing icon or generates one. */
+/** Foods without a current-style icon go to the icon queue, which links a close existing icon or generates one. */
 async function queueMissingIcons(foodIds:number[]) {
   const ids=[...new Set(foodIds)]
   if(!ids.length) return
-  const {data,error}=await createAdminSupabase().from("FoodItemImages").select("foodItemId").in("foodItemId",ids)
+  const {data,error}=await createAdminSupabase().from("FoodItemImages").select("foodItemId,foodImageId").in("foodItemId",ids)
   if(error) throw error
-  const linked=new Set((data??[]).map(row=>row.foodItemId))
+  const {isCurrentStyle}=await import("@/app/api/queues/generate-food-icon/iconStyle")
+  const linked=new Set((data??[]).filter(row=>isCurrentStyle(row.foodImageId)).map(row=>row.foodItemId))
   const {generateFoodIconQueue}=await import("@/app/api/queues/generate-food-icon/generate-food-icon")
   for(const id of ids.filter(id=>!linked.has(id))) await generateFoodIconQueue.enqueue(String(id),{id:`icon-${id}`})
 }
