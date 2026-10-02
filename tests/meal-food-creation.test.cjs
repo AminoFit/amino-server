@@ -720,5 +720,9 @@ test('one brand written two ways: a longer name, or a record that dropped its ac
   assert.ok(!brandsMatch('Kind','Fairlife'));
   assert.ok(!brandsMatch('Oreo',null));
   assert.ok(!brandsMatch('Bare','Bear'),'too short to judge by consonants');
+  assert.ok(!brandsMatch('Pure Leaf','Pure Life'),'other letters, not dropped ones');
+  assert.ok(!brandsMatch('Isopure','Spero'));
+  assert.ok(!brandsMatch('Mars',"Morey's"));
+  assert.ok(brandsMatch('Fairlife','Fa!Rlife'));
 });
 

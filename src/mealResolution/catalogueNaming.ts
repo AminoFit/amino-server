@@ -26,8 +26,18 @@ export function brandsMatch(a: string | null | undefined, b: string | null | und
   const x = squash(a), y = squash(b)
   if (!x || !y) return false
   if (x.includes(y) || y.includes(x)) return true
-  const consonants = (value: string) => value.replace(/[aeiouy]/g, "")
-  return consonants(x).length >= 3 && consonants(x) === consonants(y)
+  const [short, long] = x.length < y.length ? [x, y] : [y, x]
+  return short.replace(/[aeiouy]/g, "").length >= 3 && vowelsDropped(short, long)
+}
+
+/** `short` is `long` with only vowels left out ("trfr" from "trufru"; not "purelife" from "pureleaf"). */
+function vowelsDropped(short: string, long: string) {
+  let at = 0
+  for (const letter of long) {
+    if (letter === short[at]) at++
+    else if (!"aeiouy".includes(letter)) return false
+  }
+  return at === short.length
 }
 
 /** The same nutrition per gram: within 3% for energy, 0.02 g per gram for each macro. */
