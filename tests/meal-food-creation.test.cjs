@@ -10,7 +10,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
 function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[]}={}){
-  const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],web:[],jev:[],rpc:[],visibility:[]};
+  const calls={create:[],enrich:[],supersede:[],discovered:[],enqueued:[],supplementIcons:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
     abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
@@ -30,7 +30,8 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
       usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),pages:pages??(async()=>{throw new Error('search_unavailable')}),model:'anthropic/claude-sonnet-5.5',
       web:async(...args)=>{calls.web.push(args);return (web??(async()=>({data:{foods:[]},sourceUrls:[],searches:1})))(...args)},
-      jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id)});
+      jev:async task=>{calls.jev.push(task);return typeof jev==='function'?jev(task):jev},enqueue:async id=>calls.enqueued.push(id),
+      enqueueSupplementIcon:async(id,supplement)=>calls.supplementIcons.push([id,supplement])});
   return {sources,calls};
 }
 
@@ -636,4 +637,18 @@ test('filling a food\'s micronutrients adds only the ones it lacks, scaled to it
   assert.deepEqual(inserted,[{nutrientName:'potassium',nutrientUnit:'mg',nutrientAmountPerDefaultServing:800,foodItemId:5}],
     'magnesium (as "Magnesium, Mg") is kept; potassium doubled for a 200 g serving');
   assert.equal(updated.length,1,'lastUpdated bumped so syncs pick it up');
+});
+
+test('a new supplement queues the shared icon for its form, and the flag never reaches the database',async()=>{
+  const page={name:'Glycine 1,000 mg',brand:'Life Extension',servingUnit:'capsule',servingAmount:1,servingGrams:1,kcal:null,proteinG:null,carbG:null,
+    totalFatG:null,supplement:true,sourceUrl:'https://shop.example/glycine'};
+  const {sources,calls}=harness({barcodes:['00737870166917'],near:[],
+    pages:async()=>[{url:'https://shop.example/glycine',title:'Glycine',description:'',facts:'Supplement Facts'}],
+    web:async()=>({data:{foods:[page]},sourceUrls:[],searches:0})});
+  const [glycine]=(await sources.barcodeProduct('00737870166917')).foods;
+  assert.equal(glycine.supplement,true);
+  const created=await sources.createFoodFromSource(glycine.sourceId);
+  assert.equal(created.status,'created');
+  assert.deepEqual(calls.supplementIcons,[[99001,{name:'Glycine 1,000 mg',unit:'capsule'}]]);
+  assert.equal('supplement' in calls.create[0].p_food,false);
 });

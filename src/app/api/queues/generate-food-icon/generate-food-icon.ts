@@ -12,6 +12,7 @@ import sharp from "sharp"
 import { SupabaseURL, SupabaseServiceKey } from "@/utils/auth-keys"
 import { IMAGE_MODEL } from "@/ai/models"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
+import { SUPPLEMENT_FORMS, parseIconJob, supplementForm, type SupplementIconJob } from "./supplementIcon"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { chooseFoodIcon } from "./chooseFoodIcon"
 
@@ -26,10 +27,11 @@ const supabase = createClient<Database>(SupabaseURL, SupabaseServiceKey, {
 })
 
 // Queue for generating food icons
-export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", async (foodItemIdString: string) => {
-  // Parse the food item ID and validate it
-  const foodItemId = parseInt(foodItemIdString)
-  if (isNaN(foodItemId)) throw new Error("Invalid foodItemId")
+// A job is a food's id, or a supplement's JSON (supplementIcon): supplements share one icon per form.
+export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", async (payload: string) => {
+  const job = parseIconJob(payload)
+  if (!job) throw new Error("Invalid icon job")
+  const foodItemId = job.foodId
 
   // Retrieve the food item from the database
   const foodItem = await getFoodItem(foodItemId)
@@ -41,6 +43,11 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
       `Food item already has ${foodItem?.FoodItemImages?.length} image(s), skipping icon generation for:`,
       foodItem.name
     )
+    return
+  }
+
+  if (job.supplement) {
+    await linkSupplementIcon(foodItemId, job.supplement)
     return
   }
 
@@ -75,6 +82,30 @@ export const generateFoodIconQueue = Queue("api/queues/generate-food-icon", asyn
 
   console.log("Done generating food icon for:", foodItem.name)
 })
+
+/** Links the shared icon for the supplement's form, drawing it the first time any supplement of that form needs it. */
+async function linkSupplementIcon(foodItemId: number, supplement: SupplementIconJob["supplement"]) {
+  const form = await supplementForm(supplement.name, supplement.unit)
+  const description = SUPPLEMENT_FORMS[form]
+  const { data: shared, error } = await supabase.from("FoodImage").select("id").eq("imageDescription", description)
+    .order("id").limit(1)
+  if (error) throw error
+  if (shared?.length) {
+    const { error: linkError } = await supabase.from("FoodItemImages")
+      .insert([{ foodItemId, foodImageId: shared[0].id, similarity: 1 }])
+    if (linkError) throw linkError
+    console.log("supplement_icon_reused", { foodItemId, form, foodImageId: shared[0].id })
+    return
+  }
+  console.log("supplement_icon_generating", { foodItemId, form })
+  await generateAndUploadIcon(description, foodItemId)
+}
+
+/** Queues a new food's icon: a supplement's shared one, or the usual reuse-or-draw. One job per food. */
+export function enqueueFoodIcon(foodId: number, supplement?: SupplementIconJob["supplement"]) {
+  const payload = supplement ? JSON.stringify({ foodId, supplement } satisfies SupplementIconJob) : String(foodId)
+  return generateFoodIconQueue.enqueue(payload, { id: `icon-${foodId}` })
+}
 
 // Queue for forcing the generation of a new food icons
 export const forceGenerateNewFoodIconQueue = Queue(

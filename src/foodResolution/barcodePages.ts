@@ -60,7 +60,7 @@ function decodeEntities(value:string) {
     String.fromCodePoint(code[1]==="x"||code[1]==="X"?parseInt(code.slice(2),16):Number(code.slice(1))):named[code.toLowerCase()]??entity)
 }
 /** Aborts after ms, or with the caller's signal. */
-function anySignal(signal:AbortSignal|undefined,ms:number) {
+export function anySignal(signal:AbortSignal|undefined,ms:number) {
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms)
   const stop=()=>{clearTimeout(timer);controller.abort()}
   if (signal?.aborted) stop(); else signal?.addEventListener("abort",stop,{once:true})

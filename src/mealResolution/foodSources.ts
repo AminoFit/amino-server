@@ -24,7 +24,9 @@ export type SourceFood = {sourceId:string;foodInfoSource:"USDA"|"Online"|"Label"
   /** Created privately for the user: a personal dish (their recipe) or an unnamed nutrition panel. */
   personal?:boolean
   /** Vitamins and minerals per defaultServingWeightGram, as the source gives them (docs/micronutrients-plan.md). */
-  micros?:Micros}
+  micros?:Micros
+  /** A dietary supplement read from its Supplement Facts: it gets the shared icon for its form, not a drawing of its own. */
+  supplement?:boolean}
 
 export const estimatedFood = z.object({name:z.string().trim().min(2).max(120).describe("The food itself, without the portion eaten: 'Cheeseburger', not '1/2 Cheeseburger' or 'Two boiled eggs'"),
   brand:z.string().trim().max(80).nullable(),per100g:z.object({kcal:z.number().nonnegative().finite(),
@@ -193,7 +195,12 @@ async function fetchOpenFoodFacts(gtin:string):Promise<OffProduct|null> {
 
 type Deps = {db?:ReturnType<typeof createAdminSupabase>;embed?:typeof getCachedOrFetchEmbeddings;
   usda?:typeof getUsdaFoodsInfo;usdaSearch?:typeof searchUsdaBranded;off?:typeof fetchOpenFoodFacts;pages?:typeof barcodePages;web?:typeof resolveWebFood;
-  jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string}
+  jev?:typeof selectWithJev;enqueue?:(id:number)=>Promise<unknown>;model?:string
+  /** Queues a new supplement's icon (the shared one for its form). */
+  enqueueSupplementIcon?:(id:number,supplement:{name:string;unit:string})=>Promise<unknown>}
+
+const enqueueSupplementIcon=async(id:number,supplement:{name:string;unit:string})=>
+  (await import("@/app/api/queues/generate-food-icon/generate-food-icon")).enqueueFoodIcon(id,supplement)
 
 export function createFoodSources(ctx:{userId:string;/** The meal being resolved; null for a lookup outside a meal (a barcode scan). */ messageId:number|null;signal:AbortSignal;discover:(id:number)=>void;
   /** A food this meal read earlier was changed by a write: forget the cached copy. */ refresh?:(id:number)=>void;
@@ -315,7 +322,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       const candidate:SourceFood={sourceId:`web:${counter++}`,foodInfoSource:"Online",externalId:null,gtin,
         name:food.name,brand:food.brand||null,defaultServingWeightGram:grams,kcal,proteinG,carbG,totalFatG,
         fiberG:food.fiberG??null,sugarG:food.sugarG??null,satFatG:null,isLiquid:false,
-        servings:[{name:food.servingUnit,grams,amount:food.servingAmount}],source:url,
+        servings:[{name:food.servingUnit,grams,amount:food.servingAmount}],source:url,supplement:food.supplement===true,
         micros:microsFrom((food.micronutrients??[]).map(row=>({name:row.name,amount:row.amount,unit:row.unit})))}
       return complete(candidate)?[remember(candidate)]:[]
     })
@@ -484,7 +491,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     console.error("food_micronutrients_not_filled",{foodId,error:error instanceof Error?error.message:"unknown"});return 0})
 
   const payload=async(food:SourceFood,withEmbedding:boolean)=>{
-    const {sourceId:_,servings:__,personal:___,micros:____,...fields}=food
+    const {sourceId:_,servings:__,personal:___,micros:____,supplement:_____,...fields}=food
     if (!withEmbedding) return fields
     const [vector]=await embed("BGE_BASE",[food.brand?`${food.name} - ${food.brand}`:food.name])
     return {...fields,bgeBaseEmbedding:JSON.stringify(vector.embedding)}
@@ -637,6 +644,10 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
       ctx.discover(row.food_id)
       if (row.created) await (deps.enqueue??(id=>classifyFoodCategoryQueue.enqueue(String(id))))(row.food_id)
         .catch(()=>console.error("Food created, but category enrichment could not be queued",{foodId:row.food_id}))
+      // Queued now, with what picks its form; the meal's own icon pass then finds the job (one per food) and skips it.
+      if (row.created&&food.supplement) await (deps.enqueueSupplementIcon??enqueueSupplementIcon)(row.food_id,
+        {name:food.name,unit:food.servings[0]?.name??""})
+        .catch(()=>console.error("Supplement created, but its icon could not be queued",{foodId:row.food_id}))
       return {status:row.created?"created" as const:"existing" as const,foodId:row.food_id,enrichment:row.enrichment??null}
     }
   }
