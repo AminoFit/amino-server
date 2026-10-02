@@ -88,8 +88,11 @@ test('a "none" with a strong name match gets the yes/no look; the serving unit g
   assert.equal(asked[0].state.servingUnit,'cup')
   assert.equal(asked[1].state.iconDrawnFor,'2% Reduced Fat Milk')
   const far=await icons.chooseFoodIcon(milk,[{id:8,description:'Oat milk',similarity:0.7}],{select})
-  assert.deepEqual(far,{kind:'generate',reason:'none_fits'},'a weaker match after "none" is drawn without a second look')
+  assert.equal(far.kind,'generate','a weaker match after "none" is drawn without a second look')
+  assert.equal(far.reason,'none_fits')
+  assert.equal(asked.length,3,'no second look was asked for it')
   const no=await icons.chooseFoodIcon(milk,[{id:7,description:'2% Reduced Fat Milk',similarity:0.9}],
     {select:async task=>task.options.yes?{status:'ok',choice:'no',confidence:0.9}:{status:'ok',choice:'none',confidence:0.8}})
-  assert.deepEqual(no,{kind:'generate',reason:'none_fits'})
+  assert.equal(no.kind,'generate')
+  assert.equal(no.reason,'none_fits')
 })
