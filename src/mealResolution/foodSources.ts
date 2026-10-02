@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { brandsMatch, catalogueName, siblingsOf } from "./catalogueNaming"
+import { withState } from "./foodState"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { getUsdaFoodsInfo } from "@/FoodDbThirdPty/USDA/getFoodInfo"
@@ -694,7 +695,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
         (deps.name??((value,signal)=>nameBarcode(value,{signal})))(food.gtin!,anySignal(ctx.signal,5000)).catch(()=>null)]):[[],null]
       const webName=web?.status==="identified"?web.name??null:null
       const name=scanned?await (deps.catalogueName??catalogueName)({...food,siblings,webName},{signal:ctx.signal}).catch(()=>food.name):food.name
-      const named=name===food.name?food:{...food,name}
+      // A plain staple says whether its values are cooked, dry or raw ("rice" at 130 kcal/100 g is cooked rice).
+      const stated=food.personal?name:withState(name,{brand:food.brand,kcalPer100g:food.kcal/food.defaultServingWeightGram*100})
+      const named=stated===food.name?food:{...food,name:stated}
       const created=await (db() as any).rpc("create_catalogue_food",{p_user_id:ctx.userId,p_message_id:ctx.messageId,
         p_food:await payload(named,true),p_servings:food.servings,p_private:food.personal===true}).abortSignal(ctx.signal)
       const row=(created.data as {food_id:number;created:boolean;enrichment:unknown}[]|null)?.[0]

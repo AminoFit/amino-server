@@ -71,7 +71,7 @@ pack's marketing words. Reply with the name people should see in their log.
 - Say what the food is, using only words from the data below (webListing is how shops list this barcode, often the
   fullest name): with categories "Chocolate covered fruits", "Nature's
   Blueberries" becomes "Chocolate Covered Blueberries". Never add an ingredient, flavour, size or claim the data doesn't give.
-- Keep the product's own words for its flavour and variant.
+- Keep the product's own words for its flavour and variant, and any saying whether it is cooked, raw or dry.
 - Leave the brand out unless it is what the product is called ("Cheerios", "Doritos Nacho Cheese").
 - When the imported name already does all this, return it unchanged.
 - Title Case, at most 70 characters.

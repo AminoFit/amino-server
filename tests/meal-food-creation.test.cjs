@@ -726,3 +726,31 @@ test('one brand written two ways: a longer name, or a record that dropped its ac
   assert.ok(brandsMatch('Fairlife','Fa!Rlife'));
 });
 
+
+test('a plain staple says whether its values are cooked, dry or raw; dishes and in-between values are left alone',()=>{
+  const {withState}=require('../src/mealResolution/foodState.ts');
+  const state=(name,kcal,brand=null)=>withState(name,{brand,kcalPer100g:kcal});
+  assert.equal(state('rice',130),'rice, Cooked');
+  assert.equal(state('oats',379),'oats, Dry');
+  assert.equal(state('oatmeal',71),'oatmeal, Cooked');
+  assert.equal(state('rice noodles',108),'rice noodles, Cooked','pasta, not rice');
+  assert.equal(state('Penne Pasta',357,'Barilla'),'Penne Pasta, Dry');
+  assert.equal(state('Publix, Oats',379,'Publix'),'Publix, Oats, Dry','a leading brand is read past');
+  assert.equal(state('Snack Gao Rice Snack',380,'Snack Gao'),'Snack Gao Rice Snack','a brand word elsewhere is the food\'s');
+  assert.equal(state('mexican rice',102),'mexican rice','a dish');
+  assert.equal(state('Cooked white rice',130),'Cooked white rice','already says');
+  assert.equal(state('rice',250),'rice','between cooked and dry: unnamed');
+  assert.equal(state('ground beef',272),'ground beef, Cooked','USDA 80/20 pan-browned');
+  assert.equal(state('90% lean ground beef',230),'90% lean ground beef','neither of USDA\'s values');
+  assert.equal(state('potato',93),'potato, Baked');
+  assert.equal(state('Diced Chicken Breast',116,'Tyson'),'Diced Chicken Breast','branded meat is left alone');
+});
+
+test('a new shared food is named for its state and keeps its old name as knownAs',async()=>{
+  const {sources,calls}=harness({usda:[{...usdaFood,name:'White Rice',brand:null,defaultServingWeightGram:100,kcalPerServing:130,
+    proteinPerServing:2.7,carbPerServing:28,totalFatPerServing:0.3}],near:[]});
+  const [candidate]=(await sources.searchFoodSources('white rice')).candidates;
+  await sources.createFoodFromSource(candidate.sourceId);
+  assert.equal(calls.create[0].p_food.name,'White Rice, Cooked');
+  assert.deepEqual(calls.updates,[{knownAs:['White Rice']}]);
+});
