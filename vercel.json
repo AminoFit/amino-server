@@ -25,7 +25,7 @@
     },
     {
       "path": "/api/food-icon-sweep-cron",
-      "schedule": "41 * * * *"
+      "schedule": "41 */6 * * *"
     }
   ]
 }

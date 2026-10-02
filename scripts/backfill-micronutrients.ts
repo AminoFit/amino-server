@@ -10,6 +10,7 @@
 //   --foods-only         skip the logged items
 //   --items-only         only the logged items (no lookups: from the foods' rows as they are now)
 //   --export <file> --ids <a,b,…>   write those foods with their USDA candidates, for judging by hand (or by Claude)
+//   --ids <a,b,…>        (without --export) look up only these foods
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
 //   --correct            generic foods: replace a vitamin or mineral more than 2x off its USDA match (or 0 where USDA has
 //                        a real amount), then recompute those nutrients on the owner's logs (previous values recorded)
@@ -239,7 +240,9 @@ async function main() {
     console.log(`matches: ${filled} filled, ${refused} refused`)
     await pg.end(); return
   }
-  const foods = await loadFoods([...mine, ...popular])
+  // --ids <a,b,…> without --export: only those foods (foods created before a source carried micronutrients).
+  const chosenIds = option("ids") ? new Set((option("ids") ?? "").split(",").map(Number).filter(Boolean)) : null
+  const foods = await loadFoods(chosenIds ? [...chosenIds] : [...mine, ...popular])
   if (args.includes("--correct")) { await correct(pg, foods, sources0); await pg.end(); return }
   // The rest after a first pass: USDA-record foods retried; generic and branded foods exported for judging.
   if (args.includes("--remaining")) {

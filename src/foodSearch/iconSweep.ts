@@ -1,7 +1,7 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 // The safety net for food icons: a food can end up without one (a queue job that failed, or a path that didn't queue
-// one, as the camera's barcode lookup didn't until 2026-10-02). Hourly, the newest foods without an icon are queued
+// one, as the camera's barcode lookup didn't until 2026-10-02). Every 6 hours, the newest foods without an icon are queued
 // again, a few at a time (the queue keeps one job per food, so a pending one isn't doubled).
 
 type Db=ReturnType<typeof createAdminSupabase>
