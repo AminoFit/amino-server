@@ -4,13 +4,16 @@ import { missingFromVisibleList, missingVisibleFoods } from "./coverageCheck"
 import type { MealResolutionInput, MealResolutionResult } from "./resolve"
 
 const POLICY = `Decide whether the user's own words explicitly refer to a meal they logged before, for example
-"same as yesterday", "my usual breakfast", "again" or "the rest of last night's pasta", in any language.
+"same as yesterday", "my usual breakfast", "again" or "the rest of last night's pasta", in any language. Words that
+refer to how much they usually have of a food are a reference too: "the same amount of eggs I usually have", "my
+usual portion of oats", "as much as last time".
 A description or photo of food that merely resembles a past meal is NOT a reference. Empty text is not a reference.`
 
 /** True only when Jev is confident the wording refers to a past meal. */
 export async function refersToPastMeal(input: Pick<MealResolutionInput, "originalText" | "answers">,
   deps: { jev?: typeof selectWithJev; signal?: AbortSignal } = {}): Promise<boolean> {
-  const text = input.originalText.trim()
+  // Barcode chips from the app's camera are products, not words: they only distract from the wording.
+  const text = input.originalText.replace(/\[barcode:\d{8,14}\]/gi, " ").replace(/\s+/g, " ").trim()
   if (!text && !input.answers?.length) return false
   const decision = await (deps.jev ?? selectWithJev)({ options: { yes: true, no: false },
     state: { userWords: text, answers: (input.answers ?? []).map(answer => answer.text) },

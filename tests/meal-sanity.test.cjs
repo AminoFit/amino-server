@@ -102,3 +102,13 @@ test('a decoded barcode must be logged as the food that carries it, not a simila
   assert.throws(()=>compile(cup,components,{originalText,photoIds:[1],barcodes:['00818290015617']}),/barcode_not_covered/);
   assert.equal(compile(cup,components,{originalText,photoIds:[1]}).items[0].foodId,31,'no barcode, no constraint');
 });
+
+test('meal 30469: a scanned chip and the words naming its product may cover one item; words still may not share',()=>{
+  const text='chicken breast with olive oil and rice [barcode:00850241008835] [barcode:00195515039802]';
+  const plan=compile(complete,[...covered,mention('[barcode:00850241008835]',[0])],{originalText:text});
+  assert.deepEqual(plan.items.map(i=>i.foodId),[1,2,3]);
+  assert.throws(()=>compile(complete,[...covered,mention('[barcode:00850241008835]',[0]),mention('chicken',[0])],{originalText:`${text} chicken`}),
+    /item_coverage_conflict/,'a second word mention still conflicts');
+  assert.throws(()=>compile(complete,[...covered,mention('[barcode:00850241008835]',[0]),mention('[barcode:00195515039802]',[0])],{originalText:text}),
+    /item_coverage_conflict/,'two chips are two products');
+});

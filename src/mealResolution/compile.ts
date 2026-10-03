@@ -16,6 +16,9 @@ export type PublishedPlan = {schemaVersion:1;originalText:string;consumedOn:stri
   model:{id:string;provider:string};input:{operationId:string;submittedAt:string;timezone:string;
     locale:string|null;attachmentIds:number[]}}
 
+/** A mention that is only a barcode chip from the app's camera. */
+const BARCODE_ONLY=/^\[barcode:\d{8,14}\]$/i
+
 /** A fixed code for the worker plus a detail that tells the agent exactly what to fix. */
 const fail=(code:string,detail:string)=>Object.assign(new Error(code),{detail})
 
@@ -26,7 +29,8 @@ const positive=(value:unknown):value is number=>typeof value==="number"&&Number.
 function checkCoverage(input:MealResolutionInput,result:MealResolutionResult) {
   const {proposal}=result,components=proposal.components??[]
   if (!components.length) throw new Error("missing_meal_coverage")
-  const items=new Set<number>(),selections=new Set<number>(),mentions=new Set<string>()
+  const items=new Set<number>(),selections=new Set<number>(),mentions=new Set<string>(),
+    wordItems=new Set<number>(),chipItems=new Set<number>()
   const hasPhotos=(result.photoIds??input.attachmentIds).length>0
   for (const component of components) {
     const text=component.sourceText.trim(),mention=text.toLocaleLowerCase()
@@ -38,8 +42,12 @@ function checkCoverage(input:MealResolutionInput,result:MealResolutionResult) {
     const covered=component.itemIndexes.length+component.historySelectionIndexes.length
     if (component.omitted ? covered>0 : covered===0) throw fail(component.omitted?"omitted_mention_has_food":"dropped_meal_mention",
       component.omitted?`omitted "${text}" must have no items`:`"${text}" has no item or history selection`)
+    // A scanned chip is the product the words name too ("Lavash wrap … [barcode:…]", meal 30469): it may point at the
+    // item another mention covers. Words still never share an item.
+    const claimed=BARCODE_ONLY.test(text)?chipItems:wordItems
     for (const index of component.itemIndexes) {
-      if (index>=proposal.items.length||items.has(index)) throw new Error("item_coverage_conflict")
+      if (index>=proposal.items.length||claimed.has(index)) throw new Error("item_coverage_conflict")
+      claimed.add(index)
       items.add(index)
     }
     for (const index of component.historySelectionIndexes) {
