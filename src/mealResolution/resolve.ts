@@ -385,10 +385,15 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     if (scene) {
       // More barcoded packages than barcodes decoded on a photo (or a located barcode that won't read) is a package
       // nobody identified: a leftover, never dropped. Views of the same package count once.
-      const unidentified=scene.samePackageViews?0:photos.reduce((sum,photo,index)=>{
+      // A product the user scanned with the app's camera (a chip) and that resolved is one of those packages too, though
+      // the photo itself didn't read it: meal 30469 photographed the wrap, eggs and egg whites it had scanned, and the
+      // phantom "unidentified package" left over failed every plan until the time ran out.
+      const readFromPhotos=new Set(photoBarcodes.filter(row=>row.photoId>0).flatMap(row=>row.gtins))
+      const scannedElsewhere=locked.filter(row=>row.food&&scanned.gtins.includes(row.gtin)&&!readFromPhotos.has(row.gtin)).length
+      const unidentified=scene.samePackageViews?0:Math.max(0,photos.reduce((sum,photo,index)=>{
         const read=photoBarcodes.find(row=>row.photoId===photo.id)
         const seen=scene.barcodePackages.find(row=>row.photo===index)?.count??0
-        return sum+Math.max(seen-(read?.gtins.length??0),read?.undecoded??0,0)},0)
+        return sum+Math.max(seen-(read?.gtins.length??0),read?.undecoded??0,0)},0)-scannedElsewhere)
       visible=[...scene.otherFoods,
         ...(scene.samePackageViews&&lockedFoods.length?[]:scene.otherPackages.map(row=>({food:row.legibleText??"unlabelled package",
           detail:`a package in photo ${row.photo+1} without a readable barcode`,grams:null}))),
