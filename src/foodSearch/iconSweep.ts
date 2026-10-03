@@ -22,3 +22,17 @@ export async function queueMissingFoodIcons(options:{db?:Db;enqueue?:(foodId:num
   }
   return {missing:ids.length,queued}
 }
+
+/** Logged foods without a current-style icon (none, or only old styles) go to the icon queue, which links a close
+ * current icon or draws one. Every way of logging calls this (the meal worker, Add Food's direct log), so an old icon
+ * is replaced the next time the food is logged however it's logged (meal 30471's Spindrift came from Add Food). */
+export async function queueIconsForLoggedFoods(foodIds:number[],db:Db=createAdminSupabase()) {
+  const ids=[...new Set(foodIds)]
+  if (!ids.length) return
+  const {data,error}=await db.from("FoodItemImages").select("foodItemId,foodImageId").in("foodItemId",ids)
+  if (error) throw error
+  const {isCurrentStyle}=await import("@/app/api/queues/generate-food-icon/iconStyle")
+  const linked=new Set((data??[]).filter(row=>isCurrentStyle(row.foodImageId)).map(row=>row.foodItemId))
+  const {generateFoodIconQueue}=await import("@/app/api/queues/generate-food-icon/generate-food-icon")
+  for (const id of ids.filter(id=>!linked.has(id))) await generateFoodIconQueue.enqueue(String(id),{id:`icon-${id}`})
+}

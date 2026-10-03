@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import { utcInstant } from "./instant"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { queueIconsForLoggedFoods } from "@/foodSearch/iconSweep"
 import { validNutrition, nutrientsAt, type FoodBasis, HISTORY_NUTRIENTS } from "@/nutrition"
 import { type PublishedPlan } from "@/mealResolution/compile"
 import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
@@ -30,18 +31,6 @@ const safeErrorCodes=new Set(["catalogue_unavailable","food_details_unavailable"
   "item_coverage_conflict","uncovered_meal_item","duplicate_food_in_group",
   // A scanned product that isn't food, or that no database or web search knows: retrying finds nothing new.
   "barcode_not_food","barcode_unknown"])
-/** Foods without a current-style icon go to the icon queue, which links a close existing icon or generates one. */
-async function queueMissingIcons(foodIds:number[]) {
-  const ids=[...new Set(foodIds)]
-  if(!ids.length) return
-  const {data,error}=await createAdminSupabase().from("FoodItemImages").select("foodItemId,foodImageId").in("foodItemId",ids)
-  if(error) throw error
-  const {isCurrentStyle}=await import("@/app/api/queues/generate-food-icon/iconStyle")
-  const linked=new Set((data??[]).filter(row=>isCurrentStyle(row.foodImageId)).map(row=>row.foodItemId))
-  const {generateFoodIconQueue}=await import("@/app/api/queues/generate-food-icon/generate-food-icon")
-  for(const id of ids.filter(id=>!linked.has(id))) await generateFoodIconQueue.enqueue(String(id),{id:`icon-${id}`})
-}
-
 /** Total ms and count per stage, e.g. {"tool:findFood":{ms:7400,n:2}}. */
 const summariseTimeline=(timeline:{stage:string;ms:number}[])=>timeline.reduce<Record<string,{ms:number;n:number}>>((sum,{stage,ms})=>
   ({...sum,[stage]:{ms:(sum[stage]?.ms??0)+ms,n:(sum[stage]?.n??0)+1}}),{})
@@ -288,7 +277,7 @@ async function deliverMealOperation(operationId:string,workerToken:string,claim:
     await report("saving").catch(()=>{})
     const published=await publishMealOperation(operationId,workerToken,plan)
     // After publication and best-effort: link or generate icons for foods without one.
-    await queueMissingIcons(plan.items.map(item=>item.foodId)).catch(error=>
+    await queueIconsForLoggedFoods(plan.items.map(item=>item.foodId)).catch(error=>
       console.error("meal_icons_not_queued",{operationId,error:error instanceof Error?error.message:"unknown"}))
     console.info("meal_operation_complete",{operationId,state:"succeeded",durationMs:Math.round(performance.now()-started),
       stages:summariseTimeline(timeline),tools:trace})

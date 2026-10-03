@@ -1,6 +1,7 @@
 // A user's own foods and recipes (plan: 2026-09-30-custom-foods-and-recipes-plan.md). The server prices everything;
 // save_user_food decides in one transaction whether an edit is in place or a new version (edits only apply going
 // forward), and log_food_as_meal writes a logged row with the nutrients priced here. Logged meals are never rewritten.
+import { queueIconsForLoggedFoods } from "@/foodSearch/iconSweep"
 import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
@@ -232,6 +233,10 @@ const describe=(food:PricedFood,item:{servingAmount:number;loggedUnit:string})=>
 /** Postgres timestamp (UTC wall clock, as Message.consumedOn stores it) for an ISO instant. */
 const utcWallClock=(instant:string)=>new Date(instant).toISOString().replace("T"," ").replace("Z","")
 
+/** Best-effort, after the log: foods showing only an old-style icon (or none) get a new one, as meals do. */
+const iconsFor=(db:Db,foodIds:number[])=>queueIconsForLoggedFoods(foodIds,db).catch(error=>
+  console.error("logged_food_icons_not_queued",{foodIds,error:error instanceof Error?error.message:"unknown"}))
+
 /** Logs a food as a new meal. localId (from the app) makes a retry return the meal already created. */
 export async function logFoodAsMeal(userId:string,foodId:number,quantity:QuantityInput,consumedOn:string,localId:string,
   db:Db=createAdminSupabase()) {
@@ -242,6 +247,7 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
     p_consumed_on:utcWallClock(consumedOn),p_content:describe(food!,item),p_item:item})
   if (error) rpcFailure(error)
   const row=(data as {message_id:number;logged_food_item_id:number;created:boolean}[])[0]
+  if (row.created) await iconsFor(db,[food!.id])
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
@@ -261,6 +267,7 @@ export async function logFoodsAsMeal(userId:string,items:{foodItemId:number;quan
     p_items:priced.map(entry=>entry.item)})
   if (error) rpcFailure(error)
   const row=(data as {message_id:number;logged_food_item_ids:number[];created:boolean}[])[0]
+  if (row.created) await iconsFor(db,priced.map(entry=>entry.food.id))
   return {messageId:row.message_id,loggedFoodItemIds:row.logged_food_item_ids,created:row.created}
 }
 
