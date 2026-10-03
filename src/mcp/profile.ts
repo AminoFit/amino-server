@@ -1,3 +1,4 @@
+import { recordWeight } from "./weight"
 import moment from "moment-timezone"
 import type { UserDatabase } from "./auth"
 
@@ -140,7 +141,8 @@ export type BodyChange = { weightKg?: number; heightCm?: number; dateOfBirth?: s
 export async function updateBody(db: UserDatabase, userId: string, change: BodyChange) {
   const current = await profileRow(db, userId)
   const patch: Record<string, unknown> = {}
-  if (change.weightKg != null) patch.weightKg = Math.round(change.weightKg * 10) / 10
+  // A weight is a weigh-in in the history (WeightEntry); the profile weight follows the latest one.
+  if (change.weightKg != null) await recordWeight(db, change.weightKg)
   if (change.heightCm != null) patch.heightCm = Math.round(change.heightCm * 10) / 10
   if (change.dateOfBirth != null) patch.dateOfBirth = storedBirthDate(change.dateOfBirth, zoneOf(current))
   if (change.sex != null) patch.gender = change.sex

@@ -5,6 +5,7 @@ import { userDatabase, type UserDatabase } from "./auth"
 import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChanges } from "./meals"
 import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
 import { getMyFood, listMyFoods } from "./userFoods"
+import { weightHistory } from "./weight"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
 nutrition), daily totals, goals and body stats, and can update the goals and body stats.
@@ -14,7 +15,8 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Foods record only the nutrients their source gives (a label often lists a few vitamins). A day's total marked
   \`incomplete\` sums only the foods that record it: say it is partial rather than judging intake from it.
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
-- Body stats are metric: convert pounds, feet and inches before calling update_body_stats.
+- Body stats are metric: convert pounds, feet and inches before calling update_body_stats. A weight set there is a
+  weigh-in (now) in the user's weight history, which get_weight_history returns with its trend.
 - The user's own recipes and foods (list_my_foods, get_my_food) are what they saved in the app. A recipe's values are
   for one portion; a meal shows it as one food with an amount in portions.`
 
@@ -163,6 +165,22 @@ export function registerAminoTools(server: McpServer) {
     annotations: READ
   }, ({ id }, ctx) => run("get_my_food", ctx.http?.authInfo, async ({ db, userId }) =>
     ({ data: await getMyFood(db, userId, id), rows: 1 })))
+
+  server.registerTool("get_weight_history", {
+    title: "Get weight history",
+    description: "The user's weigh-ins per local day (from Apple Health, the app and agents), for up to 2 years: " +
+      "`weightKg` is the day's average, `bodyFatPct` appears only when a scale measured it, and `trendKg` is a smoothed " +
+      "trend (an exponential moving average, about a 19-day window) that hides day-to-day water swings. The trend lags a " +
+      "changing weight by about 9 days, so for a rate of change (kg per week, energy balance) fit a line through the " +
+      "weigh-ins rather than subtracting trend values. `summary` has the latest weigh-in, today's trend and the trend's " +
+      "change over 7 and 30 days. Days without a weigh-in are left out.",
+    inputSchema: z.object({ from: date, to: date }),
+    annotations: READ
+  }, ({ from, to }, ctx) => run("get_weight_history", ctx.http?.authInfo, async ({ db }) => {
+    checkRange(from, to, 731)
+    const history = await weightHistory(db, from, to)
+    return { data: history, rows: history.days.length }
+  }))
 
   server.registerTool("update_goals", {
     title: "Update goals",

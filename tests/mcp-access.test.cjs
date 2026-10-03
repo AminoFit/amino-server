@@ -81,7 +81,7 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   };
   const listed=await call('tools/list',{},1);
   const tools=Object.fromEntries(listed.result.tools.map(tool=>[tool.name,tool]));
-  assert.deepEqual(Object.keys(tools).sort(),['get_daily_summary','get_meals','get_my_food','get_profile','list_meals',
+  assert.deepEqual(Object.keys(tools).sort(),['get_daily_summary','get_meals','get_my_food','get_profile','get_weight_history','list_meals',
     'list_my_foods','sync_meals','update_body_stats','update_goals']);
   assert.equal(tools.list_my_foods.annotations.readOnlyHint,true);
   assert.deepEqual(tools.list_my_foods.inputSchema.properties.kind.enum,['recipes','foods','all']);
@@ -173,4 +173,23 @@ test('daily summaries judge each day against the goals it had', () => {
     '2026-09-15','2026-09-30');
   assert.deepEqual(days.map(day=>day.goals.calories),[2500,2100]);
   assert.deepEqual(goalChanges.map(change=>change.from),['2026-09-20']);
+});
+
+test('get_weight_history: weigh-in days only, body fat when measured, the trend and its change over 7 and 30 days',async()=>{
+  const {weightHistory}=require('../src/mcp/weight.ts');
+  const days=[];
+  // 40 days of trend; weigh-ins on even days, body fat on the last one.
+  for (let i=0;i<40;i++) {
+    const day=new Date(Date.UTC(2026,8,1+i)).toISOString().slice(0,10);
+    days.push({day,weightKg:i%2===0?80-i*0.05:null,bodyFatPct:i===38?21.5:null,trendKg:80-i*0.04});
+  }
+  let asked;
+  const db={rpc:async(name,args)=>{asked=[name,args];return {data:days.filter(d=>d.day>=args.p_from&&d.day<=args.p_to),error:null}}};
+  const result=await weightHistory(db,'2026-10-01','2026-10-10');
+  assert.deepEqual(asked,['weight_trend',{p_from:'2026-09-01',p_to:'2026-10-10'}],'30 days earlier, for the 30-day change');
+  assert.ok(result.days.every(day=>day.date>='2026-10-01'&&day.weightKg!=null),'weigh-in days in the range only');
+  assert.equal(result.days.find(day=>day.date==='2026-10-09').bodyFatPct,21.5);
+  assert.equal('bodyFatPct' in result.days[0],false,'body fat only when measured');
+  assert.deepEqual(result.summary,{latestWeighIn:{date:'2026-10-09',weightKg:78.1},trendKg:78.44,
+    trendChange7DaysKg:-0.28,trendChange30DaysKg:-1.2});
 });
