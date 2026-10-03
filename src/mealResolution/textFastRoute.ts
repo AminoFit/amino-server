@@ -70,7 +70,6 @@ const MASS_UNITS: Record<string, number> = { g: 1, gr: 1, gram: 1, grams: 1, kg:
 const UNIT_ALIASES: Record<string, string> = { tablespoon: "tbsp", tablespoons: "tbsp", tbsps: "tbsp", tbs: "tbsp",
   teaspoon: "tsp", teaspoons: "tsp", tsps: "tsp", cups: "cup", slices: "slice", pieces: "piece", pcs: "piece",
   pc: "piece" }
-const HOUSEHOLD_UNITS = new Set(["tbsp", "tsp", "cup", "slice", "piece"])
 const singular = (word: string) => UNIT_ALIASES[word] ?? (word.length > 3 && word.endsWith("es") && /(ch|sh|x|s)es$/.test(word)
   ? word.slice(0, -2) : word.length > 3 && word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word)
 
@@ -91,8 +90,6 @@ export function parseAmount(quote: string): { amount: number; rest: string[] } |
     const first = words[0]
     if (first in FRACTIONS) { amount = FRACTIONS[first]; words = words.slice(1) }
     else if (first in NUMBER_WORDS) { amount = NUMBER_WORDS[first]; words = words.slice(1) }
-    // A household unit without a number is one of it: "tbsp avocado oil" (meal 30393 logged a gram guess, 1 tsp).
-    else if (HOUSEHOLD_UNITS.has(singular(first))) amount = 1
   } else if (amount !== null && words[0] && words[0] in FRACTIONS) { amount += FRACTIONS[words[0]]; words = words.slice(1) }
   if (amount === null || !(amount > 0) || amount > 1000) return null
   // "half a banana", "one and a half cups", "a half"
@@ -129,8 +126,7 @@ export function itemQuantity(quote: string, food: CatalogFood, estimatedGrams: n
   if (matches.length !== 1) return estimate
   const serving = matches[0], perUnit = serving.servingWeightGram! / Number(serving.defaultServingAmount)
   const grams = parsed.amount * perUnit
-  // The user's unit and the listing's grams disagree: the agent decides, never the listing's guess ("tbsp avocado
-  // oil" listed at 4.5 g was logged as a teaspoon).
+  // The user's unit and the listing's grams disagree: the agent decides, never the listing's guess.
   if (estimatedGrams > 0 && (grams > estimatedGrams * 3 || grams < estimatedGrams / 3)) return null
   return { kind: "serving", servingId: serving.id, amount: parsed.amount }
 }

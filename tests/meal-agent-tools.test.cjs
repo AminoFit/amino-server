@@ -393,17 +393,27 @@ test('meal 30440: a misread chip (nothing knows or names it) is dropped from a m
   await assert.rejects(resolveMeal(alone,{...deps,fastRoute:false}),/barcode_unknown/);
 });
 
-test('meal 30469: products scanned with the camera are the packages in the photo, not unidentified ones',async()=>{
-  const scannedInput={...photoInput,originalText:'wrap with eggs [barcode:00850241008835] [barcode:00195515039802]'};
-  const prompts=async (reads,text)=>{
-    const {deps}=lockedDeps({reads,scene:onlyBarcodes([2])});
-    let prompt='';
-    await resolveMeal({...scannedInput,originalText:text},{...deps,fastRoute:false,
+test('meal 30469: the scene check is told the scanned products, and packages it recognises as them are identified',async()=>{
+  const text='wrap with eggs [barcode:00850241008835] [barcode:00195515039802]';
+  const run=async (scannedPackages,originalText=text)=>{
+    let named=null,prompt='';
+    const {deps}=lockedDeps({reads:[{gtins:[],undecoded:0}],scene:null});
+    await resolveMeal({...photoInput,originalText},{...deps,fastRoute:false,
+      scene:async (_urls,_text,options)=>{named=options?.scanned;return {...onlyBarcodes([2]),scannedPackages}},
       generate:async options=>{prompt=JSON.stringify(options.messages);return deps.generate()}}).catch(()=>null);
-    return prompt;
+    return {named,prompt};
   };
-  // Both packages are in the photo, whose barcodes didn't read: the chips already name them.
-  assert.doesNotMatch(await prompts([{gtins:[],undecoded:0}],scannedInput.originalText),/unidentified package/);
-  // Without chips, a package nobody read is still a leftover to resolve.
-  assert.match(await prompts([{gtins:['00850241008835'],undecoded:0}],'wrap with eggs'),/unidentified package/);
+  const both=await run([{photo:0,count:2}]);
+  assert.equal(both.named.length,2,'both scanned products are named to the scene check');
+  assert.doesNotMatch(both.prompt,/unidentified package/,'recognised as the scanned products');
+  // The scene saw two barcoded packages but recognised neither as scanned: they are leftovers to resolve.
+  assert.match((await run([])).prompt,/unidentified package/);
+});
+
+test('meal 30469: a located barcode that will not read and that the scene does not count is no food to log, but the agent looks',async()=>{
+  const {deps,agentRuns}=lockedDeps({reads:[{gtins:['00850241008835'],undecoded:1}],scene:onlyBarcodes([0])});
+  let prompt='';
+  await resolveMeal(photoInput,{...deps,generate:async options=>{prompt=JSON.stringify(options.messages);return deps.generate()}}).catch(()=>null);
+  assert.equal(agentRuns(),1,'not the barcode-only route');
+  assert.doesNotMatch(prompt,/unidentified package/,'the scene saw no other barcoded package');
 });

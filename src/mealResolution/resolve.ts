@@ -290,9 +290,14 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // Photos with a barcode get a scene check instead of trusting the first look: it counts barcoded packages without
     // naming them (the first look invented a product for meal 30389) and lists only the rest of the meal.
     // Scanned chips without photos have no scene to look at: nothing else is in it.
-    const sceneLoaded=Promise.all([photosLoaded,decoded]).then(([list,reads])=>
+    // The products scanned with the camera, named for the scene check so it can tell them apart from anything else in
+    // the photos (a catalogue lookup, done long before the photos load; a product not in the catalogue goes unnamed).
+    const scannedNames=scanned.gtins.length?evidence.findFoodsByGtin(scanned.gtins)
+      .then(foods=>foods.map(food=>food.brand?`${food.name} (${food.brand})`:food.name),()=>[] as string[]):Promise.resolve([] as string[])
+    const sceneLoaded=Promise.all([photosLoaded,decoded,scannedNames]).then(([list,reads,names])=>
       !list.length&&scanned.gtins.length?EMPTY_SCENE:
-      reads.some(read=>read.gtins.length||read.undecoded)?(deps.scene??sceneCheck)(list.map(photo=>photo.url),input.originalText):null)
+      reads.some(read=>read.gtins.length||read.undecoded)||names.length
+        ?(deps.scene??sceneCheck)(list.map(photo=>photo.url),input.originalText,{scanned:names}):null)
       .catch(()=>null)
     // A first look lists what the user is eating while likely foods load, so the first turn can usually answer.
     const visibleLoaded=photosLoaded.then(list=>list.length?(deps.visible??listVisibleFoods)(list.map(photo=>photo.url),input.originalText):[])
@@ -382,18 +387,23 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const notFood=chipOnly.find(row=>row.notFood)
     if (notFood) {trace.push(`barcode: not food (${notFood.notFood!.slice(0,40)})`);throw new Error("barcode_not_food")}
     if (chipOnly.some(row=>row.searched)) {trace.push("barcode: unknown product");throw new Error("barcode_unknown")}
+    // A photo with a located barcode that wouldn't decode: the agent looks at it, never the barcode-only routes.
+    const unreadBoxes=photoBarcodes.some(row=>row.photoId>0&&row.undecoded>0)
     if (scene) {
-      // More barcoded packages than barcodes decoded on a photo (or a located barcode that won't read) is a package
-      // nobody identified: a leftover, never dropped. Views of the same package count once.
-      // A product the user scanned with the app's camera (a chip) and that resolved is one of those packages too, though
-      // the photo itself didn't read it: meal 30469 photographed the wrap, eggs and egg whites it had scanned, and the
-      // phantom "unidentified package" left over failed every plan until the time ran out.
-      const readFromPhotos=new Set(photoBarcodes.filter(row=>row.photoId>0).flatMap(row=>row.gtins))
-      const scannedElsewhere=locked.filter(row=>row.food&&scanned.gtins.includes(row.gtin)&&!readFromPhotos.has(row.gtin)).length
-      const unidentified=scene.samePackageViews?0:Math.max(0,photos.reduce((sum,photo,index)=>{
+      // More barcoded packages than barcodes decoded on a photo is a package nobody identified: a leftover, never
+      // dropped. Views of the same package count once.
+      // The scene check, which sees the whole photo and knows what was scanned, says how many barcoded packages need
+      // resolving: those the photo's reads didn't decode and that aren't products scanned with the camera. A located box
+      // that wouldn't decode and that the scene doesn't count is uncertain, never a food the plan must log (meal 30469:
+      // a 42 px box at the photo's edge became an "unidentified package" that failed every plan); it sends the meal
+      // to the agent instead (unreadBoxes).
+      const unidentified=scene.samePackageViews?0:photos.reduce((sum,photo,index)=>{
         const read=photoBarcodes.find(row=>row.photoId===photo.id)
         const seen=scene.barcodePackages.find(row=>row.photo===index)?.count??0
-        return sum+Math.max(seen-(read?.gtins.length??0),read?.undecoded??0,0)},0)-scannedElsewhere)
+        // At most the scanned products this photo didn't read itself, so none is subtracted twice.
+        const notReadHere=scanned.gtins.filter(gtin=>!read?.gtins.includes(gtin)).length
+        const scannedHere=Math.min(scene.scannedPackages?.find(row=>row.photo===index)?.count??0,notReadHere)
+        return sum+Math.max(seen-(read?.gtins.length??0)-scannedHere,0)},0)
       visible=[...scene.otherFoods,
         ...(scene.samePackageViews&&lockedFoods.length?[]:scene.otherPackages.map(row=>({food:row.legibleText??"unlabelled package",
           detail:`a package in photo ${row.photo+1} without a readable barcode`,grams:null}))),
@@ -442,7 +452,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
     const amountAgrees=lockedFoods.every(food=>packageQuantity(food)!==null)
     if (!amountAgrees) trace.push("barcode: the photo shows more than one serving")
-    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&lockedFoods.every(servingKnown)&&
+    if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&!unreadBoxes&&lockedFoods.every(servingKnown)&&
         !labelDisagrees.length&&amountAgrees) {
       const proposal=lockedProposal(lockedFoods)
       trace.push(`barcode: ${proposal.items.map(item=>`food ${item.foodId}`).join(", ")}`)
@@ -457,7 +467,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // (FeatureFlag.meal_photo_fast_route). Photos with a barcode keep the barcode route or the agent.
     // With locked barcode products (route C), the fast route resolves only the leftovers and the plan adds the locked
     // products; any unidentified package or unresolved barcode leaves the meal to the agent.
-    const leftoverPackages=visible.some(item=>/package/.test(item.detail))
+    const leftoverPackages=visible.some(item=>/package/.test(item.detail))||unreadBoxes
     const plainPhoto=photosOnly&&photos.length>0&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS&&
       (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages&&lockedFoods.every(servingKnown)&&!labelDisagrees.length))
     const photoFastStarted=performance.now()
@@ -691,7 +701,7 @@ const stepDetail=(step?:AgentStep)=>{const names=(step?.toolCalls??[]).map(call=
  * added through the usual duplicate checks, which attach the barcode to an existing food that is the same. */
 /** The catalogue food a decoded barcode names: the catalogue's, else one created from the barcode's USDA or Open Food
  * Facts record. Null when no database knows it (never guessed). */
-const EMPTY_SCENE={barcodePackages:[],otherPackages:[],otherFoods:[],samePackageViews:false}
+const EMPTY_SCENE={barcodePackages:[],scannedPackages:[],otherPackages:[],otherFoods:[],samePackageViews:false}
 
 const BARCODE_CHIP=/\[barcode:\s*(\d{6,14})\]/gi
 /** The [barcode:…] chips in a meal's text, as valid GTIN-14s (a bad check digit is dropped), and the text without them. */
