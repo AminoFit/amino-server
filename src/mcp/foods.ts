@@ -205,14 +205,31 @@ export async function recentFoods(db: UserDatabase, userId: string, input: { fro
 }
 
 /** The user's current recipes and/or foods, most recently edited first, optionally narrowed by name. */
-export async function listMyFoods(db: UserDatabase, userId: string, options: { kind: "recipes" | "foods" | "all"; query?: string }) {
-  let request = db.from("FoodItem").select(columns).eq("privateToUserId", userId).is("archivedAt", null)
-    .order("lastUpdated", { ascending: false }).limit(200)
+/** Which of these archived foods were replaced by an edit (a newer version points to them), as opposed to deleted. */
+export async function replacedVersions(db: UserDatabase, ids: number[]) {
+  if (!ids.length) return new Set<number>()
+  const { data, error } = await db.from("FoodItem").select("previousVersionId").in("previousVersionId", ids)
+  if (error) throw error
+  return new Set(((data ?? []) as { previousVersionId: number }[]).map(row => row.previousVersionId))
+}
+
+/** The user's current recipes and/or foods (or the ones they deleted), most recently edited first, optionally by name. */
+export async function listMyFoods(db: UserDatabase, userId: string, options: { kind: "recipes" | "foods" | "all"; query?: string
+  deleted?: boolean }) {
+  let request = db.from("FoodItem").select(columns).eq("privateToUserId", userId)
+  request = options.deleted ? request.not("archivedAt", "is", null) : request.is("archivedAt", null)
+  request = request.order("lastUpdated", { ascending: false }).limit(200)
   if (options.kind === "recipes") request = request.not("recipePortions", "is", null)
   if (options.kind === "foods") request = request.is("recipePortions", null)
   if (options.query?.trim()) request = request.ilike("name", `%${options.query.trim().replace(/[%_]/g, "")}%`)
   const { data, error } = await request
   if (error) throw error
-  return ((data ?? []) as unknown as Row[]).map(row => ({ ...foodCard(row, userId),
-    createdAt: row.createdAtDateTime ?? null, lastEditedAt: row.lastUpdated ?? null }))
+  let rows = (data ?? []) as unknown as Row[]
+  // Deleted, not older versions an edit left behind (past meals use those; they aren't the user's to bring back).
+  if (options.deleted) {
+    const replaced = await replacedVersions(db, rows.map(row => row.id))
+    rows = rows.filter(row => !replaced.has(row.id))
+  }
+  return rows.map(row => ({ ...foodCard(row, userId), createdAt: row.createdAtDateTime ?? null,
+    ...(options.deleted ? { deletedAt: row.archivedAt } : { lastEditedAt: row.lastUpdated ?? null }) }))
 }

@@ -6,7 +6,7 @@ import { UserFoodError, archiveUserFood, customFoodInput, getUserFood, recipeInp
   type CustomFoodInput, type RecipeInput } from "@/userFoods/userFoods"
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
-import { getFood } from "./foods"
+import { getFood, replacedVersions } from "./foods"
 
 // The user's own foods and recipes, written by agents (2026-10-03-mcp-food-search-and-writes-plan.md, phase 3) through
 // the Foods tab's own functions: the server prices and validates, edits apply going forward (a food already logged gets
@@ -222,4 +222,25 @@ export async function deleteFood(userId: string, id: number) {
   if (food.archivedAt) return { deleted: true, note: "It was already deleted." }
   await archiveUserFood(userId, id).catch(asInputError)
   return { deleted: true, id, name: food.name }
+}
+
+/** Brings back one of the user's deleted foods or recipes. An older version an edit replaced stays retired (the current
+ * version is the one to use), and a food the user has since made with the same name keeps its place. */
+export async function restoreFood(db: UserDatabase, userId: string, id: number) {
+  const food: OwnFood = await getUserFood(userId, id).catch(asInputError)
+  if (food.privateToUserId !== userId) throw new McpInputError("Only the user's own foods and recipes can be restored.")
+  if (!food.archivedAt) return { restored: false, note: "It isn't deleted.", food: await getFood(db, userId, id) }
+  if ((await replacedVersions(db, [id])).has(id))
+    throw new McpInputError("That is an older version an edit replaced, not a deleted food: use the current version " +
+      "(get_food shows replacedBy).")
+  const clash = await existingOwn(userId, { name: food.name, brand: food.brand })
+  if (clash) throw new McpInputError(`The user has since made another food or recipe named "${food.name}" (id ${clash}). ` +
+    "Rename or delete that one first, or use it instead.")
+  const now = new Date().toISOString()
+  const { data, error } = await (createAdminSupabase() as any).from("FoodItem").update({ archivedAt: null, lastUpdated: now })
+    .eq("id", id).eq("privateToUserId", userId).not("archivedAt", "is", null).select("id")
+  if (error?.code === "23505") throw new McpInputError(`The user already has a food named "${food.name}".`)
+  if (error) throw error
+  if (!data?.length) throw new McpInputError(MESSAGES.food_unavailable)
+  return { restored: true, food: await getFood(db, userId, id) }
 }

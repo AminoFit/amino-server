@@ -6,7 +6,7 @@ import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChan
 import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
 import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
 import { weightHistory } from "./weight"
-import { createFood, createRecipe, deleteFood, foodFields, recipeFields, updateFood, updateRecipe } from "./foodWrites"
+import { createFood, createRecipe, deleteFood, foodFields, recipeFields, restoreFood, updateFood, updateRecipe } from "./foodWrites"
 import { agentWriteRefusal } from "./settings"
 import { addToMeal, agentName, amountFields, deleteMeal, logMeal, mealFood, restoreMeal, updateMeal } from "./mealWrites"
 
@@ -33,7 +33,7 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   log_meal with exact amounts. Amino doesn't interpret text: a note is only shown to the user. Meals and their foods
   have ids in list_meals/get_meals; meals you log show \`loggedBy\`.
 - Changes (log_meal, add_to_meal, update_meal, delete_meal, restore_meal, create_food, create_recipe, update_food,
-  update_recipe, delete_food) need the user's "Let agents make changes" setting in the Amino app; without it they fail
+  update_recipe, delete_food, restore_food) need the user's "Let agents make changes" setting in the Amino app; without it they fail
   and say so. Confirm with the user before deleting anything. Everything an agent creates is private to the
   user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
 - The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
@@ -49,7 +49,7 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: tru
 const CREATE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const
 const DELETE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false } as const
 /** Changes to the user's foods and meals: only with the user's "Let agents make changes" on, and at a slower rate. */
-const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food", "log_meal",
+const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food", "restore_food", "log_meal",
   "add_to_meal", "update_meal", "delete_meal", "restore_meal"]
 const CHANGES_PER_MINUTE = 20, CHANGES_PER_DAY = 300
 
@@ -242,12 +242,13 @@ export function registerAminoTools(server: McpServer) {
     title: "List my recipes and foods",
     description: "The user's own recipes and custom foods (saved in the app), most recently edited first, with " +
       "servings, nutrition per 100 g and per serving (one portion for a recipe), and when each was created and last " +
-      "edited.",
+      "edited. With `deleted`, the ones they deleted instead (restore_food brings one back).",
     inputSchema: z.object({ kind: z.enum(["recipes", "foods", "all"]).default("all"),
-      query: z.string().max(100).optional().describe("Only names containing this text") }),
+      query: z.string().max(100).optional().describe("Only names containing this text"),
+      deleted: z.boolean().default(false).describe("List deleted foods and recipes instead") }),
     annotations: READ
-  }, ({ kind, query }, ctx) => run("list_my_foods", ctx.http?.authInfo, async ({ db, userId }) => {
-    const foods = await listMyFoods(db, userId, { kind, query })
+  }, ({ kind, query, deleted }, ctx) => run("list_my_foods", ctx.http?.authInfo, async ({ db, userId }) => {
+    const foods = await listMyFoods(db, userId, { kind, query, deleted })
     return { data: { foods }, rows: foods.length }
   }))
 
@@ -300,12 +301,23 @@ export function registerAminoTools(server: McpServer) {
   server.registerTool("delete_food", {
     title: "Delete my food or recipe",
     description: "Delete one of the user's own foods or recipes. It leaves their Foods list and search; meals that " +
-      "already have it keep showing it. Only delete what the user asked to. Needs the user's \"Let agents make " +
+      "already have it keep showing it, and restore_food brings it back. Only delete what the user asked to. Needs the " +
+      "user's \"Let agents make " +
       "changes\" setting.",
     inputSchema: z.object({ id: z.number().int().positive() }),
     annotations: DELETE
   }, ({ id }, ctx) => run("delete_food", ctx.http?.authInfo, async ({ userId }) =>
     ({ data: await deleteFood(userId, id), rows: 1 })))
+
+  server.registerTool("restore_food", {
+    title: "Restore my food or recipe",
+    description: "Bring back one of the user's deleted foods or recipes (list_my_foods with deleted: true), for when " +
+      "one was deleted by mistake. Not an older version an edit replaced, and not while another of the user's foods " +
+      "has the same name. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ id: z.number().int().positive() }),
+    annotations: WRITE
+  }, ({ id }, ctx) => run("restore_food", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await restoreFood(db, userId, id), rows: 1, targets: [id] })))
 
   server.registerTool("log_meal", {
     title: "Log a meal",
