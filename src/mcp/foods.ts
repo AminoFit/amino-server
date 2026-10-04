@@ -1,6 +1,6 @@
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
-import { COLUMN_NUTRIENTS, nutrientsAt, type Amounts } from "@/nutrition"
+import { COLUMN_NUTRIENTS, nutrientRound, nutrientsAt, type Amounts } from "@/nutrition"
 import { normalizeGtin } from "@/mealResolution/barcode"
 import { catalogueFoodForGtin } from "@/foodSearch/barcodeCatalogue"
 import { searchFoodsForUser } from "@/foodSearch/searchFoods"
@@ -31,7 +31,7 @@ function nutrition(row: Row, grams: number, all: boolean) {
   const amounts: Amounts = nutrientsAt(row as any, grams) ?? {}
   const keys = all ? Object.keys(amounts) : CORE
   return Object.fromEntries(keys.flatMap(key => amounts[key as keyof Amounts] != null
-    ? [[key, round(amounts[key as keyof Amounts]!, key === "kcal" || key.endsWith("Mg") ? 0 : 1)]] : []))
+    ? [[key, nutrientRound(key, amounts[key as keyof Amounts]!)]] : []))
 }
 
 const gramsPerUnit = (serving: Row["Serving"][number]) =>

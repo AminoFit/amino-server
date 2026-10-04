@@ -48,3 +48,16 @@ test('filters are per 100 g, and a food with unknown energy never passes one',()
   assert.equal(passesFilters(card,{maxFatG:20,maxCarbG:30}),true);
   assert.equal(passesFilters(foodCard({...bar,weightUnknown:true},'me'),{maxKcal:1000}),false);
 });
+
+test('values keep their precision: milligrams and micrograms to three significant figures, as the database rounds',()=>{
+  const {nutrientRound}=require('../src/nutrition');
+  assert.equal(nutrientRound('vitaminB1Mg',0.395),0.395,'not 0');
+  assert.equal(nutrientRound('vitaminEMg',0.015),0.015);
+  assert.equal(nutrientRound('sodiumMg',2312.7),2313);
+  assert.equal(nutrientRound('vitaminB12Mcg',2.4321),2.43);
+  assert.equal(nutrientRound('proteinG',12.345),12.3);
+  assert.equal(nutrientRound('kcal',105.4),105);
+  assert.equal(nutrientRound('zincMg',0.0001),0);
+  const card=foodCard({...bar,Nutrient:[...bar.Nutrient,{nutrientName:'Thiamin',nutrientUnit:'mg',nutrientAmountPerDefaultServing:0.2}]},'me',undefined,true);
+  assert.equal(card.per100g.vitaminB1Mg,0.364,'a small per-100 g value isn\'t rounded away');
+});

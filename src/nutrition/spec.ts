@@ -77,3 +77,15 @@ export const NUTRIENT_NAMES: Record<NutrientKey, string[]> = {
   caffeineMg: ["caffeine", "Caffeine"],
   alcoholG: ["alcohol", "Alcohol, ethyl"]
 }
+
+/** A nutrient value rounded for reading, as the database's nutrition_round does: energy and water whole, grams to 0.1,
+ * milligrams and micrograms to three significant figures (at most three decimals), so 0.395 mg of thiamin stays 0.395
+ * rather than becoming 0. Only below 0.0005 is a value shown as 0. */
+export function nutrientRound(key: string, value: number) {
+  if (!Number.isFinite(value)) return value
+  if (key === "kcal" || key.endsWith("Ml")) return Math.round(value)
+  if (key.endsWith("G")) return Math.round(value * 10) / 10
+  if (Math.abs(value) < 0.0005) return 0
+  const places = Math.max(0, Math.min(3, 2 - Math.floor(Math.log10(Math.abs(value)))))
+  return Math.round(value * 10 ** places) / 10 ** places
+}
