@@ -1,6 +1,6 @@
 # MCP: food search, and adding, editing and deleting foods and meals
 
-**Date:** 2026-10-03 · **Status:** phases 1-3 server live (2026-10-03); app switch and goal weight built; phase 4 next · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
+**Date:** 2026-10-03 · **Status:** phases 1-3 live, app switch and goal weight on the phone (2026-10-03); phase 4 server pushed, its migration to apply, then the app's "via Claude" label · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
 
 ## Goal
 
@@ -93,6 +93,8 @@ Server and database done 2026-10-03 (`20261012000000_agent_access.sql`, applied 
 - Descriptions say edits apply going forward: past meals keep the values they were logged with.
 
 ## Phase 4: meals (exact foods only)
+
+Built 2026-10-03 (`20261013000000_agent_meal_writes.sql`, `src/mcp/mealWrites.ts`). Two changes from the first draft, after looking at production: structured meal operations (portion, move, delete) have never run there, and 72 of the last 73 meals aren't owned by the operation protocol, so agents change meals the way the app does (server functions mirroring the app's direct writes), and a meal the protocol owns or is still processing is refused ("try again, or change it in the app"). No revision check: those meals have no revision. Owner, 2026-10-03: planned and every-day meals are logged ahead, so a time up to a year either way is accepted.
 
 Meals are `Message` rows with their `LoggedFoodItem`s. Agent meals are written the way Add Food's tray writes them: created **resolved**, priced on the server, the meal agent never runs. The app, the sync feed (`MealChange`), totals and the web log see them like any other meal.
 

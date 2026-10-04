@@ -28,3 +28,16 @@ test('a food saved without a named serving reads back by weight',()=>{
   assert.deepEqual(fields.serving,{unit:'g',amount:55,grams:55});
   assert.equal(fields.barcode,undefined);
 });
+
+test('a meal food has exactly one amount',()=>{
+  const {mealFood,quantityFrom}=require('../src/mcp/mealWrites');
+  assert.equal(mealFood.safeParse({foodId:1,grams:100}).success,true);
+  assert.equal(mealFood.safeParse({foodId:1,servingId:4,amount:2}).success,true);
+  assert.equal(mealFood.safeParse({foodId:1,portions:1.5}).success,true);
+  assert.equal(mealFood.safeParse({foodId:1}).success,false,'no amount');
+  assert.equal(mealFood.safeParse({foodId:1,grams:100,portions:1}).success,false,'two amounts');
+  assert.equal(mealFood.safeParse({foodId:1,servingId:4}).success,false,'a serving needs an amount');
+  assert.deepEqual(quantityFrom({servingId:4,amount:2}),{servingId:4,amount:2});
+  assert.deepEqual(quantityFrom({grams:100}),{grams:100});
+  assert.deepEqual(quantityFrom({portions:1.5}),{portions:1.5});
+});

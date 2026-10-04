@@ -81,14 +81,17 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   };
   const listed=await call('tools/list',{},1);
   const tools=Object.fromEntries(listed.result.tools.map(tool=>[tool.name,tool]));
-  assert.deepEqual(Object.keys(tools).sort(),['create_food','create_recipe','delete_food','get_daily_summary','get_food','get_meals','get_profile',
-    'get_weight_history','list_meals','list_my_foods','recent_foods','search_foods','sync_meals','update_body_stats',
-    'update_food','update_goals','update_recipe']);
+  assert.deepEqual(Object.keys(tools).sort(),['add_to_meal','create_food','create_recipe','delete_food','delete_meal','get_daily_summary','get_food',
+    'get_meals','get_profile','get_weight_history','list_meals','list_my_foods','log_meal','recent_foods','restore_meal',
+    'search_foods','sync_meals','update_body_stats','update_food','update_goals','update_meal','update_recipe']);
   assert.equal(tools.list_my_foods.annotations.readOnlyHint,true);
   assert.deepEqual(tools.list_my_foods.inputSchema.properties.kind.enum,['recipes','foods','all']);
   assert.deepEqual(tools.get_food.inputSchema.required,['id']);
   assert.equal(tools.search_foods.annotations.readOnlyHint,true);
   assert.equal(tools.delete_food.annotations.destructiveHint,true,'clients ask before a delete');
+  assert.equal(tools.delete_meal.annotations.destructiveHint,true);
+  assert.deepEqual(tools.log_meal.inputSchema.required.sort(),['foods','idempotencyKey']);
+  assert.equal('text' in tools.log_meal.inputSchema.properties,false,'agents log exact foods, never text for the meal agent');
   assert.equal(tools.create_food.annotations.readOnlyHint,false);
   assert.deepEqual(tools.update_food.inputSchema.required,['id'],'an edit passes only what changes');
   assert.deepEqual(tools.search_foods.inputSchema.properties.scope.enum,['all','mine','catalogue']);
@@ -166,6 +169,8 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
     assert.equal(seen.find(r=>r.path==='/rest/v1/rpc/mcp_list_meals').body.p_to,'2026-09-30','to defaults to from');
 
     // Changes to foods need the user's setting; goals don't.
+    const meal=await call('log_meal',{foods:[{foodId:1,grams:100}],idempotencyKey:'7f8d6c2e-1b3a-4c5d-9e8f-0a1b2c3d4e5f'});
+    assert.match(meal.content[0].text,/Let agents make changes/,'logging a meal needs the setting');
     const off=await call('delete_food',{id:5});
     assert.equal(off.isError,true);
     assert.match(off.content[0].text,/Let agents make changes/);

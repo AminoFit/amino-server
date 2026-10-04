@@ -8,6 +8,7 @@ import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
 import { weightHistory } from "./weight"
 import { createFood, createRecipe, deleteFood, foodFields, recipeFields, updateFood, updateRecipe } from "./foodWrites"
 import { agentWriteRefusal } from "./settings"
+import { addToMeal, agentName, amountFields, deleteMeal, logMeal, mealFood, restoreMeal, updateMeal } from "./mealWrites"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
 nutrition), daily totals, goals and body stats, and can update the goals and body stats.
@@ -28,8 +29,12 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   Each result's \`match\` says why it was found: \`name\` (its name has the query's words), \`meaning\` (a close
   meaning), or \`loose\` (a fuzzy text hit that is often a different food): never log a loose match without checking it
   is the same food.
-- Changes (create_food, create_recipe, update_food, update_recipe, delete_food) need the user's "Let agents make
-  changes" setting in the Amino app; without it they fail and say so. Everything an agent creates is private to the
+- To log a meal: find each food with search_foods (prefer the user's own foods, and recent_foods for usual meals) and
+  log_meal with exact amounts. Amino doesn't interpret text: a note is only shown to the user. Meals and their foods
+  have ids in list_meals/get_meals; meals you log show \`loggedBy\`.
+- Changes (log_meal, add_to_meal, update_meal, delete_meal, restore_meal, create_food, create_recipe, update_food,
+  update_recipe, delete_food) need the user's "Let agents make changes" setting in the Amino app; without it they fail
+  and say so. Confirm with the user before deleting anything. Everything an agent creates is private to the
   user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
 - The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
   portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.`
@@ -44,11 +49,12 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: tru
 const CREATE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const
 const DELETE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false } as const
 /** Changes to the user's foods and meals: only with the user's "Let agents make changes" on, and at a slower rate. */
-const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food"]
+const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food", "log_meal",
+  "add_to_meal", "update_meal", "delete_meal", "restore_meal"]
 const CHANGES_PER_MINUTE = 20, CHANGES_PER_DAY = 300
 
-type Call = { db: UserDatabase; userId: string }
-type Outcome = { data: object; rows?: number }
+type Call = { db: UserDatabase; userId: string; authInfo: AuthInfo }
+type Outcome = { data: object; rows?: number; targets?: number[] }
 
 const result = (data: object): CallToolResult =>
   ({ content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data as Record<string, unknown> })
@@ -61,9 +67,10 @@ async function run(tool: string, authInfo: AuthInfo | undefined, work: (call: Ca
   if (!authInfo || !userId) return failure("Not signed in to Amino.")
   const admin = createAdminSupabase() as any
   const startedAt = Date.now()
-  const record = (ok: boolean, errorCode: string | null, rows: number | null) =>
+  const record = (ok: boolean, errorCode: string | null, rows: number | null, targets?: number[]) =>
     admin.from("McpRequest").insert({ userId, clientId: authInfo.clientId, tool, ok, errorCode, rows,
-      durationMs: Date.now() - startedAt }).then(({ error }: { error?: { message: string } | null }) => {
+      durationMs: Date.now() - startedAt, ...(targets?.length ? { targetIds: targets } : {}) })
+      .then(({ error }: { error?: { message: string } | null }) => {
       if (error) console.warn("mcp_request_not_recorded", { error: error.message })
     })
   const recent = await admin.from("McpRequest").select("id", { count: "exact", head: true }).eq("userId", userId)
@@ -87,8 +94,8 @@ async function run(tool: string, authInfo: AuthInfo | undefined, work: (call: Ca
     }
   }
   try {
-    const outcome = await work({ db: userDatabase(authInfo.token), userId })
-    await record(true, null, outcome.rows ?? null)
+    const outcome = await work({ db: userDatabase(authInfo.token), userId, authInfo })
+    await record(true, null, outcome.rows ?? null, outcome.targets)
     return result(outcome.data)
   } catch (error) {
     if (error instanceof McpInputError) {
@@ -299,6 +306,80 @@ export function registerAminoTools(server: McpServer) {
     annotations: DELETE
   }, ({ id }, ctx) => run("delete_food", ctx.http?.authInfo, async ({ userId }) =>
     ({ data: await deleteFood(userId, id), rows: 1 })))
+
+  server.registerTool("log_meal", {
+    title: "Log a meal",
+    description: "Log a meal of foods you matched yourself: each food from search_foods (or recent_foods) with an exact " +
+      "amount (servingId and amount, grams, or portions of a recipe). Amino prices them from its food records; it " +
+      "doesn't read or interpret `note`, which is shown to the user as the meal's text. eatenAt defaults to now. Send a " +
+      "new idempotencyKey (a UUID) per meal: a retry with the same key returns the meal already logged. The app shows " +
+      "the meal as logged by you. A planned meal can be logged ahead (up to a year). Needs the user's \"Let agents " +
+      "make changes\" setting.",
+    inputSchema: z.object({
+      foods: z.array(mealFood).min(1).max(50),
+      eatenAt: z.iso.datetime({ offset: true }).optional()
+        .describe("When it was (or will be) eaten, ISO 8601 with offset; up to a year either way"),
+      note: z.string().trim().max(500).optional().describe("The meal's text in the log, e.g. \"Lunch at Nando's\""),
+      idempotencyKey: z.uuid()
+    }),
+    annotations: CREATE
+  }, (input, ctx) => run("log_meal", ctx.http?.authInfo, async ({ db, userId, authInfo }) => {
+    const { targets, ...data } = await logMeal(db, userId, { clientId: authInfo.clientId, name: await agentName(authInfo) }, input)
+    return { data, rows: 1, targets }
+  }))
+
+  server.registerTool("add_to_meal", {
+    title: "Add foods to a meal",
+    description: "Add foods (from search_foods, with exact amounts as in log_meal) to one of the user's meals, at the " +
+      "meal's time. Returns the meal. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ mealId: z.number().int().positive(), foods: z.array(mealFood).min(1).max(50) }),
+    annotations: CREATE
+  }, ({ mealId, foods }, ctx) => run("add_to_meal", ctx.http?.authInfo, async ({ db, userId }) => {
+    const { targets, ...data } = await addToMeal(db, userId, mealId, foods)
+    return { data, rows: 1, targets }
+  }))
+
+  server.registerTool("update_meal", {
+    title: "Update a meal",
+    description: "Change one of the user's meals: when it was eaten (`eatenAt`), a food's amount (`foods`: the item id " +
+      "from get_meals with a new servingId and amount, grams or portions; it stays the same food), or take foods out " +
+      "(`removeFoods`: item ids; to remove the last food, delete the meal). To swap a food, remove it and add_to_meal " +
+      "the right one. Returns the meal. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({
+      mealId: z.number().int().positive(),
+      eatenAt: z.iso.datetime({ offset: true }).optional(),
+      foods: z.array(z.object({ id: z.number().int().positive().describe("The item id from get_meals"), ...amountFields })
+        .refine(value => [value.servingId != null && value.amount != null, value.grams != null, value.portions != null]
+          .filter(Boolean).length === 1, "Give one amount: servingId with amount, or grams, or portions")).max(50).optional(),
+      removeFoods: z.array(z.number().int().positive()).max(50).optional()
+    }).refine(value => value.eatenAt || value.foods?.length || value.removeFoods?.length, "Change at least one thing"),
+    annotations: WRITE
+  }, ({ mealId, ...change }, ctx) => run("update_meal", ctx.http?.authInfo, async ({ db, userId }) => {
+    const { targets, ...data } = await updateMeal(db, userId, mealId, change)
+    return { data, rows: 1, targets }
+  }))
+
+  server.registerTool("delete_meal", {
+    title: "Delete a meal",
+    description: "Delete one of the user's meals (only one they asked you to delete). It can be brought back for 30 " +
+      "days with restore_meal. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ mealId: z.number().int().positive() }),
+    annotations: DELETE
+  }, ({ mealId }, ctx) => run("delete_meal", ctx.http?.authInfo, async ({ userId }) => {
+    const { targets, ...data } = await deleteMeal(userId, mealId)
+    return { data, rows: 1, targets }
+  }))
+
+  server.registerTool("restore_meal", {
+    title: "Restore a deleted meal",
+    description: "Bring back a meal deleted in the last 30 days (in the app or by an agent), with the foods it had " +
+      "when it was deleted. sync_meals lists deleted meals' ids. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ mealId: z.number().int().positive() }),
+    annotations: WRITE
+  }, ({ mealId }, ctx) => run("restore_meal", ctx.http?.authInfo, async ({ db, userId }) => {
+    const { targets, ...data } = await restoreMeal(db, userId, mealId)
+    return { data, rows: 1, targets }
+  }))
 
   server.registerTool("get_weight_history", {
     title: "Get weight history",

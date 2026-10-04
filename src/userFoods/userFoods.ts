@@ -251,17 +251,24 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
+/** Foods with amounts, each priced here as a logged row. `archived` allows an older version (re-amounting a food a past
+ * meal already has). */
+export async function priceItems(userId:string,items:{foodItemId:number;quantity:QuantityInput}[],db:Db=createAdminSupabase(),
+  {archived=false}={}) {
+  const foods=await loadFoods(db,userId,[...new Set(items.map(item=>item.foodItemId))],{archived})
+  return items.map(item=>{
+    const food=foods.get(item.foodItemId)
+    if (!food) fail("food_unavailable",404)
+    return {food:food!,item:pricedItem(food!,item.quantity)}
+  })
+}
+
 /** Logs foods the user picked themselves (Add Food's tray) as one new meal, each priced here. localId makes a retry
  * return the meal already created. */
 export async function logFoodsAsMeal(userId:string,items:{foodItemId:number;quantity:QuantityInput}[],consumedOn:string,
   localId:string,db:Db=createAdminSupabase()) {
   if (!items.length||items.length>50) fail("invalid_meal",422)
-  const foods=await loadFoods(db,userId,[...new Set(items.map(item=>item.foodItemId))])
-  const priced=items.map(item=>{
-    const food=foods.get(item.foodItemId)
-    if (!food) fail("food_unavailable",404)
-    return {food:food!,item:pricedItem(food!,item.quantity)}
-  })
+  const priced=await priceItems(userId,items,db)
   const {data,error}=await (db as any).rpc("log_foods_as_meal",{p_user_id:userId,p_local_id:localId,
     p_consumed_on:utcWallClock(consumedOn),p_content:priced.map(entry=>describe(entry.food,entry.item)).join(", "),
     p_items:priced.map(entry=>entry.item)})
