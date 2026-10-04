@@ -6,6 +6,8 @@ import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChan
 import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
 import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
 import { weightHistory } from "./weight"
+import { createFood, createRecipe, deleteFood, foodFields, recipeFields, updateFood, updateRecipe } from "./foodWrites"
+import { agentWriteRefusal } from "./settings"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
 nutrition), daily totals, goals and body stats, and can update the goals and body stats.
@@ -26,6 +28,9 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   Each result's \`match\` says why it was found: \`name\` (its name has the query's words), \`meaning\` (a close
   meaning), or \`loose\` (a fuzzy text hit that is often a different food): never log a loose match without checking it
   is the same food.
+- Changes (create_food, create_recipe, update_food, update_recipe, delete_food) need the user's "Let agents make
+  changes" setting in the Amino app; without it they fail and say so. Everything an agent creates is private to the
+  user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
 - The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
   portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.`
 
@@ -36,6 +41,11 @@ const allNutrients = z.boolean().default(false)
   .describe("Every nutrient (about 40, vitamins and minerals included) instead of energy, macros, fibre, sugar and sodium")
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const
+const CREATE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const
+const DELETE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false } as const
+/** Changes to the user's foods and meals: only with the user's "Let agents make changes" on, and at a slower rate. */
+const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food"]
+const CHANGES_PER_MINUTE = 20, CHANGES_PER_DAY = 300
 
 type Call = { db: UserDatabase; userId: string }
 type Outcome = { data: object; rows?: number }
@@ -44,7 +54,8 @@ const result = (data: object): CallToolResult =>
   ({ content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data as Record<string, unknown> })
 const failure = (text: string): CallToolResult => ({ isError: true, content: [{ type: "text", text }] })
 
-/** Every tool call: the per-user rate limit, the call itself as the user, and one McpRequest row. */
+/** Every tool call: the per-user rate limit, the call itself as the user, and one McpRequest row. A change also needs the
+ * user's setting (read on every call) and stays under its own limits. */
 async function run(tool: string, authInfo: AuthInfo | undefined, work: (call: Call) => Promise<Outcome>) {
   const userId = (authInfo?.extra as { userId?: string } | undefined)?.userId
   if (!authInfo || !userId) return failure("Not signed in to Amino.")
@@ -60,6 +71,20 @@ async function run(tool: string, authInfo: AuthInfo | undefined, work: (call: Ca
   if ((recent.count ?? 0) >= RATE_LIMIT_PER_MINUTE) {
     await record(false, "rate_limited", null)
     return failure(`Too many requests: at most ${RATE_LIMIT_PER_MINUTE} a minute. Wait a minute and try again.`)
+  }
+  if (CHANGE_TOOLS.includes(tool)) {
+    const refusal = await agentWriteRefusal(userId)
+    if (refusal) {
+      await record(false, "changes_off", null)
+      return failure(refusal)
+    }
+    const changes = (since: number) => admin.from("McpRequest").select("id", { count: "exact", head: true }).eq("userId", userId)
+      .eq("ok", true).in("tool", CHANGE_TOOLS).gte("createdAt", new Date(startedAt - since).toISOString())
+    const [minute, day] = await Promise.all([changes(60_000), changes(86_400_000)])
+    if ((minute.count ?? 0) >= CHANGES_PER_MINUTE || (day.count ?? 0) >= CHANGES_PER_DAY) {
+      await record(false, "rate_limited", null)
+      return failure(`Too many changes: at most ${CHANGES_PER_MINUTE} a minute and ${CHANGES_PER_DAY} a day.`)
+    }
   }
   try {
     const outcome = await work({ db: userDatabase(authInfo.token), userId })
@@ -218,6 +243,62 @@ export function registerAminoTools(server: McpServer) {
     const foods = await listMyFoods(db, userId, { kind, query })
     return { data: { foods }, rows: foods.length }
   }))
+
+  server.registerTool("create_food", {
+    title: "Create my food",
+    description: "Add a food to the user's own foods (private to them; Amino's shared catalogue can't be changed). Use " +
+      "it when search_foods has nothing that is the same food. Energy and macros are for `serving` (e.g. 1 bar = 45 g, " +
+      "as the label says). If the user already has this food (same name and brand, or barcode), nothing is created and " +
+      "the existing one is returned. Returns the food as get_food shows it. Needs the user's \"Let agents make changes\" " +
+      "setting.",
+    inputSchema: z.object(foodFields),
+    annotations: CREATE
+  }, (fields, ctx) => run("create_food", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await createFood(db, userId, fields), rows: 1 })))
+
+  server.registerTool("create_recipe", {
+    title: "Create my recipe",
+    description: "Add a recipe to the user's own recipes: its foods (from search_foods; recipes don't nest) with amounts " +
+      "for the whole recipe, and how many portions they make. Amino prices it per portion from the foods. A recipe with " +
+      "the same name is returned instead of a second one. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object(recipeFields),
+    annotations: CREATE
+  }, (fields, ctx) => run("create_recipe", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await createRecipe(db, userId, fields), rows: 1 })))
+
+  server.registerTool("update_food", {
+    title: "Update my food",
+    description: "Change one of the user's own foods (from list_my_foods or search_foods with source custom). Only the " +
+      "fields you pass change; `nutrients` adds to or replaces the ones you name. Past meals keep the values they were " +
+      "logged with: a food already logged is saved as a new version with a new id, which the result gives. Needs the " +
+      "user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ id: z.number().int().positive(), ...Object.fromEntries(Object.entries(foodFields)
+      .map(([key, schema]) => [key, (schema as z.ZodType).optional()])) as { [K in keyof typeof foodFields]: z.ZodOptional<(typeof foodFields)[K]> } }),
+    annotations: WRITE
+  }, ({ id, ...change }, ctx) => run("update_food", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await updateFood(db, userId, id, change), rows: 1 })))
+
+  server.registerTool("update_recipe", {
+    title: "Update my recipe",
+    description: "Change one of the user's own recipes: its name, portions, cooked weight, or its foods (`ingredients` " +
+      "replaces the whole list; amounts for the whole recipe). Past meals keep the values they were logged with: a " +
+      "recipe already logged is saved as a new version with a new id. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ id: z.number().int().positive(), name: recipeFields.name.optional(),
+      portions: recipeFields.portions.optional(), cookedWeightGrams: recipeFields.cookedWeightGrams,
+      ingredients: recipeFields.ingredients.optional() }),
+    annotations: WRITE
+  }, ({ id, ...change }, ctx) => run("update_recipe", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await updateRecipe(db, userId, id, change), rows: 1 })))
+
+  server.registerTool("delete_food", {
+    title: "Delete my food or recipe",
+    description: "Delete one of the user's own foods or recipes. It leaves their Foods list and search; meals that " +
+      "already have it keep showing it. Only delete what the user asked to. Needs the user's \"Let agents make " +
+      "changes\" setting.",
+    inputSchema: z.object({ id: z.number().int().positive() }),
+    annotations: DELETE
+  }, ({ id }, ctx) => run("delete_food", ctx.http?.authInfo, async ({ userId }) =>
+    ({ data: await deleteFood(userId, id), rows: 1 })))
 
   server.registerTool("get_weight_history", {
     title: "Get weight history",

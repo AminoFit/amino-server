@@ -81,12 +81,16 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   };
   const listed=await call('tools/list',{},1);
   const tools=Object.fromEntries(listed.result.tools.map(tool=>[tool.name,tool]));
-  assert.deepEqual(Object.keys(tools).sort(),['get_daily_summary','get_food','get_meals','get_profile','get_weight_history','list_meals',
-    'list_my_foods','recent_foods','search_foods','sync_meals','update_body_stats','update_goals']);
+  assert.deepEqual(Object.keys(tools).sort(),['create_food','create_recipe','delete_food','get_daily_summary','get_food','get_meals','get_profile',
+    'get_weight_history','list_meals','list_my_foods','recent_foods','search_foods','sync_meals','update_body_stats',
+    'update_food','update_goals','update_recipe']);
   assert.equal(tools.list_my_foods.annotations.readOnlyHint,true);
   assert.deepEqual(tools.list_my_foods.inputSchema.properties.kind.enum,['recipes','foods','all']);
   assert.deepEqual(tools.get_food.inputSchema.required,['id']);
   assert.equal(tools.search_foods.annotations.readOnlyHint,true);
+  assert.equal(tools.delete_food.annotations.destructiveHint,true,'clients ask before a delete');
+  assert.equal(tools.create_food.annotations.readOnlyHint,false);
+  assert.deepEqual(tools.update_food.inputSchema.required,['id'],'an edit passes only what changes');
   assert.deepEqual(tools.search_foods.inputSchema.properties.scope.enum,['all','mine','catalogue']);
   assert.deepEqual(tools.recent_foods.inputSchema.required,['from','to']);
   assert.equal(tools.list_meals.annotations.readOnlyHint,true);
@@ -101,6 +105,7 @@ test('the MCP handler lists every tool with its schema and refuses calls without
 test('tool calls run as the signed-in user, are logged, and write goals the way the app reads them',async()=>{
   const http=require('node:http');
   const seen=[];
+  let writesEnabled=false;
   let user={tzIdentifier:'Europe/London',unitPreference:'METRIC',calorieGoal:2000,proteinGoal:100,carbsGoal:250,fatGoal:67,
     manualMacroGoals:false,weightKg:70,heightCm:175,dateOfBirth:'1990-05-14T23:00:00',gender:'male',activityLevel:'None'};
   const server=http.createServer((req,res)=>{
@@ -114,6 +119,8 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
       if(url.pathname==='/rest/v1/User') return json(user);
       if(url.pathname==='/rest/v1/UserGoalHistory') return json([{effectiveOn:'2026-09-01',calorieGoal:2000,proteinGoal:100,
         carbsGoal:250,fatGoal:67}]);
+      if(url.pathname==='/rest/v1/FeatureFlag') return json({value:'all'});
+      if(url.pathname==='/rest/v1/AgentSettings') return json(writesEnabled?{writesEnabled:true}:null);
       if(url.pathname==='/rest/v1/rpc/mcp_list_meals') return json([{eaten:'2026-09-30 12:00:00',id:7,meal:{id:7}},
         {eaten:'2026-09-30 13:00:00',id:8,meal:{id:8}}]);
       json({message:'unexpected'},404);
@@ -157,6 +164,13 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
     assert.deepEqual(page.structuredContent.meals,[{id:7}]);
     assert.equal(page.structuredContent.hasMore,true);
     assert.equal(seen.find(r=>r.path==='/rest/v1/rpc/mcp_list_meals').body.p_to,'2026-09-30','to defaults to from');
+
+    // Changes to foods need the user's setting; goals don't.
+    const off=await call('delete_food',{id:5});
+    assert.equal(off.isError,true);
+    assert.match(off.content[0].text,/Let agents make changes/);
+    assert.equal(seen.filter(r=>r.path==='/rest/v1/McpRequest'&&r.method==='POST').at(-1).body.errorCode,'changes_off');
+    assert.equal(seen.some(r=>r.path.startsWith('/rest/v1/FoodItem')),false,'nothing is read or written while changes are off');
 
     const invalid=await call('update_goals',{});
     assert.equal(invalid.isError,true,'at least one goal is required');

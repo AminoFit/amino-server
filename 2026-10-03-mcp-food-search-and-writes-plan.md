@@ -1,6 +1,6 @@
 # MCP: food search, and adding, editing and deleting foods and meals
 
-**Date:** 2026-10-03 · **Status:** phases 1-2 server live (2026-10-03); phase 2 app UI, then phases 3-4 · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
+**Date:** 2026-10-03 · **Status:** phases 1-3 server live (2026-10-03); app switch and goal weight built; phase 4 next · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
 
 ## Goal
 
