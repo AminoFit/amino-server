@@ -29,6 +29,9 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   Each result's \`match\` says why it was found: \`name\` (its name has the query's words), \`meaning\` (a close
   meaning), or \`loose\` (a fuzzy text hit that is often a different food): never log a loose match without checking it
   is the same food.
+- A \`meaning\` match is a similar food, not the same product: for a branded or restaurant item ("NAYA toum", "Chipotle
+  bowl") log it only if its name and brand are that item. Otherwise use the restaurant's or maker's published values with
+  create_food (the user's own copy), or tell the user Amino has no record of it; never stand a lookalike in for it.
 - To log a meal: find each food with search_foods (prefer the user's own foods, and recent_foods for usual meals) and
   log_meal with exact amounts. Amino doesn't interpret text: a note is only shown to the user. Meals and their foods
   have ids in list_meals/get_meals; meals you log show \`loggedBy\`.
