@@ -46,7 +46,7 @@ test('setting a macro keeps it exactly; changing only calories rescales macros t
 test('the profile reads the birth date in the user\'s timezone, the way the app saved it',()=>{
   const profile=shapeProfile(row,new Date('2026-09-30T12:00:00Z'));
   assert.deepEqual(profile,{timezone:'America/New_York',units:'imperial',
-    goals:{calories:2000,proteinG:100,carbsG:250,fatG:67,macrosSetByHand:false},
+    goals:{calories:2000,proteinG:100,carbsG:250,fatG:67,macrosSetByHand:false,weightKg:null},
     body:{weightKg:72.5,heightCm:180,dateOfBirth:'1990-05-15',age:36,sex:'female',activityLevel:'Very Active'}});
   assert.equal(storedBirthDate('1990-05-15','America/New_York'),'1990-05-15T04:00:00.000Z');
   assert.equal(birthDateOf(storedBirthDate('1990-05-15','Asia/Tokyo'),'Asia/Tokyo'),'1990-05-15');
@@ -145,6 +145,11 @@ test('tool calls run as the signed-in user, are logged, and write goals the way 
 
     const goals=await call('update_goals',{proteinG:300});
     assert.deepEqual(seen.find(r=>r.method==='PATCH').body,{proteinGoal:300,manualMacroGoals:true});
+    assert.equal(seen.find(r=>r.method==='PATCH').auth,'Bearer service','agent tokens are read-only: writes run on the server');
+    await call('update_goals',{goalWeightKg:72.46});
+    assert.deepEqual(seen.filter(r=>r.method==='PATCH')[1].body,{goalWeightKg:72.5});
+    await call('update_goals',{goalWeightKg:null});
+    assert.deepEqual(seen.filter(r=>r.method==='PATCH')[2].body,{goalWeightKg:null},'null clears the goal weight');
     assert.equal(goals.structuredContent.goals.proteinG,300);
     assert.match(goals.structuredContent.note,/2803 kcal/);
 

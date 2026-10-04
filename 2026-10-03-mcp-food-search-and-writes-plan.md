@@ -1,6 +1,6 @@
 # MCP: food search, and adding, editing and deleting foods and meals
 
-**Date:** 2026-10-03 · **Status:** phase 1 live (2026-10-03); phases 2-4 next · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
+**Date:** 2026-10-03 · **Status:** phases 1-2 server live (2026-10-03); phase 2 app UI, then phases 3-4 · **Scope:** amino-server (`src/mcp`, migrations), amino-mobile (Connected agents, meal rows, goals)
 
 ## Goal
 
@@ -68,6 +68,8 @@ The foods the user logged in a date range, most frequent first, with the usual a
 Done 2026-10-03 (migration `20261011000000_mcp_food_history.sql`, `src/mcp/foods.ts`). Checked live: English, typo, own recipe and filter queries work. Catalogue names are mostly English, so "Haferflocken" or "鶏むね肉" find nothing proper: the instructions tell agents to search in English, and every result carries `match` (`name` | `meaning` | `loose`) so a fuzzy filler ("Chicken Ham" for oats) is never mistaken for the food.
 
 ## Phase 2: permission plumbing and goal weight
+
+Server and database done 2026-10-03 (`20261012000000_agent_access.sql`, applied in the SQL editor; checked live: an agent token reads the user's 2834 meals but updates nothing, the app session updates). The app's API routes (`GetUserIdOnRequest`, `GetAminoUserOnRequest`) also refuse agent tokens: before, an agent token could call any of them, delete-account included.
 
 1. ~~List current RLS write policies~~ (done, see above).
 2. Migration: restrictive "no writes from agent tokens" policy on each table listed above, plus the check in the two weight RPCs; `AgentSettings`; FeatureFlag `mcp_writes` seeded for the owner; `Message.agentClientId`.

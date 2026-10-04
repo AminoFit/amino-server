@@ -15,6 +15,7 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Foods record only the nutrients their source gives (a label often lists a few vitamins). A day's total marked
   \`incomplete\` sums only the foods that record it: say it is partial rather than judging intake from it.
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
+- Goals include an optional goal weight (update_goals goalWeightKg); get_weight_history compares the trend with it.
 - Body stats are metric: convert pounds, feet and inches before calling update_body_stats. A weight set there is a
   weigh-in (now) in the user's weight history, which get_weight_history returns with its trend.
 - To find a food, use search_foods (any language; a barcode works too): it searches the catalogue and the user's own
@@ -83,7 +84,7 @@ function checkRange(from: string, to: string, maxDays: number) {
 export function registerAminoTools(server: McpServer) {
   server.registerTool("get_profile", {
     title: "Get profile",
-    description: "The user's timezone, display units, daily calorie and macro goals, and body stats (weight, height, " +
+    description: "The user's timezone, display units, daily calorie and macro goals and goal weight, and body stats (weight, height, " +
       "date of birth and age, sex, activity level). goalHistory lists the goals from each date they changed (local " +
       "dates, oldest first); the first entry is where history starts.",
     inputSchema: z.object({}),
@@ -225,29 +226,36 @@ export function registerAminoTools(server: McpServer) {
       "trend (an exponential moving average, about a 19-day window) that hides day-to-day water swings. The trend lags a " +
       "changing weight by about 9 days, so for a rate of change (kg per week, energy balance) fit a line through the " +
       "weigh-ins rather than subtracting trend values. `summary` has the latest weigh-in, today's trend and the trend's " +
-      "change over 7 and 30 days. Days without a weigh-in are left out.",
+      "change over 7 and 30 days, and the user's `goalWeightKg` with `trendToGoalKg` (goal minus trend) when they set " +
+      "one. Days without a weigh-in are left out.",
     inputSchema: z.object({ from: date, to: date }),
     annotations: READ
-  }, ({ from, to }, ctx) => run("get_weight_history", ctx.http?.authInfo, async ({ db }) => {
+  }, ({ from, to }, ctx) => run("get_weight_history", ctx.http?.authInfo, async ({ db, userId }) => {
     checkRange(from, to, 731)
-    const history = await weightHistory(db, from, to)
-    return { data: history, rows: history.days.length }
+    const [history, profile] = await Promise.all([weightHistory(db, from, to), getProfile(db, userId)])
+    const goal = profile.goals.weightKg
+    const summary = history.summary && goal != null
+      ? { ...history.summary, goalWeightKg: goal, trendToGoalKg: Math.round((goal - history.summary.trendKg) * 100) / 100 }
+      : history.summary && { ...history.summary, goalWeightKg: goal }
+    return { data: { ...history, summary }, rows: history.days.length }
   }))
 
   server.registerTool("update_goals", {
     title: "Update goals",
-    description: "Set the user's daily calorie and/or macro goals. Macros you set are kept exactly (they are marked " +
-      "as set by hand, so the app won't recalculate them). If you change only calories and the user's macros follow " +
-      "their calories, the macros are rescaled to keep the same split. Returns the updated profile.",
+    description: "Set the user's daily calorie and/or macro goals, and/or their goal weight. Macros you set are kept " +
+      "exactly (they are marked as set by hand, so the app won't recalculate them). If you change only calories and the " +
+      "user's macros follow their calories, the macros are rescaled to keep the same split. goalWeightKg is metric " +
+      "(convert pounds); null clears it. Returns the updated profile.",
     inputSchema: z.object({
       calories: z.number().int().min(800).max(8000).optional().describe("kcal per day"),
       proteinG: z.number().min(0).max(600).optional().describe("grams of protein per day"),
       carbsG: z.number().min(0).max(1500).optional().describe("grams of carbohydrate per day"),
-      fatG: z.number().min(0).max(500).optional().describe("grams of fat per day")
-    }).refine(value => Object.values(value).some(v => v != null), "Set at least one goal"),
+      fatG: z.number().min(0).max(500).optional().describe("grams of fat per day"),
+      goalWeightKg: z.number().min(25).max(350).nullable().optional().describe("the weight the user is aiming for, in kg")
+    }).refine(value => Object.values(value).some(v => v !== undefined), "Set at least one goal"),
     annotations: WRITE
-  }, (change, ctx) => run("update_goals", ctx.http?.authInfo, async ({ db, userId }) =>
-    ({ data: await updateGoals(db, userId, change), rows: 1 })))
+  }, ({ goalWeightKg, ...change }, ctx) => run("update_goals", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await updateGoals(db, userId, { ...change, weightKg: goalWeightKg }), rows: 1 })))
 
   server.registerTool("update_body_stats", {
     title: "Update body stats",

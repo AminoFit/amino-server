@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { Tables } from "types/supabase"
+import { oauthClaims } from "@/mcp/auth"
 
 export async function GetAminoUserOnRequest() {
   const cookieStore = cookies()
@@ -12,6 +13,8 @@ export async function GetAminoUserOnRequest() {
       error: "No token provided"
     }
   }
+  // A connected agent's token (OAuth) works only at /api/mcp, where the user's agent settings apply.
+  if (oauthClaims(token.value)) return { error: "Agent sessions can't do this" }
 
   // Initialize Supabase client
   const supabaseAdmin = createClient(

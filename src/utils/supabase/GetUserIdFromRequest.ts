@@ -13,6 +13,9 @@ const verified = new Map<string, { userId: string; at: number }>()
 export async function GetUserIdOnRequest(): Promise<{ userId?: string; error?: string }> {
   const token = cookies().get("sb-localhost-auth-token")?.value
   if (!token) return { error: "No token provided" }
+  // The app's API is for the app and the website. A connected agent's token (OAuth) works only at /api/mcp, where the
+  // user's agent settings apply.
+  if (oauthClaims(token)) return { error: "Agent sessions can't do this" }
   const key = createHash("sha256").update(token).digest("hex")
   const hit = verified.get(key)
   if (hit && Date.now() - hit.at < VERIFIED_FOR_MS) return { userId: hit.userId }

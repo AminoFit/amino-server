@@ -1,5 +1,6 @@
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 // Weight history for agents (2026-10-03-weight-history-plan.md): weigh-ins from Apple Health, the app and agents,
 // per local day, with the smoothed trend the Progress tab shows. Read through weight_trend as the user.
@@ -30,10 +31,11 @@ export async function weightHistory(db: UserDatabase, from: string, to: string) 
   }
 }
 
-/** One weight an agent records, at a time (default now); the profile weight follows the latest weigh-in. */
-export async function recordWeight(db: UserDatabase, weightKg: number, measuredAt?: string) {
+/** One weight an agent records, at a time (default now); the profile weight follows the latest weigh-in. On the server
+ * for the verified user: agent tokens can't call record_weight themselves. */
+export async function recordWeight(userId: string, weightKg: number, measuredAt?: string) {
   if (measuredAt && Date.parse(measuredAt) > Date.now() + 86_400_000) throw new McpInputError("measuredAt is in the future.")
-  const { error } = await (db as any).rpc("record_weight", { p_weight_kg: Math.round(weightKg * 100) / 100,
-    p_measured_at: measuredAt ?? null, p_source: "agent" })
+  const { error } = await (createAdminSupabase() as any).rpc("record_weight_for", { p_user_id: userId,
+    p_weight_kg: Math.round(weightKg * 100) / 100, p_measured_at: measuredAt ?? null, p_source: "agent" })
   if (error) throw error
 }

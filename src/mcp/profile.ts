@@ -1,17 +1,20 @@
 import { recordWeight } from "./weight"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import moment from "moment-timezone"
 import type { UserDatabase } from "./auth"
 
-// Goals and body stats, read and written the way the app stores them (User row, metric units).
+// Goals and body stats, read and written the way the app stores them (User row, metric units). Reads run as the user;
+// agent tokens can't write (20261012000000_agent_access.sql), so writes run on the server for the verified user.
 
 export const ACTIVITY_LEVELS = ["None", "Light Exercise", "Moderate Exercise", "Very Active", "Extremely Active"] as const
 export const SEXES = ["male", "female", "other"] as const
 
-const PROFILE_COLUMNS = "tzIdentifier,unitPreference,calorieGoal,proteinGoal,carbsGoal,fatGoal,manualMacroGoals," +
+const PROFILE_COLUMNS = "tzIdentifier,unitPreference,calorieGoal,proteinGoal,carbsGoal,fatGoal,manualMacroGoals,goalWeightKg," +
   "weightKg,heightCm,dateOfBirth,gender,activityLevel"
 
 type ProfileRow = { tzIdentifier: string | null; unitPreference: string | null; calorieGoal: number | null
   proteinGoal: number | null; carbsGoal: number | null; fatGoal: number | null; manualMacroGoals: boolean
+  goalWeightKg?: number | string | null
   weightKg: number | string | null; heightCm: number | string | null; dateOfBirth: string | null
   gender: string | null; activityLevel: string | null }
 
@@ -37,7 +40,7 @@ export function shapeProfile(row: ProfileRow, now = new Date()) {
     timezone,
     units: row.unitPreference === "IMPERIAL" ? "imperial" : "metric",
     goals: { calories: row.calorieGoal, proteinG: row.proteinGoal, carbsG: row.carbsGoal, fatG: row.fatGoal,
-      macrosSetByHand: row.manualMacroGoals },
+      macrosSetByHand: row.manualMacroGoals, weightKg: number(row.goalWeightKg ?? null) },
     body: { weightKg: number(row.weightKg), heightCm: number(row.heightCm), dateOfBirth,
       age: dateOfBirth ? moment.tz(now, timezone).diff(moment.tz(dateOfBirth, "YYYY-MM-DD", timezone), "years") : null,
       sex: row.gender, activityLevel: row.activityLevel }
@@ -92,19 +95,21 @@ export function withDayGoals<D extends { date?: unknown }>(days: D[], history: r
   }
 }
 
-async function updateProfile(db: UserDatabase, userId: string, patch: Record<string, unknown>) {
-  const { data, error } = await db.from("User").update(patch).eq("id", userId).select(PROFILE_COLUMNS).single()
+async function updateProfile(userId: string, patch: Record<string, unknown>) {
+  const { data, error } = await (createAdminSupabase() as any).from("User").update(patch).eq("id", userId).select(PROFILE_COLUMNS).single()
   if (error) throw error
   return shapeProfile(data as unknown as ProfileRow)
 }
 
-export type GoalChange = { calories?: number; proteinG?: number; carbsG?: number; fatG?: number }
+export type GoalChange = { calories?: number; proteinG?: number; carbsG?: number; fatG?: number; weightKg?: number | null }
 
 /** The User columns for a goal change. Setting any macro marks the macros as set by hand, so the app keeps them.
  * Changing only calories rescales macros that follow the calories (not set by hand) to keep the user's split. */
 export function goalPatch(current: ProfileRow, change: GoalChange) {
   const patch: Record<string, unknown> = {}
   if (change.calories != null) patch.calorieGoal = Math.round(change.calories)
+  // null clears the goal weight.
+  if (change.weightKg !== undefined) patch.goalWeightKg = change.weightKg == null ? null : Math.round(change.weightKg * 10) / 10
   const macros = { proteinGoal: change.proteinG, carbsGoal: change.carbsG, fatGoal: change.fatG }
   const setsMacro = Object.values(macros).some(value => value != null)
   if (setsMacro) {
@@ -131,7 +136,7 @@ export function goalNote(goals: Profile["goals"]) {
 
 export async function updateGoals(db: UserDatabase, userId: string, change: GoalChange) {
   const patch = goalPatch(await profileRow(db, userId), change)
-  const profile = await updateProfile(db, userId, patch)
+  const profile = await updateProfile(userId, patch)
   return { ...profile, note: goalNote(profile.goals) }
 }
 
@@ -142,10 +147,10 @@ export async function updateBody(db: UserDatabase, userId: string, change: BodyC
   const current = await profileRow(db, userId)
   const patch: Record<string, unknown> = {}
   // A weight is a weigh-in in the history (WeightEntry); the profile weight follows the latest one.
-  if (change.weightKg != null) await recordWeight(db, change.weightKg)
+  if (change.weightKg != null) await recordWeight(userId, change.weightKg)
   if (change.heightCm != null) patch.heightCm = Math.round(change.heightCm * 10) / 10
   if (change.dateOfBirth != null) patch.dateOfBirth = storedBirthDate(change.dateOfBirth, zoneOf(current))
   if (change.sex != null) patch.gender = change.sex
   if (change.activityLevel != null) patch.activityLevel = change.activityLevel
-  return updateProfile(db, userId, patch)
+  return updateProfile(userId, patch)
 }

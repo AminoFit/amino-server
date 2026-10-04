@@ -23,15 +23,21 @@ const routePath = 'app/api/protected/user/update-logged-food-item-serving/route.
 
 test('serving auth verifies the access token without fetching the full profile', async () => {
   let verified = 0
+  let token = 'valid-token'
   const api = load('utils/supabase/GetUserIdFromRequest.ts', {
     'node:crypto': require('node:crypto'),
-    'next/headers': { cookies: () => ({ get: () => ({ value: 'valid-token' }) }) },
+    'next/headers': { cookies: () => ({ get: () => ({ value: token }) }) },
+    '@/mcp/auth': { oauthClaims: value => value === 'agent-token' ? { sub: 'owner', clientId: 'claude' } : null },
     './serverAdmin': { createAdminSupabase: () => ({
       auth: { getUser: async token => { verified++; assert.equal(token, 'valid-token'); return { data: { user: { id: 'owner' } }, error: null } } },
       from() { throw new Error('profile lookup is unnecessary for owned food') }
     }) }
   })
   assert.equal((await api.GetUserIdOnRequest()).userId, 'owner')
+  assert.equal(verified, 1)
+  // A connected agent's token works only at /api/mcp.
+  token = 'agent-token'
+  assert.equal((await api.GetUserIdOnRequest()).error, "Agent sessions can't do this")
   assert.equal(verified, 1)
 })
 
