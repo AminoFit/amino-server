@@ -198,7 +198,8 @@ export function registerAminoTools(server: McpServer) {
       "record is left out), `source` (catalogue, custom = the user's own food, recipe = the user's own recipe), `match` " +
       "(name, meaning, or loose: often a different food), and, when " +
       "the user has logged it, `timesLogged`, `lastLoggedOn` and their `usual` amount. `filters` narrow the results by " +
-      "values per 100 g. Pass nextCursor back as `cursor` for more.",
+      "values per 100 g. When no food has every word of the query in its name or brand, the result says so " +
+      "(`exactMatch: false`). Pass nextCursor back as `cursor` for more.",
     inputSchema: z.object({
       query: z.string().trim().min(1).max(100).optional().describe("Food name, brand or description (in English for the catalogue)"),
       barcode: z.string().trim().min(6).max(20).optional().describe("A product barcode's digits, instead of a query"),

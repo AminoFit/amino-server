@@ -164,7 +164,12 @@ export async function searchFoods(db: UserDatabase, userId: string, input: Searc
   const nextCursor = at.skip + input.limit < cards.length ? encode(at.search, at.skip + input.limit)
     // The user's own foods all come on the first page; later pages are catalogue only.
     : found.nextCursor != null && input.scope !== "mine" ? encode(found.nextCursor, 0) : null
-  return { foods: page, nextCursor }
+  // Nothing has every word of the query in its name or brand ("NAYA garlic sauce": no NAYA food): say so, so a similar
+  // food isn't taken for the product.
+  const exact = cards.some(card => (card as { match?: string }).match === "name")
+  return { foods: page, nextCursor, ...(at.search === 0 && !exact ? { exactMatch: false,
+    note: `No food in Amino has every word of "${input.query!.trim()}" in its name or brand: these are similar foods, not ` +
+      "that product. Don't log one in its place: use the maker's published values with create_food, or tell the user." } : {}) }
 }
 
 /** Any food the user can see by id, with every nutrient, their history with it, and a recipe's foods. */
