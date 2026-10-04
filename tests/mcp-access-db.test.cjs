@@ -10,6 +10,7 @@ const connectionString=process.env.AMINO_MCP_TEST_DATABASE_URL;
 const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261002000000_mcp_access.sql'),'utf8');
 const dailyMicros=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005000000_mcp_daily_micronutrients.sql'),'utf8');
 const consistency=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005020000_nutrition_consistency.sql'),'utf8');
+const foodHistory=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261011000000_mcp_food_history.sql'),'utf8');
 // The nutrient keys as src/nutrition/spec.ts lists them, which the SQL list must equal.
 const specKeys=JSON.parse(fs.readFileSync(path.join(__dirname,'../src/nutrition/spec.ts'),'utf8')
   .match(/HISTORY_NUTRIENTS = (\[[^\]]*\])/)[1].replace(/\s+/g,''));
@@ -160,6 +161,50 @@ test('agents read their own meals by local day, with totals, pages, daily sums a
       await db.query(`UPDATE public."User" SET "tzIdentifier"='Mars/Olympus' WHERE id=$1`,[me]);
       await asUser(db,me);
       assert.equal((await one(db,`SELECT public.mcp_daily_summary('2026-09-30','2026-09-30') AS s`)).s.timezone,'UTC');
+    } finally {
+      await db.query('RESET ROLE').catch(()=>{});
+      await db.end();
+    }
+  });
+
+test('food history counts each food once per meal on local days, with the usual amount, and only the user\'s own',
+  {skip:!connectionString&&'Set AMINO_MCP_TEST_DATABASE_URL for a disposable local database'},async()=>{
+    assertDisposable(connectionString);
+    const db=new Client({connectionString});
+    await db.connect();
+    try {
+      await db.query(BASE);
+      await db.query(migration);
+      await db.query(foodHistory);
+      const me=randomUUID(),other=randomUUID();
+      await db.query(`INSERT INTO public."User"(id,"tzIdentifier") VALUES($1,'America/New_York'),($2,'UTC')`,[me,other]);
+      await db.query(`INSERT INTO public."FoodItem"(id,name) VALUES(1,'Eggs'),(2,'Toast'),(3,'Coffee')`);
+      const meal=async(userId,consumedOn,deletedAt=null)=>(await one(db,`INSERT INTO public."Message"("userId","consumedOn","deletedAt")
+        VALUES($1,$2,$3) RETURNING id`,[userId,consumedOn,deletedAt])).id;
+      const food=(userId,messageId,foodItemId,grams,servingId=null,amount=null,deletedAt=null)=>db.query(
+        `INSERT INTO public."LoggedFoodItem"("userId","messageId","foodItemId",grams,"servingId","servingAmount","loggedUnit","deletedAt")
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[userId,messageId,foodItemId,grams,servingId,amount,servingId?'egg':'g',deletedAt]);
+      // Three breakfasts: two eggs twice, three eggs once; toast twice in one meal counts once.
+      const a=await meal(me,'2026-09-28 12:00:00'),b=await meal(me,'2026-09-29 12:00:00'),c=await meal(me,'2026-09-30 12:00:00');
+      await food(me,a,1,100,7,2); await food(me,b,1,150,7,3); await food(me,c,1,100,7,2);
+      await food(me,a,2,30); await food(me,a,2,30);
+      // 01:00 UTC on 1 Oct is 21:00 on 30 Sep in New York.
+      const late=await meal(me,'2026-10-01 01:00:00'); await food(me,late,3,250);
+      const gone=await meal(me,'2026-09-30 13:00:00','2026-09-30 14:00:00'); await food(me,gone,3,250);
+      await food(me,c,3,250,null,null,'2026-09-30 13:00:00');
+      const theirs=await meal(other,'2026-09-30 12:00:00'); await food(other,theirs,3,250); await food(other,theirs,1,50);
+
+      await asUser(db,me);
+      const all=(await db.query(`SELECT * FROM public.mcp_food_history()`)).rows;
+      assert.deepEqual(all.map(r=>[r.foodId,r.timesLogged]),[[1,3],[3,1],[2,1]],
+        'deleted meals and foods and other users are left out; a tie goes to the most recent');
+      assert.deepEqual([all[0].usualServingId,all[0].usualAmount,all[0].usualUnit,all[0].usualGrams],[7,2,'egg',100]);
+      assert.equal(all[1].lastLoggedOn.toISOString().slice(0,10),'2026-09-30','the local day in the user\'s timezone');
+      const range=(await db.query(`SELECT * FROM public.mcp_food_history('2026-09-29','2026-09-29')`)).rows;
+      assert.deepEqual(range.map(r=>[r.foodId,r.timesLogged,r.usualAmount]),[[1,1,3]]);
+      const some=(await db.query(`SELECT * FROM public.mcp_food_history(NULL,NULL,ARRAY[3,2])`)).rows;
+      assert.deepEqual(some.map(r=>r.foodId).sort(),[2,3]);
+      assert.equal((await db.query(`SELECT * FROM public.mcp_food_history(NULL,NULL,NULL,1)`)).rows.length,1);
     } finally {
       await db.query('RESET ROLE').catch(()=>{});
       await db.end();

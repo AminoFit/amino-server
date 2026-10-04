@@ -22,7 +22,10 @@ const detailColumns = `id,name,brand,description,defaultServingWeightGram,kcalPe
   FoodItemImages(*,FoodImage(id,pathToImage,downvotes)),Serving(*)`
 
 export type FoodSource = "recipe" | "custom" | "catalogue"
-export type FoodResult = { id: number; name: string; similarity: number; source: FoodSource
+/** Why a food was found: its name matches the query's words, it means the same (close embedding), or only loosely
+ * (a typo-tolerant text hit, often unrelated: "Chicken Ham" for "Haferflocken"). */
+export type FoodMatch = "name" | "meaning" | "loose"
+export type FoodResult = { id: number; name: string; similarity: number; match: FoodMatch; source: FoodSource
   lastEditedAt: string | null; createdAt: string | null; recipePortions: number | null; foodItem: Record<string, any> }
 
 const normalize = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
@@ -100,7 +103,9 @@ export async function searchFoodsForUser(userId: string, query: string, options:
     // The four best icons, as the app picks them: fewest downvotes, then the newest.
     const images = [...(food.FoodItemImages ?? [])].filter((image: any) => image.FoodImage)
       .sort((a: any, b: any) => a.FoodImage.downvotes - b.FoodImage.downvotes || b.FoodImage.id - a.FoodImage.id).slice(0, 4)
-    return { id, name: food.name, similarity: similarity.get(id) ?? 1,
+    const match: FoodMatch = food.privateToUserId === userId || proper(food as SearchRow) ? "name"
+      : (similarity.get(id) ?? 0) >= MEANING_FLOOR ? "meaning" : "loose"
+    return { id, name: food.name, similarity: similarity.get(id) ?? 1, match,
       source: food.recipePortions != null ? "recipe" : food.privateToUserId ? "custom" : "catalogue",
       lastEditedAt: food.lastUpdated ?? null, createdAt: food.createdAtDateTime ?? null,
       recipePortions: food.recipePortions ?? null, foodItem: { ...food, FoodItemImages: images } }

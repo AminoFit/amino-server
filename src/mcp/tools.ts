@@ -4,7 +4,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { userDatabase, type UserDatabase } from "./auth"
 import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChanges } from "./meals"
 import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
-import { getMyFood, listMyFoods } from "./userFoods"
+import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
 import { weightHistory } from "./weight"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
@@ -17,8 +17,16 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
 - Body stats are metric: convert pounds, feet and inches before calling update_body_stats. A weight set there is a
   weigh-in (now) in the user's weight history, which get_weight_history returns with its trend.
-- The user's own recipes and foods (list_my_foods, get_my_food) are what they saved in the app. A recipe's values are
-  for one portion; a meal shows it as one food with an amount in portions.`
+- To find a food, use search_foods (any language; a barcode works too): it searches the catalogue and the user's own
+  foods and recipes the way the app does, the user's own first. Each food lists its servings (by servingId) with grams
+  per unit, nutrition per 100 g and per serving, and how often the user logged it with their usual amount. For "my
+  usual …" or "what I eat most", use recent_foods. Foods marked \`estimate\` have estimated values.
+- Food names in the catalogue are mostly English: search in English (translate the user's words), one food per search.
+  Each result's \`match\` says why it was found: \`name\` (its name has the query's words), \`meaning\` (a close
+  meaning), or \`loose\` (a fuzzy text hit that is often a different food): never log a loose match without checking it
+  is the same food.
+- The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
+  portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.`
 
 const RATE_LIMIT_PER_MINUTE = 120
 const date = z.iso.date().describe("Local date, YYYY-MM-DD")
@@ -144,11 +152,64 @@ export function registerAminoTools(server: McpServer) {
     return { data: page, rows: page.changes.length }
   }))
 
+  server.registerTool("search_foods", {
+    title: "Search foods",
+    description: "Search Amino's food catalogue and the user's own foods and recipes, the way the app's search does: " +
+      "typos tolerated (catalogue names are mostly English), the user's own first, then the closest catalogue matches. Or " +
+      "look up a `barcode` " +
+      "(EAN/UPC digits) in the catalogue. Each food has its servings (servingId, unit, gramsPerUnit), nutrition `per100g` " +
+      "and `perServing` (kcal, protein, carbs, fat, saturated fat, fibre, sugar, sodium; a nutrient the food doesn't " +
+      "record is left out), `source` (catalogue, custom = the user's own food, recipe = the user's own recipe), `match` " +
+      "(name, meaning, or loose: often a different food), and, when " +
+      "the user has logged it, `timesLogged`, `lastLoggedOn` and their `usual` amount. `filters` narrow the results by " +
+      "values per 100 g. Pass nextCursor back as `cursor` for more.",
+    inputSchema: z.object({
+      query: z.string().trim().min(1).max(100).optional().describe("Food name, brand or description (in English for the catalogue)"),
+      barcode: z.string().trim().min(6).max(20).optional().describe("A product barcode's digits, instead of a query"),
+      scope: z.enum(["all", "mine", "catalogue"]).default("all").describe("mine: only the user's own foods and recipes"),
+      kind: z.enum(["any", "food", "recipe"]).default("any"),
+      filters: z.object({ minKcal: z.number().min(0).optional(), maxKcal: z.number().min(0).optional(),
+        minProteinG: z.number().min(0).optional(), maxProteinG: z.number().min(0).optional(),
+        maxCarbG: z.number().min(0).optional(), maxFatG: z.number().min(0).optional() }).optional()
+        .describe("Per 100 g"),
+      limit: z.number().int().min(1).max(30).default(10),
+      cursor: z.string().max(200).optional()
+    }).refine(value => !!value.query !== !!value.barcode, "Give either a query or a barcode"),
+    annotations: READ
+  }, (input, ctx) => run("search_foods", ctx.http?.authInfo, async ({ db, userId }) => {
+    const found = await searchFoods(db, userId, input)
+    return { data: found, rows: found.foods.length }
+  }))
+
+  server.registerTool("get_food", {
+    title: "Get food",
+    description: "One food by id (from search_foods, a meal or a recipe) with every nutrient it records, per 100 g and " +
+      "per serving, its servings and the user's history with it. A recipe also lists its foods and their amounts for " +
+      "the whole recipe (all its portions). An older version of the user's own food (replaced by an edit, still used by " +
+      "past meals) is marked `archived` and names the current one in `replacedBy`.",
+    inputSchema: z.object({ id: z.number().int().positive() }),
+    annotations: READ
+  }, ({ id }, ctx) => run("get_food", ctx.http?.authInfo, async ({ db, userId }) =>
+    ({ data: await getFood(db, userId, id), rows: 1 })))
+
+  server.registerTool("recent_foods", {
+    title: "Recent foods",
+    description: "The foods the user logged on the local days from..to, most often logged first (a food counts once " +
+      "per meal), each with `timesLogged`, `lastLoggedOn` and their `usual` amount (servingId and amount, or grams), " +
+      "plus servings and nutrition as in search_foods. For \"my usual breakfast\" or \"what I eat most\".",
+    inputSchema: z.object({ from: date, to: date, limit: z.number().int().min(1).max(100).default(30) }),
+    annotations: READ
+  }, ({ from, to, limit }, ctx) => run("recent_foods", ctx.http?.authInfo, async ({ db, userId }) => {
+    checkRange(from, to, 366)
+    const foods = await recentFoods(db, userId, { from, to, limit })
+    return { data: { foods }, rows: foods.length }
+  }))
+
   server.registerTool("list_my_foods", {
     title: "List my recipes and foods",
-    description: "The user's own recipes and custom foods (saved in the app), most recently edited first: name, kind " +
-      "(recipe or food), what the values are for (one portion of a recipe, else the food's serving), energy, macros, " +
-      "fibre, sugar and sodium, servings, and when each was created and last edited.",
+    description: "The user's own recipes and custom foods (saved in the app), most recently edited first, with " +
+      "servings, nutrition per 100 g and per serving (one portion for a recipe), and when each was created and last " +
+      "edited.",
     inputSchema: z.object({ kind: z.enum(["recipes", "foods", "all"]).default("all"),
       query: z.string().max(100).optional().describe("Only names containing this text") }),
     annotations: READ
@@ -156,15 +217,6 @@ export function registerAminoTools(server: McpServer) {
     const foods = await listMyFoods(db, userId, { kind, query })
     return { data: { foods }, rows: foods.length }
   }))
-
-  server.registerTool("get_my_food", {
-    title: "Get one of my recipes or foods",
-    description: "One of the user's own recipes or foods by id, with every nutrient. A recipe also lists its foods " +
-      "and their amounts for the whole recipe (all its portions).",
-    inputSchema: z.object({ id: z.number().int().positive() }),
-    annotations: READ
-  }, ({ id }, ctx) => run("get_my_food", ctx.http?.authInfo, async ({ db, userId }) =>
-    ({ data: await getMyFood(db, userId, id), rows: 1 })))
 
   server.registerTool("get_weight_history", {
     title: "Get weight history",
