@@ -75,3 +75,14 @@ test('a recipe keeps which nutrients only some ingredients record, and its card 
   assert.deepEqual(card.partial,{vitaminB12Mcg:'1 of 2 ingredients'});
   assert.equal(foodCard(bar,'me').partial,undefined);
 });
+
+test('a USDA record without carbs or fat says so, instead of reading them as 0 (Nice! candy corn 2291236)',()=>{
+  const {mapUsdaFoodItemToFoodItem}=require('../src/FoodDbThirdPty/USDA/usdaInterfaceHelper');
+  const record=(foodInfo)=>({itemName:'NICE!, CANDY CORN',branded:true,brandName:'Walgreens Co.',fdcId:2291236,upc:'049022834323',
+    default_serving:{default_serving_amount:41,default_serving_unit:'g'},foodInfo,portions:[]});
+  const candy=mapUsdaFoodItemToFoodItem(record({Energy:{amount:0,unit:'kcal'},Protein:{amount:0,unit:'g'}}));
+  assert.deepEqual(candy.missingMacros,['totalFatPerServing','carbPerServing']);
+  const full=mapUsdaFoodItemToFoodItem(record({Energy:{amount:160,unit:'kcal'},Protein:{amount:0,unit:'g'},
+    'Total lipid (fat)':{amount:0,unit:'g'},'Carbohydrate, by difference':{amount:39,unit:'g'}}));
+  assert.deepEqual(full.missingMacros,[],'a real 0 g of fat is a value, not a gap');
+});

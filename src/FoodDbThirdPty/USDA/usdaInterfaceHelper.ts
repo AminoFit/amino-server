@@ -152,8 +152,13 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     }
   }
 
+  // Which of energy and the three macros the record actually gives: the food starts at 0 for each, so a missing value
+  // would otherwise read as none (Nice! candy corn 2291236 lists only 0 kcal and 0 g protein; a Sushi Avenue roll had no
+  // fat at all).
+  const present = new Set<string>()
   for (const [nutrientName, nutrientInfo] of Object.entries(usdaFoodItem.foodInfo)) {
     const foodItemKey = nutrientNameToFoodItemKey[nutrientName]
+    if (foodItemKey && nutrientInfo.amount !== null) present.add(foodItemKey)
     if (foodItemKey) {
       // Only set the value if it hasn't been set yet and nutrientInfo.amount is not null
       if (!foodItem[foodItemKey] && nutrientInfo.amount !== null) {
@@ -169,8 +174,13 @@ export function mapUsdaFoodItemToFoodItem(usdaFoodItem: UsdaFoodItem): FoodItemW
     }
   }
 
+  ;(foodItem as FoodItemWithServings & { missingMacros: string[] }).missingMacros =
+    MACRO_KEYS.filter(key => !present.has(key))
   return foodItem
 }
+
+/** The values every food needs; a record without one of them is incomplete, not zero. */
+export const MACRO_KEYS = ["kcalPerServing", "proteinPerServing", "totalFatPerServing", "carbPerServing"] as const
 
 function runTest() {
   const chiaSeeds: UsdaFoodItem = JSON.parse(

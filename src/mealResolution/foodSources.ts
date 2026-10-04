@@ -237,6 +237,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     return (details??[]).flatMap(food=>{
       const grams=food.defaultServingWeightGram
       if (!grams||food.weightUnknown) return []
+      // A record missing energy, protein, fat or carbs isn't a source: its gaps would be stored as 0 (Nice! candy corn's
+      // USDA record has no carbs, so 41 g of candy logged 0 kcal). The barcode then goes to Open Food Facts or the web.
+      if (((food as {missingMacros?:string[]}).missingMacros??[]).length) return []
       const candidate:SourceFood={sourceId:`usda:${food.externalId}`,foodInfoSource:"USDA",externalId:food.externalId,gtin,
         name:food.name,brand:food.brand||null,defaultServingWeightGram:grams,kcal:food.kcalPerServing,
         proteinG:food.proteinPerServing,carbG:food.carbPerServing,totalFatG:food.totalFatPerServing,
