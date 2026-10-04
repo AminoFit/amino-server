@@ -11,6 +11,7 @@ Amino keeps a history of the user's body weight (and body-fat % when a scale pro
 ## Decisions (owner, 2026-10-03)
 
 1. **Read Apple Health only.** Weights entered in Amino are not written to Apple Health (no write permission). Can be revisited.
+1a. **One Apple Health sheet** (owner, 2026-10-03, before launch). Weight and body fat (read) are asked with the food types in the same sheet, wherever Health is connected (setup's weight step, Settings); no separate weight switch. People who connected for food before see the sheet once more (`healthSheetPending`, Settings shows "Tap to add weight"); food export carries on meanwhile. The import runs once the user has seen the sheet.
 2. **Two years of history** on first enable; then only new samples.
 3. **Body fat is shown only when a source provides it** (a smart scale through Health). No manual body-fat entry.
 4. **Both ends:** server (history, functions, MCP) and app (import, Progress tab).
@@ -103,7 +104,7 @@ expenditure = mean daily intake over the window − slope(kg/day) × 7,700
 
 ## Phase 2: app, import and sync
 
-1. **Permission:** `requestAuthorization({ toRead: [BodyMass, BodyFatPercentage] })` when the user turns on "Weight" in Settings › Integrations › Apple Health (a switch beside the food export). Not at launch. iOS never reports whether *read* access was granted: the switch shows "No weight data from Apple Health yet" when the first query returns nothing, never an error. `NSHealthShareUsageDescription` gains "and your weight".
+1. **Permission:** weight and body fat are read types in the one Apple Health sheet (`requestAppleHealthAccess`, decision 1a). iOS never reports whether *read* access was granted: the Apple Health card says "No weight from Apple Health yet" when nothing comes back, never an error. `NSHealthShareUsageDescription` gains "and your weight".
 2. **Import:** `queryQuantitySamplesWithAnchor` for each type; the anchor is kept in MMKV per account. First run: two years back, in pages of 500 through `import_weight_entries`. Then on foreground, like the catalogue refresh. HealthKit returns body fat as a fraction (0.21): × 100.
 3. **Watermelon** `weight_entries` (schema v15 with a migration; extend `tests/watermelon-migration.cjs`), pulled by `updatedAt` like `goal_history`, indexed on `userId, measuredAt`.
 4. **Profile › Weight** (`screens/components/ProfileSettings.tsx`) saves through `record_weight` so the entry carries the time; `saveAllUserInfo` stops rounding to a whole kg.
