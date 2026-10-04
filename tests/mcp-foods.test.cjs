@@ -61,3 +61,17 @@ test('values keep their precision: milligrams and micrograms to three significan
   const card=foodCard({...bar,Nutrient:[...bar.Nutrient,{nutrientName:'Thiamin',nutrientUnit:'mg',nutrientAmountPerDefaultServing:0.2}]},'me',undefined,true);
   assert.equal(card.per100g.vitaminB1Mg,0.364,'a small per-100 g value isn\'t rounded away');
 });
+
+test('a recipe keeps which nutrients only some ingredients record, and its card says so',()=>{
+  const {recipeValues}=require('../src/nutrition');
+  const beef={defaultServingWeightGram:100,kcalPerServing:250,proteinPerServing:26,carbPerServing:0,totalFatPerServing:15};
+  const rice={defaultServingWeightGram:100,kcalPerServing:130,proteinPerServing:2.7,carbPerServing:28,totalFatPerServing:0.3,
+    Nutrient:[{nutrientName:'Vitamin B12',nutrientUnit:'mcg',nutrientAmountPerDefaultServing:0}]};
+  const values=recipeValues([{food:beef,grams:200},{food:rice,grams:300}],2);
+  assert.equal(values.perPortion.vitaminB12Mcg,0,'the known part: rice has none');
+  assert.deepEqual(values.partial,{vitaminB12Mcg:[1,2]},'but beef records no B12, so 0 is a lower bound');
+  assert.equal('kcal' in values.partial,false,'energy is complete');
+  const card=foodCard({...bar,recipePortions:2,privateToUserId:'me',partialNutrients:{vitaminB12Mcg:[1,2]}},'me');
+  assert.deepEqual(card.partial,{vitaminB12Mcg:'1 of 2 ingredients'});
+  assert.equal(foodCard(bar,'me').partial,undefined);
+});

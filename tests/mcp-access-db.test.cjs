@@ -11,6 +11,8 @@ const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/2026
 const dailyMicros=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005000000_mcp_daily_micronutrients.sql'),'utf8');
 const consistency=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261005020000_nutrition_consistency.sql'),'utf8');
 const foodHistory=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261011000000_mcp_food_history.sql'),'utf8');
+const migrationsDir=path.join(__dirname,'../supabase/migrations');
+const readMigration=file=>fs.readFileSync(path.join(migrationsDir,file),'utf8');
 // The nutrient keys as src/nutrition/spec.ts lists them, which the SQL list must equal.
 const specKeys=JSON.parse(fs.readFileSync(path.join(__dirname,'../src/nutrition/spec.ts'),'utf8')
   .match(/HISTORY_NUTRIENTS = (\[[^\]]*\])/)[1].replace(/\s+/g,''));
@@ -205,6 +207,49 @@ test('food history counts each food once per meal on local days, with the usual 
       const some=(await db.query(`SELECT * FROM public.mcp_food_history(NULL,NULL,ARRAY[3,2])`)).rows;
       assert.deepEqual(some.map(r=>r.foodId).sort(),[2,3]);
       assert.equal((await db.query(`SELECT * FROM public.mcp_food_history(NULL,NULL,NULL,1)`)).rows.length,1);
+    } finally {
+      await db.query('RESET ROLE').catch(()=>{});
+      await db.end();
+    }
+  });
+
+test('a recipe that knows a nutrient from only some ingredients makes the meal and the day say the total is partial',
+  {skip:!connectionString&&'Set AMINO_MCP_TEST_DATABASE_URL for a disposable local database'},async()=>{
+    assertDisposable(connectionString);
+    const db=new Client({connectionString});
+    await db.connect();
+    try {
+      await db.query(BASE);
+      await db.query(migration);
+      await db.query(dailyMicros);
+      await db.query('SET check_function_bodies = off'); await db.query(consistency);
+      await db.query(readMigration('20261009000000_recipe_values_and_day_coverage.sql'));
+      await db.query(`CREATE TABLE IF NOT EXISTS public."McpRequest"(id serial PRIMARY KEY)`);
+      await db.query(readMigration('20261013000000_agent_meal_writes.sql'));
+      await db.query(readMigration('20261014040000_recipe_partial_nutrients.sql'));
+      await db.query('RESET check_function_bodies');
+      const me=randomUUID();
+      await db.query(`INSERT INTO public."User"(id,"tzIdentifier") VALUES($1,'UTC')`,[me]);
+      // A bowl whose beef has no vitamin C: 1 of its 2 ingredients records it.
+      await db.query(`INSERT INTO public."FoodItem"(id,name,"partialNutrients") VALUES(1,'Beef bowl','{"vitaminCMg":[1,2]}'),(2,'Banana',null)`);
+      const meal=(await one(db,`INSERT INTO public."Message"("userId","consumedOn",content) VALUES($1,'2026-10-04 12:00','lunch') RETURNING id`,[me])).id;
+      await db.query(`INSERT INTO public."LoggedFoodItem"("userId","messageId","foodItemId",grams,kcal,"proteinG","carbG","totalFatG","vitaminCMg")
+        VALUES($1,$2,1,475,600,40,60,20,0)`,[me,meal]);
+      await asUser(db,me);
+      const day=(await one(db,`SELECT public.mcp_daily_summary('2026-10-04','2026-10-04',true) AS s`)).s.days[0];
+      assert.equal(day.nutrients.vitaminCMg,0,'the known part still adds up');
+      assert.equal(day.incomplete.vitaminCMg,'0 of 1 foods','but the day says it is partial');
+      assert.equal(day.incomplete.kcal,undefined,'energy is complete');
+      const [shown]=(await db.query(`SELECT * FROM public.mcp_get_meals($1)`,[[meal]])).rows.map(r=>r.mcp_get_meals);
+      assert.deepEqual(shown.items[0].partial,{vitaminCMg:'1 of 2 ingredients'});
+      assert.deepEqual(shown.incomplete,{vitaminCMg:'0 of 1 foods'});
+      // A complete food changes nothing.
+      await asOwner(db);
+      await db.query(`INSERT INTO public."LoggedFoodItem"("userId","messageId","foodItemId",grams,kcal,"proteinG","carbG","totalFatG","vitaminCMg")
+        VALUES($1,$2,2,118,105,1.3,27,0.4,10)`,[me,meal]);
+      await asUser(db,me);
+      const both=(await one(db,`SELECT public.mcp_daily_summary('2026-10-04','2026-10-04',true) AS s`)).s.days[0];
+      assert.equal(both.incomplete.vitaminCMg,'1 of 2 foods');
     } finally {
       await db.query('RESET ROLE').catch(()=>{});
       await db.end();

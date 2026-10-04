@@ -16,7 +16,9 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Nutrient names carry their unit: kcal, proteinG (grams), sodiumMg (milligrams), vitaminDMcg (micrograms), waterMl.
 - For questions about intake over time, start with get_daily_summary; use list_meals for what was eaten.
 - Foods record only the nutrients their source gives (a label often lists a few vitamins). A day's total marked
-  \`incomplete\` sums only the foods that record it: say it is partial rather than judging intake from it.
+  \`incomplete\` sums only the foods that record it: say it is partial rather than judging intake from it. A recipe
+  whose ingredients don't all record a nutrient marks it \`partial\` ("7 of 10 ingredients"): its value is a lower
+  bound, and days and meals with that recipe list the nutrient as incomplete.
 - To import every meal or keep a copy up to date, use sync_meals and store the cursor it returns.
 - Goals include an optional goal weight (update_goals goalWeightKg); get_weight_history compares the trend with it.
 - Body stats are metric: convert pounds, feet and inches before calling update_body_stats. A weight set there is a

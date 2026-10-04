@@ -52,18 +52,28 @@ export function columnValues(amounts:Amounts) {
  * be); a portion weighs the cooked weight, or else the ingredients' total, divided by the portions. */
 export function recipeValues(ingredients:{food:FoodBasis;grams:number}[],portions:number,cookedWeightGram?:number|null) {
   if (!ingredients.length||!finite(portions)||portions<=0) throw new Error("invalid_recipe")
-  const totals:Amounts={}
+  const totals:Amounts={},known:Partial<Record<NutrientKey,number>>={}
   let ingredientGrams=0
   for (const {food,grams} of ingredients) {
     const amounts=nutrientsAt(food,grams)
     if (!amounts) throw new Error("ingredient_nutrition_unavailable")
     ingredientGrams+=grams
-    for (const [key,value] of Object.entries(amounts) as [NutrientKey,number][]) totals[key]=(totals[key]??0)+value
+    for (const [key,value] of Object.entries(amounts) as [NutrientKey,number][]) {
+      totals[key]=(totals[key]??0)+value
+      known[key]=(known[key]??0)+1
+    }
   }
   const wholeGrams=finite(cookedWeightGram)&&cookedWeightGram>0?cookedWeightGram:ingredientGrams
   const perPortion=Object.fromEntries(Object.entries(totals).map(([key,value])=>[key,value/portions])) as Amounts
-  return {ingredientGrams,wholeGrams,portionGrams:wholeGrams/portions,totals,perPortion}
+  // A nutrient only some ingredients record is a partial sum (a lower bound), not the recipe's amount: beef without
+  // B12 makes a bowl's 0 µg mean "unknown", not "none". Kept as [ingredients that record it, ingredients].
+  const partial=Object.fromEntries((Object.entries(known) as [NutrientKey,number][])
+    .filter(([,count])=>count<ingredients.length).map(([key,count])=>[key,[count,ingredients.length]])) as PartialNutrients
+  return {ingredientGrams,wholeGrams,portionGrams:wholeGrams/portions,totals,perPortion,partial}
 }
+
+/** Nutrients a recipe knows only from some of its ingredients: [ingredients that record it, ingredients]. */
+export type PartialNutrients = Partial<Record<NutrientKey,[number,number]>>
 
 /** Calories and macros at a weight (a view of nutrientsAt), when they pass validNutrition. */
 export function foodNutrition(food: FoodBasis, grams: number): Nutrition | null {

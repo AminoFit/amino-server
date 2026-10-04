@@ -11,7 +11,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 // lookup: its servings (by id), nutrition per 100 g and per serving, and the user's history with it. Foods are read as
 // the user, so row-level security limits them to shared foods and the user's own.
 
-const columns = `id,name,brand,gtin,foodInfoSource,privateToUserId,archivedAt,recipePortions,cookedWeightGram,isLiquid,
+const columns = `id,name,brand,gtin,foodInfoSource,privateToUserId,archivedAt,recipePortions,cookedWeightGram,isLiquid,partialNutrients,
   defaultServingWeightGram,weightUnknown,createdAtDateTime,lastUpdated,${Object.values(COLUMN_NUTRIENTS).join(",")},
   Serving(id,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing)`
 
@@ -62,6 +62,10 @@ export function foodCard(row: Row, userId: string, history?: History, all = fals
         : main ? `${Number(main.defaultServingAmount ?? 1)} ${main.servingName} (${round(base)} g)` : `${round(base)} g`,
         ...nutrition(row, base, all) }
     } : { nutritionUnknown: true }),
+    // A recipe's values that only some of its ingredients record are lower bounds, not its amount.
+    ...(row.partialNutrients && Object.keys(row.partialNutrients).length ? { partial: Object.fromEntries(
+      Object.entries(row.partialNutrients as Record<string, [number, number]>).map(([key, [known, of]]) =>
+        [key, `${known} of ${of} ingredients`])) } : {}),
     ...(history ? { timesLogged: history.timesLogged, lastLoggedOn: history.lastLoggedOn, usual: usualAmount(history) } : {})
   }
 }

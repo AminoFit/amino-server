@@ -6,7 +6,7 @@ import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { COLUMN_NUTRIENTS, MICRO_KEYS, columnValues, nutrientRows, nutrientsAt, recipeValues, validNutrition,
-  type Amounts, type FoodBasis } from "@/nutrition"
+  type Amounts, type FoodBasis, type PartialNutrients } from "@/nutrition"
 import { normalizeGtin } from "@/mealResolution/barcode"
 
 type Db = ReturnType<typeof createAdminSupabase>
@@ -174,8 +174,16 @@ export async function saveRecipe(userId:string,foodId:number|null,input:RecipeIn
   // Recipes are thought of in portions only (owner): a "whole recipe" serving was the same as a portion for a
   // one-portion recipe and only confused the picker. Grams remain for logging by weight.
   const servings=[{name:"portion",grams:values.portionGrams,amount:1}]
-  return save(db,userId,foodId,food,servings,nutrientRows(values.perPortion),priced.map(item=>({foodItemId:item.food.id,
+  const saved=await save(db,userId,foodId,food,servings,nutrientRows(values.perPortion),priced.map(item=>({foodItemId:item.food.id,
     grams:item.grams,servingId:item.servingId,servingAmount:item.servingAmount,loggedUnit:item.loggedUnit})))
+  await setPartialNutrients(db,saved.foodId,values.partial)
+  return saved
+}
+
+/** Which of a recipe's nutrients only some ingredients record, so totals that include it say they're partial. */
+export async function setPartialNutrients(db:Db,foodId:number,partial:PartialNutrients) {
+  const {error}=await (db as any).from("FoodItem").update({partialNutrients:Object.keys(partial).length?partial:null}).eq("id",foodId)
+  if (error) throw error
 }
 
 export async function archiveUserFood(userId:string,foodId:number,db:Db=createAdminSupabase()) {

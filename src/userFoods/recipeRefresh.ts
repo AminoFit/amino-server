@@ -3,7 +3,9 @@
 // sum is a value, and fill-only kept recipe 15315's vitamin A at the chicken's 60.8 µg after the sauce gained 263).
 // Logs of a recipe keep the values they were logged with; the outbox cron then fills only what they lack.
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { COLUMN_NUTRIENTS, HISTORY_NUTRIENTS, columnValues, nutrientRows, nutrientsAt, recipeValues, type Amounts, type FoodBasis } from "@/nutrition"
+import { COLUMN_NUTRIENTS, HISTORY_NUTRIENTS, columnValues, nutrientRows, nutrientsAt, recipeValues, type Amounts, type FoodBasis,
+  type PartialNutrients } from "@/nutrition"
+import { setPartialNutrients } from "./userFoods"
 
 type Db = ReturnType<typeof createAdminSupabase>
 const FOOD = `id,defaultServingWeightGram,weightUnknown,${Object.values(COLUMN_NUTRIENTS).join(",")},` +
@@ -23,9 +25,10 @@ export function valuesDiffer(before: Amounts, after: Amounts) {
 
 /** Recomputes one recipe from its ingredients as they are now; true when its values changed. */
 export async function refreshRecipe(db: Db, recipeId: number): Promise<boolean> {
-  const recipe = await db.from("FoodItem").select(`${FOOD},recipePortions,cookedWeightGram`).eq("id", recipeId).maybeSingle()
+  const recipe = await db.from("FoodItem").select(`${FOOD},recipePortions,cookedWeightGram,partialNutrients` as any).eq("id", recipeId).maybeSingle()
   if (recipe.error) throw recipe.error
-  const food = recipe.data as unknown as (FoodBasis & { recipePortions: number | null; cookedWeightGram: number | null }) | null
+  const food = recipe.data as unknown as (FoodBasis & { recipePortions: number | null; cookedWeightGram: number | null
+    partialNutrients: PartialNutrients | null }) | null
   if (!food || food.recipePortions == null || !finite(food.defaultServingWeightGram)) return false
   // Generated types predate RecipeIngredient.
   const rows = await (db as any).from("RecipeIngredient").select("foodItemId,grams").eq("recipeFoodItemId", recipeId)
@@ -41,6 +44,9 @@ export async function refreshRecipe(db: Db, recipeId: number): Promise<boolean> 
   // Per default serving (a portion): the stored values are per portion, at the portion's stored weight.
   const perServing = Object.fromEntries(Object.entries(values.perPortion).map(([key, value]) =>
     [key, value! * food.defaultServingWeightGram! / values.portionGrams])) as Amounts
+  // Which nutrients only some ingredients record can change without the values changing (an ingredient gains B12 = 0).
+  if (JSON.stringify(food.partialNutrients ?? {}) !== JSON.stringify(values.partial))
+    await setPartialNutrients(db, recipeId, values.partial)
   if (!valuesDiffer(nutrientsAt(food, food.defaultServingWeightGram!) ?? {}, perServing)) return false
   const saved = await (db as any).rpc("refresh_recipe_values", { p_food_id: recipeId, p_food: columnValues(perServing),
     p_nutrients: nutrientRows(perServing) })
