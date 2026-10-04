@@ -20,10 +20,12 @@ test('meaning-only catalogue rows need a close match',()=>{
 
 test('a scanned barcode finds the user\'s food first, then the catalogue\'s, then a source record; a bad code is refused',async()=>{
   const {foodForBarcode}=require('../src/foodSearch/barcodeLookup');
-  const dbWith=rows=>({from:()=>{const q={select:()=>q,eq:()=>q,is:()=>q,or:()=>q,order:()=>q,limit:async()=>({data:rows,error:null})};return q}});
+  // FoodItem answers with these rows; FoodBarcode (other package sizes) has none.
+  const dbWith=rows=>({from:table=>{const q={select:()=>q,eq:()=>q,is:()=>q,or:()=>q,order:()=>q,
+    limit:async()=>({data:table==='FoodItem'?rows:[],error:null})};return q}});
   const noSources={async barcodeSources(){throw new Error('not reached')},async createFoodFromSource(){throw new Error('not reached')}};
   assert.deepEqual(await foodForBarcode('u1','4809010272010',{db:dbWith([{id:77}]),sources:noSources}),
-    {status:'found',gtin:'04809010272010',foodId:77,created:false},'a 13-digit code is normalised to GTIN-14');
+    {status:'found',gtin:'04809010272010',foodId:77,servingId:null,created:false},'a 13-digit code is normalised to GTIN-14');
   const created=[];
   const sources={async barcodeSources(gtin){return [{sourceId:'off:0',gtin}]},async createFoodFromSource(id){created.push(id);return {status:'created',foodId:99}}};
   assert.deepEqual(await foodForBarcode('u1','04809010272010',{db:dbWith([]),sources}),

@@ -14,7 +14,9 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
     update:fields=>{calls.updates.push(fields);return q},insert:rows=>{calls.inserts.push(rows);return q},
-    abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null})};return q},
+    abortSignal:async()=>({data:column?facts.filter(f=>f[column]===value):facts,error:null}),
+    // Adding a package barcode reads the food (unknown here: nothing is added).
+    maybeSingle:async()=>({data:null,error:null})};return q},
     rpc:(name,args)=>{
     calls.rpc.push([name,args]);
     const result=name==='search_usda_database'?{data:[{fdcId:2345}],error:null}:
@@ -244,9 +246,14 @@ test('barcodes decide duplicates outright, and Jev sees the facts that separate 
 });
 
 function attachHarness({food={id:15295,name:'Lala 100 +Proteina Leche 1% Grasa',brand:'Lala',gtin:null},owner=null,jev={status:'ok',choice:'same',confidence:0.96}}={}){
-  const calls={enrich:[],jev:[],discovered:[]};
-  const db={from:()=>{let byGtin=false;const q={select:()=>q,limit:()=>q,or:()=>q,is:()=>q,eq:column=>{byGtin=column==='gtin';return q},
-    abortSignal:async()=>({data:byGtin?(owner?[owner]:[]):[{defaultServingWeightGram:250,kcalPerServing:130,proteinPerServing:15,Serving:[],...food}],error:null})};return q},
+  const calls={enrich:[],jev:[],discovered:[],packages:[]};
+  const row={defaultServingWeightGram:250,kcalPerServing:130,proteinPerServing:15,Serving:[],privateToUserId:null,archivedAt:null,...food};
+  const db={from:table=>{let byGtin=false;const q={select:()=>q,limit:()=>q,or:()=>q,is:()=>q,order:()=>q,eq:column=>{byGtin=column==='gtin';return q},
+    // FoodItem by barcode: the owner; FoodBarcode: no other package yet; FoodItem by id: the food.
+    abortSignal:async()=>({data:byGtin?(table==='FoodItem'&&owner?[owner]:[]):[row],error:null}),
+    then:(resolve,reject)=>Promise.resolve({data:byGtin?[]:[row],error:null}).then(resolve,reject),
+    maybeSingle:async()=>({data:row,error:null}),
+    insert:async value=>{calls.packages.push(value);return {error:null}},update:()=>({eq:async()=>({error:null})})};return q},
     rpc:(name,args)=>{calls.enrich.push(args);return {abortSignal:async()=>({data:{foodId:args.p_food_id,added:args.p_food.gtin?['gtin','alias']:[],conflict:false},error:null})}}};
   const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes:['07501020548440'],
     signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
@@ -262,10 +269,21 @@ test('a decoded barcode is attached to the catalogue food the package is, so the
   assert.equal(calls.jev[0].state.package.barcode,'07501020548440');
 });
 
-test('attaching a barcode refuses other products: another barcode, a sibling variant, or an undecoded code',async()=>{
-  let h=attachHarness({food:{id:15295,name:'Lala Light',brand:'Lala',gtin:'07501020500001'}});
-  assert.match((await h.sources.attachBarcode(15295,'07501020548440','Lala 100 1%')).reason,/another_barcode/);
-  h=attachHarness({jev:{status:'ok',choice:'different',confidence:0.95}});
+test('a food that carries another barcode gains this one as another package when it is the same product',async()=>{
+  // Meal 30492: fairlife's 14 fl oz bottle on the food that carries the 8 fl oz one's barcode looped on a refusal.
+  const h=attachHarness({food:{id:15321,name:'Chocolate Reduced Fat Ultra-filtered Milk',brand:'fairlife',gtin:'00856312002795'}});
+  assert.deepEqual(await h.sources.attachBarcode(15321,'07501020548440','fairlife chocolate 14 fl oz'),{status:'attached',foodId:15321});
+  assert.equal(h.calls.packages[0].gtin,'07501020548440');
+  assert.equal(h.calls.packages[0].foodItemId,15321);
+  assert.equal(h.calls.enrich.length,0,'the main barcode stays');
+  const other=attachHarness({food:{id:15321,name:'Chocolate Reduced Fat Ultra-filtered Milk',brand:'fairlife',gtin:'00856312002795'},
+    jev:{status:'ok',choice:'different',confidence:0.95}});
+  assert.equal((await other.sources.attachBarcode(15321,'07501020548440','fairlife strawberry')).status,'refused','another product is still refused');
+  assert.equal(other.calls.packages.length,0);
+});
+
+test('attaching a barcode refuses other products: a sibling variant, or an undecoded code',async()=>{
+  let h=attachHarness({jev:{status:'ok',choice:'different',confidence:0.95}});
   assert.equal((await h.sources.attachBarcode(15295,'07501020548440','Lala Deslactosada')).status,'refused');
   h=attachHarness({jev:{status:'ok',choice:'same',confidence:0.6}});
   assert.equal((await h.sources.attachBarcode(15295,'07501020548440','Lala 100')).status,'refused','an unsure decision never attaches');

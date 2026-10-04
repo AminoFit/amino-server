@@ -3,6 +3,7 @@ import { foodNutrition, validNutrition, HISTORY_NUTRIENTS, type HistoryNutrition
 const finite=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)
 import type { MealProposal } from "@/mealOperations/contracts"
 import type { MealResolutionInput, MealResolutionResult } from "./resolve"
+import { carries } from "./evidence"
 
 type Nutrition = HistoryNutrition & {kcal:number;proteinG:number|null;carbG:number|null;totalFatG:number|null}
 export type PublishedItem = {logicalItemId:string;foodId:number;grams:number;
@@ -154,10 +155,10 @@ export function compileMealPlan(input:MealResolutionInput,result:MealResolutionR
   // A barcode decoded from the photos is a product in the meal: some item must be the
   // catalogue food that carries it, never a similar food without the barcode.
   for (const gtin of result.barcodes??[]) {
-    if (!items.some(item=>result.evidence.foods.get(item.foodId)?.gtin===gtin))
+    if (!items.some(item=>carries(result.evidence.foods.get(item.foodId),gtin)))
       throw fail("barcode_not_covered",`no item is the food carrying barcode ${gtin}: findFood with that gtin, then addFood the matching source`)
     // One scanned product is one item: "2 of these" is its quantity, never a second item.
-    if (items.filter(item=>result.evidence.foods.get(item.foodId)?.gtin===gtin).length>1)
+    if (items.filter(item=>carries(result.evidence.foods.get(item.foodId),gtin)).length>1)
       throw fail("duplicate_barcode_item",`barcode ${gtin} is one product: log it as one item and put the amount in its quantity`)
   }
   const perGroup=new Set<string>()

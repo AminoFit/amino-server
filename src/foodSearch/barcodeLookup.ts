@@ -11,6 +11,7 @@ type Db=ReturnType<typeof createAdminSupabase>
 const LOOKUP_MS=52_000
 
 import { catalogueFoodForGtin } from "./barcodeCatalogue"
+import { foodForGtin } from "./packageBarcodes"
 export { catalogueFoodForGtin }
 
 /** The food for a barcode the app's camera read (docs/barcode-camera-plan.md), decided without a model: the user's own
@@ -23,8 +24,9 @@ export async function foodForBarcode(userId:string,code:string,options:{db?:Db;s
   const gtin=normalizeGtin(code)
   if (!gtin) throw new UserFoodError("invalid_barcode",422)
   const db=options.db??createAdminSupabase()
-  const known=await catalogueFoodForGtin(db,userId,gtin)
-  if (known) return {status:"found" as const,gtin,foodId:known,created:false}
+  const known=await foodForGtin(db,userId,gtin)
+  // A package barcode opens the food at that package's serving (the 14 fl oz bottle).
+  if (known) return {status:"found" as const,gtin,foodId:known.foodId,servingId:known.servingId,created:false}
   const signal=anySignal(options.signal,LOOKUP_MS)
   const sources=options.sources??createFoodSources({userId,messageId:null,signal,discover:()=>{},barcodes:[gtin]},{db})
   const lookup=sources.barcodeProduct?await sources.barcodeProduct(gtin)

@@ -2,7 +2,7 @@ import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
 import { COLUMN_NUTRIENTS, nutrientRound, nutrientsAt, type Amounts } from "@/nutrition"
 import { normalizeGtin } from "@/mealResolution/barcode"
-import { catalogueFoodForGtin } from "@/foodSearch/barcodeCatalogue"
+import { foodForGtin } from "@/foodSearch/packageBarcodes"
 import { searchFoodsForUser } from "@/foodSearch/searchFoods"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
@@ -142,13 +142,17 @@ export async function searchFoods(db: UserDatabase, userId: string, input: Searc
   if (input.barcode?.trim()) {
     const gtin = normalizeGtin(input.barcode)
     if (!gtin) throw new McpInputError("That barcode isn't valid: check its digits.")
-    const id = await catalogueFoodForGtin(createAdminSupabase(), userId, gtin)
-    if (!id) return { foods: [], barcode: gtin, found: false,
+    const known = await foodForGtin(createAdminSupabase(), userId, gtin)
+    if (!known) return { foods: [], barcode: gtin, found: false,
       note: "No food in Amino has this barcode. Search by the product's name, or create it as the user's own food." }
+    const id = known.foodId
     const rows = await loadRows(db, [id])
     const [history] = await foodHistory(db, { foodIds: [id] })
     const row = rows.get(id)
-    return { foods: row ? [foodCard(row, userId, history)] : [], barcode: gtin, found: !!row }
+    const card = row ? foodCard(row, userId, history) : null
+    // The barcode's package (one of the food's sizes): log one of it.
+    const pack = card && known.servingId != null ? card.servings.find(serving => serving.servingId === known.servingId) : undefined
+    return { foods: card ? [{ ...card, ...(pack ? { barcodePackage: pack } : {}) }] : [], barcode: gtin, found: !!row }
   }
   const at = decode(input.cursor)
   const found = await searchFoodsForUser(userId, input.query!, { mode: input.kind === "food" ? "ingredient" : "log",

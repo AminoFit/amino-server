@@ -21,6 +21,22 @@ export type CatalogFood = {
   privateToUserId?:string|null
   /** Set for the user's recipe: the portions it makes. Its default serving ("portion") is one portion. */
   recipePortions?:number|null
+  /** Its other package barcodes (FoodItem.gtin is the main one), each with the package's serving when known. */
+  FoodBarcode?:{gtin:string;servingId:number|null}[]|null
+  /** Set on a food found by one of its package barcodes in this meal: that package's serving ("bottle", 414 g). */
+  packageServingId?:number|null
+}
+
+/** Whether a food carries this barcode, as its main one or as another package size. */
+export const carries=(food:Pick<CatalogFood,"gtin"|"FoodBarcode">|null|undefined,gtin:string)=>
+  !!food&&(food.gtin===gtin||(food.FoodBarcode??[]).some(row=>row.gtin===gtin))
+
+/** The food as the package this barcode is: its gtin reads as the scanned one, and its package serving is the default
+ * amount (the 14 fl oz bottle, not the 8 fl oz one the food's main barcode is). */
+export function asScanned(food:CatalogFood,gtin:string):CatalogFood {
+  if (food.gtin===gtin) return food
+  const row=(food.FoodBarcode??[]).find(barcode=>barcode.gtin===gtin)
+  return row?{...food,gtin,packageServingId:row.servingId}:food
 }
 export type HistoricalFood = {
   id:number;updatedAt:string;foodItemId:number;name:string;brand:string|null;
@@ -31,7 +47,7 @@ export type HistoricalFood = {
 export type MealEvent = {messageId:number;revision:number;originalText:string;consumedOn:string;consumedOnLocal?:string;
   hasimages:boolean;foods:HistoricalFood[];groups:unknown[]}
 
-const catalogColumns = "id,name,brand,gtin,privateToUserId,recipePortions,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing)"
+const catalogColumns = "id,name,brand,gtin,privateToUserId,recipePortions,description,lastUpdated,defaultServingWeightGram,weightUnknown,kcalPerServing,proteinPerServing,carbPerServing,totalFatPerServing,satFatPerServing,transFatPerServing,fiberPerServing,sugarPerServing,addedSugarPerServing,Serving(id,foodItemId,servingName,servingWeightGram,defaultServingAmount),Nutrient(nutrientName,nutrientUnit,nutrientAmountPerDefaultServing),FoodBarcode(gtin,servingId)"
 const historyColumns = `id,updatedAt,foodItemId,grams,${HISTORY_NUTRIENTS.join(",")},servingId,servingAmount,loggedUnit,extendedOpenAiData,FoodItem(id,name,brand)`
 
 // Legacy imports stored some serving sizes as the amount ("355 ml" x355, "1 cup" 240 g x240), which makes one
@@ -103,11 +119,14 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     /** Catalogue foods carrying a barcode decoded from this meal's photos. */
     async findFoodsByGtin(gtins:string[]) {
       if (!gtins.length) return []
-      // Never an archived version of a user's food (recipes carry no barcode).
-      const result=await db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).is("archivedAt",null)
-        .order("privateToUserId",{ascending:true,nullsFirst:false}).order("id").limit(10).abortSignal(signal)
-      if (result.error) throw new Error("catalogue_unavailable")
-      const ids=((result.data??[]) as {id:number}[]).map(row=>row.id)
+      // Never an archived version of a user's food (recipes carry no barcode). Other package sizes are in FoodBarcode.
+      const [result,packages]=await Promise.all([
+        db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).is("archivedAt",null)
+          .order("privateToUserId",{ascending:true,nullsFirst:false}).order("id").limit(10).abortSignal(signal),
+        (db as any).from("FoodBarcode").select("foodItemId").in("gtin",gtins.slice(0,10)).or(visible).limit(10).abortSignal(signal)])
+      if (result.error||packages.error) throw new Error("catalogue_unavailable")
+      const ids=[...new Set([...((result.data??[]) as {id:number}[]).map(row=>row.id),
+        ...((packages.data??[]) as {foodItemId:number}[]).map(row=>row.foodItemId)])]
       for (const id of ids) discovered.add(id)
       return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
     },

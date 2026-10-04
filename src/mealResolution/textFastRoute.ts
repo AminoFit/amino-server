@@ -229,6 +229,9 @@ export function labelledServing(food: CatalogFood): MealProposal["items"][number
   const servings = food.Serving.filter(serving => usableServing(serving))
   const asServing = (serving: CatalogFood["Serving"][number]) =>
     ({ kind: "serving" as const, servingId: serving.id, amount: Number(serving.defaultServingAmount) })
+  // Scanned by one of its package barcodes: that package (the 14 fl oz bottle), not the main barcode's.
+  const scannedPackage = food.packageServingId != null ? servings.find(serving => serving.id === food.packageServingId) : undefined
+  if (scannedPackage) return asServing(scannedPackage)
   const same = servings.find(serving => Math.abs(serving.servingWeightGram! - grams) <= 0.5)
   if (same) return asServing(same)
   if (grams === 100 && servings.length) return asServing([...servings].sort((a, b) => a.id - b.id)[0])

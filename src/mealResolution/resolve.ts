@@ -2,7 +2,7 @@ import { generateText, jsonSchema, NoObjectGeneratedError, Output, stepCountIs, 
 import { z } from "zod"
 import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
-import { createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
+import { asScanned, carries, createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
 import { loadMealPhotos } from "./photos"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
 import { decodeBarcodes, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
@@ -494,7 +494,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         // missing (or a failed look) leaves the meal to the agent.
         const missing=await missingVisibleFoods(photos.map(photo=>photo.url),"",merged.items.map(item=>{
           const food=evidence.foods.get(item.foodId!)
-          return food?.gtin&&barcodes.includes(food.gtin)?{name:food.name,contains:"Identified by its decoded barcode: this is the packaged product in the photo, whatever its packaging looks like."}
+          return food&&barcodes.some(gtin=>carries(food,gtin))?{name:food.name,contains:"Identified by its decoded barcode: this is the packaged product in the photo, whatever its packaging looks like."}
             :{name:food?.name??`food ${item.foodId}`}})).catch(()=>["second_look_failed"])
         if (missing.length) {trace.push("photo_fast_route: second look found more");return null}
         trace.push(`photo_fast_route: ${outcome.foods.map(food=>`food ${food.foodId}`).join(", ")}`)
@@ -726,8 +726,9 @@ type BarcodeOutcome={food:CatalogFood|null;notFood:string|null;searched:boolean
   /** Nothing knows or names the digits: a misread. */ unnamed?:boolean}
 async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvidence>,
   sources:ReturnType<typeof createFoodSources>):Promise<BarcodeOutcome> {
-  const [known]=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
-  if (known?.gtin===gtin) return {food:known,notFood:null,searched:true}
+  const found=await evidence.findFoodsByGtin([gtin]).catch(()=>[] as CatalogFood[])
+  const known=found.find(food=>carries(food,gtin))
+  if (known) return {food:asScanned(known,gtin),notFood:null,searched:true}
   // The databases, then a web search of the digits (supplements are mostly on neither database).
   const lookup=sources.barcodeProduct?await sources.barcodeProduct(gtin)
     :{foods:await sources.barcodeSources(gtin),notFood:null,failed:false}
@@ -737,7 +738,7 @@ async function barcodeFood(gtin:string,evidence:ReturnType<typeof createMealEvid
   if (added.status!=="created"&&added.status!=="existing") return {food:null,notFood:null,searched:false}
   evidence.forget(added.foodId)
   const food=(await evidence.getFoodsAndServings([added.foodId])).foods[0]
-  return {food:food?.gtin===gtin?food:null,notFood:null,searched:false}
+  return {food:food&&carries(food,gtin)?asScanned(food,gtin):null,notFood:null,searched:false}
 }
 
 /** A tool result as status and IDs only: never names or text, so it can be logged. */
