@@ -81,7 +81,7 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   };
   const listed=await call('tools/list',{},1);
   const tools=Object.fromEntries(listed.result.tools.map(tool=>[tool.name,tool]));
-  assert.deepEqual(Object.keys(tools).sort(),['add_to_meal','create_food','create_recipe','delete_food','delete_meal','get_daily_summary','get_food',
+  assert.deepEqual(Object.keys(tools).sort(),['add_catalogue_food','add_to_meal','create_food','create_recipe','delete_food','delete_meal','get_daily_summary','get_food',
     'get_meals','get_profile','get_weight_history','list_meals','list_my_foods','log_meal','recent_foods','restore_food','restore_meal',
     'search_foods','sync_meals','update_body_stats','update_food','update_goals','update_meal','update_recipe']);
   assert.equal(tools.list_my_foods.annotations.readOnlyHint,true);
@@ -96,7 +96,9 @@ test('the MCP handler lists every tool with its schema and refuses calls without
   assert.equal('text' in tools.log_meal.inputSchema.properties,false,'agents log exact foods, never text for the meal agent');
   assert.equal(tools.create_food.annotations.readOnlyHint,false);
   assert.deepEqual(tools.update_food.inputSchema.required,['id'],'an edit passes only what changes');
-  assert.deepEqual(tools.search_foods.inputSchema.properties.scope.enum,['all','mine','catalogue']);
+  assert.deepEqual(tools.search_foods.inputSchema.properties.scope.enum,['all','mine','catalogue','usda']);
+  assert.equal(tools.add_catalogue_food.annotations.readOnlyHint,false);
+  assert.equal(tools.add_catalogue_food.annotations.destructiveHint,false);
   assert.deepEqual(tools.recent_foods.inputSchema.required,['from','to']);
   assert.equal(tools.list_meals.annotations.readOnlyHint,true);
   assert.equal(tools.update_goals.annotations.readOnlyHint,false);

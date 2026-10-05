@@ -8,6 +8,7 @@ import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
 import { weightHistory } from "./weight"
 import { createFood, createRecipe, deleteFood, foodFields, recipeFields, restoreFood, updateFood, updateRecipe } from "./foodWrites"
 import { agentWriteRefusal } from "./settings"
+import { addCatalogueFood, pointerFrom } from "./catalogueAdds"
 import { addToMeal, agentName, amountFields, deleteMeal, logMeal, mealFood, restoreMeal, updateMeal } from "./mealWrites"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
@@ -34,13 +35,18 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - A \`meaning\` match is a similar food, not the same product: for a branded or restaurant item ("NAYA toum", "Chipotle
   bowl") log it only if its name and brand are that item. Otherwise use the restaurant's or maker's published values with
   create_food (the user's own copy), or tell the user Amino has no record of it; never stand a lookalike in for it.
+- When Amino doesn't have a food, add it from a database before creating the user's own: search_foods with scope "usda"
+  finds USDA records (by usdaId), and add_catalogue_food adds one, or a product by its barcode (from USDA or Open Food
+  Facts), or a USDA or Open Food Facts page, to Amino's shared catalogue. Barcode digits must come from the package or the
+  user, never a guess; check the name and brand it returns are the product the user means. create_food is the last
+  resort, for foods no database has (homemade food, a label the user reads out).
 - To log a meal: find each food with search_foods (prefer the user's own foods, and recent_foods for usual meals) and
   log_meal with exact amounts. Amino doesn't interpret text: a note is only shown to the user. Meals and their foods
   have ids in list_meals/get_meals; meals you log show \`loggedBy\`.
 - Changes (log_meal, add_to_meal, update_meal, delete_meal, restore_meal, create_food, create_recipe, update_food,
   update_recipe, delete_food, restore_food) need the user's "Let agents make changes" setting in the Amino app; without it they fail
-  and say so. Confirm with the user before deleting anything. Everything an agent creates is private to the
-  user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
+  and say so. Confirm with the user before deleting anything. Foods and recipes an agent creates are private to
+  the user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
 - The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
   portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.`
 
@@ -205,7 +211,8 @@ export function registerAminoTools(server: McpServer) {
     inputSchema: z.object({
       query: z.string().trim().min(1).max(100).optional().describe("Food name, brand or description (in English for the catalogue)"),
       barcode: z.string().trim().min(6).max(20).optional().describe("A product barcode's digits, instead of a query"),
-      scope: z.enum(["all", "mine", "catalogue"]).default("all").describe("mine: only the user's own foods and recipes"),
+      scope: z.enum(["all", "mine", "catalogue", "usda"]).default("all")
+        .describe("mine: only the user's own foods and recipes; usda: USDA records Amino doesn't have yet (add one with add_catalogue_food)"),
       kind: z.enum(["any", "food", "recipe"]).default("any"),
       filters: z.object({ minKcal: z.number().min(0).optional(), maxKcal: z.number().min(0).optional(),
         minProteinG: z.number().min(0).optional(), maxProteinG: z.number().min(0).optional(),
@@ -218,6 +225,27 @@ export function registerAminoTools(server: McpServer) {
   }, (input, ctx) => run("search_foods", ctx.http?.authInfo, async ({ db, userId }) => {
     const found = await searchFoods(db, userId, input)
     return { data: found, rows: found.foods.length }
+  }))
+
+  server.registerTool("add_catalogue_food", {
+    title: "Add a catalogue food",
+    description: "Add a food to Amino's shared catalogue from a database, when search_foods doesn't have it: a USDA " +
+      "FoodData Central record (`usdaId`, from search_foods with scope \"usda\"), a product `barcode` (looked up in USDA " +
+      "and Open Food Facts), or a `url` of a USDA or Open Food Facts page. The values come from that database, never from " +
+      "you. Returns `added` (new), `found` (Amino already had it) with the food as search_foods shows it, or `unknown` " +
+      "(nothing added). A barcode's food has the package it is (`barcodePackage`). Check the name and brand are the " +
+      "product the user means before logging it. At most 5 foods a minute and 50 a day.",
+    inputSchema: z.object({
+      barcode: z.string().trim().min(6).max(20).optional().describe("The product's EAN/UPC digits, from the package or the user"),
+      usdaId: z.number().int().positive().optional().describe("A USDA FoodData Central id (fdcId)"),
+      url: z.string().trim().max(500).optional().describe("A fdc.nal.usda.gov or openfoodfacts.org product page")
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, (input, ctx) => run("add_catalogue_food", ctx.http?.authInfo, async ({ db, userId, authInfo }) => {
+    const pointer = pointerFrom(input)
+    const { data, targets } = await addCatalogueFood(db, userId, { clientId: authInfo.clientId, name: await agentName(authInfo) },
+      pointer)
+    return { data, rows: "food" in data && data.food ? 1 : 0, targets }
   }))
 
   server.registerTool("get_food", {

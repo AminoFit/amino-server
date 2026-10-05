@@ -4,6 +4,7 @@ import { COLUMN_NUTRIENTS, nutrientRound, nutrientsAt, type Amounts } from "@/nu
 import { normalizeGtin } from "@/mealResolution/barcode"
 import { foodForGtin } from "@/foodSearch/packageBarcodes"
 import { searchFoodsForUser } from "@/foodSearch/searchFoods"
+import { searchUsda } from "@/foodSearch/usda"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
 // Foods for agents (2026-10-03-mcp-food-search-and-writes-plan.md): the app's own search, the user's foods and recipes,
@@ -111,7 +112,7 @@ async function currentVersions(db: UserDatabase, archived: number[]) {
   return current
 }
 
-export type SearchInput = { query?: string; barcode?: string; scope: "all" | "mine" | "catalogue"
+export type SearchInput = { query?: string; barcode?: string; scope: "all" | "mine" | "catalogue" | "usda"
   kind: "any" | "food" | "recipe"; limit: number; cursor?: string
   filters?: { minKcal?: number; maxKcal?: number; minProteinG?: number; maxProteinG?: number; maxCarbG?: number; maxFatG?: number } }
 
@@ -144,16 +145,12 @@ export async function searchFoods(db: UserDatabase, userId: string, input: Searc
     if (!gtin) throw new McpInputError("That barcode isn't valid: check its digits.")
     const known = await foodForGtin(createAdminSupabase(), userId, gtin)
     if (!known) return { foods: [], barcode: gtin, found: false,
-      note: "No food in Amino has this barcode. Search by the product's name, or create it as the user's own food." }
-    const id = known.foodId
-    const rows = await loadRows(db, [id])
-    const [history] = await foodHistory(db, { foodIds: [id] })
-    const row = rows.get(id)
-    const card = row ? foodCard(row, userId, history) : null
-    // The barcode's package (one of the food's sizes): log one of it.
-    const pack = card && known.servingId != null ? card.servings.find(serving => serving.servingId === known.servingId) : undefined
-    return { foods: card ? [{ ...card, ...(pack ? { barcodePackage: pack } : {}) }] : [], barcode: gtin, found: !!row }
+      note: "No food in Amino has this barcode. add_catalogue_food adds it from USDA or Open Food Facts when they have it; " +
+        "otherwise search by the product's name, or create it as the user's own food." }
+    const card = await cardFor(db, userId, known.foodId, known.servingId)
+    return { foods: card ? [card] : [], barcode: gtin, found: !!card }
   }
+  if (input.scope === "usda") return usdaResults(input.query!, input.limit)
   const at = decode(input.cursor)
   const found = await searchFoodsForUser(userId, input.query!, { mode: input.kind === "food" ? "ingredient" : "log",
     cursor: at.search })
@@ -178,6 +175,28 @@ export async function searchFoods(db: UserDatabase, userId: string, input: Searc
   return { foods: page, nextCursor, ...(at.search === 0 && !exact ? { exactMatch: false,
     note: `No food in Amino has every word of "${input.query!.trim()}" in its name or brand: these are similar foods, not ` +
       "that product. Don't log one in its place: use the maker's published values with create_food, or tell the user." } : {}) }
+}
+
+/** One food's card with the user's history; a barcode's package serving (one of the food's sizes) as `barcodePackage`. */
+export async function cardFor(db: UserDatabase, userId: string, foodId: number, packageServingId?: number | null) {
+  const [rows, [history]] = await Promise.all([loadRows(db, [foodId]), foodHistory(db, { foodIds: [foodId] })])
+  const row = rows.get(foodId)
+  if (!row) return null
+  const card = foodCard(row, userId, history)
+  const pack = packageServingId != null ? card.servings.find(serving => serving.servingId === packageServingId) : undefined
+  return { ...card, ...(pack ? { barcodePackage: pack } : {}) }
+}
+
+/** USDA FoodData Central records Amino doesn't have yet (the app's "More from USDA"): read only, added with
+ * add_catalogue_food. */
+export async function usdaResults(query: string, limit: number, search: typeof searchUsda = searchUsda) {
+  const found = await search(query, { limit: Math.min(limit, 25) })
+  return { foods: found.map(food => ({ usdaId: food.fdcId, name: food.name, brand: food.brand ?? null, inAmino: false,
+    perServing: { serving: `${round(food.servingGrams)} g`, kcal: round(food.kcal), proteinG: round(food.proteinG),
+      carbG: round(food.carbG), totalFatG: round(food.totalFatG) },
+    servings: food.servings.map(serving => ({ unit: serving.unit, amount: serving.amount, grams: round(serving.grams) })) })),
+    nextCursor: null,
+    note: "USDA records Amino doesn't have yet. To log one, add it first with add_catalogue_food({ usdaId })." }
 }
 
 /** Any food the user can see by id, with every nutrient, their history with it, and a recipe's foods. */

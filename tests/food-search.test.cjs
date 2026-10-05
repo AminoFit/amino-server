@@ -27,9 +27,10 @@ test('a scanned barcode finds the user\'s food first, then the catalogue\'s, the
   assert.deepEqual(await foodForBarcode('u1','4809010272010',{db:dbWith([{id:77}]),sources:noSources}),
     {status:'found',gtin:'04809010272010',foodId:77,servingId:null,created:false},'a 13-digit code is normalised to GTIN-14');
   const created=[];
-  const sources={async barcodeSources(gtin){return [{sourceId:'off:0',gtin}]},async createFoodFromSource(id){created.push(id);return {status:'created',foodId:99}}};
-  assert.deepEqual(await foodForBarcode('u1','04809010272010',{db:dbWith([]),sources}),
-    {status:'found',gtin:'04809010272010',foodId:99,created:true});
+  const sources={async barcodeSources(gtin){return [{sourceId:'off:0',foodInfoSource:'Online',externalId:`off:${gtin}`,gtin}]},
+    async createFoodFromSource(id){created.push(id);return {status:'created',foodId:99}}};
+  assert.deepEqual(await foodForBarcode('u1','04809010272010',{db:dbWith([]),sources,enqueueIcon:async()=>{}}),
+    {status:'found',gtin:'04809010272010',foodId:99,created:true,source:{kind:'Online',ref:'off:04809010272010'}});
   assert.deepEqual(created,['off:0']);
   const none={async barcodeSources(){return []},async createFoodFromSource(){throw new Error('not reached')}};
   assert.deepEqual(await foodForBarcode('u1','04809010272010',{db:dbWith([]),sources:none}),{status:'unknown',gtin:'04809010272010'});

@@ -217,6 +217,8 @@ const enqueueSupplementIcon=async(id:number,supplement:{name:string;unit:string}
 
 export function createFoodSources(ctx:{userId:string;/** The meal being resolved; null for a lookup outside a meal (a barcode scan). */ messageId:number|null;signal:AbortSignal;discover:(id:number)=>void;
   /** A food this meal read earlier was changed by a write: forget the cached copy. */ refresh?:(id:number)=>void;
+  /** Called before an existing food is enriched, superseded or given a package barcode (an agent's change keeps its
+   * before state for repair). */ beforeChange?:(foodId:number)=>Promise<unknown>;
   /** GTINs decoded by the barcode library from this meal's photos; the only barcodes a source may carry. */
   barcodes?:string[]},deps:Deps={}) {
   let client:ReturnType<typeof createAdminSupabase>|undefined
@@ -327,6 +329,13 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     if (!gtin) return []
     const usda=await usdaByGtin(gtin).catch(()=>[])
     return usda.length?usda:await offByGtin(gtin).catch(()=>[])
+  }
+
+  /** One USDA record by its FDC id (a page an agent or user points at). Its barcode is the one USDA's record lists. */
+  async function usdaSource(fdcId:number):Promise<SourceFood[]> {
+    const details=await (deps.usda??getUsdaFoodsInfo)({fdcIds:[String(fdcId)]})
+    const upc=(details??[])[0]?.UPC
+    return fromUsda(details,upc?normalizeGtin(String(upc).padStart(14,"0")):null)
   }
 
   async function usdaByName(query:string):Promise<SourceFood[]> {
@@ -560,6 +569,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
   return {
     sources,
     barcodeSources,
+    usdaSource,
     barcodeProduct,
     fillMicros,
     /** Sources in order of cost; the catalogue was already searched. A barcode's USDA record first. A label is
@@ -681,6 +691,7 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
           new Map(duplicate.candidates.map(c=>[c.id,isEstimate(facts.find(f=>f.id===c.id))])))
       }
       if (duplicate.status==="existing") {
+        await ctx.beforeChange?.(duplicate.foodId)
         // A verified source that is the same food as an estimate supersedes it (B5): the estimate takes the source's
         // serving and nutrients, with the old row backed up and any disagreement recorded.
         if (food.foodInfoSource!=="AgentEstimate"&&duplicate.estimate) {
