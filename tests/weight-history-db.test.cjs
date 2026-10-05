@@ -7,7 +7,8 @@ const {assertDisposable}=require('./helpers/mealTestDb.cjs');
 
 // Weight history (20261010000000_weight_history.sql) on a real database, as the signed-in user.
 const connectionString=process.env.AMINO_WEIGHT_TEST_DATABASE_URL;
-const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261010000000_weight_history.sql'),'utf8');
+const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261010000000_weight_history.sql'),'utf8')+
+  fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261014080000_weight_trend_robust.sql'),'utf8');
 
 // Just enough of Supabase: roles with its default table grants, auth.uid() from the JWT claims, "User", valid_timezone.
 const BASE=`DO $$ BEGIN
@@ -86,7 +87,8 @@ test('weight history: Health import, the latest weight, deletions, profile and a
     await asUser(db,other);
     assert.equal((await db.query(`SELECT count(*)::int n FROM "WeightEntry"`)).rows[0].n,0);
 
-    // The trend: an exponential moving average (alpha 0.1) of daily weights, carried over days without a weigh-in.
+    // The trend: an exponential moving average (alpha 0.1 a day) carried over days without a weigh-in; a weigh-in
+    // after a gap counts its days, and one reading moves it at most 2%.
     const trendUser=randomUUID();
     await asOwner(db);
     await db.query(`INSERT INTO "User"(id) VALUES ($1)`,[trendUser]);
@@ -95,7 +97,12 @@ test('weight history: Health import, the latest weight, deletions, profile and a
       sample('weight','2026-09-01T07:00:00Z',80),sample('weight','2026-09-02T07:00:00Z',81),sample('weight','2026-09-04T07:00:00Z',79)])]);
     const trend=(await db.query(`SELECT day::text,"weightKg"::float8 kg,"trendKg"::float8 trend FROM weight_trend('2026-09-01','2026-09-04')`)).rows;
     assert.deepEqual(trend,[{day:'2026-09-01',kg:80,trend:80},{day:'2026-09-02',kg:81,trend:80.1},
-      {day:'2026-09-03',kg:null,trend:80.1},{day:'2026-09-04',kg:79,trend:79.99}]);
+      {day:'2026-09-03',kg:null,trend:80.1},{day:'2026-09-04',kg:79,trend:79.89}]);
+    // A misread morning (73.1 kg at 5:22 with 16% body fat, 81 kg at 8:34): the reading nearest the trend is the day's.
+    await db.query('SELECT import_weight_entries($1::jsonb)',[JSON.stringify([sample('weight','2026-09-05T09:22:00Z',73.1),
+      sample('weight','2026-09-05T12:34:00Z',79.9)])]);
+    const misread=(await db.query(`SELECT "weightKg"::float8 kg,"trendKg"::float8 trend FROM weight_trend('2026-09-05','2026-09-05')`)).rows[0];
+    assert.deepEqual(misread,{kg:79.9,trend:79.89});
   } finally {
     await asOwner(db).catch(()=>{});
     await db.end();

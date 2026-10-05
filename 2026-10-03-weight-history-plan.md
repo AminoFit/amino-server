@@ -57,12 +57,20 @@ CREATE INDEX ON "WeightEntry"("userId", "measuredAt") WHERE "deletedAt" IS NULL;
 
 - **`import_weight_entries(p_rows jsonb)`** (the signed-in user; at most 500 rows): upsert by `healthSampleId`, soft-delete rows named in `p_deleted`, then refresh `User.weightKg`. Returns how many changed. Sets `app.weight_import`.
 - **`record_weight(p_measured_at, p_weight_kg, p_source)`**: one entry from the app's Profile editor or MCP, then the `User.weightKg` refresh.
-- **`weight_trend(p_from date, p_to date)`**: per local day in the range: the day's weight (mean of the day's entries), body fat if any, and the **trend** (below), plus the change over 7 and 30 days. Used by the Progress tab (through sync) and MCP.
+- **`weight_trend(p_from date, p_to date)`**: per local day in the range: the day's weight (the reading the trend counted), body fat if any, and the **trend** (below), plus the change over 7 and 30 days. Used by the Progress tab (through sync) and MCP.
 - **`energy_expenditure(p_days int)`**: the estimate described below, with its uncertainty and why it can't be given when it can't.
 
 ## The trend line (display)
 
 An exponential moving average over daily weights, α = 0.1 (about a 19-day half-weight window; MacroFactor's trend behaves like this). Days without a weighing carry the trend forward. The EMA lags the raw weights by roughly 1/α − 1 ≈ 9 days during a steady change, which is fine for a line whose job is to hide water swings, and wrong for arithmetic, which is why it isn't used for expenditure.
+
+Since 2026-10-05 (migration 20261014080000, and the app's `weightTrend.ts`) the average is robust: α is per day, so a
+weigh-in after a gap counts for the days it covers (1 − 0.9^days; weighing every third day had lagged three times as
+much); one reading moves the trend at most 2% of it (1.5 kg at 75 kg); and a day with several readings counts the one
+nearest the trend, with its own body fat (the first day: the one nearest its median). On the owner's history this cut
+the error against a trend of their normal readings from 0.35 to 0.22 kg: their scale had recorded 72–74 kg readings at
+3–5 am on mornings when they weighed 81 kg at 8:30. Expenditure will need the same care: four of the six readings from
+27 August to 8 September 2026 are such misreadings, and a plain regression would follow them.
 
 ## Estimating expenditure (TDEE)
 
