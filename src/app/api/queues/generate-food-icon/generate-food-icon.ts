@@ -189,9 +189,10 @@ const requestIcon = (apiKey: string, foodName: string, look?: string) => fetch("
 async function generateIcon(foodName: string, look?: string) {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY
   if (!apiKey) throw new Error("OpenRouter is not configured")
-  // Bursts are rate-limited (429): wait and try again. Missing credits (402) will not recover by waiting.
+  // Bursts are rate-limited (429) and the provider sometimes fails upstream (5xx: a 520 left Lawry's marinade, 15374,
+  // without an icon): wait and try again. Missing credits (402) will not recover by waiting.
   let response = await requestIcon(apiKey, foodName, look)
-  for (let attempt = 1; response.status === 429 && attempt <= 3; attempt++) {
+  for (let attempt = 1; (response.status === 429 || response.status >= 500) && attempt <= 3; attempt++) {
     await response.body?.cancel()
     await new Promise(resolve => setTimeout(resolve, 15000 * attempt))
     response = await requestIcon(apiKey, foodName, look)
