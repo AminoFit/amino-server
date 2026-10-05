@@ -13,6 +13,7 @@
 //   --ids <a,b,…>        (without --export) look up only these foods
 //   --matches <file>     apply judged matches: [{"foodId": 1, "fdcId": 2345}] (fdcId null for none)
 //   --as-estimates       with --matches: branded commodities given their generic food, recorded as estimates
+//   --note <text>        with --as-estimates: why it's an estimate (default: a branded commodity's generic profile)
 //   --correct            generic foods: replace a vitamin or mineral more than 2x off its USDA match (or 0 where USDA has
 //                        a real amount), then recompute those nutrients on the owner's logs (previous values recorded)
 //   --correct --rescale  instead: a food whose own rows (not the backfill's) are all off USDA by one factor stored a
@@ -249,7 +250,7 @@ async function main() {
       const added = Object.keys(missing).length ? await sources0.fillMicros(food.id, { defaultServingWeightGram: food.defaultServingWeightGram!, micros: missing }) : 0
       if (added) {
         await pg.query(`INSERT INTO "FoodMicroFill"("foodItemId", keys, source) VALUES ($1, $2, $3)`, [food.id, Object.keys(missing),
-          args.includes("--as-estimates") ? JSON.stringify({ estimate: "generic profile for a branded commodity", usda: found.source, judged: true })
+          args.includes("--as-estimates") ? JSON.stringify({ estimate: option("note") ?? "generic profile for a branded commodity", usda: found.source, judged: true })
             : `${found.source} (judged)`])
         filled++
         console.log(`  + ${food.id} ${food.name}: ${added} from ${found.source}`)

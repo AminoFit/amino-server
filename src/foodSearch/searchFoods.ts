@@ -18,7 +18,7 @@ const MAX_OWN = 400
 
 const detailColumns = `id,name,brand,description,defaultServingWeightGram,kcalPerServing,totalFatPerServing,satFatPerServing,
   transFatPerServing,carbPerServing,sugarPerServing,addedSugarPerServing,proteinPerServing,fiberPerServing,isLiquid,
-  defaultServingLiquidMl,privateToUserId,recipePortions,lastUpdated,createdAtDateTime,
+  defaultServingLiquidMl,privateToUserId,recipePortions,lastUpdated,createdAtDateTime,knownAs,
   FoodItemImages(*,FoodImage(id,pathToImage,downvotes)),Serving(*)`
 
 export type FoodSource = "recipe" | "custom" | "catalogue"
