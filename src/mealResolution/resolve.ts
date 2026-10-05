@@ -309,9 +309,12 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const report=(preview:MealPreviewItem[])=>{Promise.resolve(deps.onProgress?.("found",preview)).catch(()=>{})}
     // A plain text meal can skip the agent: Jev matches the listed items while the agent starts, and a plan that
     // passes the check wins the race (FeatureFlag.meal_text_fast_route).
-    const plainText=!!input.originalText.trim()&&!input.attachmentIds.length&&!input.useExistingPhotos&&!scanned.gtins.length&&
+    // Words with scanned chips race too (meal 30505, "Espresso with oat milk" and the Oatly chip, took the agent 65 s):
+    // the scanned products are locked items and Jev matches the rest of the words.
+    const wordsOnly=!!scanned.text&&!input.attachmentIds.length&&!input.useExistingPhotos&&
       !input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
-    const fastWanted=plainText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
+    const plainText=wordsOnly&&!scanned.gtins.length,chipText=wordsOnly&&scanned.gtins.length>0
+    const fastWanted=plainText||chipText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
     const textListed=Promise.all([photosLoaded,fastWanted]).then(([list,fast])=>list.length||!scanned.text||
       !deps.onProgress&&!fast?[]:(deps.textFoods??streamTextFoods)(scanned.text,
@@ -328,11 +331,17 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       const [items,past]=await Promise.all([textListed,refersToPastMeal(input,{signal:controller.signal}).catch(()=>true)])
       // "Same as yesterday" copies a past meal: only the agent reads history.
       if (past) {trace.push("fast_route: past_meal");return null}
-      const outcome=await textFastProposal(input,items,evidence,{signal:controller.signal})
+      // Every chip must be a known product with a real labelled serving; anything else is the agent's.
+      const locked=chipText?await lockedLoaded:[]
+      const scannedProducts=locked.flatMap(row=>row.food?[{food:row.food,gtin:row.gtin,chip:scanned.chips.get(row.gtin)!}]:[])
+      if (scannedProducts.length<locked.length||!scannedProducts.every(product=>product.chip&&servingKnown(product.food))) {
+        trace.push("fast_route: scanned product unresolved");return null}
+      const outcome=await textFastProposal(input,items,evidence,{signal:controller.signal,scanned:scannedProducts})
       mark("fast_route",fastRouteStarted)
       if (!outcome.proposal) {trace.push(`fast_route: ${outcome.reason}`);return null}
       const quick:MealResolutionResult={proposal:outcome.proposal,evidence,visibleFoods:[],photoIds:[],
-        model:"text-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,barcodes:[],checked:true,timeline,trace}
+        model:chipText?"barcode-text-fast-route":"text-fast-route",provider:"server",durationMs:0,steps:0,toolCalls:0,
+        barcodes:scannedProducts.map(product=>product.gtin),checked:true,timeline,trace}
       const problem=await compileCheckedMealPlan(input,quick,{secondLook:false}).then(()=>null,
         (error:unknown)=>error instanceof Error?error.message:"invalid_plan")
       if (problem) {trace.push(`fast_route: check ${problem.slice(0,60)}`);return null}
@@ -448,8 +457,6 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // Route A: barcodes and nothing else, all found: one labelled serving of each product, no model turn. Only when
     // each product has a real labelled serving: a food stored per 100 g alone would log 100 g of a 1 L carton (meal
     // 30323); the agent then reads the amount from the label, with the product still locked.
-    const servingKnown=(food:CatalogFood)=>{const quantity=labelledServing(food)
-      return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
     const amountAgrees=lockedFoods.every(food=>packageQuantity(food)!==null)
     if (!amountAgrees) trace.push("barcode: the photo shows more than one serving")
     if (photosOnly&&lockedFoods.length&&!unresolved.length&&scene&&!visible.length&&!unreadBoxes&&lockedFoods.every(servingKnown)&&
@@ -674,8 +681,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     }
     const agentRun=agent()
     agentRun.catch(()=>{})
-    const quick=await Promise.race([plainText?fast:photoFast,agentRun.then(()=>null,()=>null)])
-    if (quick) console.info(plainText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
+    const quick=await Promise.race([plainText||chipText?fast:photoFast,agentRun.then(()=>null,()=>null)])
+    if (quick) console.info(plainText||chipText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
       ms:Math.round(quick.durationMs),foods:quick.proposal.items.length})
     return finished=quick??await agentRun
   } catch (error) {
@@ -688,6 +695,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     recordResolution({model:finished?.model??selected.id,validationErrorCode:input.validationErrorCode,timeline,trace,steps,toolCalls,
       durationMs:performance.now()-started,...(failure?{error:failure}:{})})}
 }
+
+/** A product has a real labelled serving: a food stored per 100 g alone would log 100 g of a 1 L carton (meal 30323). */
+const servingKnown=(food:CatalogFood)=>{const quantity=labelledServing(food)
+  return quantity.kind==="serving"||(quantity.kind==="mass"&&quantity.grams!==100)}
 
 /** What the AI SDK reports for one agent step (only what the debug record reads). */
 type AgentStep={usage?:{inputTokens?:number;outputTokens?:number};providerMetadata?:Record<string,unknown>;finishReason?:string;

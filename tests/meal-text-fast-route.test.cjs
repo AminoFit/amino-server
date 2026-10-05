@@ -177,3 +177,44 @@ test('unbranded history always fits; a brand fits when named without spaces',()=
   assert.equal(fast.historyFits({id:2,name:'Avocado Oil',brand:'Chosen Foods',logs:2},'avocado oil'),false)
   assert.equal(fast.historyFits({id:3,name:'Milk Shake',brand:'Core Power'},'Vanilla corepower'),true)
 })
+
+// Meal 30505: "Espresso with oat milk" and the scanned Oatly chip went to the agent (65 s, after a timed-out attempt).
+const oatly={...food(15375,'Oatmilk Barista Edition',[['serving',240]],'Oatly'),gtin:'00190646650070',defaultServingWeightGram:240}
+const espresso=food(1091,'espresso shot',[['fl oz',29.6]])
+const chip='[barcode:00190646650070]'
+const scannedOatly=[{food:oatly,gtin:oatly.gtin,chip}]
+const coffee={originalText:`Espresso with oat milk ${chip}`,consumedOn:input.consumedOn}
+const coffeeItems=[{food:'espresso',quote:'Espresso',detail:'',grams:60},{food:'oat milk',quote:'oat milk',detail:'',grams:60}]
+
+test('words naming a scanned product point at its item; the chip covers it and the rest is matched',async()=>{
+  // The scanned product is asked which item names it (oat milk); then only espresso is matched.
+  const {select,tasks}=jev([{choice:'item_1',confidence:0.96},{choice:'food_1091',confidence:0.95}])
+  const out=plain(await fast.textFastProposal(coffee,coffeeItems,evidenceWith([espresso]),{select,scanned:scannedOatly}))
+  assert.deepEqual(out.proposal.items.map(i=>[i.foodId,i.quantity.kind]),[[15375,'serving'],[1091,'estimated_mass']])
+  assert.deepEqual(out.proposal.items[0].evidence,['barcode:00190646650070','food:15375'])
+  assert.deepEqual(out.proposal.components.map(c=>[c.sourceText,c.itemIndexes]),[[chip,[0]],['Espresso',[1]],['oat milk',[0]]])
+  assert.deepEqual(Object.values(tasks[0].questions.selection.criteria).slice(1),['Espresso','oat milk'])
+  assert.equal(tasks.length,2)
+})
+
+test('a scanned product the words do not name is still one labelled serving; an amount in the words is used',async()=>{
+  const alone=plain(await fast.textFastProposal({originalText:`Espresso ${chip}`,consumedOn:input.consumedOn},[coffeeItems[0]],
+    evidenceWith([espresso]),{select:jev([{choice:'none',confidence:0.95},{choice:'food_1091',confidence:0.95}]).select,scanned:scannedOatly}))
+  assert.deepEqual(alone.proposal.items.map(i=>[i.foodId,i.quantity.kind,i.quantity.amount]),[[15375,'serving',1],[1091,'estimated_mass',undefined]])
+  assert.deepEqual(alone.proposal.components.map(c=>c.sourceText),[chip,'Espresso'])
+  const two=plain(await fast.textFastProposal({originalText:`2 servings oat milk ${chip}`,consumedOn:input.consumedOn},
+    [{food:'oat milk',quote:'2 servings oat milk',detail:'',grams:480}],evidenceWith([]),
+    {select:jev([{choice:'item_0',confidence:0.97}]).select,scanned:scannedOatly}))
+  assert.deepEqual(two.proposal.items.map(i=>[i.foodId,i.quantity.amount]),[[15375,2]])
+  // Words that name the product with an amount this can't read for it go to the agent.
+  const unread=await fast.textFastProposal({originalText:`a splash of oat milk ${chip}`,consumedOn:input.consumedOn},
+    [{food:'oat milk',quote:'a splash of oat milk',detail:'',grams:30}],evidenceWith([]),
+    {select:jev([{choice:'item_0',confidence:0.97}]).select,scanned:scannedOatly})
+  assert.equal(unread.reason,'amount_mismatch')
+})
+
+test('unsure which words name the scanned product: the agent',async()=>{
+  const out=await fast.textFastProposal(coffee,coffeeItems,evidenceWith([espresso]),
+    {select:jev([{choice:'item_1',confidence:0.6}]).select,scanned:scannedOatly})
+  assert.equal(out.reason,'scanned_unclear')
+})
