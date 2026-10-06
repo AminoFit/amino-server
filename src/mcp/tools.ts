@@ -231,8 +231,10 @@ export function registerAminoTools(server: McpServer) {
     title: "Add a catalogue food",
     description: "Add a food to Amino's shared catalogue from a database, when search_foods doesn't have it: a USDA " +
       "FoodData Central record (`usdaId`, from search_foods with scope \"usda\"), a product `barcode` (looked up in USDA " +
-      "and Open Food Facts), or a `url` of a USDA or Open Food Facts page. The values come from that database, never from " +
-      "you. Returns `added` (new), `found` (Amino already had it) with the food as search_foods shows it, or `unknown` " +
+      "and Open Food Facts; when neither has it, the barcode's product listings name the product and the barcode is added " +
+      "to the food Amino already has that is surely that product), or a `url` of a USDA or Open Food Facts page. The " +
+      "values come from a database or the food Amino has, never from you: don't look the barcode up yourself first. " +
+      "Returns `added` (new), `found` (Amino already had it) with the food as search_foods shows it, or `unknown` " +
       "(nothing added). A barcode's food has the package it is (`barcodePackage`). Check the name and brand are the " +
       "product the user means before logging it. At most 5 foods a minute and 50 a day.",
     inputSchema: z.object({

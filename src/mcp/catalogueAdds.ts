@@ -4,13 +4,18 @@ import { createFoodSources } from "@/mealResolution/foodSources"
 import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 import { foodForBarcode } from "@/foodSearch/barcodeLookup"
 import { foodForGtin } from "@/foodSearch/packageBarcodes"
+import { nameBarcode } from "@/foodSearch/barcodeIdentity"
+import { searchFoodsForUser } from "@/foodSearch/searchFoods"
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
 import { cardFor } from "./foods"
 
 // Agents add shared catalogue foods from a pointer (2026-10-05-mcp-catalogue-adds-plan.md): a USDA FoodData Central id or
-// a barcode, never facts the agent wrote. A barcode is looked up in USDA and Open Food Facts only, whose records carry it,
-// never a web search (an agent's typed digits could find another product there). The duplicate check, enrichment and
+// a barcode, never facts the agent wrote. A barcode is looked up in USDA and Open Food Facts, whose records carry it; a
+// web search never creates a food from an agent's typed digits (they could find another product there). Failing those,
+// the barcode's listings (UPCitemdb, Brave) only name the product, and the barcode is attached to the food Amino
+// already has when Jev is sure that is the named product: mistyped digits name another product and attach nothing
+// (fairlife strawberry 14 fl oz, 2026-10-06: the agent looked the digits up itself). The duplicate check, enrichment and
 // barcode rules are the app's own (createFoodFromSource). Not behind the user's "Let agents make changes" setting: the
 // user's own data doesn't change, and logging the food still needs it. FeatureFlag mcp_catalogue_adds is the rollout and
 // kill switch. Every change is recorded with the user and the agent (CatalogueAgentChange) for repair.
@@ -96,7 +101,10 @@ export function changesBetween(before: Snapshot, after: Snapshot) {
 type Deps = { db?: Db; flag?: (userId: string) => Promise<boolean>
   barcode?: typeof foodForBarcode; sources?: (beforeChange: (foodId: number) => Promise<unknown>) =>
     Pick<ReturnType<typeof createFoodSources>, "usdaSource" | "createFoodFromSource">
+  name?: typeof nameBarcode; search?: typeof searchFoodsForUser
+  attach?: () => Pick<ReturnType<typeof createFoodSources>, "attachBarcode">
   enqueueIcon?: (foodId: number) => Promise<unknown>; card?: typeof cardFor }
+type SourceKind = "USDA" | "OpenFoodFacts" | "BarcodeName"
 
 /** Adds a USDA or Open Food Facts food to the shared catalogue (or finds the one already there) and returns its card. */
 export async function addCatalogueFood(userDb: UserDatabase, userId: string, agent: Agent, pointer: Pointer, deps: Deps = {}) {
@@ -115,7 +123,7 @@ export async function addCatalogueFood(userDb: UserDatabase, userId: string, age
   const befores = new Map<number, Snapshot | null>()
   const beforeChange = async (foodId: number) => { if (!befores.has(foodId)) befores.set(foodId, await snapshot(db, foodId)) }
   const signal = AbortSignal.timeout(LOOKUP_MS)
-  let outcome: { foodId: number; created: boolean; sourceKind: "USDA" | "OpenFoodFacts"; sourceRef: string } | null = null
+  let outcome: { foodId: number; created: boolean; sourceKind: SourceKind; sourceRef: string; label?: string } | null = null
   if (pointer.kind === "barcode") {
     const result = await (deps.barcode ?? foodForBarcode)(userId, pointer.gtin, { db, signal, web: false, beforeChange,
       ...(deps.enqueueIcon ? { enqueueIcon: deps.enqueueIcon } : {}) })
@@ -124,6 +132,12 @@ export async function addCatalogueFood(userDb: UserDatabase, userId: string, age
       outcome = { foodId: result.foodId, created: result.created, sourceKind: usda ? "USDA" : "OpenFoodFacts",
         sourceRef: usda ? String(result.source.ref) : pointer.gtin }
     } else if (result.status === "found") return { data: await found(result.foodId), targets: [result.foodId] }
+    else {
+      const named = await attachByName(db, userId, pointer.gtin, signal, beforeChange, deps)
+      if (named === "not_food") return { data: unknown(pointer, "The barcode's listings say this product isn't food.") }
+      if (named) outcome = { foodId: named.foodId, created: false, sourceKind: "BarcodeName", sourceRef: pointer.gtin,
+        label: named.label }
+    }
   } else {
     const sources = deps.sources?.(beforeChange) ?? createFoodSources({ userId, messageId: null, signal, discover: () => {},
       beforeChange }, { db })
@@ -138,14 +152,39 @@ export async function addCatalogueFood(userDb: UserDatabase, userId: string, age
       "protein, carbs, fat and a weight.") }
   }
   // No record, or the duplicate check couldn't tell whether the record is a food Amino already has (it fails closed).
-  if (!outcome) return { data: unknown(pointer, pointer.kind === "barcode" ? "USDA and Open Food Facts gave no food Amino " +
-    "could add for this barcode." : "Amino couldn't tell whether this USDA record is a food it already has.") }
+  if (!outcome) return { data: unknown(pointer, pointer.kind === "barcode" ? "USDA and Open Food Facts don't have this " +
+    "barcode, and no food in Amino is the product its listings name." : "Amino couldn't tell whether this USDA record " +
+    "is a food it already has.") }
 
   await record(db, userId, agent, outcome, befores)
   const servingId = pointer.kind === "barcode" ? (await foodForGtin(db, userId, pointer.gtin))?.servingId : null
   return { data: { status: outcome.created ? "added" as const : "found" as const, food: await card(outcome.foodId, servingId),
-    source: outcome.sourceKind === "USDA" ? `USDA FoodData Central ${outcome.sourceRef}` : `Open Food Facts ${outcome.sourceRef}` },
+    source: outcome.sourceKind === "USDA" ? `USDA FoodData Central ${outcome.sourceRef}`
+      : outcome.sourceKind === "OpenFoodFacts" ? `Open Food Facts ${outcome.sourceRef}`
+      : `Barcode listings (${outcome.label}): the barcode was added to this food` },
     targets: [outcome.foodId] }
+}
+
+/** A barcode no database has: its listings name the product, the catalogue is searched by that name, and the barcode
+ * goes on the first of the closest shared foods Jev is sure is that product (attachBarcode: at least 0.9, another
+ * flavour or variant is not; a food with another barcode gets it as another package size). */
+async function attachByName(db: Db, userId: string, gtin: string, signal: AbortSignal,
+  beforeChange: (foodId: number) => Promise<unknown>, deps: Deps): Promise<{ foodId: number; label: string } | "not_food" | null> {
+  const named = await (deps.name ?? nameBarcode)(gtin, { signal }).catch(() => null)
+  if (named?.status === "not_food") return "not_food"
+  if (named?.status !== "identified") return null
+  const brand = named.brand?.trim()
+  const label = brand && !named.name.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${named.name}` : named.name
+  const found = await (deps.search ?? searchFoodsForUser)(userId, label, { mode: "ingredient", db, signal })
+  const candidates = found.results.filter(result => result.source === "catalogue" && result.match !== "loose").slice(0, 3)
+  const sources = deps.attach?.() ?? createFoodSources({ userId, messageId: null, signal, discover: () => {}, barcodes: [gtin] }, { db })
+  for (const candidate of candidates) {
+    await beforeChange(candidate.id)
+    const attached = await sources.attachBarcode(candidate.id, gtin, label)
+    // other_food: another request put the barcode on a food meanwhile.
+    if (attached.status === "attached" || attached.status === "other_food") return { foodId: attached.foodId, label }
+  }
+  return null
 }
 
 const unknown = (pointer: Pointer, reason: string) => ({ status: "unknown" as const,

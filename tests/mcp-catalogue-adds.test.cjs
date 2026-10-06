@@ -99,7 +99,7 @@ test('a barcode that only adds a package size is recorded as such',async()=>{
 test('a barcode no database knows adds nothing',async()=>{
   const state={};
   const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
-    barcode:async()=>({status:'unknown',gtin})});
+    barcode:async()=>({status:'unknown',gtin}),name:async()=>({status:'unknown',gtin})});
   assert.equal(result.data.status,'unknown');
   assert.equal(result.data.barcode,gtin);
   assert.match(result.data.note,/create_food/);
@@ -190,4 +190,51 @@ test('search_foods with scope usda lists USDA records to add, creating nothing',
   assert.deepEqual(found.foods,[{usdaId:171304,name:'Yogurt, Greek, plain, nonfat',brand:null,inAmino:false,
     perServing:{serving:'170 g',kcal:100.3,proteinG:17.3,carbG:6.1,totalFatG:0.7},servings:[{unit:'container',amount:1,grams:170}]}]);
   assert.match(found.note,/add_catalogue_food/);
+});
+
+const fairlife='00811620020435';
+const unknownInDatabases=async()=>({status:'unknown',gtin:fairlife});
+const listings=async()=>({status:'identified',gtin:fairlife,name:'Reduced Fat Ultra-Filtered Milk, Strawberry, 14 fl oz',brand:'fairlife'});
+const catalogueHits=async(_user,query)=>{assert.equal(query,'fairlife Reduced Fat Ultra-Filtered Milk, Strawberry, 14 fl oz');
+  return {results:[{id:7,source:'custom',match:'name'},{id:4355,source:'catalogue',match:'name'},{id:4356,source:'catalogue',match:'name'},
+    {id:9,source:'catalogue',match:'loose'}]}};
+
+test('a barcode no database has goes on the food Amino has when its listings name that product',async()=>{
+  const state={foods:{4355:food(4355,{name:'Reduced Fat Chocolate Ultra-Filtered Milk'}),4356:food(4356,{name:'Reduced Fat Strawberry Ultra-Filtered Milk'})}};
+  const tried=[];
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),flag:on,card,
+    barcode:unknownInDatabases,name:listings,search:catalogueHits,
+    attach:()=>({async attachBarcode(foodId,code,description){
+      tried.push(foodId);assert.equal(code,fairlife);assert.match(description,/^fairlife /);
+      if (foodId!==4356) return {status:'refused',reason:'not_the_same_product'};
+      state.foods[4356]={...state.foods[4356],gtin:fairlife};
+      return {status:'attached',foodId};
+    }})});
+  assert.deepEqual(tried,[4355,4356],'shared foods only, closest first; the chocolate one is refused');
+  assert.equal(result.data.status,'found');
+  assert.deepEqual(result.data.food,{id:4356});
+  assert.match(result.data.source,/Barcode listings/);
+  assert.equal(state.changes.length,1,'only the food that changed is recorded');
+  assert.equal(state.changes[0].foodItemId,4356);
+  assert.equal(state.changes[0].sourceKind,'BarcodeName');
+  assert.equal(state.changes[0].sourceRef,fairlife);
+  assert.deepEqual(state.changes[0].changes.fields.gtin,{before:null,after:fairlife});
+});
+
+test('mistyped digits name another product, which no food is: nothing is attached',async()=>{
+  const state={foods:{4356:food(4356)}};
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),flag:on,card,
+    barcode:unknownInDatabases,name:async()=>({status:'identified',gtin:fairlife,name:'Hammermill Copy Paper',brand:null}),
+    search:async()=>({results:[{id:4356,source:'catalogue',match:'meaning'}]}),
+    attach:()=>({async attachBarcode(){return {status:'refused',reason:'not_the_same_product'}}})});
+  assert.equal(result.data.status,'unknown');
+  assert.match(result.data.note,/no food in Amino is the product/);
+  assert.equal(state.changes.length,0);
+});
+
+test('listings that say the barcode is not food',async()=>{
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb({}),flag:on,card,
+    barcode:unknownInDatabases,name:async()=>({status:'not_food',gtin:fairlife}),search:notCalled('search')});
+  assert.equal(result.data.status,'unknown');
+  assert.match(result.data.note,/isn't food/);
 });

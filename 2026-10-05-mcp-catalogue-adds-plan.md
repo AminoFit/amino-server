@@ -124,3 +124,13 @@ Then one live run by the owner from Claude: a product missing from the catalogue
 5. Owner test, then turn the flag on for everyone.
 
 Later, optional: send the app's USDA pick (`foodFromUsda`) through the same duplicate check.
+
+## Added 2026-10-06: barcodes no database has
+
+An agent (Muse) asked for fairlife strawberry milk 14 fl oz (`00811620020435`): neither USDA nor Open Food Facts has it,
+so the tool said `unknown`, and the agent looked the digits up on UPCitemdb itself to find food 4356, which had no
+barcode. Now, when both databases miss, `add_catalogue_food` names the barcode with `nameBarcode` (UPCitemdb, Brave
+listings), searches the catalogue by that name, and tries `attachBarcode` on the three closest shared foods (Jev ≥ 0.9
+that the named package is exactly that food; a food with another barcode gets it as another package size). Mistyped
+digits name another product, which no food is, so nothing is attached. A new food is still never created from the web
+for an agent. Recorded as `sourceKind` `BarcodeName` (20261014110000).

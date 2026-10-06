@@ -115,8 +115,8 @@ submarine sandwich" or "Steak sandwich") is never the same as a specific named p
 A sibling flavour or variant in the same brand's line (blueberry vs strawberry kefir, vanilla vs chocolate, Zero vs
 regular) is a different food, however close the numbers. Choose none when no candidate is the same food.`
 
-const BARCODE_POLICY=`A barcode library decoded a retail barcode from the user's photo of a package. Decide whether the
-package, described by the agent from the photo, is exactly this catalogue food: same brand, product, flavour, variant
+const BARCODE_POLICY=`A retail barcode belongs to a package (decoded from the user's photo, or named by the barcode's product
+listings). Decide whether the package, as described, is exactly this catalogue food: same brand, product, flavour, variant
 and form. Names may differ in language, spelling or word order. A sibling variant (another flavour, fat level, sugar
 free, protein version) or a different form (drink vs cup) is NOT the same food.`
 
