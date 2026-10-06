@@ -389,16 +389,20 @@ export function registerAminoTools(server: McpServer) {
     title: "Update a meal",
     description: "Change one of the user's meals: when it was eaten (`eatenAt`), a food's amount (`foods`: the item id " +
       "from get_meals with a new servingId and amount, grams or portions; it stays the same food), or take foods out " +
-      "(`removeFoods`: item ids; to remove the last food, delete the meal). To swap a food, remove it and add_to_meal " +
-      "the right one. Returns the meal. Needs the user's \"Let agents make changes\" setting.",
+      "(`removeFoods`: item ids; to remove the last food, delete the meal), or its `text` (the meal's words in the " +
+      "log; only when the user asks). To swap a food, remove it and add_to_meal the right one. A meal whose text only " +
+      "lists its foods (\"Kefir (1 cup), …\") keeps that list up to date by itself. Returns the meal. Needs the user's " +
+      "\"Let agents make changes\" setting.",
     inputSchema: z.object({
       mealId: z.number().int().positive(),
       eatenAt: z.iso.datetime({ offset: true }).optional(),
       foods: z.array(z.object({ id: z.number().int().positive().describe("The item id from get_meals"), ...amountFields })
         .refine(value => [value.servingId != null && value.amount != null, value.grams != null, value.portions != null]
           .filter(Boolean).length === 1, "Give one amount: servingId with amount, or grams, or portions")).max(50).optional(),
-      removeFoods: z.array(z.number().int().positive()).max(50).optional()
-    }).refine(value => value.eatenAt || value.foods?.length || value.removeFoods?.length, "Change at least one thing"),
+      removeFoods: z.array(z.number().int().positive()).max(50).optional(),
+      text: z.string().trim().min(1).max(500).optional().describe("The meal's new text, as the user wants it in the log")
+    }).refine(value => value.eatenAt || value.foods?.length || value.removeFoods?.length || value.text,
+      "Change at least one thing"),
     annotations: WRITE
   }, ({ mealId, ...change }, ctx) => run("update_meal", ctx.http?.authInfo, async ({ db, userId }) => {
     const { targets, ...data } = await updateMeal(db, userId, mealId, change)

@@ -94,6 +94,17 @@ export async function logMeal(db: UserDatabase, userId: string, agent: { clientI
     meal, targets: [logged.messageId] }
 }
 
+/** A meal's text, as the log shows it. (A text that only lists the meal's foods follows them on its own:
+ * 20261014100000_meal_text_lists_foods.sql.) */
+async function setMealText(userId: string, mealId: number, text: string) {
+  const { data, error } = await (createAdminSupabase() as any).from("Message").update({ content: text.slice(0, 500) })
+    .eq("id", mealId).eq("userId", userId).is("deletedAt", null).select("id")
+  // A meal Amino is still working on (guard_meal_message_write) can't be changed yet.
+  if (error?.code === "55000") throw new McpInputError(`Meal ${mealId} is still being processed. Try again in a minute.`)
+  if (error) throw error
+  if (!data?.length) throw new McpInputError(`No meal ${mealId}. Use the ids list_meals shows.`)
+}
+
 /** Adds foods to one of the user's meals, at the meal's time. */
 export async function addToMeal(db: UserDatabase, userId: string, mealId: number, foods: z.infer<typeof mealFood>[]) {
   const priced = await priceItems(userId, foods.map(food => ({ foodItemId: food.foodId, quantity: quantityFrom(food) })))
@@ -105,9 +116,10 @@ export async function addToMeal(db: UserDatabase, userId: string, mealId: number
 
 type LoggedRow = { id: number; messageId: number | null; foodItemId: number | null }
 
-/** Changes one of the user's meals: its time, foods' amounts, foods taken out. Each part is saved as it's made. */
+/** Changes one of the user's meals: its time, foods' amounts, foods taken out, and its text. Each part is saved as it's
+ * made. */
 export async function updateMeal(db: UserDatabase, userId: string, mealId: number, change: { eatenAt?: string
-  foods?: ({ id: number } & Partial<Record<keyof typeof amountFields, number>>)[]; removeFoods?: number[] }) {
+  foods?: ({ id: number } & Partial<Record<keyof typeof amountFields, number>>)[]; removeFoods?: number[]; text?: string }) {
   const loggedIds = [...(change.foods ?? []).map(food => food.id), ...(change.removeFoods ?? [])]
   const { data, error } = loggedIds.length ? await (createAdminSupabase() as any).from("LoggedFoodItem")
     .select("id,messageId,foodItemId").in("id", loggedIds).eq("userId", userId).is("deletedAt", null) : { data: [], error: null }
@@ -129,6 +141,8 @@ export async function updateMeal(db: UserDatabase, userId: string, mealId: numbe
   }
   for (const id of change.removeFoods ?? [])
     await rpc("agent_remove_meal_food", { p_user_id: userId, p_logged_food_item_id: id })
+  const text = change.text?.trim()
+  if (text) await setMealText(userId, mealId, text)
   const [meal] = await getMeals(db, [mealId])
   return { meal, targets: [mealId] }
 }
