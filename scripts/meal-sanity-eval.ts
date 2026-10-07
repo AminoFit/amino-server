@@ -78,7 +78,8 @@ async function evaluate(item:typeof cases[number]) {
     (!item.grams||total>=item.grams[0]&&total<=item.grams[1])
   return {id:item.id,pass,foodIds:ids,expected:item.expected,error,outcome:resolved.proposal.outcome,
     grams:plan?.items.map(i=>Math.round(i.grams)),kcal:plan?Math.round(plan.items.reduce((s,i)=>s+i.nutrition.kcal,0)):null,
-    steps:resolved.steps,ms:Date.now()-started,route:resolved.model,clarification:resolved.proposal.clarification}
+    steps:resolved.steps,ms:Date.now()-started,route:resolved.model,clarification:resolved.proposal.clarification,
+    trace:resolved.trace,quantities:resolved.proposal.items.map(entry=>entry.quantity)}
 }
 
 async function main() {
