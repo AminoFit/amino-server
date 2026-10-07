@@ -78,7 +78,8 @@ function fixture({ userId = 'owner', status = 'RESOLVED', servingFoodId = 9,
     '@/nutrition': {
       nutrientsAt: (food, grams) => ({ kcal: grams * 2 })
     },
-    './validateServingUpdate': validator
+    './validateServingUpdate': validator,
+    '@/userFoods/visibility': load('userFoods/visibility.ts')
   })
   async function post(updateData, loggedFoodItemId = 1) {
     const request = new Request('https://example.test', { method: 'POST',

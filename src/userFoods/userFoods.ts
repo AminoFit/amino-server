@@ -8,6 +8,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { COLUMN_NUTRIENTS, MICRO_KEYS, columnValues, nutrientRows, nutrientsAt, recipeValues, validNutrition,
   type Amounts, type FoodBasis, type PartialNutrients } from "@/nutrition"
 import { normalizeGtin } from "@/mealResolution/barcode"
+import {visibleFoodFilter} from "./visibility"
 
 type Db = ReturnType<typeof createAdminSupabase>
 
@@ -85,7 +86,7 @@ export type PricedFood = FoodBasis & {id:number;name:string;brand:string|null;pr
 async function loadFoods(db:Db,userId:string,ids:number[],{archived=false}={}):Promise<Map<number,PricedFood>> {
   const unique=[...new Set(ids)]
   if (!unique.length) return new Map()
-  let query=db.from("FoodItem").select(foodColumns).in("id",unique).or(`privateToUserId.is.null,privateToUserId.eq.${userId}`)
+  let query=db.from("FoodItem").select(foodColumns).in("id",unique).or(visibleFoodFilter(userId))
   if (!archived) query=query.is("archivedAt",null)
   const {data,error}=await query
   if (error) throw error

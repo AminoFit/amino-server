@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic"
 const expo = new Expo()
 
 export async function GET(request: Request) {
+  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`)
+    return new Response("Unauthorized", { status: 401 })
   console.log("Running push notifications cron job")
   const supabase = createAdminSupabase()
   const { data, error } = await supabase.from("ExpoPushTokens").select("*, User(tzIdentifier)")

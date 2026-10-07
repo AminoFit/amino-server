@@ -1,36 +1,20 @@
-import { createClient } from "@supabase/supabase-js"
+import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 
+/** Deletes a user's data (public.delete_user_data, one transaction), then their auth user, which cascades to User and
+ * its own tables. Private foods other users logged or cook with stay, archived. Stops at the first error, so a
+ * half-deleted account is never reported as deleted. */
 export async function deleteUserAndData(userId: string) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  )
-
-  // Delete messages
-  await supabaseAdmin
-    .from('Message')
-    .delete()
-    .eq('userId', userId);
-
-  // Delete custom food items
-  await supabaseAdmin
-    .from('FoodItem')
-    .delete()
-    .eq('userId', userId);
-
-  // Delete logged food items
-  await supabaseAdmin
-    .from('LoggedFoodItem')
-    .delete()
-    .eq('userId', userId);
-
-  // Delete the user
-  const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-
-  if (error) {
-    return { error: error.message }
+  const db = createAdminSupabase()
+  const { data, error: dataError } = await (db as any).rpc("delete_user_data", { p_user_id: userId })
+  if (dataError) {
+    console.error("delete_user_data failed", dataError)
+    return { error: "Couldn't delete your data. Try again." }
   }
-
-  console.log("User and associated data (messages, food items) deleted successfully")
+  const { error } = await db.auth.admin.deleteUser(userId)
+  if (error) {
+    console.error("auth deleteUser failed", error)
+    return { error: "Couldn't delete your account. Try again." }
+  }
+  console.log("Deleted user and data", data)
   return { success: true }
 }

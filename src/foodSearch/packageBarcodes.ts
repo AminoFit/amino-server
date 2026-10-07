@@ -1,4 +1,5 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
+import { catalogueOrOwnFilter, visibleFoodFilter } from "@/userFoods/visibility"
 
 type Db = ReturnType<typeof createAdminSupabase>
 
@@ -35,9 +36,9 @@ export async function addPackageBarcode(db: Db, foodId: number, package_: Packag
     return { status: "skipped" as const, reason: "different_values" }
   const taken = await Promise.all([
     db.from("FoodItem").select("id").eq("gtin", package_.gtin).is("archivedAt", null)
-      .or(food.privateToUserId ? `privateToUserId.is.null,privateToUserId.eq.${food.privateToUserId}` : "privateToUserId.is.null").limit(1),
+      .or(catalogueOrOwnFilter(food.privateToUserId)).limit(1),
     (db as any).from("FoodBarcode").select("foodItemId").eq("gtin", package_.gtin)
-      .or(food.privateToUserId ? `privateToUserId.is.null,privateToUserId.eq.${food.privateToUserId}` : "privateToUserId.is.null").limit(1)])
+      .or(catalogueOrOwnFilter(food.privateToUserId)).limit(1)])
   if (taken[0].error || taken[1].error) throw taken[0].error ?? taken[1].error
   const owner = (taken[0].data?.[0] as { id: number } | undefined)?.id ?? (taken[1].data?.[0] as { foodItemId: number } | undefined)?.foodItemId
   if (owner != null) return owner === foodId ? { status: "exists" as const } : { status: "skipped" as const, reason: "other_food" }
@@ -61,7 +62,7 @@ export async function addPackageBarcode(db: Db, foodId: number, package_: Packag
 /** The food (and, for a package barcode, its package serving) that answers a barcode for this user: their own food
  * first, else the shared catalogue's; the main barcode before a package one. */
 export async function foodForGtin(db: Db, userId: string, gtin: string) {
-  const visible = `privateToUserId.is.null,privateToUserId.eq.${userId}`
+  const visible = visibleFoodFilter(userId)
   const [main, packages] = await Promise.all([
     db.from("FoodItem").select("id,privateToUserId").eq("gtin", gtin).is("archivedAt", null).or(visible)
       .order("privateToUserId", { ascending: true, nullsFirst: false }).order("id").limit(1),

@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { FoodItemWithNutrientsAndServing } from "@/app/dashboard/utils/FoodHelper"
 import { Tables } from "types/supabase"
 import { validateServingUpdate } from "./validateServingUpdate"
+import { canSeeFood } from "@/userFoods/visibility"
 
 export const dynamic = "force-dynamic"
 
@@ -83,8 +84,8 @@ export async function POST(request: NextRequest) {
         if (error) throw error
         foodItem = data as unknown as PortionFood | null
       }
-      // A food's creator (userId) does not own a shared food; only a private food is limited to its owner.
-      if (!foodItem || (foodItem.privateToUserId && foodItem.privateToUserId !== userId)) {
+      // A food's creator (userId) does not own a shared food; only a private food is limited to who may see it.
+      if (!foodItem || !canSeeFood(userId, foodItem)) {
         return failure("Food item is unavailable", 404)
       }
       if (foodItem.defaultServingWeightGram !== null && foodItem.defaultServingWeightGram <= 0) {

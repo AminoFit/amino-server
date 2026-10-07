@@ -37,7 +37,7 @@ const BASE=`DO $$ BEGIN
     "resolvedAt" timestamp(3), "deletedAt" timestamp, hasimages boolean NOT NULL DEFAULT false, "isAudio" boolean,
     "itemsProcessed" integer, "itemsToProcess" integer, "operationOwned" boolean NOT NULL DEFAULT false,
     "activeOperationId" uuid);
-  CREATE TABLE public."FoodItem"(id integer PRIMARY KEY, name text NOT NULL, brand text, "privateToUserId" uuid, "archivedAt" timestamp);
+  CREATE TABLE public."FoodItem"(id integer PRIMARY KEY, name text NOT NULL, brand text, "privateToUserId" uuid, "archivedAt" timestamp, "previousVersionId" integer);
   CREATE TABLE public."Serving"(id integer PRIMARY KEY, "servingName" text NOT NULL);
   CREATE TABLE public."LoggedFoodItem"(id serial PRIMARY KEY, "userId" uuid NOT NULL, "messageId" integer REFERENCES public."Message"(id),
     "foodItemId" integer, "servingId" integer, "servingAmount" float8, "loggedUnit" text, grams float8 NOT NULL DEFAULT 0,
@@ -59,6 +59,7 @@ test('agents move, re-amount, remove, add, delete and restore meals the way the 
     await db.query(read('20261002000000_mcp_access.sql'));
     await db.query(priced);
     await db.query(read('20261013000000_agent_meal_writes.sql'));
+    await db.query(read('20261015000000_food_lineage_and_visibility.sql'));  // agent_add_meal_foods through food_visible
     const me=randomUUID(),other=randomUUID();
     await db.query(`INSERT INTO "User"(id) VALUES ($1),($2)`,[me,other]);
     await db.query(`INSERT INTO "FoodItem"(id,name,"privateToUserId","archivedAt") VALUES (1,'Eggs',null,null),(2,'Toast',null,null),

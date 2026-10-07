@@ -53,7 +53,8 @@ CREATE TABLE public."UserFavoriteFoodItem" (id bigserial PRIMARY KEY, "userId" u
   "servingId" integer REFERENCES public."Serving"(id) ON DELETE CASCADE, "preferredAmount" float8 NOT NULL DEFAULT 1);
 CREATE TABLE public."FeatureFlag" (name text PRIMARY KEY, value text NOT NULL);
 CREATE TABLE public."CatalogueAuditBackup" (id serial PRIMARY KEY, audit text, "tableName" text, "rowId" bigint, before jsonb);
-CREATE TABLE public."userSubmittedBug" (id serial PRIMARY KEY, food_item_id integer);
+CREATE TABLE public."userSubmittedBug" (id serial PRIMARY KEY, food_item_id integer, message_id integer, logged_food_id integer);
+CREATE TABLE public."UserMessageImages" (id serial PRIMARY KEY, "userId" uuid, "messageId" integer);
 CREATE TABLE public."IconQueue" (id serial PRIMARY KEY, requested_food_item_id integer);
 CREATE TABLE public."Message" (id serial PRIMARY KEY, "userId" uuid NOT NULL, content text, role public."Role",
   "messageType" public."MessageType", status public."MessageStatus", "consumedOn" timestamp, "createdAt" timestamp,
@@ -70,22 +71,31 @@ CREATE TABLE public."LoggedFoodItem" (id serial PRIMARY KEY, "userId" uuid NOT N
 const alice='00000000-0000-4000-8000-00000000000a',bob='00000000-0000-4000-8000-00000000000b';
 const food=(name,extra={})=>({name,brand:null,defaultServingWeightGram:100,kcal:200,proteinG:10,carbG:20,totalFatG:5,...extra});
 
+// The catalogue fixture, then custom foods and recipes, the searches and the one visibility rule.
+async function prepare(db){
+  await db.query(fixture);
+  for (const file of migrations) await db.query(read(file));
+  await db.query('SET check_function_bodies = off');
+  await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
+  await db.query(read('20261004070000_log_foods_as_meal.sql'))
+  await db.query(read('20261004080000_no_builtin_unit_servings.sql'))
+  await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
+  await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'))
+  await db.query(read('20261004040000_search_own_foods.sql'));
+  // The later searches, then one visibility rule (20261015000000): every check below runs through food_visible.
+  for (const file of ['20261004050000_fast_food_search.sql','20261004060000_food_search_partial_words.sql',
+    '20261014030000_search_words_across_brand.sql','20261014070000_search_alias_rank.sql',
+    '20261015000000_food_lineage_and_visibility.sql']) await db.query(read(file).split('-- The food indexes stay in memory')[0])
+  await db.query('RESET check_function_bodies');
+}
+
 test('custom foods and recipes: ownership, names, versions, search visibility, logging and merges',
   {skip:!connectionString&&'Set AMINO_USER_FOODS_TEST_DATABASE_URL for a disposable local database'},async()=>{
     assertDisposable(connectionString);
     const db=new Client({connectionString});
     await db.connect();
     try {
-      await db.query(fixture);
-      for (const file of migrations) await db.query(read(file));
-      await db.query('SET check_function_bodies = off');
-      await db.query(read('20261004000000_custom_foods_and_recipes.sql'))
-      await db.query(read('20261004070000_log_foods_as_meal.sql'))
-      await db.query(read('20261004080000_no_builtin_unit_servings.sql'))
-      await db.query(read('20261004010000_drop_replace_meal_with_food.sql'))
-      await db.query(read('20261004020000_user_food_versions_keep_created_date.sql'))
-      await db.query(read('20261004040000_search_own_foods.sql'));
-      await db.query('RESET check_function_bodies');
+      await prepare(db)
       const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0]);
       const save=(user,id,value,{servings=[{name:'portion',grams:value.defaultServingWeightGram,amount:1}],nutrients=[],ingredients=null}={})=>
         one('select * from public.save_user_food($1,$2,$3,$4,$5,$6)',[user,id,value,JSON.stringify(servings),JSON.stringify(nutrients),
@@ -235,10 +245,82 @@ test('custom foods and recipes: ownership, names, versions, search visibility, l
 
       const recipe3=await save(alice,null,food('Chicken tomato pasta',{defaultServingWeightGram:200,recipePortions:12}),{ingredients:[{foodItemId:rice,grams:2400}]})
 
+      // Lineage: every version of a private food shares its first version's id; catalogue foods have none.
+      const lineage=ids=>db.query('select id,"lineageId" l from public."FoodItem" where id = any($1) order by id',[ids]).then(r=>r.rows)
+      assert.deepEqual(await lineage([pasta.food_id,v2.food_id]),[{id:pasta.food_id,l:pasta.food_id},{id:v2.food_id,l:pasta.food_id}])
+      assert.deepEqual(await lineage([shake.food_id,shake2.food_id]),[{id:shake.food_id,l:shake.food_id},{id:shake2.food_id,l:shake.food_id}])
+      assert.deepEqual(await lineage([rice]),[{id:rice,l:null}])
+      await assert.rejects(db.query('update public."FoodItem" set "lineageId"=null where id=$1',[v2.food_id]).then(()=>
+        db.query('alter table public."FoodItem" disable trigger "FoodItem_lineage"')).then(()=>
+        db.query('update public."FoodItem" set "lineageId"=null where id=$1',[v2.food_id])),/FoodItem_private_lineage/)
+      await db.query('alter table public."FoodItem" enable trigger "FoodItem_lineage"')
+      // The backfill walks existing chains (rerunning the migration is harmless).
+      await db.query('alter table public."FoodItem" drop constraint "FoodItem_private_lineage"')
+      await db.query('alter table public."FoodItem" disable trigger "FoodItem_lineage"')
+      await db.query('update public."FoodItem" set "lineageId"=null')
+      await db.query('alter table public."FoodItem" enable trigger "FoodItem_lineage"')
+      await db.query(read('20261015000000_food_lineage_and_visibility.sql'))
+      assert.deepEqual(await lineage([pasta.food_id,v2.food_id,rice]),[{id:rice,l:null},{id:pasta.food_id,l:pasta.food_id},{id:v2.food_id,l:pasta.food_id}]
+        .sort((x,y)=>x.id-y.id))
+
+      // Row rules read through food_visible: the app sees the catalogue and its own foods, never another user's.
+      await db.query('alter table public."FoodItem" enable row level security; grant usage on schema public, auth to authenticated; grant select on public."FoodItem" to authenticated')
+      const visibleTo=async user=>{
+        await db.query('begin'); await db.query('set local role authenticated')
+        await db.query(`select set_config('request.jwt.claim.sub',$1,true)`,[user])
+        const rows=(await db.query('select id from public."FoodItem" where id = any($1)',[[rice,shake.food_id,bobsFood]])).rows.map(r=>r.id)
+        await db.query('rollback'); return rows.sort((x,y)=>x-y)}
+      assert.deepEqual(await visibleTo(alice),[rice,shake.food_id].sort((x,y)=>x-y))
+      assert.deepEqual(await visibleTo(bob),[rice,bobsFood].sort((x,y)=>x-y))
+
       // Catalogue merges move recipe ingredients, and never merge a recipe.
       const rice2=(await one(`insert into public."FoodItem"(name,"defaultServingWeightGram","kcalPerServing") values ('Rice, jasmine',100,130) returning id`)).id
       await db.query('select public.merge_catalogue_food($1,$2,$3)',[rice2,rice,'test'])
       assert.equal((await one('select count(*)::int n from public."RecipeIngredient" where "foodItemId"=$1',[rice2])).n,3,'both pasta versions and the tomato pasta')
       await assert.rejects(db.query('select public.merge_catalogue_food($1,$2,$3)',[rice2,recipe3.food_id,'test']),/never merged/)
+    } finally {await db.end()}
+  })
+
+test('account deletion removes the user\'s data and keeps private foods other users depend on',
+  {skip:!connectionString&&'Set AMINO_USER_FOODS_TEST_DATABASE_URL for a disposable local database'},async()=>{
+    assertDisposable(connectionString);
+    const db=new Client({connectionString});
+    await db.connect();
+    try {
+      await prepare(db)
+      await db.query(read('20261015010000_profiles_push_devices_and_account_deletion.sql').split('-- Account deletion.')[1]
+        .replace(/^.*?CREATE OR REPLACE/s,'CREATE OR REPLACE'))
+      const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0])
+      const id=async(sql,args)=>(await one(sql+' returning id',args)).id
+      const privateFood=(name,owner,portions=null)=>id(`insert into public."FoodItem"(name,"defaultServingWeightGram","kcalPerServing","privateToUserId","recipePortions") values ($1,100,100,$2,$3)`,[name,owner,portions])
+      const rice=await id(`insert into public."FoodItem"(name,"defaultServingWeightGram","kcalPerServing","userId") values ('Rice',100,130,$1)`,[alice])
+      const loggedByBob=await privateFood('Alice granola',alice)
+      const inBobsRecipe=await privateFood('Alice sauce',alice)
+      const aliceRecipe=await privateFood('Alice stew',alice,4)
+      const stewBase=await privateFood('Alice stock',alice)
+      const unused=await privateFood('Alice snack',alice)
+      const bobRecipe=await privateFood('Bob pasta',bob,2)
+      await db.query(`insert into public."Serving"("foodItemId","servingName","servingWeightGram") values ($1,'portion',100),($2,'bar',40)`,[aliceRecipe,unused])
+      await db.query(`insert into public."RecipeIngredient"("recipeFoodItemId","foodItemId",grams,position) values ($1,$2,50,0),($3,$4,200,0),($3,$5,100,1)`,
+        [bobRecipe,inBobsRecipe,aliceRecipe,stewBase,rice])
+      const meal=await id(`insert into public."Message"("userId",content,status) values ($1,'lunch','RESOLVED')`,[alice])
+      const bobMeal=await id(`insert into public."Message"("userId",content,status) values ($1,'stew','RESOLVED')`,[bob])
+      const aliceLog=await id(`insert into public."LoggedFoodItem"("userId","messageId","foodItemId",grams) values ($1,$2,$3,100)`,[alice,meal,unused])
+      await db.query(`insert into public."LoggedFoodItem"("userId","messageId","foodItemId",grams) values ($1,$2,$3,50),($1,$2,$4,250)`,[bob,bobMeal,loggedByBob,aliceRecipe])
+      await db.query(`insert into public."UserMessageImages"("userId","messageId") values ($1,$2)`,[alice,meal])
+      await db.query(`insert into public."userSubmittedBug"(message_id,logged_food_id) values ($1,$2)`,[meal,aliceLog])
+
+      const result=(await one('select public.delete_user_data($1) r',[alice])).r
+      assert.deepEqual(result,{meals:1,loggedFoods:1,foodsDeleted:1,foodsKept:4})
+      assert.equal((await one('select count(*)::int n from public."Message" where "userId"=$1',[alice])).n,0)
+      assert.equal((await one('select count(*)::int n from public."LoggedFoodItem" where "userId"=$1',[alice])).n,0)
+      assert.equal((await one('select count(*)::int n from public."UserMessageImages"')).n,0)
+      const rows=(await db.query('select id,"archivedAt" is not null archived from public."FoodItem" where id = any($1) order by id',
+        [[rice,loggedByBob,inBobsRecipe,aliceRecipe,stewBase,unused]])).rows
+      assert.deepEqual(rows,[{id:rice,archived:false},{id:loggedByBob,archived:true},{id:inBobsRecipe,archived:true},
+        {id:aliceRecipe,archived:true},{id:stewBase,archived:true}],'the catalogue food stays; the unused food is gone; the rest are kept, archived')
+      assert.equal((await one('select count(*)::int n from public."LoggedFoodItem" where "userId"=$1',[bob])).n,2,"Bob's log is untouched")
+      assert.equal((await one('select count(*)::int n from public."RecipeIngredient" where "recipeFoodItemId"=$1',[aliceRecipe])).n,2)
+      assert.deepEqual((await one('select public.delete_user_data($1) r',[alice])).r,{meals:0,loggedFoods:0,foodsDeleted:0,foodsKept:4},'running it again is harmless')
     } finally {await db.end()}
   })

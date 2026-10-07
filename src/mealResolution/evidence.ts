@@ -4,6 +4,7 @@ import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/nutrition"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { blendSearch, type SearchRow } from "./searchBlend"
 import { userFlagEnabled } from "./fastRouteFlag"
+import {visibleFoodFilter} from "../userFoods/visibility"
 
 /** FeatureFlag that lets the agent and the fast route use the user's recipes (the recipe check gates each use). */
 export const RECIPES_FLAG = "recipes_in_agent"
@@ -86,7 +87,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     return {consumedOn:utc,...(timezone?{consumedOnLocal:localTime(utc,timezone)}:{})}}
   const discovered = new Set<number>()
   // Server reads bypass row security: only shared foods and this user's private foods are evidence.
-  const visible = `privateToUserId.is.null,privateToUserId.eq.${userId}`
+  const visible = visibleFoodFilter(userId)
   const foods = new Map<number,CatalogFood>()
   const events = new Map<number,MealEvent>()
   return {

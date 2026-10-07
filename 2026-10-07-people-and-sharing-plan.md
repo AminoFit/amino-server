@@ -438,6 +438,12 @@ Each phase ships behind `people` (owner and the second user), is deployed and te
 3. **"Logged by" on a log row:** option B. The logger's initial in place of the sparkles, and "Logged by Sam" (or "via Claude") in the details.
 4. **People:** option A, modelled on Connected agents. An explanation card with "Show my code" (opens a sheet) and "Scan code", plus "Invite by link or email". Then Requests and Linked sections. The accept screen and a person's page are as mocked: the invitee sets every switch; the page shows your grants as switches and theirs read-only; "Remove Alex" is silent.
 
+5. **Share sheet:** option A, one sheet. The header share button on your food or recipe opens it. The "Live · follows your edits" section lists each linked person with a switch; partners with share-all show a check and "Sees all your foods". The "A copy for anyone" section has "Send a copy", which opens the iOS share sheet with the link.
+6. **Recipient screens (as mocked):**
+   - **Copy link:** an "Add food" preview with nutrition facts, the foods in it and "Shared by Sam", then "Add to my foods" and "It's yours to edit. Sam's changes won't follow."
+   - **A food shared live:** "Shared by Sam · updated Oct 6", no Edit, and "Save a copy" / "Remove from my foods" (also in the ••• menu).
+   - **The owner's page:** "Shared with Alex and Sam" with their avatars, which opens the share sheet. The Foods row detail reads "Shared with 2".
+
 **One new shared component:** `PersonAvatar` (initials on a colour derived from the user id; sizes for the badge, log row, list and header). It's used by all four.
 
 ## Copy
