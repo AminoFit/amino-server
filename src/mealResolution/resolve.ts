@@ -119,8 +119,10 @@ Quantity kinds: mass for an explicit mass, serving for a catalogue serving where
 units (5 pieces is amount 5 of the "pieces" serving; grams = amount x gramsPerUnit),
 history for scaling a recorded portion, estimated_mass for a reasonable supported food-log
 estimate with a clear basis. Never invent a branded label, food ID, serving ID or source fact.
-Never do arithmetic in your head: for any sum, product, fraction or unit conversion (3 of 8 slices of a 400 g pizza,
-2.5 oz in grams) call calculate and use its result.
+Never do arithmetic in your head. Prefer quantities that need none: a serving with its amount (1.5 of the "slice"
+serving), or grams the user stated; the backend converts servings to grams. When a quantity still needs arithmetic
+(3 of 8 slices of a 400 g pizza, 2.5 oz in grams), write the arithmetic itself as the number, e.g. grams "3/8 * 400" or
+"2.5 * 28.35": the backend evaluates it exactly. Write a plain number when there is nothing to work out.
 Preserve explicit nutrient facts and their scope. Use sourceText copied from the original wording,
 including non-English text. If a real ambiguity could change the foods/amounts, ask a concise
 clarification in the user's language. If a retrieval tool errors, do not treat it as no food.
@@ -156,8 +158,9 @@ const outputGuide={schemaVersion:1,outcome:"resolved | needs_clarification",cons
   historyGroupSelections:[{sourceMessageId:"number",groupId:"observed group ID",scale:"number",
     excludeLoggedFoodItemIds:["observed item IDs explicitly omitted"]}],
   items:[{foodId:"catalogue ID or null for history",quantity:{kind:"mass | estimated_mass | serving | history",
-    grams:"number for mass",basis:"text for estimate",servingId:"number for serving",amount:"number of the serving's units",
-    sourceMessageId:"number for history",sourceLoggedFoodItemId:"number for history",scale:"number for history"},
+    grams:"number (or arithmetic such as \"3/8 * 400\") for mass",basis:"text for estimate",servingId:"number for serving",
+    amount:"number of the serving's units (or arithmetic such as \"1/3\")",
+    sourceMessageId:"number for history",sourceLoggedFoodItemId:"number for history",scale:"number (or arithmetic) for history"},
     groupId:"string or null",groupLabel:"string or null",evidence:["observed source identifiers"]}],
   components:[{sourceText:"verbatim food mention or photo: observation",itemIndexes:[0],
     historySelectionIndexes:[],omitted:false}],
@@ -172,9 +175,34 @@ const outputGuide={schemaVersion:1,outcome:"resolved | needs_clarification",cons
 const withoutArrayBounds=(node:unknown):unknown=>Array.isArray(node)?node.map(withoutArrayBounds):
   node&&typeof node==="object"?Object.fromEntries(Object.entries(node)
     .filter(([key])=>key!=="maxItems"&&key!=="minItems").map(([key,value])=>[key,withoutArrayBounds(value)])):node
+// Amounts the model may write as arithmetic ("3/8 * 400"): the backend evaluates them exactly (calculate.ts), so the
+// model never works numbers out itself and doesn't spend a turn on a calculator tool (2-15 s a call, 2026-10-07).
+const EXPRESSION_KEYS=new Set(["grams","amount","scale"])
+const expressionHint={type:"string",description:"arithmetic with numbers, + - * / and parentheses, evaluated by the backend"}
+export const allowingExpressions=(node:unknown,key?:string):unknown=>Array.isArray(node)?node.map(item=>allowingExpressions(item)):
+  node&&typeof node==="object"?(key&&EXPRESSION_KEYS.has(key)&&(node as {type?:unknown}).type==="number"
+    ?{anyOf:[node,expressionHint]}
+    :Object.fromEntries(Object.entries(node).map(([name,value])=>[name,name==="properties"&&value&&typeof value==="object"
+      ?Object.fromEntries(Object.entries(value).map(([property,schema])=>[property,allowingExpressions(schema,property)]))
+      :allowingExpressions(value)]))):node
+
+/** The plan with its arithmetic worked out: each amount written as an expression becomes its exact value. An expression
+ * that doesn't evaluate is left as written, so validation names the field and the model corrects it. */
+export function evaluateAmounts(value:unknown):unknown {
+  const evaluate=(amount:unknown)=>{if (typeof amount!=="string") return amount
+    try {return calculate(amount)} catch {return amount}}
+  if (!value||typeof value!=="object") return value
+  const plan=value as {items?:{quantity?:Record<string,unknown>}[];historyGroupSelections?:{scale?:unknown}[]}
+  return {...plan,
+    ...(Array.isArray(plan.items)?{items:plan.items.map(item=>item?.quantity&&typeof item.quantity==="object"?{...item,
+      quantity:Object.fromEntries(Object.entries(item.quantity).map(([key,amount])=>[key,EXPRESSION_KEYS.has(key)?evaluate(amount):amount]))}:item)}:{}),
+    ...(Array.isArray(plan.historyGroupSelections)?{historyGroupSelections:plan.historyGroupSelections.map(selection=>
+      selection&&typeof selection==="object"?{...selection,scale:evaluate(selection.scale)}:selection)}:{})}
+}
+
 const proposalOutput=Output.object({schema:jsonSchema<MealProposal>(
-  withoutArrayBounds(zodSchema(mealProposal).jsonSchema) as Parameters<typeof jsonSchema>[0],
-  {validate:value=>{const parsed=mealProposal.safeParse(value)
+  allowingExpressions(withoutArrayBounds(zodSchema(mealProposal).jsonSchema)) as Parameters<typeof jsonSchema>[0],
+  {validate:value=>{const parsed=mealProposal.safeParse(evaluateAmounts(value))
     return parsed.success?{success:true,value:parsed.data}:{success:false,error:parsed.error}}})})
 
 const MAX_STEPS=10
@@ -580,10 +608,6 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
             if (food&&attached.status==="attached") evidence.foods.set(food.id,{...food,gtin:code})
             return {...attached,food:food?foodSummary({...food,gtin:attached.status==="attached"?code:food.gtin}):null}
           })}),
-        calculate:tool({description:"Evaluate arithmetic exactly: numbers, + - * / and parentheses (\"3/8 * 400\", \"2.5 * 28.35\"). Use it for every calculation.",
-          inputSchema:z.object({expression:z.string().min(1).max(200)}).strict(),
-          execute:async({expression})=>{try {return {result:calculate(expression)}}
-            catch (error) {return {error:error instanceof Error?error.message:"invalid_expression"}}}}),
         getFoodsAndServings:tool({description:"Read authoritative details for previously discovered catalogue food IDs, including serving weights and nutrients.",
           inputSchema:z.object({foodIds:z.array(z.number().int().positive()).min(1).max(20)}).strict(),
           execute:({foodIds})=>withCount(async()=>{const read=await evidence.getFoodsAndServings(foodIds);return {...read,foods:read.foods.map(foodSummary)}})}),
@@ -656,7 +680,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       // The model occasionally returns output that does not parse; one fresh attempt usually succeeds.
       const result=await call().catch((error:unknown)=>NoObjectGeneratedError.isInstance(error)?call():Promise.reject(error))
       controller.signal.throwIfAborted()
-      proposal=mealProposal.parse(result.output)
+      proposal=mealProposal.parse(evaluateAmounts(result.output))
       if (proposal.outcome!=="resolved") break
       const draft:MealResolutionResult={proposal,evidence,visibleFoods:visible,photoIds:photos.map(photo=>photo.id),model:selected.id,
         provider:selected.provider,durationMs:0,steps,toolCalls,barcodes:[...barcodes]}

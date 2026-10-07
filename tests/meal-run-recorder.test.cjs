@@ -84,22 +84,24 @@ const good={schemaVersion:1,outcome:'resolved',consumedOn:input.consumedOn,histo
 test('resolveMeal records each tool call, each agent step with its cost, and the resolution',async()=>{
   const generate=async options=>{
     await options.tools.findFood.execute({query:'rice',gtin:null,includeSources:false,labelSourceId:null},{});
-    await options.tools.calculate.execute({expression:'150 * 1'},{});
+    await options.tools.getFoodsAndServings.execute({foodIds:[3]},{});
     options.onStepFinish({usage:{inputTokens:1200,outputTokens:80},finishReason:'tool-calls',
-      toolCalls:[{toolName:'findFood'},{toolName:'calculate'}],providerMetadata:{openrouter:{usage:{cost:0.0021}}}});
+      toolCalls:[{toolName:'findFood'},{toolName:'getFoodsAndServings'}],providerMetadata:{openrouter:{usage:{cost:0.0021}}}});
     options.onStepFinish({usage:{inputTokens:1500,outputTokens:200},finishReason:'stop',providerMetadata:{},
       toolCalls:[{toolName:'findFood',invalid:true,input:{query:''},error:new Error('Invalid input')}]});
-    return {output:good,response:{messages:[]}};
+    // An amount written as arithmetic is worked out by the backend (the agent has no calculator tool).
+    return {output:{...good,items:[{...good.items[0],quantity:{kind:'mass',grams:'3/2 * 100'}}]},response:{messages:[]}};
   };
   const deps={evidence:evidence(),sources:{sources:new Map()},generate,loadPhotos:async()=>[],fastRoute:false,
     model:()=>({id:'test-model',provider:'test',model:{}})};
   const {value,run}=await withMealRun(()=>resolveMeal(input,deps));
   assert.equal(value.checked,true,'the result is unchanged');
   assert.deepEqual(run.tools[0].input,{query:'rice',gtin:null,includeSources:false,labelSourceId:null});
-  assert.equal(run.tools[1].output.result,150);
+  assert.ok(Array.isArray(run.tools[1].output.foods));
+  assert.equal(value.proposal.items[0].quantity.grams,150,'"3/2 * 100" is evaluated exactly');
   assert.deepEqual(run.models.map(call=>[call.kind,call.promptTokens,call.completionTokens,call.costUsd,call.detail]),
-    [['agent_step',1200,80,0.0021,'tool-calls: findFood, calculate'],['agent_step',1500,200,null,'stop: findFood']]);
-  assert.deepEqual(run.tools.map(tool=>tool.name),['findFood','calculate','findFood'],'a call the SDK rejected is recorded too');
+    [['agent_step',1200,80,0.0021,'tool-calls: findFood, getFoodsAndServings'],['agent_step',1500,200,null,'stop: findFood']]);
+  assert.deepEqual(run.tools.map(tool=>tool.name),['findFood','getFoodsAndServings','findFood'],'a call the SDK rejected is recorded too');
   assert.match(run.tools[2].error,/^invalid_input: Invalid input/);
   assert.equal(run.resolutions.length,1);
   assert.equal(run.resolutions[0].model,'test-model');
