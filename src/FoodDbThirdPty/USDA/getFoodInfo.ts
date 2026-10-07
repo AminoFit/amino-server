@@ -120,17 +120,18 @@ export function extractFoodInfo(foodItem: any, foodAttributesToQuery: FoodAttrib
         unit: nutrientUnits[name] || "g"
       }
     })
-    if (foodItem.servingSizeUnit === "GRM" || foodItem.servingSizeUnit === "g") {
+    // A record can name a unit without a size (Dorot's ginger cubes, 2640048: "GRM", no servingSize, empty label):
+    // its nutrients stay per 100 g instead of being scaled by a missing size, which lost every value.
+    const labelled = Number.isFinite(foodItem.servingSize) && foodItem.servingSize > 0
+    if (labelled && (foodItem.servingSizeUnit === "GRM" || foodItem.servingSizeUnit === "g")) {
       default_serving = {
         default_serving_amount: foodItem.servingSize,
         default_serving_unit: "g"
       }
-    } else {
-      if (["ml", "MLT", "IU"].includes(foodItem.servingSizeUnit)) {
-        default_serving = {
-          default_serving_amount: foodItem.servingSize,
-          default_serving_unit: "ml"
-        }
+    } else if (labelled && ["ml", "MLT", "IU"].includes(foodItem.servingSizeUnit)) {
+      default_serving = {
+        default_serving_amount: foodItem.servingSize,
+        default_serving_unit: "ml"
       }
     }
   }

@@ -83,3 +83,16 @@ test('a recipe is its ingredients\' sum, recomputed when one gains a value',()=>
   assert.equal(valuesDiffer(before,after),true);
   assert.equal(valuesDiffer(after,{...after}),false);
 });
+
+test('a branded record with a serving unit but no size stays per 100 g (Dorot ginger cubes, USDA 2640048)',()=>{
+  const {extractFoodInfo,foodAttributesToQuery}=require('../src/FoodDbThirdPty/USDA/getFoodInfo.ts');
+  const row=(name,unitName,amount)=>({nutrient:{name,unitName},amount});
+  const food=extractFoodInfo({description:'CRUSHED GINGER CUBES',dataType:'Branded',fdcId:2640048,brandName:'DOROT',gtinUpc:'794376100142',
+    servingSizeUnit:'GRM',householdServingFullText:'1 cube',labelNutrients:{},foodNutrients:[row('Energy','kcal',114),
+    row('Carbohydrate, by difference','g',22.73),row('Protein','g',0),row('Total lipid (fat)','g',0),row('Potassium, K','mg',227)]},
+    foodAttributesToQuery);
+  assert.deepEqual(food.default_serving,{default_serving_amount:100,default_serving_unit:'g'});
+  assert.equal(food.foodInfo.calories.amount,114);
+  assert.equal(food.foodInfo.carbohydrates.amount,22.73);
+  assert.equal(food.foodInfo.potassium.amount,227);
+});
