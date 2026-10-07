@@ -1,7 +1,18 @@
 # People and sharing plan (friends, partners, trainers)
 
 **Date:** 2026-10-07
-**Status:** plan, nothing built. Owner decisions 2026-10-07: remove silently; the logger's subscription is checked; same amounts for everyone, each person edits their own portion (no per-person portions in the For sheet); no trainer diary view for now (maybe later in the web UI). Maximum reuse of shared helpers and components. Other **(decide)** items are open.
+**Status (2026-10-07 night):** phases 0-5 built and tested locally, nothing deployed.
+- Server commits: 610342b (phase 0), 0f5472d (phases 1-4), c04305d (phase 5).
+- Migrations 20261015000000-20261015030000 are not applied. Phase 0 changes every food search for everyone (no behaviour change); the rest is behind FeatureFlag `people` (off).
+- App: Watermelon v18, sync, Settings › People, accept screen, person page, share sheet, Foods badges and filter, copy-link preview, Add Food "for" button, log row initials, and "Log for…" on a meal. Uncommitted in amino-mobile, on top of an earlier session's pending changes.
+- Owner decisions 2026-10-07: removal is silent; the logger's subscription is checked; everyone gets the same amounts and each person edits their own portion; no trainer diary view for now (maybe later in the web UI). Maximum reuse of shared helpers.
+- Left for later:
+  - "Shared with 2" on the Foods list rows.
+  - Shared foods in the meal agent: flag `shared_foods_in_agent`, off until the evals run.
+  - Placeholder meals for targets while an AI meal is being worked out (targets get their copy once it resolves).
+  - Logger edits of a meal logged for someone: delete only; they can log again.
+  - Web dashboard People.
+
 **Scope:** amino-server (database, API, meal agent, MCP, push) and amino-mobile (Settings › People, Foods tab, Add Food, Log).
 
 Four things, built in this order:
