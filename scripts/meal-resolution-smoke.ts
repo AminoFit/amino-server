@@ -2,6 +2,11 @@ import { compileMealPlan } from "@/mealResolution/compile"
 import { resolveMeal } from "@/mealResolution/resolve"
 import type { MealEvent } from "@/mealResolution/evidence"
 import { localTime } from "@/mealOperations/instant"
+import { agentOverride } from "./mealAgentOverride"
+
+// EVAL_MODEL, EVAL_EFFORT and EVAL_VARIANT run the agent on another model or prompt variant (scripts/mealAgentOverride.ts).
+const override=process.env.EVAL_MODEL||process.env.EVAL_VARIANT?agentOverride({modelId:process.env.EVAL_MODEL??"google/gemini-3.8-flash",
+  effort:process.env.EVAL_EFFORT,variant:process.env.EVAL_VARIANT}):{}
 
 const components=[
   {id:11,foodItemId:101,name:"Plain yogurt",groupId:"smoothie"},
@@ -73,7 +78,7 @@ async function evaluateTravel(item:TravelCase) {
   const input={userId:"00000000-0000-4000-8000-000000000001",operationId:"00000000-0000-4000-8000-000000000002",
     messageId:43,originalText:item.text,consumedOn:item.submittedAt,submittedAt:item.submittedAt,timezone:item.timezone,
     locale:item.locale,attachmentIds:[]}
-  const resolved=await resolveMeal(input,{evidence:evidence as any,deadlineMs:90000})
+  const resolved=await resolveMeal(input,{evidence:evidence as any,deadlineMs:90000,...override})
   const plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null
   const ids=plan?.items.map(item=>item.foodId)??[]
   const consumed=Date.parse(plan?.consumedOn??"")
@@ -113,7 +118,7 @@ async function evaluate(locale:string,originalText:string,source:MealEvent,expec
   const input={userId:"00000000-0000-4000-8000-000000000001",operationId:"00000000-0000-4000-8000-000000000002",
     messageId:43,originalText,consumedOn:"2026-09-24T12:00:00Z",
     submittedAt:"2026-09-24T12:00:00Z",timezone:"America/New_York",locale,attachmentIds:[]}
-  const resolved=await resolveMeal(input,{evidence:evidence as any,deadlineMs:90000})
+  const resolved=await resolveMeal(input,{evidence:evidence as any,deadlineMs:90000,...override})
   const plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null
   const ids=plan?.items.map(item=>item.foodId)??[]
   const correct=JSON.stringify(ids.slice().sort())===JSON.stringify(expected)&&

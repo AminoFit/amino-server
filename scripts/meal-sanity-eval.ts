@@ -2,10 +2,16 @@
 // nothing invented or doubled, and the right energy-density variant, in several
 // languages and with typos. Uses a fixture catalogue; makes no database writes.
 // EVAL_PREFETCH=0 measures the search-only path; EVAL_FAST_ROUTE=1 lets the text fast route race the agent.
+// EVAL_MODEL, EVAL_EFFORT and EVAL_VARIANT run the agent on another model or prompt variant (scripts/mealAgentOverride.ts).
 // Run: npx ts-node -r tsconfig-paths/register scripts/meal-sanity-eval.ts [caseId...]  (EVAL_CONCURRENCY=2)
 import { compileMealPlan } from "@/mealResolution/compile"
 import { resolveMeal } from "@/mealResolution/resolve"
 import { foodSummary, type CatalogFood } from "@/mealResolution/evidence"
+import { mealRunTotals, withMealRun } from "@/mealResolution/runRecorder"
+import { agentOverride } from "./mealAgentOverride"
+
+const override=process.env.EVAL_MODEL||process.env.EVAL_VARIANT?agentOverride({modelId:process.env.EVAL_MODEL??"google/gemini-3.8-flash",
+  effort:process.env.EVAL_EFFORT,variant:process.env.EVAL_VARIANT}):{}
 
 const food=(id:number,name:string,kcal:number,protein:number,carb:number,fat:number,servings:[string,number,number?][]=[]):CatalogFood=>({
   id,name,brand:null,lastUpdated:"2026-09-01T00:00:00Z",defaultServingWeightGram:100,weightUnknown:false,
@@ -68,8 +74,8 @@ async function evaluate(item:typeof cases[number]) {
     messageId:1,originalText:item.text,consumedOn:"2026-09-25T12:00:00Z",submittedAt:"2026-09-25T12:00:00Z",
     timezone:"UTC",locale:null,attachmentIds:[]}
   const started=Date.now()
-  const resolved=await resolveMeal(input,{evidence:evidence as any,sources:noSources as any,loadPhotos:async()=>[],deadlineMs:45000,
-    fastRoute:process.env.EVAL_FAST_ROUTE==="1"})
+  const {value:resolved,run}=await withMealRun(()=>resolveMeal(input,{evidence:evidence as any,sources:noSources as any,
+    loadPhotos:async()=>[],deadlineMs:45000,fastRoute:process.env.EVAL_FAST_ROUTE==="1",...override}))
   let plan,error:string|undefined
   try {plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null} catch(e) {error=e instanceof Error?e.message:"invalid"}
   const ids=plan?.items.map(i=>i.foodId)??[]
@@ -78,7 +84,7 @@ async function evaluate(item:typeof cases[number]) {
     (!item.grams||total>=item.grams[0]&&total<=item.grams[1])
   return {id:item.id,pass,foodIds:ids,expected:item.expected,error,outcome:resolved.proposal.outcome,
     grams:plan?.items.map(i=>Math.round(i.grams)),kcal:plan?Math.round(plan.items.reduce((s,i)=>s+i.nutrition.kcal,0)):null,
-    steps:resolved.steps,ms:Date.now()-started,route:resolved.model,clarification:resolved.proposal.clarification,
+    steps:resolved.steps,ms:Date.now()-started,costUsd:mealRunTotals(run).costUsd,route:resolved.model,clarification:resolved.proposal.clarification,
     trace:resolved.trace,quantities:resolved.proposal.items.map(entry=>entry.quantity)}
 }
 
@@ -93,7 +99,8 @@ async function main() {
   results.sort((a,b)=>cases.findIndex(c=>c.id===a.id)-cases.findIndex(c=>c.id===b.id))
   for (const r of results) console.log(JSON.stringify(r))
   const passed=results.filter(r=>r.pass).length
-  console.log(`\n${passed}/${results.length} passed`)
+  const cost=results.reduce((sum,r)=>sum+(r.costUsd??0),0),steps=results.reduce((sum,r)=>sum+(r.steps??0),0)/results.length
+  console.log(`\n${passed}/${results.length} passed, $${cost.toFixed(3)}, ${steps.toFixed(1)} steps a case`)
   if (passed<results.length) process.exitCode=1
 }
 void main()

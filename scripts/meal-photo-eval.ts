@@ -3,6 +3,8 @@
 // nothing is written. Run with production read credentials:
 // npx ts-node -T -r tsconfig-paths/register scripts/meal-photo-eval.ts [messageIds...] [--model=<openrouter id>]
 // --model swaps the meal agent's model (the second-look critic stays on Flash) to compare vision models.
+// EVAL_MODEL, EVAL_EFFORT and EVAL_VARIANT instead run the agent through scripts/mealAgentOverride.ts (Claude's schema and
+// caching adaptations, prompt variants).
 // --no-text drops the user's caption to test photo-only logging (for example a nutrition panel alone).
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { resolveMeal } from "@/mealResolution/resolve"
@@ -13,10 +15,13 @@ import { createFoodSources } from "@/mealResolution/foodSources"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText } from "ai"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { agentOverride } from "./mealAgentOverride"
 
-const modelId = process.argv.find(arg => arg.startsWith("--model="))?.slice("--model=".length) ?? FOOD_MODEL
-const agentModel = () => ({ id: modelId, provider: "openrouter", model: createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY }).chat(modelId,
-  { provider: providerPreferences(modelId), reasoning: { effort: "low" }, usage: { include: true } }) })
+const modelId = process.env.EVAL_MODEL ?? process.argv.find(arg => arg.startsWith("--model="))?.slice("--model=".length) ?? FOOD_MODEL
+const override = process.env.EVAL_MODEL || process.env.EVAL_VARIANT
+  ? agentOverride({ modelId, effort: process.env.EVAL_EFFORT, variant: process.env.EVAL_VARIANT }) : null
+const agentModel = override?.model ?? (() => ({ id: modelId, provider: "openrouter", model: createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY }).chat(modelId,
+  { provider: providerPreferences(modelId), reasoning: { effort: "low" }, usage: { include: true } }) }))
 
 type Plan = ReturnType<typeof compileMealPlan>
 // photoIds limits a case to some of the message's photos (the same meal seen with less evidence).
@@ -137,7 +142,7 @@ async function run(test: Case) {
     attachmentIds: (photos ?? []).map(photo => photo.id).filter(id => !test.photoIds || test.photoIds.includes(id)), clarificationAllowed: false }
   let cost = 0
   // OpenRouter reports each step's cost; sum it across the agent's steps.
-  const generate = (async options => { const result = await generateText(options)
+  const generate = (async options => { const result = await (override?.generate ?? generateText)(options)
     for (const step of result.steps ?? []) cost += Number((step.providerMetadata?.openrouter as { usage?: { cost?: number } } | undefined)?.usage?.cost ?? 0)
     return result }) as typeof generateText
   // The preview the app would show greyed out after the first look (stage "found").

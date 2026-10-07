@@ -1,3 +1,90 @@
+# Meal agent: Haiku 5.5, Sonnet 5.5 and a prompt fix — 7 October 2026
+
+Decision: Flash stays for now, Sonnet is the direction (owner, 7 October). A prompt fix helped every model, Flash included; Haiku 5.5 works at medium thinking or above
+and costs about a ninth of Flash per meal, but it isn't faster than Flash with the fix. Spend: about $1.06.
+
+## Replays
+
+Same four slow text meals as 5 October (30505, 30449, 30473, 30451), read-only, fast routes off, `scripts/meal-model-replay.ts`
+(model, effort and prompt variant switches in `scripts/mealAgentOverride.ts`). Two runs per meal (Flash one), three arms
+at a time, so times are comparable within this table only. "coverage" is the prompt variant below.
+
+| Arm | Failed runs | Time per meal | Steps | Cost per meal | Espresso kept (30505) |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Flash low | 0/4 | 36 s | 5.8 | $0.044 | 1/1 |
+| Flash low + coverage | 0/4 | 20 s | 4.5 | $0.030 | 1/1 |
+| Haiku low | 3/8 | 17 s | 2.6 | $0.004 | dropped in 1 of the 2 that answered |
+| Haiku medium | 1/8 | 21 s | 2.6 | $0.004 | 2/2 |
+| Haiku low + coverage | 0/8 | 21 s | 3.6 | $0.005 | 1/2 (the other logged the oat milk twice) |
+| Haiku medium + coverage | 0/8 | 21 s | 3.1 | $0.005 | 2/2 |
+| Haiku high + coverage | 0/8 | 26 s | 2.9 | $0.005 | 2/2 |
+| Sonnet low + coverage | 0/8 | 13 s | 2.3 | $0.051 (cached) | 2/2 |
+
+Multilingual sanity eval (`scripts/meal-sanity-eval.ts`, 17 cases, EVAL_MODEL/EVAL_EFFORT/EVAL_VARIANT): Flash low +
+coverage 17/17 ($0.148), Haiku medium + coverage 17/17 ($0.018), Haiku high + coverage 16/17 (asked whether the 200 g
+chicken in es_meal was raw or cooked).
+
+- The dropped espresso was a prompt problem. "[barcode:] chip … the words around it give the amount" reads as if
+  "Espresso with oat milk" describes the scanned Oatly. Haiku marked "Espresso" omitted and Sonnet (5 October) logged
+  only the Oatly. The variant says the words around a chip either describe the product or name other foods.
+- Flash's extra steps were partly the prompt too. Telling it not to read history unless the words refer to a past meal,
+  and not to fetch a food twice, took 36 s to 20 s and $0.044 to $0.030 (one run per meal: confirm with the meal eval).
+- Haiku at low thinking fails the plan's validation (a "0" gram item for the food it decided to omit, a clarification
+  when clarificationAllowed is false) in 3 of 8 runs; medium is the floor. Its steps are slower than Flash's, so at
+  about 3 steps it takes as long as Flash at 4.5.
+- 30451 ("Same fairlife latte I had yesterday", when yesterday had a skim-milk latte) still has no clean answer: most
+  runs copy the skim-milk latte; Flash + coverage built espresso plus fairlife milk, arguably the best reading.
+- Claude needs two more things than on 5 October: its structured output ignores string lengths (an over-long evidence
+  string or clarification fails validation, so the limits go in the prompt), and the plan schema's oneOf as anyOf.
+
+The coverage variant (appended to the system prompt):
+
+> The words around a [barcode:] chip either describe that scanned product (its amount, or a generic name for it such as
+> "oat milk") or name other foods eaten with it; those other foods are their own items, never omitted because of the chip.
+> Before you answer, go through originalText mention by mention: every food named (including drinks such as an espresso
+> or coffee, and each [barcode:] chip) needs its own component with an item, or an explicit omission. lockedProducts and
+> prefetchedFoods are evidence for some of the meal, never the whole meal: a mention with no matching food still needs a
+> findFood call. Do not answer while a mention is unaccounted for.
+> Spend turns only on evidence you lack. Do not call listMealEvents or getMealEvent unless the words refer to a past meal
+> ("same as", "again", "yesterday's", "my usual"); recentMeals already shows what was eaten lately. Never fetch a food
+> again that a tool already returned in this conversation: reuse it.
+
+## Full suite on Sonnet 5.5 + coverage (low thinking)
+
+Text 17/17 ($0.234, 3.8 s a case), history 15/15 (2.0 steps), photos 21/22 ($0.545, 20.2 s and 1.3 steps a case; 30318
+"Half of this large tuna ceviche bowl" dropped the mango). No first plan was rejected by the backend check. About $0.99 in
+all (OpenRouter's usage counter, which also counts production traffic during the run). There is no same-day Flash run
+to compare with; the 26 September Flash photo eval (16 cases) had a 20 s median at $0.021 a case, about what Sonnet
+costs here with the prompt cache.
+
+### Why Sonnet missed the mango (30318)
+
+Flash's first look listed "mango and cucumber mix 40 g" as one visible food; its catalogue candidate was Cucumber Combo
+(10372, an old GPT4 food: cucumber only, 15 kcal/100 g). Sonnet answered in one step with no tool calls, taking that
+candidate, and Flash's second look passed the plan. The coverage variant only covers mentions in the user's words, not
+visibleFoods. Fixes, none made yet: in the agent prompt, a visibleFoods entry naming two foods is one food only when a
+catalogue food's name includes both (the rule text mentions already have); have the first look list foods separately;
+clean up 10372. Unknown: whether Flash passes 30318 on today's code.
+
+## Open decisions (7 October, paused here)
+
+- Owner likes the Sonnet direction but wonders whether Flash is the better vision model. Next cheap test: Flash low +
+  coverage on the 22 photo cases only (about $0.45), same code, to compare with Sonnet's 21/22.
+- Or: re-run just 30318 on both models with the visibleFoods split rule (a few cents).
+- Switching (whenever decided): oneOf to anyOf, provider pinned to Anthropic, cache marker, string limits in the prompt,
+  the coverage text, FeatureFlag rollout. The vision helpers (first look, second look, barcode locator) stay on Flash.
+- Uncommitted: these notes, scripts/meal-model-replay.ts, scripts/mealAgentOverride.ts, and EVAL_MODEL/EVAL_EFFORT/
+  EVAL_VARIANT in meal-sanity-eval, meal-resolution-smoke and meal-photo-eval.
+
+## Next
+
+1. The coverage text into the production prompt for Flash: the full meal eval first (about $1.30), then a FeatureFlag.
+2. Haiku medium + coverage as a candidate if cost matters more than time; it needs the meal eval too (about $0.15).
+3. Idea, not built: a meal that fails the backend check and is re-run goes to Sonnet at medium or high, so the
+   hard minority gets the strongest model while the first try stays cheap.
+
+---
+
 # Meal agent: Gemini 3.8 Flash vs Claude Sonnet 5.5 — 5 October 2026
 
 Decision: keep Gemini 3.8 Flash (low reasoning) as the meal agent for now. Revisit when Google ships a newer Flash, or if
