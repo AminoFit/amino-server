@@ -26,7 +26,9 @@ export type FoodSource = "recipe" | "custom" | "catalogue"
  * (a typo-tolerant text hit, often unrelated: "Chicken Ham" for "Haferflocken"). */
 export type FoodMatch = "name" | "meaning" | "loose"
 export type FoodResult = { id: number; name: string; similarity: number; match: FoodMatch; source: FoodSource
-  lastEditedAt: string | null; createdAt: string | null; recipePortions: number | null; foodItem: Record<string, any> }
+  lastEditedAt: string | null; createdAt: string | null; recipePortions: number | null; foodItem: Record<string, any>
+  /** The owner of a food shared with the user. */
+  sharedBy?: string | null }
 
 const normalize = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
   .replace(/[^\p{L}\p{N}]+/gu, " ").trim()
@@ -107,6 +109,7 @@ export async function searchFoodsForUser(userId: string, query: string, options:
       : (similarity.get(id) ?? 0) >= MEANING_FLOOR ? "meaning" : "loose"
     return { id, name: food.name, similarity: similarity.get(id) ?? 1, match,
       source: food.recipePortions != null ? "recipe" : food.privateToUserId ? "custom" : "catalogue",
+      sharedBy: food.privateToUserId && food.privateToUserId !== userId ? food.privateToUserId as string : null,
       lastEditedAt: food.lastUpdated ?? null, createdAt: food.createdAtDateTime ?? null,
       recipePortions: food.recipePortions ?? null, foodItem: { ...food, FoodItemImages: images } }
   }
@@ -120,6 +123,9 @@ export async function searchFoodsForUser(userId: string, query: string, options:
       (order.get(a) ?? 1e6) - (order.get(b) ?? 1e6) || String(rowB.lastUpdated).localeCompare(String(rowA.lastUpdated))
   })
   const yours = yourIds.map(toResult).filter((row): row is FoodResult => !!row)
+  // Foods people shared with the user (the searches return those they can see): after their own, before the catalogue.
+  const fromPeople = blended.filter(row => details.get(row.id)?.privateToUserId && details.get(row.id)!.privateToUserId !== userId)
+    .map(row => toResult(row.id)).filter((row): row is FoodResult => !!row)
   // Catalogue: the exact name, then names made of the query's words (whole or started: "pas sau"), then the blend
   // (close meaning, then the rest of the text hits). Fuzzy text-only hits ("Com tam suom" for "pas sau") are kept only
   // when few foods match properly; they still rescue a typo.
@@ -131,6 +137,6 @@ export async function searchFoodsForUser(userId: string, query: string, options:
   const catalogue = (strong.length >= 5 ? strong : ranked).map(row => toResult(row.id)).filter((row): row is FoodResult => !!row)
   console.info("food_search", { mode, page: cursor, ms: clock.total(), ...clock.stages, yours: yours.length,
     catalogue: catalogue.length, containing: catalogue.filter(row => containsQuery(text, details.get(row.id))).length })
-  return { results: [...yours, ...catalogue], nextCursor: textRows.length === PAGE ? cursor + PAGE : null as number | null,
+  return { results: [...yours, ...fromPeople, ...catalogue], nextCursor: textRows.length === PAGE ? cursor + PAGE : null as number | null,
     stages: clock.stages }
 }

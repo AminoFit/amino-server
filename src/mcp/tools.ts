@@ -10,6 +10,8 @@ import { createFood, createRecipe, deleteFood, foodFields, recipeFields, restore
 import { agentWriteRefusal } from "./settings"
 import { addCatalogueFood, pointerFrom } from "./catalogueAdds"
 import { addToMeal, agentName, amountFields, deleteMeal, logMeal, mealFood, restoreMeal, updateMeal } from "./mealWrites"
+import { copyLinkForAgent, deleteMealForAgent, logForFields, logForPeople, mealsLoggedForAgent, peopleForAgent,
+  shareFoodsForAgent } from "./people"
 
 export const MCP_INSTRUCTIONS = `Amino is a food-logging app. These tools read the user's logged meals (each food with its \
 nutrition), daily totals, goals and body stats, and can update the goals and body stats.
@@ -48,7 +50,15 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   and say so. Confirm with the user before deleting anything. Foods and recipes an agent creates are private to
   the user: check search_foods(scope: "mine") first, and only change or delete what the user asked about.
 - The user's own recipes and foods (list_my_foods) are what they saved in the app. A recipe's values are for one
-  portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.`
+  portion; a meal shows it as one food with an amount in portions. get_food reads any food by id with every nutrient.
+- People: list_people shows who the user is linked with (partners, friends, trainers, clients) and what each may do.
+  Foods someone shared with the user show \`source: "shared"\` and \`sharedBy\` (their person id). share_foods shares
+  the user's own foods and recipes with linked people (they follow the user's edits); create_copy_link makes a link
+  anyone can use to add their own copy. log_meal (forPersonIds) and log_meals log for people who let the user log for
+  them, each in their own diary, labelled as logged by the user via you; any of the user's own foods used are shared
+  with them. Use localTime for meal plans so "12:30" is each person's lunchtime. A possibleDuplicates answer means
+  someone already has a similar meal: ask the user before retrying with allowDuplicate. Linking people and permissions
+  happen only in the app.`
 
 const RATE_LIMIT_PER_MINUTE = 120
 const date = z.iso.date().describe("Local date, YYYY-MM-DD")
@@ -61,7 +71,10 @@ const CREATE = { readOnlyHint: false, destructiveHint: false, idempotentHint: fa
 const DELETE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false } as const
 /** Changes to the user's foods and meals: only with the user's "Let agents make changes" on, and at a slower rate. */
 const CHANGE_TOOLS = ["create_food", "create_recipe", "update_food", "update_recipe", "delete_food", "restore_food", "log_meal",
-  "add_to_meal", "update_meal", "delete_meal", "restore_meal"]
+  "add_to_meal", "update_meal", "delete_meal", "restore_meal", "share_foods", "create_copy_link", "log_meals",
+  "delete_meal_for_person"]
+/** Meal plans for several people: entries a day across every log_meals call. */
+const PLANNED_ENTRIES_PER_DAY = 2000
 const CHANGES_PER_MINUTE = 20, CHANGES_PER_DAY = 300
 
 type Call = { db: UserDatabase; userId: string; authInfo: AuthInfo }
@@ -368,11 +381,17 @@ export function registerAminoTools(server: McpServer) {
       eatenAt: z.iso.datetime({ offset: true }).optional()
         .describe("When it was (or will be) eaten, ISO 8601 with offset; up to a year either way"),
       note: z.string().trim().max(500).optional().describe("The meal's text in the log, e.g. \"Lunch at Nando's\""),
-      idempotencyKey: z.uuid()
+      idempotencyKey: z.uuid(),
+      ...logForFields
     }),
     annotations: CREATE
   }, (input, ctx) => run("log_meal", ctx.http?.authInfo, async ({ db, userId, authInfo }) => {
-    const { targets, ...data } = await logMeal(db, userId, { clientId: authInfo.clientId, name: await agentName(authInfo) }, input)
+    const agent = { clientId: authInfo.clientId, name: await agentName(authInfo) }
+    if (input.forPersonIds && !(input.forPersonIds.length === 1 && input.forPersonIds[0] === userId)) {
+      const { targets, ...data } = await logForPeople(db, userId, agent, input) as Record<string, any>
+      return { data, rows: (targets as number[] | undefined)?.length ?? 0, targets }
+    }
+    const { targets, ...data } = await logMeal(db, userId, agent, input)
     return { data, rows: 1, targets }
   }))
 
@@ -432,6 +451,100 @@ export function registerAminoTools(server: McpServer) {
     const { targets, ...data } = await restoreMeal(db, userId, mealId)
     return { data, rows: 1, targets }
   }))
+
+  server.registerTool("list_people", {
+    title: "List linked people",
+    description: "People the user is linked with in Amino (partner, friend, trainer or client) and what each side allows: " +
+      "whether the user can log meals for them, whether they can log for the user, and whether either sees all the " +
+      "other's foods. Ids are for share_foods, log_meal (forPersonIds), log_meals and list_meals_logged_for.",
+    inputSchema: z.object({}),
+    annotations: READ
+  }, (_args, ctx) => run("list_people", ctx.http?.authInfo, async ({ userId }) => {
+    const data = await peopleForAgent(userId)
+    return { data, rows: data.people.length }
+  }))
+
+  server.registerTool("share_foods", {
+    title: "Share foods with people",
+    description: "Share (share: true) or stop sharing the user's own foods and recipes (ids from list_my_foods) with " +
+      "linked people. They see them in their Foods and follow the user's edits; a recipe brings its own private " +
+      "ingredients. Stopping leaves them a copy of anything they used. Recipes with someone else's food in them are " +
+      "refused. Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ foodIds: z.array(z.number().int().positive()).min(1).max(50),
+      personIds: z.array(z.uuid()).min(1).max(50), share: z.boolean() }),
+    annotations: WRITE
+  }, (input, ctx) => run("share_foods", ctx.http?.authInfo, async ({ userId, authInfo }) => {
+    const data = await shareFoodsForAgent(userId, authInfo.clientId, input)
+    return { data, rows: data.changed, targets: input.foodIds }
+  }))
+
+  server.registerTool("create_copy_link", {
+    title: "Create a copy link",
+    description: "A link to one of the user's own foods or recipes that anyone can open in Amino to add their own copy " +
+      "(it doesn't follow later edits). Needs the user's \"Let agents make changes\" setting.",
+    inputSchema: z.object({ foodId: z.number().int().positive() }),
+    annotations: CREATE
+  }, ({ foodId }, ctx) => run("create_copy_link", ctx.http?.authInfo, async ({ userId }) =>
+    ({ data: await copyLinkForAgent(userId, foodId), rows: 1, targets: [foodId] })))
+
+  server.registerTool("log_meals", {
+    title: "Log several meals",
+    description: "Log up to 100 meals in one call, e.g. a week's meal plan for several clients: each entry is a meal " +
+      "(foods as in log_meal) for forPersonIds (default the user), at eatenAt or localTime (each person's own " +
+      "timezone). Entries are logged one by one: each reports its own result, and a failure doesn't stop the rest. " +
+      "Each entry needs its own idempotencyKey. Needs the user's \"Let agents make changes\" setting, and each " +
+      "person's permission.",
+    inputSchema: z.object({ entries: z.array(z.object({
+      foods: z.array(mealFood).min(1).max(50),
+      eatenAt: z.iso.datetime({ offset: true }).optional(),
+      note: z.string().trim().max(500).optional(),
+      idempotencyKey: z.uuid(),
+      ...logForFields
+    })).min(1).max(100) }),
+    annotations: CREATE
+  }, ({ entries }, ctx) => run("log_meals", ctx.http?.authInfo, async ({ db, userId, authInfo }) => {
+    const admin = createAdminSupabase() as any
+    const { data: today } = await admin.from("McpRequest").select("rows").eq("userId", userId).eq("tool", "log_meals").eq("ok", true)
+      .gte("createdAt", new Date(Date.now() - 86_400_000).toISOString())
+    const planned = ((today ?? []) as { rows: number | null }[]).reduce((sum, row) => sum + (row.rows ?? 0), 0)
+    if (planned + entries.length > PLANNED_ENTRIES_PER_DAY)
+      throw new McpInputError(`At most ${PLANNED_ENTRIES_PER_DAY} planned meals a day; ${Math.max(0, PLANNED_ENTRIES_PER_DAY - planned)} left today.`)
+    const agent = { clientId: authInfo.clientId, name: await agentName(authInfo) }
+    const results = []
+    const targets: number[] = []
+    for (const entry of entries) {
+      try {
+        const { targets: ids, meal: _meal, ...data } = await logForPeople(db, userId, agent, entry) as Record<string, any>
+        targets.push(...((ids as number[] | undefined) ?? []))
+        results.push({ idempotencyKey: entry.idempotencyKey, ...data })
+      } catch (error) {
+        if (!(error instanceof McpInputError)) throw error
+        results.push({ idempotencyKey: entry.idempotencyKey, logged: false, error: error.message })
+      }
+    }
+    return { data: { results }, rows: entries.length, targets }
+  }))
+
+  server.registerTool("list_meals_logged_for", {
+    title: "Meals logged for a person",
+    description: "Meals the user logged for one linked person (newest first, with totals), while that person still lets " +
+      "the user log for them. The user can't see the rest of their diary.",
+    inputSchema: z.object({ personId: z.uuid() }),
+    annotations: READ
+  }, ({ personId }, ctx) => run("list_meals_logged_for", ctx.http?.authInfo, async ({ userId }) => {
+    const data = await mealsLoggedForAgent(userId, personId) as { meals: unknown[] }
+    return { data, rows: data.meals.length }
+  }))
+
+  server.registerTool("delete_meal_for_person", {
+    title: "Delete a meal logged for someone",
+    description: "Delete a meal the user logged for someone else (only one they asked you to delete), while that person " +
+      "still lets them log. The person can restore it from their log for 30 days. Needs the user's \"Let agents make " +
+      "changes\" setting.",
+    inputSchema: z.object({ mealId: z.number().int().positive() }),
+    annotations: DELETE
+  }, ({ mealId }, ctx) => run("delete_meal_for_person", ctx.http?.authInfo, async ({ userId }) =>
+    ({ data: await deleteMealForAgent(userId, mealId), rows: 1, targets: [mealId] })))
 
   server.registerTool("get_weight_history", {
     title: "Get weight history",

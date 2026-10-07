@@ -50,7 +50,9 @@ export function foodCard(row: Row, userId: string, history?: History, all = fals
   })
   return {
     id: row.id, name: row.name, brand: row.brand ?? null, kind: recipe ? "recipe" : "food",
-    source: recipe ? "recipe" : row.privateToUserId === userId ? "custom" : "catalogue",
+    source: recipe ? "recipe" : row.privateToUserId === userId ? "custom" : row.privateToUserId ? "shared" : "catalogue",
+    // A food someone linked shared with the user: list_people names them.
+    ...(row.privateToUserId && row.privateToUserId !== userId ? { sharedBy: row.privateToUserId } : {}),
     ...(match ? { match } : {}),
     ...(recipe ? { portions: Number(row.recipePortions) } : {}),
     ...(row.isLiquid ? { liquid: true } : {}),
