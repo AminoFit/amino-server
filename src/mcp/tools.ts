@@ -527,12 +527,14 @@ export function registerAminoTools(server: McpServer) {
 
   server.registerTool("list_meals_logged_for", {
     title: "Meals logged for a person",
-    description: "Meals the user logged for one linked person (newest first, with totals), while that person still lets " +
-      "the user log for them. The user can't see the rest of their diary.",
-    inputSchema: z.object({ personId: z.uuid() }),
+    description: "Meals the user logged for one linked person (newest first, with totals, 100 at a time), while that person " +
+      "still lets the user log for them. The user can't see the rest of their diary. For older meals, pass the reply's " +
+      "next.before and next.beforeId.",
+    inputSchema: z.object({ personId: z.uuid(), before: z.string().optional().describe("next.before from the previous reply"),
+      beforeId: z.number().int().positive().optional().describe("next.beforeId from the previous reply") }),
     annotations: READ
-  }, ({ personId }, ctx) => run("list_meals_logged_for", ctx.http?.authInfo, async ({ userId }) => {
-    const data = await mealsLoggedForAgent(userId, personId) as { meals: unknown[] }
+  }, ({ personId, before, beforeId }, ctx) => run("list_meals_logged_for", ctx.http?.authInfo, async ({ userId }) => {
+    const data = await mealsLoggedForAgent(userId, personId, { before, beforeId }) as { meals: unknown[] }
     return { data, rows: data.meals.length }
   }))
 

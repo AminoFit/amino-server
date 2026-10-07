@@ -83,8 +83,8 @@ export async function logForPeople(db: UserDatabase, userId: string, agent: { cl
     ...(own ? { meal: (await getMeals(db, [own.messageId]))[0] } : {}), targets: meals.map(meal => meal.messageId) }
 }
 
-export async function mealsLoggedForAgent(userId: string, personId: string) {
-  return mealsLoggedFor(userId, personId).catch(asInputError)
+export async function mealsLoggedForAgent(userId: string, personId: string, page: { before?: string; beforeId?: number } = {}) {
+  return mealsLoggedFor(userId, personId, { ...page, limit: 100 }).catch(asInputError)
 }
 
 export async function deleteMealForAgent(userId: string, mealId: number) {

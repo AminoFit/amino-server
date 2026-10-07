@@ -131,10 +131,20 @@ export async function unblock(userId: string, other: string, db: Db = createAdmi
   return { blocked: false }
 }
 
-/** Meals the user logged for someone, while they may still log for them. */
-export async function mealsLoggedFor(userId: string, other: string, db: Db = createAdminSupabase()) {
+type LoggedForMeal = { id: number; consumedOn: string }
+export const mealsPageInput = z.object({ before: z.string().datetime({ local: true }).optional(),
+  beforeId: z.coerce.number().int().positive().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }).strict()
+
+/** Meals the user logged for someone, newest first, a page at a time, while they may still log for them. `next` is the
+ * cursor for the following page (null on the last). */
+export async function mealsLoggedFor(userId: string, other: string, page: z.input<typeof mealsPageInput> = {},
+  db: Db = createAdminSupabase()) {
   await requirePeople(userId, db)
-  return { meals: await rpc(db, "meals_logged_for", { p_actor: userId, p_target: other, p_limit: 100 }) }
+  const { before, beforeId, limit } = mealsPageInput.parse(page)
+  const meals = await rpc<LoggedForMeal[]>(db, "meals_logged_for", { p_actor: userId, p_target: other, p_limit: limit,
+    p_before: before ?? null, p_before_id: beforeId ?? null })
+  const last = meals.length === limit ? meals[meals.length - 1] : null
+  return { meals, next: last ? { before: last.consumedOn, beforeId: last.id } : null }
 }
 
 /** Deletes a meal the user logged for someone (the owner can restore it from their log for 30 days). */

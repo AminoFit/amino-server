@@ -167,7 +167,7 @@ test('logging for each other: only with permission, foods shared as needed, dupl
         DROP TABLE IF EXISTS auth.users; CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, email_confirmed_at timestamptz);
         ALTER TABLE public."FoodItem" ADD COLUMN "partialNutrients" jsonb;`)
       for (const file of ['20261015010000_profiles_push_devices_and_account_deletion.sql','20261015020000_people_and_sharing.sql',
-        '20261015030000_log_for_others.sql']) await db.query(read(file))
+        '20261015030000_log_for_others.sql','20261015060000_meals_logged_for_pages.sql']) await db.query(read(file))
       await db.query(`insert into public."User"(id,"displayName") values ($1,'Alice'),($2,'Bob'),($3,'Carol')`,[alice,bob,carol])
       const one=(sql,args)=>db.query(sql,args).then(r=>r.rows[0])
       const call=(fn,...args)=>one(`select public.${fn}(${args.map((_,i)=>`$${i+1}`).join(',')}) r`,args).then(row=>row.r)
@@ -231,6 +231,12 @@ test('logging for each other: only with permission, foods shared as needed, dupl
       assert.equal(await call('meal_logged_by',alice,his.messageId),bob)
       assert.equal(await call('meal_logged_by',carol,his.messageId),null)
       assert.equal((await call('meals_logged_for',alice,bob)).length,4,'dinner, the confirmed repeat, the copied meal and the AI copy')
+      // A page at a time, newest first: the cursor is the last meal of the page, and the pages cover each meal once.
+      const all=await call('meals_logged_for',alice,bob)
+      const first=await call('meals_logged_for',alice,bob,3)
+      const rest=await call('meals_logged_for',alice,bob,3,first[2].consumedOn,first[2].id)
+      assert.deepEqual([...first,...rest].map(m=>m.id),all.map(m=>m.id))
+      assert.equal(rest.length,1)
       await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[bob])
       await assert.rejects(db.query(`update public."Message" set "loggedByName"='Someone' where id=$1`,[his.messageId]),/set by the server/)
       await db.query(`select set_config('request.jwt.claim.sub','',false)`)
