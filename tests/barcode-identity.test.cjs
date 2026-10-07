@@ -130,6 +130,20 @@ test('the icon sweep queues foods without an icon, newest first, and keeps going
   assert.equal(asked.limit,25);
 });
 
+test('a logged recipe queues its ingredients that show only an old icon or none, not ones already current',async()=>{
+  const {queueIconsForLoggedFoods}=require('../src/foodSearch/iconSweep');
+  const rows={RecipeIngredient:[{foodItemId:212},{foodItemId:213},{foodItemId:500}],
+    FoodItemImages:[{foodItemId:212,foodImageId:13065},{foodItemId:500,foodImageId:13400},{foodItemId:900,foodImageId:13500}]};
+  const asked=[];
+  const db={from:table=>({select:()=>({in:async(column,values)=>{asked.push([table,column,values]);
+    return {data:rows[table].filter(row=>table==='RecipeIngredient'||values.includes(row.foodItemId)),error:null}}})})};
+  const queued=[];
+  await queueIconsForLoggedFoods([900,900],db,async id=>{queued.push(id)});
+  assert.deepEqual(asked[0],['RecipeIngredient','recipeFoodItemId',[900]]);
+  assert.deepEqual(asked[1],['FoodItemImages','foodItemId',[900,212,213,500]]);
+  assert.deepEqual(queued,[212,213],'cornstarch (a 2024 sticker) and sesame oil (no icon); the recipe and 500 are current');
+});
+
 test('UPCitemdb\'s record decides: food is named from it, a confident no is not food, an unsure answer falls back to the listings',async()=>{
   const upc=async()=>({title:'Phil Wood Bottom Bracket Bearings',description:'',url:null,brand:'Phil Wood'});
   const no=await identify(task=>task.options.yes?{status:'ok',choice:'no',confidence:0.95}:{status:'ok',choice:'none',confidence:0.9},{upc});

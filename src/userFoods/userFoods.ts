@@ -177,6 +177,8 @@ export async function saveRecipe(userId:string,foodId:number|null,input:RecipeIn
   const saved=await save(db,userId,foodId,food,servings,nutrientRows(values.perPortion),priced.map(item=>({foodItemId:item.food.id,
     grams:item.grams,servingId:item.servingId,servingAmount:item.servingAmount,loggedUnit:item.loggedUnit})))
   await setPartialNutrients(db,saved.foodId,values.partial)
+  // Its page shows each ingredient's icon, so old ones are replaced as the recipe is saved, not only when it's logged.
+  await iconsFor(db,priced.map(item=>item.food.id))
   return saved
 }
 
