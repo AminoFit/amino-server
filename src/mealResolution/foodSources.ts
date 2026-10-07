@@ -14,7 +14,7 @@ import { normalizeGtin } from "./barcode"
 import { classifyFoodCategoryQueue } from "@/app/api/queues/classify-food-category/classify-food-category"
 import { nameBarcode } from "@/foodSearch/barcodeIdentity"
 import { addPackageBarcode } from "@/foodSearch/packageBarcodes"
-import {visibleFoodFilter} from "../userFoods/visibility"
+import {catalogueOrOwnFilter} from "../userFoods/visibility"
 
 // Every logged item ends up as a FoodItem. When the catalogue has no match the
 // agent adds one from the barcode's USDA record, USDA by name, a cited web page,
@@ -229,8 +229,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
   const barcode=(value:string|null|undefined)=>{const gtin=value?normalizeGtin(value):null
     return gtin&&(ctx.barcodes??[]).includes(gtin)?gtin:null}
   let counter=0
-  // Server reads bypass row security: only shared foods and this user's private foods can be duplicates.
-  const visible=visibleFoodFilter(ctx.userId)
+  // Server reads bypass row security: only catalogue foods and this user's own can be duplicates (not foods shared
+  // with them: those are someone else's).
+  const visible=catalogueOrOwnFilter(ctx.userId)
   const remember=(food:SourceFood)=>{food.servings=cleanServings(food.servings);sources.set(food.sourceId,food);return food}
   const summary=(food:SourceFood,label?:SourceFood)=>({sourceId:food.sourceId,kind:food.foodInfoSource,name:food.name,
     brand:food.brand,gtin:food.gtin,servingGrams:food.defaultServingWeightGram,kcal:food.kcal,proteinG:food.proteinG,

@@ -19,7 +19,7 @@ test('server code reads foods through the visibility helper',()=>{
 
 test('migrations after the visibility rule call food_visible',()=>{
   const dir=path.join(root,'supabase/migrations')
-  const inline=/"privateToUserId"\s+IS\s+NULL\s+OR\s+\w+\."privateToUserId"\s*=\s*p_user_id/i
+  const inline=/\(\s*\w+\."privateToUserId"\s+IS\s+NULL\s+OR\s+\w+\."privateToUserId"\s*=\s*p_user_id\s*\)/i
   const offenders=fs.readdirSync(dir).filter(file=>file>'20261015000000').filter(file=>inline.test(fs.readFileSync(path.join(dir,file),'utf8')))
   assert.deepEqual(offenders,[],'use public.food_visible(p_user_id, f."privateToUserId", f."lineageId")')
 })

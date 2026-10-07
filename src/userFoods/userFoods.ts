@@ -14,7 +14,8 @@ type Db = ReturnType<typeof createAdminSupabase>
 
 /** A failure the caller shows as is: HTTP status plus a stable code. */
 export class UserFoodError extends Error {
-  constructor(readonly code:string,readonly status:number) {super(code)}
+  /** detail: shown to the app with the code, e.g. the foods that can't be shared. */
+  constructor(readonly code:string,readonly status:number,readonly detail?:string) {super(code)}
 }
 const fail=(code:string,status:number):never=>{throw new UserFoodError(code,status)}
 
@@ -86,7 +87,7 @@ export type PricedFood = FoodBasis & {id:number;name:string;brand:string|null;pr
 async function loadFoods(db:Db,userId:string,ids:number[],{archived=false}={}):Promise<Map<number,PricedFood>> {
   const unique=[...new Set(ids)]
   if (!unique.length) return new Map()
-  let query=db.from("FoodItem").select(foodColumns).in("id",unique).or(visibleFoodFilter(userId))
+  let query=db.from("FoodItem").select(foodColumns).in("id",unique).or(await visibleFoodFilter(db,userId))
   if (!archived) query=query.is("archivedAt",null)
   const {data,error}=await query
   if (error) throw error
@@ -236,21 +237,21 @@ export function pricedItem(food:PricedFood,quantity:QuantityInput) {
   return {foodItemId:food.id,...amount,nutrition}
 }
 
-const describe=(food:PricedFood,item:{servingAmount:number;loggedUnit:string})=>{
+export const describe=(food:PricedFood,item:{servingAmount:number;loggedUnit:string})=>{
   const n=Math.round(item.servingAmount*100)/100
   const unit=item.loggedUnit==="portion"?(n===1?"portion":"portions"):item.loggedUnit
   return `${food.name} (${n} ${unit})`
 }
 /** Postgres timestamp (UTC wall clock, as Message.consumedOn stores it) for an ISO instant. */
-const utcWallClock=(instant:string)=>new Date(instant).toISOString().replace("T"," ").replace("Z","")
+export const utcWallClock=(instant:string)=>new Date(instant).toISOString().replace("T"," ").replace("Z","")
 
 /** The meal's text is the list of its foods, so it follows them when they change (20261014100000_meal_text_lists_foods.sql);
  * any other text (an agent's note, the user's words) turns this off. Best-effort: a stale list is the worst case. */
-const listsFoods=(db:Db,messageId:number)=>(db as any).from("Message").update({listsFoods:true}).eq("id",messageId)
+export const listsFoods=(db:Db,messageId:number)=>(db as any).from("Message").update({listsFoods:true}).eq("id",messageId)
   .then(({error}:{error:{message:string}|null})=>{if (error) console.error("meal_lists_foods_not_marked",{messageId,error:error.message})})
 
 /** Best-effort, after the log: foods showing only an old-style icon (or none) get a new one, as meals do. */
-const iconsFor=(db:Db,foodIds:number[])=>queueIconsForLoggedFoods(foodIds,db).catch(error=>
+export const iconsFor=(db:Db,foodIds:number[])=>queueIconsForLoggedFoods(foodIds,db).catch(error=>
   console.error("logged_food_icons_not_queued",{foodIds,error:error instanceof Error?error.message:"unknown"}))
 
 /** Logs a food as a new meal. localId (from the app) makes a retry return the meal already created. */

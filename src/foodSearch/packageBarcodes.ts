@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { catalogueOrOwnFilter, visibleFoodFilter } from "@/userFoods/visibility"
+import { catalogueOrOwnFilter } from "@/userFoods/visibility"
 
 type Db = ReturnType<typeof createAdminSupabase>
 
@@ -62,7 +62,7 @@ export async function addPackageBarcode(db: Db, foodId: number, package_: Packag
 /** The food (and, for a package barcode, its package serving) that answers a barcode for this user: their own food
  * first, else the shared catalogue's; the main barcode before a package one. */
 export async function foodForGtin(db: Db, userId: string, gtin: string) {
-  const visible = visibleFoodFilter(userId)
+  const visible = catalogueOrOwnFilter(userId)
   const [main, packages] = await Promise.all([
     db.from("FoodItem").select("id,privateToUserId").eq("gtin", gtin).is("archivedAt", null).or(visible)
       .order("privateToUserId", { ascending: true, nullsFirst: false }).order("id").limit(1),

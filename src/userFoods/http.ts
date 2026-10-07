@@ -10,7 +10,7 @@ export async function userFoodRequest(handler:(userId:string)=>Promise<unknown>,
   if (!userId) return NextResponse.json({error:"unauthorized"},{status:401})
   try {return NextResponse.json(await handler(userId),{status})}
   catch (error) {
-    if (error instanceof UserFoodError) return NextResponse.json({error:error.code},{status:error.status})
+    if (error instanceof UserFoodError) return NextResponse.json({error:error.code,...(error.detail?{detail:error.detail}:{})},{status:error.status})
     if (error instanceof ZodError) return NextResponse.json({error:"invalid_request",issues:error.issues.slice(0,5)},{status:422})
     console.error("User food request failed",error)
     return NextResponse.json({error:"user_food_unavailable"},{status:500})

@@ -4,7 +4,7 @@ import { HISTORY_NUTRIENTS, type HistoryNutrition } from "@/nutrition"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { blendSearch, type SearchRow } from "./searchBlend"
 import { userFlagEnabled } from "./fastRouteFlag"
-import {visibleFoodFilter} from "../userFoods/visibility"
+import {catalogueOrOwnFilter,visibleFoodFilter} from "../userFoods/visibility"
 
 /** FeatureFlag that lets the agent and the fast route use the user's recipes (the recipe check gates each use). */
 export const RECIPES_FLAG = "recipes_in_agent"
@@ -86,8 +86,11 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
   const when=(value:string)=>{const utc=utcInstant(value)
     return {consumedOn:utc,...(timezone?{consumedOnLocal:localTime(utc,timezone)}:{})}}
   const discovered = new Set<number>()
-  // Server reads bypass row security: only shared foods and this user's private foods are evidence.
-  const visible = visibleFoodFilter(userId)
+  // Server reads bypass row security: only foods this user may see are evidence (read once, when first needed). A barcode
+  // answers from the catalogue and the user's own foods.
+  let visibleRead:Promise<string>|undefined
+  const visible=()=>visibleRead??=visibleFoodFilter(db,userId)
+  const barcodeSpace = catalogueOrOwnFilter(userId)
   const foods = new Map<number,CatalogFood>()
   const events = new Map<number,MealEvent>()
   return {
@@ -122,9 +125,9 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       if (!gtins.length) return []
       // Never an archived version of a user's food (recipes carry no barcode). Other package sizes are in FoodBarcode.
       const [result,packages]=await Promise.all([
-        db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(visible).is("archivedAt",null)
+        db.from("FoodItem").select("id").in("gtin",gtins.slice(0,10)).or(barcodeSpace).is("archivedAt",null)
           .order("privateToUserId",{ascending:true,nullsFirst:false}).order("id").limit(10).abortSignal(signal),
-        (db as any).from("FoodBarcode").select("foodItemId").in("gtin",gtins.slice(0,10)).or(visible).limit(10).abortSignal(signal)])
+        (db as any).from("FoodBarcode").select("foodItemId").in("gtin",gtins.slice(0,10)).or(barcodeSpace).limit(10).abortSignal(signal)])
       if (result.error||packages.error) throw new Error("catalogue_unavailable")
       const ids=[...new Set([...((result.data??[]) as {id:number}[]).map(row=>row.id),
         ...((packages.data??[]) as {foodItemId:number}[]).map(row=>row.foodItemId)])]
@@ -157,7 +160,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const allowed=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&discovered.has(id)).slice(0,20)
       const missing=allowed.filter(id=>!foods.has(id))
       if (missing.length) {
-        const result=await db.from("FoodItem").select(catalogColumns).in("id",missing).or(visible)
+        const result=await db.from("FoodItem").select(catalogColumns).in("id",missing).or(await visible())
           .limit(31,{foreignTable:"Serving"}).abortSignal(signal)
         if (result.error) throw new Error("food_details_unavailable")
         for (const row of result.data??[]) {

@@ -24,3 +24,21 @@ export function localTime(instant: string, timezone: string): string {
     .formatToParts(new Date(instant)).map(part => [part.type, part.value]))
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
 }
+
+/** The instant a wall clock time ("2026-10-07T19:00") happens in a timezone: meal prep for Tuesday 12:30 lands at 12:30
+ * in each person's own zone. Throws on anything unparseable. */
+export function wallClockInZone(wallClock: string, timezone: string): string {
+  const match = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$/.exec(wallClock.trim())
+  if (!match) throw new Error("invalid_wall_clock")
+  const zone = validTimezone(timezone) ? timezone : "UTC"
+  const asUtc = Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5])
+  // The zone's offset at a moment: the wall clock there, read as if it were UTC, minus the moment.
+  const offset = (ms: number) => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit",
+      day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms)).map(p => [p.type, p.value]))
+    return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute) - Math.floor(ms / 60_000) * 60_000
+  }
+  let instant = asUtc - offset(asUtc)
+  instant = asUtc - offset(instant)
+  return new Date(instant).toISOString()
+}

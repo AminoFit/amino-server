@@ -58,6 +58,12 @@ DECLARE
   pair text[];
 BEGIN
   IF p_user_id IS NULL THEN RAISE EXCEPTION 'Invalid user' USING ERRCODE = '22023'; END IF;
+  -- The meal guards (20260926000000) let this transaction delete meals the operation protocol owns.
+  PERFORM pg_catalog.set_config('app.meal_operation_write', 'true', true);
+  -- Links end first (20261015020000), so the people they shared with keep copies of the foods they used.
+  IF pg_catalog.to_regprocedure('public.end_all_links(uuid)') IS NOT NULL THEN
+    EXECUTE 'SELECT public.end_all_links($1)' USING p_user_id;
+  END IF;
   SELECT coalesce(array_agg(id), '{}') INTO meals FROM public."Message" WHERE "userId" = p_user_id;
   SELECT coalesce(array_agg(id), '{}') INTO logged FROM public."LoggedFoodItem" WHERE "userId" = p_user_id;
 

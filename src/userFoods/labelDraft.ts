@@ -6,7 +6,7 @@ import { readNutritionLabel, labelSourceInput } from "@/mealResolution/labelRead
 import { decodeBarcode, locateBarcodesWithFlash } from "@/mealResolution/barcode"
 import { UserFoodError } from "./userFoods"
 import { kjToKcal, microsFrom } from "@/nutrition"
-import {visibleFoodFilter} from "./visibility"
+import {catalogueOrOwnFilter} from "./visibility"
 
 
 export async function labelDraft(userId:string,imagePath:string,db=createAdminSupabase()) {
@@ -25,7 +25,7 @@ export async function labelDraft(userId:string,imagePath:string,db=createAdminSu
   let existingFood:{id:number;name:string;brand:string|null}|null=null
   if (gtin) {
     const {data}=await db.from("FoodItem").select("id,name,brand").eq("gtin",gtin).is("archivedAt",null)
-      .or(visibleFoodFilter(userId)).order("id").limit(1)
+      .or(catalogueOrOwnFilter(userId)).order("id").limit(1)
     existingFood=(data?.[0] as unknown as typeof existingFood)??null
   }
   if (!facts) return {legible:false as const,gtin,existingFood}
