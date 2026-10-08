@@ -214,8 +214,12 @@ const claudeProposalOutput=Output.object({schema:jsonSchema<MealProposal>(
     return parsed.success?{success:true,value:parsed.data}:{success:false,error:parsed.error}}})})
 
 const MAX_STEPS=10
-// How long Sonnet waits, after the prefetch, for a text meal's items and their candidates (mentionedFoods).
-const MENTION_WAIT_MS=4000
+// How long into a meal Sonnet waits for a text meal's items and their candidates (mentionedFoods), counted from the
+// meal's start: the list and its searches run alongside the prefetch, so time spent there isn't added on top. Past it,
+// the list itself (what keeps foods from being dropped) is still waited for up to MENTION_LIST_CAP_MS; its searches
+// aren't (the agent searches those items itself).
+const MENTION_DEADLINE_MS=4000
+const MENTION_LIST_CAP_MS=6000
 
 /** Every barcode in one photo, and how many located barcodes didn't decode (a package nobody identified). */
 async function readPhotoBarcodes(url:URL):Promise<{gtins:string[];undecoded:number}> {
@@ -259,6 +263,19 @@ async function candidatesFor(evidence:ReturnType<typeof createMealEvidence>,name
     usual&&evidence.usualFoods?evidence.usualFoods(name,meal).catch(()=>[]):Promise.resolve([])])
   const seen=new Set(mine.map(food=>food.id))
   return [...mine,...found.filter(food=>!seen.has(food.id)).slice(0,3)]
+}
+
+/** The fast route's checked plan when it has one, else the agent's. The agent failing first doesn't end the meal while
+ * the fast route is still working: its plan is used if it arrives (only when neither has one does the meal fail). */
+export async function firstRoute<T>(fast:Promise<T|null>,agent:Promise<T>):Promise<{result:T;fast:boolean}> {
+  const settled=agent.then(value=>({ok:true as const,value}),error=>({ok:false as const,error}))
+  const first=await Promise.race([fast.then(value=>({from:"fast" as const,value}),()=>({from:"fast" as const,value:null})),
+    settled.then(outcome=>({from:"agent" as const,outcome}))])
+  const quick=first.from==="fast"?first.value:first.outcome.ok?null:await fast.catch(()=>null)
+  if (quick) return {result:quick,fast:true}
+  const outcome=await settled
+  if (!outcome.ok) throw outcome.error
+  return {result:outcome.value,fast:false}
 }
 
 export async function resolveMeal(input:MealResolutionInput,deps:{
@@ -434,12 +451,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const agentKind=await agentChosen
     if (agentKind==="sonnet"&&!deps.model) selected=sonnetAgentModel()
     const claude=agentKind==="sonnet"
-    // A slow list (Flash took 13 s once) doesn't hold the agent: after MENTION_WAIT_MS it gets every item listed so far,
+    // A slow list (Flash took 13 s once) doesn't hold the agent: at MENTION_DEADLINE_MS it gets every item listed so far,
     // those still being searched with catalogue null (the prompt says to findFood them; a search takes about 0.3 s), so
     // a late item costs one tool call instead of a pick from the whole-sentence prefetch ("Coffee with Milk", 30557).
     const mentionStarted=performance.now()
+    const untilMealMs=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,Math.max(0,ms-(performance.now()-started))))
     const mentioned:(VisibleFood&{catalogue:unknown[]|null})[]=claude&&wordsOnly?await Promise.race([textCandidates,
-      new Promise<void>(resolve=>setTimeout(resolve,MENTION_WAIT_MS)).then(()=>mentionsListed.map(item=>
+      untilMealMs(MENTION_DEADLINE_MS).then(()=>Promise.race([textListed,untilMealMs(MENTION_LIST_CAP_MS)])).then(()=>mentionsListed.map(item=>
         mentionsSearched.get(`${item.food}\u0000${item.quote??""}`)??{...item,catalogue:null}))]):[]
     if (claude&&wordsOnly) {mark("mentioned",mentionStarted)
       trace.push(`mentioned: ${mentioned.length}${mentioned.some(item=>!item.catalogue)?`, ${mentioned.filter(item=>!item.catalogue).length} unsearched`:""}`)}
@@ -767,10 +785,10 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     }
     const agentRun=agent()
     agentRun.catch(()=>{})
-    const quick=await Promise.race([plainText||chipText?fast:photoFast,agentRun.then(()=>null,()=>null)])
-    if (quick) console.info(plainText||chipText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
-      ms:Math.round(quick.durationMs),foods:quick.proposal.items.length})
-    return finished=quick??await agentRun
+    const {result,fast:won}=await firstRoute(plainText||chipText?fast:photoFast,agentRun)
+    if (won) console.info(plainText||chipText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
+      ms:Math.round(result.durationMs),foods:result.proposal.items.length})
+    return finished=result
   } catch (error) {
     failure=error instanceof Error?error.message.slice(0,120):"unknown"
     // A failed meal is retried later; what the agent tried is the only clue to why.

@@ -51,6 +51,14 @@ words (replay --text): "7g ghee", "7g ghee (my usual brand)" and "7 g de ghee (m
 not their lowfat one 2/2, but generic "kefir" 1488, which is lowfat by its numbers: the catalogue has no plain
 whole-milk kefir and Sonnet didn't add one (open). Text 17/17, history 15/15.
 
+Codex's speed audit (docs/audit/2026-10-08-food-logging-speed.md), checked against 8 days of MealRun: the fast routes
+never waited behind preparation (text fast route median wait about 0 s), barcode meals about 0.8 s, work after the
+resolver 0.2-0.5 s, queue outside the worker p50 0.3 s, p90 2.3 s. So of its priority-1 list only two changes here:
+the fast route still answers when the agent fails first (firstRoute: before, the agent's failure ended the meal), and
+the per-food wait counts from the meal's start (4 s for searches, the list itself up to 6 s) instead of 4 s after the
+prefetch. Coffee 5/5 at a mean 5.5 s (was 7.1 s); text 17/17 with the fast route on (11 fast, 6 Sonnet, median 3.6 s).
+A 4 s cap on the list too dropped the coffee once when the prefetch took 2.8 s, hence the separate list cap.
+
 Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
 to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
 AI Studio first, Vertex second (providerPreferences), for every Flash call.
