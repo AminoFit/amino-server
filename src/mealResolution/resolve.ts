@@ -250,6 +250,17 @@ export type MealResolutionResult = {proposal:MealProposal;
   /** Each tool call and its outcome (status and IDs only, no user content), for logs. */
   trace?:string[]}
 
+type Candidate=ReturnType<typeof foodSummary>&{yourHistory?:unknown}
+/** Catalogue candidates for one food: with usual (the Sonnet agent), the foods this user logs out of habit whose names
+ * carry every word first, labelled with their history; then the search's top 3. */
+async function candidatesFor(evidence:ReturnType<typeof createMealEvidence>,name:string,usual:boolean,
+    meal:{before:string;messageId:number}):Promise<Candidate[]> {
+  const [found,mine]=await Promise.all([evidence.searchFoods(name).then(result=>result.foods??[],()=>[]),
+    usual&&evidence.usualFoods?evidence.usualFoods(name,meal).catch(()=>[]):Promise.resolve([])])
+  const seen=new Set(mine.map(food=>food.id))
+  return [...mine,...found.filter(food=>!seen.has(food.id)).slice(0,3)]
+}
+
 export async function resolveMeal(input:MealResolutionInput,deps:{
   evidence?:ReturnType<typeof createMealEvidence>;
   generate?:typeof generateText;model?:typeof agentModel;visible?:typeof listVisibleFoods;textFoods?:typeof streamTextFoods;
@@ -284,6 +295,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   const sources=deps.sources??createFoodSources({userId:input.userId,messageId:input.messageId,barcodes,
     signal:controller.signal,discover:id=>evidence.discover(id),refresh:id=>evidence.forget?.(id)})
   let selected=(deps.model??agentModel)()
+  // The user's habits are what they logged before this meal, never the meal itself.
+  const thisMeal={before:input.submittedAt,messageId:input.messageId}
   // Sonnet runs the agent and the first look for users in FeatureFlag.meal_agent_sonnet; the flag read (cached 30 s)
   // overlaps loading the photos.
   const agentChosen:Promise<MealAgent>=deps.agent?Promise.resolve(deps.agent):deps.model?Promise.resolve("flash"):mealAgentFor(input.userId)
@@ -363,13 +376,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const fastWanted=plainText||chipText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
     // Each listed item is searched as soon as it streams in (0.3-1.6 s a search); mentionsSearched keeps the finished ones.
-    const searches=new Map<string,Promise<VisibleFood&{catalogue:Awaited<ReturnType<typeof evidence.searchFoods>>["foods"]&{}}>>()
+    const searches=new Map<string,Promise<VisibleFood&{catalogue:Candidate[]}>>()
     // Every item listed so far, in order (an item still being searched goes to the agent without candidates).
     let mentionsListed:VisibleFood[]=[]
-    const mentionsSearched=new Map<string,VisibleFood&{catalogue:Awaited<ReturnType<typeof evidence.searchFoods>>["foods"]&{}}>()
+    const mentionsSearched=new Map<string,VisibleFood&{catalogue:Candidate[]}>()
     const searchMention=(item:VisibleFood)=>{const key=`${item.food}\u0000${item.quote??""}`
-      if (!searches.has(key)) searches.set(key,evidence.searchFoods(item.food)
-        .then(result=>({...item,catalogue:(result.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))
+      if (!searches.has(key)) searches.set(key,agentChosen.then(kind=>candidatesFor(evidence,item.food,kind==="sonnet",thisMeal))
+        .then(catalogue=>({...item,catalogue}),()=>({...item,catalogue:[] as Candidate[]}))
         .then(found=>{mentionsSearched.set(key,found);return found}))
       return searches.get(key)!}
     // Sonnet also gets it, with candidates per item (mentionedFoods): the whole-sentence prefetch for "Coffee / espresso
@@ -432,8 +445,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       trace.push(`mentioned: ${mentioned.length}${mentioned.some(item=>!item.catalogue)?`, ${mentioned.filter(item=>!item.catalogue).length} unsearched`:""}`)}
     let visible=firstLook
     const visibleStarted=performance.now()
-    let visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)
-      .then(found=>({...item,catalogue:(found.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
+    let visibleFoods=await Promise.all(visible.map(item=>candidatesFor(evidence,item.food,claude,thisMeal).then(catalogue=>({...item,catalogue}))))
     if (visible.length) {
       mark("visible",visibleStarted)
       // With catalogue candidates the preview gains icons.
@@ -488,8 +500,7 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
         ...(scene.samePackageViews&&lockedFoods.length?[]:scene.otherPackages.map(row=>({food:row.legibleText??"unlabelled package",
           detail:`a package in photo ${row.photo+1} without a readable barcode`,grams:null}))),
         ...Array.from({length:unidentified},()=>({food:"unidentified package",detail:"a barcode that couldn't be read",grams:null}))]
-      visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)
-        .then(found=>({...item,catalogue:(found.foods??[]).slice(0,3)}),()=>({...item,catalogue:[]}))))
+      visibleFoods=await Promise.all(visible.map(item=>candidatesFor(evidence,item.food,claude,thisMeal).then(catalogue=>({...item,catalogue}))))
     }
     if (lockedFoods.length) trace.push(`locked: ${lockedFoods.map(food=>`food ${food.id}`).join(", ")}${unresolved.length?`; unresolved ${unresolved.length}`:""}`)
     if (scene) trace.push(`scene: ${visible.length} leftovers, ${visible.filter(item=>item.food==="unidentified package").length} unidentified, ${
@@ -624,10 +635,12 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
             includeSources:z.boolean(),labelSourceId:z.string().max(60).nullable()}).strict(),
           execute:({query,gtin,includeSources,labelSourceId})=>withCount(async()=>{
             const code=gtin?normalizeGtin(gtin):null, decoded=code&&barcodes.includes(code)?code:null
-            const [byBarcode,byName]=await Promise.all([
+            const [byBarcode,byName,usual]=await Promise.all([
               decoded?evidence.findFoodsByGtin([decoded]).catch(()=>[]):Promise.resolve([]),
-              evidence.searchFoods(query).catch(()=>({candidates:[],foods:[]}) as {candidates:unknown[];foods?:ReturnType<typeof foodSummary>[]})])
-            const seen=new Set<number>(), catalogue=[...byBarcode.map(foodSummary),...(byName.foods??[])].filter(food=>!seen.has(food.id)&&seen.add(food.id))
+              evidence.searchFoods(query).catch(()=>({candidates:[],foods:[]}) as {candidates:unknown[];foods?:ReturnType<typeof foodSummary>[]}),
+              // Sonnet: the user's habit foods carrying every word of the query come first, with their history.
+              claude&&evidence.usualFoods?evidence.usualFoods(query,thisMeal).catch(()=>[]):Promise.resolve([] as Candidate[])])
+            const seen=new Set<number>(), catalogue:Candidate[]=[...byBarcode.map(foodSummary),...usual,...(byName.foods??[])].filter(food=>!seen.has(food.id)&&seen.add(food.id))
             // The catalogue is the cache: sources only when it has nothing, or when asked again after seeing it;
             // USDA before the web.
             const key=query.trim().toLowerCase(),stage=searched.get(key)

@@ -35,7 +35,12 @@ mention alone; catalogue null means its search wasn't ready in time: call findFo
 logged, drinks with few or no calories included (coffee and tea carry caffeine and micronutrients); omit one only when
 the words say it was not eaten. When the words give no amount for a food that is not a scanned product, log one typical
 serving of that food as eaten (a shot of espresso, a mug of coffee, one piece of fruit); scanned products keep one
-labelled serving (lockedProducts). An amount is never 0.`
+labelled serving (lockedProducts). An amount is never 0.
+A candidate with yourHistory is a food this user logged before (timesLogged meals in the last 180 days,
+timesLast30Days, lastLoggedOn, their usual serving) or marked favourite; yourUsual marks the one they log most for
+that mention. When it is the food mentioned, log it rather than a similar catalogue food, and with no amount given
+use their usual serving. "My usual", "the usual" or "my usual brand" means the yourUsual candidate. When the words
+name another brand or variant ("full fat", "whole milk", a brand), the words win.`
 
 // Claude's structured output doesn't enforce string lengths (Flash's does), so the limits are stated.
 export const CLAUDE_LIMITS = `

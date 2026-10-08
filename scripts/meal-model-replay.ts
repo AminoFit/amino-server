@@ -80,9 +80,14 @@ async function replay(messageId: number, run: number) {
   const deps = { evidence, sources, barcodes, fastRoute: false, photoFastRoute: false,
     ...(process.env.MEAL_AGENT ? { agent: process.env.MEAL_AGENT as "sonnet" | "flash",
       // DEBUG=1 prints what the model answered when its output fails the schema.
-      ...(process.env.DEBUG ? { generate: ((request: any) => generateText(request).catch((error: any) => {
+      ...(process.env.DEBUG ? { generate: ((request: any) => { if (process.env.DEBUG === "prompt") {
+        const user = request.messages.find((message: any) => message.role === "user")
+        const text = typeof user?.content === "string" ? user.content : user?.content?.[0]?.text
+        try { const prompt = JSON.parse(text); console.error("prompt", JSON.stringify({ mentionedFoods: prompt.mentionedFoods,
+          lockedProducts: prompt.lockedProducts?.map((food: any) => food.name), prefetched: prompt.prefetchedFoods?.map((food: any) => `${food.id} ${food.name}`) }, null, 1)) } catch {} }
+        return generateText(request).catch((error: any) => {
         console.error("generate_failed", String(error?.cause ?? "").slice(0, 1500), "\n--- text:", String(error?.text ?? "").slice(0, 4000))
-        throw error })) as typeof generateText } : {}) } : { model, generate }),
+        throw error }) }) as typeof generateText } : {}) } : { model, generate }),
     onTool: (tool: string) => { tools.push(tool) } }
   const started = Date.now()
   const base = { label, model: modelId, effort, variant, messageId, run, text: message.content,

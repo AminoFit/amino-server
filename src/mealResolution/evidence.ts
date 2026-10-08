@@ -79,6 +79,19 @@ export const foodSummary=(food:CatalogFood)=>({id:food.id,name:food.name,brand:f
   servings:food.Serving.map(s=>({id:s.id,unit:s.servingName,
     gramsPerUnit:s.servingWeightGram&&s.defaultServingAmount?Math.round(s.servingWeightGram/Number(s.defaultServingAmount)*10)/10:null}))})
 
+/** A name as the catalogue search compares it: lower case, accents and punctuation gone (food_identity_part). */
+const identityText=(value:string)=>value.toLowerCase().normalize("NFD").replace(/\p{M}+/gu,"")
+  .replace(/[^\p{L}\p{N}]+/gu," ").trim()
+/** The words a match must carry, as the catalogue search's: 3 or more letters, or a number. */
+const identityWords=(value:string)=>[...new Set(identityText(value).split(" ").filter(word=>word.length>=3||/^[0-9]/.test(word)))]
+/** A habit food matches a mention when its name and brand carry every word of it, each starting a word that is at most
+ * 2 letters longer (a plural: eggs, kefirs, manzanas), so "apple" isn't "Applegate". */
+export const carriesEveryWord=(mention:string,name:string,brand:string|null)=>{const words=identityWords(mention)
+  const have=identityText(`${name} ${brand??""}`).split(" ")
+  return words.length>0&&words.every(word=>have.some(part=>part.startsWith(word)&&part.length<=word.length+2))}
+type Habit={foodId:number;name:string;brand:string|null;timesLogged:number;timesLast30Days:number;lastLoggedOn:string|null;favorite:boolean;
+  usualServingId:number|null;usualAmount:number|null;usualUnit:string|null}
+
 export function createMealEvidence(userId:string, signal:AbortSignal,
   db = createAdminSupabase(), timezone?:string) {
   // History times go to the model as UTC ("…Z") plus the user's wall clock, so "same as yesterday's lunch" never
@@ -89,6 +102,8 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
   // Server reads bypass row security: only foods this user may see are evidence (read once, when first needed). A barcode
   // answers from the catalogue and the user's own foods.
   let visibleRead:Promise<string>|undefined
+  // The user's habits (user_food_habits), read once per meal when first needed.
+  let habitsRead:Promise<Habit[]>|undefined
   const visible=()=>visibleRead??=visibleFoodFilter(db,userId)
   const barcodeSpace = catalogueOrOwnFilter(userId)
   const foods = new Map<number,CatalogFood>()
@@ -136,6 +151,29 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
     },
     /** The user's own foods and recipes whose names appear in the meal text, read before the first model turn: the
      * agent sees them only when relevant (recipes only behind RECIPES_FLAG, which search_own_foods applies). */
+    /** Foods this user logs out of habit (the last 180 days, and favourites) whose name and brand carry every word of
+     * the mention (3+ letters, or a number), most logged first, each with its history: "blueberry kefir" is the Lifeway
+     * Lowfat Blueberry Kefir they log, not another of the catalogue's kefirs; "full fat kefir" matches none of their
+     * lowfat ones, so the words win. */
+    async usualFoods(query:string,meal?:{before:string;messageId:number},limit=3) {
+      const words=identityWords(query)
+      if (!words.length) return []
+      habitsRead??=Promise.resolve((db as any).rpc("user_food_habits",{p_user_id:userId,p_days:180,
+        ...(meal?{p_before:meal.before,p_message_id:meal.messageId}:{})}).abortSignal(signal))
+        .then(({data,error}:{data:Habit[]|null;error:unknown})=>error?[]:data??[]).catch(()=>[] as Habit[])
+      const matched=(await habitsRead).filter(habit=>carriesEveryWord(query,habit.name,habit.brand)).slice(0,limit)
+      if (!matched.length) return []
+      for (const habit of matched) discovered.add(habit.foodId)
+      const {foods:found}=await this.getFoodsAndServings(matched.map(habit=>habit.foodId))
+      const byId=new Map(found.map(food=>[food.id,food]))
+      // "My usual" is the clear habit: the most logged match, at least twice and more often than any other match.
+      const ranked=[...matched].sort((a,b)=>b.timesLogged-a.timesLogged||String(b.lastLoggedOn).localeCompare(String(a.lastLoggedOn)))
+      const usual=ranked[0]&&ranked[0].timesLogged>=2&&(ranked[1]?.timesLogged??0)<ranked[0].timesLogged?ranked[0].foodId:null
+      return matched.flatMap(habit=>{const food=byId.get(habit.foodId)
+        return food?[{...foodSummary(food),yourHistory:{...(habit.foodId===usual?{yourUsual:true}:{}),timesLogged:habit.timesLogged,
+          timesLast30Days:habit.timesLast30Days,lastLoggedOn:habit.lastLoggedOn,favorite:habit.favorite,
+          usualServingId:habit.usualServingId,usualAmount:habit.usualAmount,usualUnit:habit.usualUnit}}]:[]})
+    },
     async yourFoods(text:string) {
       const query=text.trim().slice(0,2000)
       if (!query) return []

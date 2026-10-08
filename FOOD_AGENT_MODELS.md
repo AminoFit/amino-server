@@ -35,6 +35,15 @@ Closing the gap (later on 8 October): when the 3 s ran out Sonnet still picked "
 foods that aren't scanned products (it had turned the Oatly's labelled 240 g into 60 g). 30557 5/5 then 3/3, espresso +
 Oatly 3/3 as kept (espresso 30 g, Oatly 240 g), text 17/17 (median 5.7 s).
 
+Habit foods (later on 8 October): each mention's candidates (text mentions, the photo first look, findFood) start with
+the foods this user logged before that match every word of it (user_food_habits: 180 days and favourites, before this
+meal and never the meal itself), labelled timesLogged, timesLast30Days, lastLoggedOn, their usual serving, and yourUsual
+on the clear habit; "my usual" means that one, and words naming another brand or variant win. "7g ghee (my usual
+brand)" went from generic ghee to 4th & Heart 3/3 (counts alone weren't enough: generic 2/2 until yourUsual), "blueberry
+kefir" is the Lifeway Lowfat Blueberry they log, espresso + Oatly now logs their own "espresso shot". Text 17/17, history
+15/15, photos 20/22 then the two re-run: 30318 passed 2/2, 30345 dropped the pita named in the words 2 times in 6, both
+when the first look didn't list it (photo meals check coverage against the first look, not the words: open).
+
 Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
 to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
 AI Studio first, Vertex second (providerPreferences), for every Flash call.
