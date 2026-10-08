@@ -1,7 +1,8 @@
 # Meal agent: Haiku 5.5, Sonnet 5.5 and a prompt fix — 7 October 2026
 
 Decision: Flash stays for now, Sonnet is the direction (owner, 7 October). A prompt fix helped every model, Flash included; Haiku 5.5 works at medium thinking or above
-and costs about a ninth of Flash per meal, but it isn't faster than Flash with the fix. Spend: about $1.06.
+and costs about a ninth of Flash per meal, but it isn't faster than Flash with the fix. Later the same day: a Sonnet
+first look fixed both photo failures even with the Flash agent (22/22). Spend: about $1.06, then about $1.95.
 
 ## Replays
 
@@ -61,26 +62,54 @@ costs here with the prompt cache.
 
 Flash's first look listed "mango and cucumber mix 40 g" as one visible food; its catalogue candidate was Cucumber Combo
 (10372, an old GPT4 food: cucumber only, 15 kcal/100 g). Sonnet answered in one step with no tool calls, taking that
-candidate, and Flash's second look passed the plan. The coverage variant only covers mentions in the user's words, not
-visibleFoods. Fixes, none made yet: in the agent prompt, a visibleFoods entry naming two foods is one food only when a
-catalogue food's name includes both (the rule text mentions already have); have the first look list foods separately;
-clean up 10372. Unknown: whether Flash passes 30318 on today's code.
+candidate, and the final check passed the plan. That check doesn't look at the photos again when a first look exists
+(`historyCheck.ts`): it compares the plan's foods with the first look's list as text (`missingFromVisibleList`), and Flash
+judged "Cucumber Combo" (description: "primarily composed of cucumbers") to cover "mango and cucumber mix".
 
-## Open decisions (7 October, paused here)
+## First look and final check, Flash vs Sonnet (later on 7 October)
 
-- Owner likes the Sonnet direction but wonders whether Flash is the better vision model. Next cheap test: Flash low +
-  coverage on the 22 photo cases only (about $0.45), same code, to compare with Sonnet's 21/22.
-- Or: re-run just 30318 on both models with the visibleFoods split rule (a few cents).
-- Switching (whenever decided): oneOf to anyOf, provider pinned to Anthropic, cache marker, string limits in the prompt,
-  the coverage text, FeatureFlag rollout. The vision helpers (first look, second look, barcode locator) stay on Flash.
-- Uncommitted: these notes, scripts/meal-model-replay.ts, scripts/mealAgentOverride.ts, and EVAL_MODEL/EVAL_EFFORT/
-  EVAL_VARIANT in meal-sanity-eval, meal-resolution-smoke and meal-photo-eval.
+30318 alone, three runs each (about $0.05):
+
+- First look: Flash listed the mango on its own in 0 of 3 ("mixed diced mango and cucumber", "diced vegetables and
+  mango", and once no mango at all), 5.5-7.7 s, about $0.003 a look. Sonnet (low) listed "mango pieces/cubes" in 3 of 3,
+  plus the cucumber and onion, 4.8-10.4 s, about $0.0085 a look.
+- Final comparison of a plan with Cucumber Combo for "mango and cucumber mix": Flash caught the mango 1/3, Sonnet 3/3.
+  With the two-foods rule below, both 3/3; on a correct plan (cucumber and mango logged) both reported nothing (3/3).
+
+> A component that names two or more foods (for example "rice and beans" or "mango and cucumber mix") is covered only
+> when the logged foods cover each of them: list each one that no logged food covers.
+
+All 22 photo cases, coverage variant, low thinking (`EVAL_FIRST_LOOK` and `EVAL_COMPARE_RULE` in meal-photo-eval). The runs
+overlapped only in part, so times are rough. Spend about $1.85.
+
+| Agent | First look | Rule | Passed | Median | Mean | Cost per meal | 28264 (bowl + receipt) | 30318 (mango) |
+| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |
+| Flash | Flash | off | 21/22 | 18.9 s | 25.3 s | ~$0.023 | timed out after 13 steps | passed |
+| Flash | Sonnet | on | 22/22 | 22.6 s | 25.2 s | ~$0.033 | 5 steps, 33 s | 6 steps, 38 s |
+| Sonnet | Sonnet | on | 22/22 | 15.9 s | 17.9 s | ~$0.037 | 2 steps, 25 s | 2 steps, 21 s |
+
+- Flash passed 30318 with Flash's merged first look: its agent searched each food and logged mango and cucumber. Sonnet
+  (5 October run) took the merged candidate instead.
+- 28264 (Terra bowl and its receipt, no text) is the real Flash failure: one food at a time, 13 steps, then the time limit.
+  With a Sonnet first look the Flash agent finished in 5 steps, so part of Flash's step count is a vague first look.
+- Both runs with a Sonnet first look added a can of sparkling water to 28264, presumably from the receipt. Check whether
+  it was drunk before trusting receipts read this way.
+- No first plan was rejected by the backend check in any run.
+
+## Open decisions (7 October, evening)
+
+- Cheapest clear win: the first look on Sonnet plus the two-foods rule, agent stays Flash (22/22, about 1 cent more a
+  photo meal). Text meals are unaffected: the first look only runs on photos.
+- Sonnet for both is better again, mainly on time (fewest steps), at about 1.5 cents more a photo meal than all-Flash.
+- Switching the agent (whenever decided): oneOf to anyOf, provider pinned to Anthropic, cache marker, string limits in the
+  prompt, the coverage text, FeatureFlag rollout. The second look and barcode locator stay on Flash.
 
 ## Next
 
 1. The coverage text into the production prompt for Flash: the full meal eval first (about $1.30), then a FeatureFlag.
-2. Haiku medium + coverage as a candidate if cost matters more than time; it needs the meal eval too (about $0.15).
-3. Idea, not built: a meal that fails the backend check and is re-run goes to Sonnet at medium or high, so the
+2. The two-foods rule into the final comparison (`COMPARE` in coverageCheck.ts), and a FeatureFlag for the first look's model.
+3. Haiku medium + coverage as a candidate if cost matters more than time; it needs the meal eval too (about $0.15).
+4. Idea, not built: a meal that fails the backend check and is re-run goes to Sonnet at medium or high, so the
    hard minority gets the strongest model while the first try stays cheap.
 
 ---

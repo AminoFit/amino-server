@@ -38,6 +38,38 @@ const claudeOutput = Output.object({ schema: jsonSchema<MealProposal>(
 const CLAUDE_LIMITS = `
 Keep each evidence string under 150 characters, a basis under 250 and a clarification under 250.`
 
+// The rule for the final comparison: a first-look entry naming two foods ("mango and cucumber mix") is covered only when
+// each is (30318 logged Cucumber Combo for it and passed).
+export const COMPARE_RULE = `
+A component that names two or more foods (for example "rice and beans" or "mango and cucumber mix") is covered only
+when the logged foods cover each of them: list each one that no logged food covers.`
+
+/** The vision helpers on another model, for evals: EVAL_FIRST_LOOK=<model> runs the first look there (Claude pinned to
+ * Anthropic, minimal thinking as low), EVAL_COMPARE_RULE=1 adds COMPARE_RULE to the final comparison. Rewrites the
+ * helpers' OpenRouter requests by their response schema's name; everything else passes through. Returns the cost of
+ * the rewritten calls so far. */
+export function overrideVisionHelpers(env = process.env) {
+  const firstLook = env.EVAL_FIRST_LOOK, rule = env.EVAL_COMPARE_RULE === "1"
+  let cost = 0
+  if (!firstLook && !rule) return () => cost
+  const original = globalThis.fetch
+  globalThis.fetch = (async (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    if (typeof init?.body !== "string" || !String(url).startsWith("https://openrouter.ai/")) return original(url, init)
+    const body = JSON.parse(init.body), schema = body.response_format?.json_schema?.name
+    const look = firstLook && schema === "visible", compare = rule && schema === "missing" && typeof body.messages?.[0]?.content === "string"
+    if (!look && !compare) return original(url, init)
+    if (look) { body.model = firstLook
+      if (firstLook.startsWith("anthropic/")) { body.provider = { only: ["anthropic"], allow_fallbacks: false, require_parameters: true }
+        if (body.reasoning?.effort === "minimal") body.reasoning.effort = "low" } }
+    if (compare) body.messages[0].content = body.messages[0].content.replace("\n\nComponents", `${COMPARE_RULE}\n\nComponents`)
+    body.usage = { include: true }
+    const response = await original(url, { ...init, body: JSON.stringify(body) })
+    cost += Number((await response.clone().json().catch(() => null))?.usage?.cost ?? 0)
+    return response
+  }) as typeof fetch
+  return () => cost
+}
+
 export function agentOverride({ modelId, effort = "low", variant = "none" }: { modelId: string; effort?: string; variant?: string }) {
   const claude = modelId.startsWith("anthropic/")
   const extra = VARIANTS[variant]

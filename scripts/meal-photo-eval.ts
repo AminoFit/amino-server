@@ -15,11 +15,13 @@ import { createFoodSources } from "@/mealResolution/foodSources"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText } from "ai"
 import { FOOD_MODEL, providerPreferences } from "@/ai/models"
-import { agentOverride } from "./mealAgentOverride"
+import { agentOverride, overrideVisionHelpers } from "./mealAgentOverride"
 
 const modelId = process.env.EVAL_MODEL ?? process.argv.find(arg => arg.startsWith("--model="))?.slice("--model=".length) ?? FOOD_MODEL
 const override = process.env.EVAL_MODEL || process.env.EVAL_VARIANT
   ? agentOverride({ modelId, effort: process.env.EVAL_EFFORT, variant: process.env.EVAL_VARIANT }) : null
+// EVAL_FIRST_LOOK=<model> and EVAL_COMPARE_RULE=1 change the vision helpers (scripts/mealAgentOverride.ts).
+const visionCost = overrideVisionHelpers()
 const agentModel = override?.model ?? (() => ({ id: modelId, provider: "openrouter", model: createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY }).chat(modelId,
   { provider: providerPreferences(modelId), reasoning: { effort: "low" }, usage: { include: true } }) }))
 
@@ -185,5 +187,5 @@ void (async () => {
       if (text) console.error(`[${test.messageId}] unparsed output: ${text.slice(0, 1500)}`)
       console.log(JSON.stringify({ messageId: test.messageId, pass: false, error: error instanceof Error ? error.message : "unknown" })) }
   }
-  console.log(`\n${modelId}: ${passed} passed`)
+  console.log(`\n${modelId}: ${passed} passed${visionCost() ? `, rewritten vision calls $${visionCost().toFixed(4)}` : ""}`)
 })()
