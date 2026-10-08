@@ -11,7 +11,8 @@ photos 21/22 (median 17.3 s, mean 18.2 s, $0.030 a case for the agent; no first 
 front photo only, where this run's first look listed the sandwich's parts instead of "Baguette de arrachera" and the
 agent logged the parts (it passed in the earlier Sonnet run: run-to-run variance on a packaged product without its label).
 
-Not built: falling back to Flash when Anthropic is down (today the flag is the switch).
+When Anthropic is down, OpenRouter falls back to Google Vertex, then Azure (global endpoints, same price, both with
+structured output; 4/4 text cases each, 71924d6). Bedrock and Claude on AWS lack structured output and are never used.
 
 ---
 
