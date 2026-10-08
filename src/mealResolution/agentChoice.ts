@@ -30,11 +30,12 @@ Spend turns only on evidence you lack. Do not call listMealEvents or getMealEven
 ("same as", "again", "yesterday's", "my usual"); recentMeals already shows what was eaten lately. Never fetch a food
 again that a tool already returned in this conversation: reuse it.
 mentionedFoods (text meals) lists each food named in originalText with catalogue candidates from a search of that
-mention alone. Prefer them to prefetchedFoods, which come from the whole sentence and favour combined drinks and dishes:
+mention alone; catalogue null means its search wasn't ready in time: call findFood for that mention before choosing. Prefer them to prefetchedFoods, which come from the whole sentence and favour combined drinks and dishes:
 "coffee with milk" is two items, the coffee and the milk, unless the words name the combined drink. Every mention is
 logged, drinks with few or no calories included (coffee and tea carry caffeine and micronutrients); omit one only when
-the words say it was not eaten. When the words give no amount, log one typical serving of that food as eaten (a shot of
-espresso, a mug of coffee, one piece of fruit): an amount is never 0.`
+the words say it was not eaten. When the words give no amount for a food that is not a scanned product, log one typical
+serving of that food as eaten (a shot of espresso, a mug of coffee, one piece of fruit); scanned products keep one
+labelled serving (lockedProducts). An amount is never 0.`
 
 // Claude's structured output doesn't enforce string lengths (Flash's does), so the limits are stated.
 export const CLAUDE_LIMITS = `

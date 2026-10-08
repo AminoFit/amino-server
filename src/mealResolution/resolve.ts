@@ -215,7 +215,7 @@ const claudeProposalOutput=Output.object({schema:jsonSchema<MealProposal>(
 
 const MAX_STEPS=10
 // How long Sonnet waits, after the prefetch, for a text meal's items and their candidates (mentionedFoods).
-const MENTION_WAIT_MS=3000
+const MENTION_WAIT_MS=4000
 
 /** Every barcode in one photo, and how many located barcodes didn't decode (a package nobody identified). */
 async function readPhotoBarcodes(url:URL):Promise<{gtins:string[];undecoded:number}> {
@@ -364,6 +364,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
     // Each listed item is searched as soon as it streams in (0.3-1.6 s a search); mentionsSearched keeps the finished ones.
     const searches=new Map<string,Promise<VisibleFood&{catalogue:Awaited<ReturnType<typeof evidence.searchFoods>>["foods"]&{}}>>()
+    // Every item listed so far, in order (an item still being searched goes to the agent without candidates).
+    let mentionsListed:VisibleFood[]=[]
     const mentionsSearched=new Map<string,VisibleFood&{catalogue:Awaited<ReturnType<typeof evidence.searchFoods>>["foods"]&{}}>()
     const searchMention=(item:VisibleFood)=>{const key=`${item.food}\u0000${item.quote??""}`
       if (!searches.has(key)) searches.set(key,evidence.searchFoods(item.food)
@@ -374,7 +376,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // with 1 cup fat free milk" held lattes and no espresso, and Sonnet dropped the coffee or doubled the milk (30557).
     const textListed=Promise.all([photosLoaded,fastWanted,agentChosen]).then(([list,fast,kind])=>list.length||!scanned.text||
       !deps.onProgress&&!fast&&kind!=="sonnet"?[]:(deps.textFoods??streamTextFoods)(scanned.text,
-        found=>{report(buildPreview(found.map(item=>({...item,catalogue:[]}))));for (const item of found) searchMention(item)},
+        found=>{mentionsListed=found;report(buildPreview(found.map(item=>({...item,catalogue:[]}))))
+          for (const item of found) searchMention(item)},
         {signal:controller.signal}))
       .catch(()=>[] as VisibleFood[])
     const textCandidates=textListed.then(found=>Promise.all(found.map(searchMention)))
@@ -418,11 +421,15 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const agentKind=await agentChosen
     if (agentKind==="sonnet"&&!deps.model) selected=sonnetAgentModel()
     const claude=agentKind==="sonnet"
-    // A slow list (Flash took 13 s once) doesn't hold the agent: after MENTION_WAIT_MS it gets the items searched so far.
+    // A slow list (Flash took 13 s once) doesn't hold the agent: after MENTION_WAIT_MS it gets every item listed so far,
+    // those still being searched with catalogue null (the prompt says to findFood them; a search takes about 0.3 s), so
+    // a late item costs one tool call instead of a pick from the whole-sentence prefetch ("Coffee with Milk", 30557).
     const mentionStarted=performance.now()
-    const mentioned=claude&&wordsOnly?await Promise.race([textCandidates,new Promise<void>(resolve=>setTimeout(resolve,MENTION_WAIT_MS))
-      .then(()=>[...mentionsSearched.values()])]):[]
-    if (claude&&wordsOnly) {mark("mentioned",mentionStarted);trace.push(`mentioned: ${mentioned.length}`)}
+    const mentioned:(VisibleFood&{catalogue:unknown[]|null})[]=claude&&wordsOnly?await Promise.race([textCandidates,
+      new Promise<void>(resolve=>setTimeout(resolve,MENTION_WAIT_MS)).then(()=>mentionsListed.map(item=>
+        mentionsSearched.get(`${item.food}\u0000${item.quote??""}`)??{...item,catalogue:null}))]):[]
+    if (claude&&wordsOnly) {mark("mentioned",mentionStarted)
+      trace.push(`mentioned: ${mentioned.length}${mentioned.some(item=>!item.catalogue)?`, ${mentioned.filter(item=>!item.catalogue).length} unsearched`:""}`)}
     let visible=firstLook
     const visibleStarted=performance.now()
     let visibleFoods=await Promise.all(visible.map(item=>evidence.searchFoods(item.food)

@@ -29,6 +29,12 @@ serving when no amount is stated (Sonnet wrote amount 0 for the espresso, which 
 30557: 4/5 right (espresso 60 g + milk; the miss ran out the 3 s), 30505 espresso + Oatly 3/3. Text 17/17 (median 5.8 s,
 was 3.1 s; max 7.7 s, was 7.3 s), history 15/15.
 
+Closing the gap (later on 8 October): when the 3 s ran out Sonnet still picked "Coffee with Milk" next to the milk (1 in
+5). Now the wait is 4 s, and on timeout every listed item goes to the agent, those not yet searched with catalogue null
+("call findFood for it"); search itself got 3-5x faster (2026-10-08-search-speed.md). The typical-serving rule is for
+foods that aren't scanned products (it had turned the Oatly's labelled 240 g into 60 g). 30557 5/5 then 3/3, espresso +
+Oatly 3/3 as kept (espresso 30 g, Oatly 240 g), text 17/17 (median 5.7 s).
+
 Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
 to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
 AI Studio first, Vertex second (providerPreferences), for every Flash call.

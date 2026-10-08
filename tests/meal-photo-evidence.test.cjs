@@ -136,3 +136,38 @@ test('an injected model runs as Flash without reading the Sonnet flag',async()=>
   assert.equal(generated.messages[0].role,'user');
   assert.ok(JSON.stringify(await generated.output.responseFormat).includes('"oneOf"'));
 });
+
+test('a text meal on Sonnet gets each listed food with its candidates, and a food still being searched with catalogue null',async()=>{
+  const saved=process.env.OPENROUTER_API_KEY
+  process.env.OPENROUTER_API_KEY='test-key'
+  let generated
+  try {
+    const input={userId:owner,operationId:'00000000-0000-4000-8000-00000000000c',messageId:43,
+      originalText:'Coffee / espresso with 1 cup fat free milk',consumedOn:'2026-09-24T18:00:00Z',submittedAt:'2026-09-24T18:00:00Z',
+      timezone:'America/New_York',locale:'en-US',attachmentIds:[]};
+    const milk={id:822,name:'fat free milk'}
+    await resolveMeal(input,{agent:'sonnet',fastRoute:false,
+      evidence:{foods:new Map(),events:new Map(),prefetchFoods:async()=>[],listMealEvents:async()=>({events:[]}),
+        // The coffee's search never finishes in time; the milk's does.
+        searchFoods:query=>/milk/.test(query)?Promise.resolve({foods:[milk]}):new Promise(()=>{})},
+      loadPhotos:async()=>[],
+      textFoods:async(_text,onFoods)=>{
+        const foods=[{food:'Coffee / espresso',detail:'',grams:60,quote:'Coffee / espresso'},
+          {food:'fat free milk',detail:'',grams:245,quote:'1 cup fat free milk'}]
+        onFoods(foods)
+        return new Promise(()=>{})
+      },
+      generate:async options=>{
+        generated=options;
+        return {output:{schemaVersion:1,outcome:'needs_clarification',consumedOn:input.consumedOn,
+          historyGroupSelections:[],items:[],components:[],claims:[],clarification:'Which coffee?'}};
+      }
+    });
+    const prompt=JSON.parse(generated.messages[1].content)
+    assert.deepEqual(prompt.mentionedFoods.map(item=>[item.food,item.catalogue]),
+      [['Coffee / espresso',null],['fat free milk',[milk]]]);
+    assert.match(generated.messages[0].content,/catalogue null means its search wasn't ready in time/);
+  } finally {
+    if(saved===undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY=saved
+  }
+});
