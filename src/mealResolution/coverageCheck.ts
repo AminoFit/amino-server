@@ -1,4 +1,4 @@
-import { ANTHROPIC_ONLY, FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { CLAUDE_PROVIDERS, FOOD_MODEL, providerPreferences } from "@/ai/models"
 import { TWO_FOODS_RULE } from "./agentChoice"
 import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
 
@@ -69,7 +69,7 @@ export async function listVisibleFoods(photoUrls: URL[], userText: string,
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(15000),
     body: JSON.stringify({ model, reasoning: { effort: claude ? "low" : "minimal", exclude: true },
-      provider: claude ? ANTHROPIC_ONLY : providerPreferences(model),
+      provider: claude ? CLAUDE_PROVIDERS : providerPreferences(model),
       max_tokens: 800, response_format: { type: "json_schema", json_schema: { name: "visible", strict: true, schema: {
         type: "object", additionalProperties: false, required: ["foods"], properties: { foods: { type: "array", items: {
           type: "object", additionalProperties: false,

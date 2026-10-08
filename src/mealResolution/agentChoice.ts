@@ -1,5 +1,5 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import { ANTHROPIC_ONLY, MEAL_AGENT_CLAUDE } from "@/ai/models"
+import { CLAUDE_PROVIDERS, MEAL_AGENT_CLAUDE } from "@/ai/models"
 import { agentModel } from "@/foodResolution/agent/model"
 import { userFlagEnabled } from "./fastRouteFlag"
 
@@ -15,7 +15,7 @@ export function sonnetAgentModel(env: NodeJS.ProcessEnv = process.env): ReturnTy
   const apiKey = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!apiKey) throw new Error("OpenRouter unavailable")
   return { id: MEAL_AGENT_CLAUDE, provider: "openrouter", model: createOpenRouter({ apiKey }).chat(MEAL_AGENT_CLAUDE, {
-    provider: ANTHROPIC_ONLY, reasoning: { effort: "low" }, usage: { include: true } }) } as unknown as ReturnType<typeof agentModel>
+    provider: CLAUDE_PROVIDERS, reasoning: { effort: "low" }, usage: { include: true } }) } as unknown as ReturnType<typeof agentModel>
 }
 
 // Claude answered too early (dropped the espresso next to a scanned Oatly); Flash read history and re-fetched foods.

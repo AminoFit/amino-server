@@ -1,12 +1,12 @@
 // The meal agent on another model and/or with extra prompt text, for evals and replays (the production prompt and model
-// are unchanged). Claude models are pinned to Anthropic on OpenRouter, get the plan schema's oneOf as anyOf (Claude's
+// are unchanged). Claude models use production's hosts (Anthropic, then Vertex, then Azure), get the plan schema's oneOf as anyOf (Claude's
 // structured output rejects oneOf), the string limits stated (it doesn't enforce them) and a prompt-cache marker.
 // MEAL_AGENT=sonnet in the evals runs the production Sonnet path instead (FeatureFlag.meal_agent_sonnet).
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText, jsonSchema, Output, zodSchema } from "ai"
 import { allowingExpressions, evaluateAmounts } from "@/mealResolution/resolve"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
-import { providerPreferences } from "@/ai/models"
+import { CLAUDE_PROVIDERS, providerPreferences } from "@/ai/models"
 import { CLAUDE_LIMITS, COVERAGE_TEXT, TWO_FOODS_RULE } from "@/mealResolution/agentChoice"
 
 // Prompt variants appended to the system prompt (the production prompt is unchanged).
@@ -27,6 +27,10 @@ const claudeOutput = Output.object({ schema: jsonSchema<MealProposal>(
   { validate: value => { const parsed = mealProposal.safeParse(evaluateAmounts(value))
     return parsed.success ? { success: true, value: parsed.data } : { success: false, error: parsed.error } } }) })
 
+// Claude's hosts as in production; EVAL_PROVIDER=<host> (for example google-vertex/global) pins one.
+const claudeProviders = () => process.env.EVAL_PROVIDER
+  ? { only: [process.env.EVAL_PROVIDER], allow_fallbacks: false, require_parameters: true } : CLAUDE_PROVIDERS
+
 // The final comparison's two-foods rule (production behind FeatureFlag.meal_agent_sonnet).
 export const COMPARE_RULE = TWO_FOODS_RULE
 
@@ -45,7 +49,7 @@ export function overrideVisionHelpers(env = process.env) {
     const look = firstLook && schema === "visible", compare = rule && schema === "missing" && typeof body.messages?.[0]?.content === "string"
     if (!look && !compare) return original(url, init)
     if (look) { body.model = firstLook
-      if (firstLook.startsWith("anthropic/")) { body.provider = { only: ["anthropic"], allow_fallbacks: false, require_parameters: true }
+      if (firstLook.startsWith("anthropic/")) { body.provider = claudeProviders()
         if (body.reasoning?.effort === "minimal") body.reasoning.effort = "low" } }
     if (compare) body.messages[0].content = body.messages[0].content.replace("\n\nComponents", `${COMPARE_RULE}\n\nComponents`)
     body.usage = { include: true }
@@ -64,7 +68,7 @@ export function agentOverride({ modelId, effort = "low", variant = "none" }: { m
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY
     if (!apiKey) throw new Error("OpenRouter unavailable")
     return { id: modelId, provider: "openrouter", model: createOpenRouter({ apiKey }).chat(modelId, {
-      provider: claude ? { only: ["anthropic"], allow_fallbacks: false, require_parameters: true } : providerPreferences(modelId),
+      provider: claude ? claudeProviders() : providerPreferences(modelId),
       reasoning: { effort: effort as "low" }, usage: { include: true } }) } as any
   }
   // The agent's request with the variant's text, and for Claude the anyOf schema and a cache marker on the system prompt.
