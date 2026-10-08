@@ -39,3 +39,13 @@ export async function recordWeight(userId: string, weightKg: number, measuredAt?
     p_weight_kg: Math.round(weightKg * 100) / 100, p_measured_at: measuredAt ?? null, p_source: "agent" })
   if (error) throw error
 }
+
+/** Estimated daily energy expenditure (energy_expenditure: complete-day intake minus the robust weight slope × 7,700
+ * kcal/kg over the last `days` local days, ending yesterday). Only for users in FeatureFlag.expenditure_estimate. */
+export async function expenditureEstimate(db: UserDatabase, days: number) {
+  const { data, error } = await (db as any).rpc("energy_expenditure", { p_days: days })
+  if (error) throw error
+  const { enabled, ...estimate } = (data ?? {}) as { enabled?: boolean } & Record<string, unknown>
+  if (!enabled) return { available: false as const, note: "The expenditure estimate isn't available for this user yet." }
+  return { available: true as const, ...estimate }
+}

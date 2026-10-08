@@ -5,7 +5,7 @@ import { userDatabase, type UserDatabase } from "./auth"
 import { McpInputError, daysBetween, dailySummary, getMeals, listMeals, mealChanges } from "./meals"
 import { ACTIVITY_LEVELS, SEXES, getProfile, goalHistory, updateBody, updateGoals, withDayGoals } from "./profile"
 import { getFood, listMyFoods, recentFoods, searchFoods } from "./foods"
-import { weightHistory } from "./weight"
+import { expenditureEstimate, weightHistory } from "./weight"
 import { createFood, createRecipe, deleteFood, foodFields, recipeFields, restoreFood, updateFood, updateRecipe } from "./foodWrites"
 import { agentWriteRefusal } from "./settings"
 import { addCatalogueFood, pointerFrom } from "./catalogueAdds"
@@ -26,6 +26,8 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - Goals include an optional goal weight (update_goals goalWeightKg); get_weight_history compares the trend with it.
 - Body stats are metric: convert pounds, feet and inches before calling update_body_stats. A weight set there is a
   weigh-in (now) in the user's weight history, which get_weight_history returns with its trend.
+- For how much the user burns a day (TDEE, maintenance calories), use get_expenditure_estimate: it comes from their own
+  weigh-ins and logged intake, with its uncertainty, or says what data is still missing.
 - To find a food, use search_foods (any language; a barcode works too): it searches the catalogue and the user's own
   foods and recipes the way the app does, the user's own first. Each food lists its servings (by servingId) with grams
   per unit, nutrition per 100 g and per serving, and how often the user logged it with their usual amount. For "my
@@ -567,6 +569,21 @@ export function registerAminoTools(server: McpServer) {
       ? { ...history.summary, goalWeightKg: goal, trendToGoalKg: Math.round((goal - history.summary.trendKg) * 100) / 100 }
       : history.summary && { ...history.summary, goalWeightKg: goal }
     return { data: { ...history, summary }, rows: history.days.length }
+  }))
+
+  server.registerTool("get_expenditure_estimate", {
+    title: "Get expenditure estimate",
+    description: "The user's estimated daily energy expenditure (TDEE) from their own data: mean intake over complete " +
+      "logged days (at least 60% of their median logged day) minus the weight trend's slope × 7,700 kcal/kg, the slope " +
+      "fitted through the weigh-ins over the last `days` local days (default 28, ending yesterday) with outliers down-" +
+      "weighted. `kcalPerDay` ± `plusMinus` (one standard error; wider for shorter windows), with `meanIntakeKcal`, " +
+      "`trendKgPerWeek`, `weighings` and `completeDays`. Without enough data, `insufficient` says how many more weigh-in " +
+      "days and complete logged days are needed instead of a number.",
+    inputSchema: z.object({ days: z.number().int().min(14).max(56).default(28) }),
+    annotations: READ
+  }, ({ days }, ctx) => run("get_expenditure_estimate", ctx.http?.authInfo, async ({ db }) => {
+    const estimate = await expenditureEstimate(db, days)
+    return { data: estimate, rows: 1 }
   }))
 
   server.registerTool("update_goals", {

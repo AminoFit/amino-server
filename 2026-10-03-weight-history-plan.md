@@ -126,6 +126,13 @@ expenditure = mean daily intake over the window − slope(kg/day) × 7,700
 
 ## Phase 4: expenditure
 
+**Built 2026-10-08** (migration 20261015100000, applied): `energy_expenditure(p_days)` returns `{ enabled, from, to,
+weighings, loggedDays, completeDays, kcalPerDay, plusMinus, meanIntakeKcal, trendKgPerWeek }` or `insufficient:
+{ weighInsNeeded, completeDaysNeeded }`; the window ends yesterday; a Huber-weighted fit by iterative reweighting
+(scale 1.4826 × MAD, at least 0.1 kg). Shown in FeatureFlag `expenditure_estimate` (the owner only). MCP
+`get_expenditure_estimate`. On the owner's data, 8 October: 9 weigh-in days and 13 complete days in 28 (1 and 5 short);
+the 14-day estimate would be 3,270 ± 600 kcal (a plain fit in Python: 3,272).
+
 1. `energy_expenditure(p_days)` on the server, as above, returning `{ kcalPerDay, plusMinus, weighings, completeDays, window, insufficient?: reason }`.
 2. Progress: "Estimated expenditure 2,650 ± 90 kcal" on the weight card once there's enough data, with the "needs N more weigh-ins / logged days" state before. Edit goals can offer it as the calorie basis (later; today's goals use the formula estimate from activity level).
 3. MCP `get_expenditure_estimate`, with the same fields, and `get_daily_summary`'s goals note when goals are based on it.
