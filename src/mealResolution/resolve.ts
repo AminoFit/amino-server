@@ -255,14 +255,16 @@ export type MealResolutionResult = {proposal:MealProposal;
   trace?:string[]}
 
 type Candidate=ReturnType<typeof foodSummary>&{yourHistory?:unknown}
-/** Catalogue candidates for one food: with usual (the Sonnet agent), the foods this user logs out of habit whose names
- * carry every word first, labelled with their history; then the search's top 3. */
+/** Catalogue candidates for one food: with usual (the Sonnet agent), only the foods this user logs out of habit whose
+ * names carry every word, labelled with their history, when there are any (a prompt preference lost to the generic-food
+ * rule: "a cup of kefir" took the generic kefir over their three Lifeway kefirs 3 times in 3); else the search's top 3.
+ * A brand or variant the words name and their history lacks matches none of it, so the catalogue shows; findFood is
+ * never restricted. */
 async function candidatesFor(evidence:ReturnType<typeof createMealEvidence>,name:string,usual:boolean,
     meal:{before:string;messageId:number}):Promise<Candidate[]> {
   const [found,mine]=await Promise.all([evidence.searchFoods(name).then(result=>result.foods??[],()=>[]),
     usual&&evidence.usualFoods?evidence.usualFoods(name,meal).catch(()=>[]):Promise.resolve([])])
-  const seen=new Set(mine.map(food=>food.id))
-  return [...mine,...found.filter(food=>!seen.has(food.id)).slice(0,3)]
+  return mine.length?mine:found.slice(0,3)
 }
 
 /** The fast route's checked plan when it has one, else the agent's. The agent failing first doesn't end the meal while
@@ -661,8 +663,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
             const seen=new Set<number>(), catalogue:Candidate[]=[...byBarcode.map(foodSummary),...usual,...(byName.foods??[])].filter(food=>!seen.has(food.id)&&seen.add(food.id))
             // The catalogue is the cache: sources only when it has nothing, or when asked again after seeing it;
             // USDA before the web.
+            // Sonnet has already seen the catalogue (mentionedFoods, its first findFood): includeSources goes to sources.
             const key=query.trim().toLowerCase(),stage=searched.get(key)
-            if (catalogue.length&&!(includeSources&&stage)) {
+            if (catalogue.length&&!(includeSources&&(stage||claude))) {
               searched.set(key,stage??"catalogue")
               const unmatched=decoded&&!byBarcode.length
               return {catalogue,barcodeMatched:byBarcode.length>0,sources:[],

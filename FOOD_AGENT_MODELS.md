@@ -59,6 +59,15 @@ the per-food wait counts from the meal's start (4 s for searches, the list itsel
 prefetch. Coffee 5/5 at a mean 5.5 s (was 7.1 s); text 17/17 with the fast route on (11 fast, 6 Sonnet, median 3.6 s).
 A 4 s cap on the list too dropped the coffee once when the prefetch took 2.8 s, hence the separate list cap.
 
+Variants and history (later on 8 October). A named variant is checked against the food's numbers by the model's own
+judgement, with no thresholds ("2%", "semi-skimmed" and labels differ by country): only a clear contradiction sends it
+to sources. "200 ml full fat kefir" had taken generic "kefir" (2.2 g fat a cup, a lowfat value); now it adds USDA's
+Maple Hill whole-milk kefir (2/2, 15 s; first try invented an estimate until includeSources went straight to sources on
+the Sonnet path). "2% milk", "skim milk", "semi-skimmed milk" and "fairlife 2%" stay one step with no search. When the
+user's history has foods matching a mention, those are its only per-food candidates (a prompt preference lost to the
+older generic-food rule: "a cup of kefir" took generic kefir 3/3; now their Lifeway Lowfat Plain 3/3); findFood isn't
+restricted. Text 17/17, history 15/15, photos 21/22 (30323's scanned milk at 100 g once, 2/2 on re-run).
+
 Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
 to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
 AI Studio first, Vertex second (providerPreferences), for every Flash call.

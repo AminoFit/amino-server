@@ -166,7 +166,7 @@ test('a text meal on Sonnet gets each listed food with its candidates, and a foo
     const prompt=JSON.parse(generated.messages[1].content)
     assert.deepEqual(prompt.mentionedFoods.map(item=>[item.food,item.catalogue]),
       [['Coffee / espresso',null],['fat free milk',[milk]]]);
-    assert.match(generated.messages[0].content,/catalogue null means its search wasn't ready in time/);
+    assert.match(generated.messages[0].content,/catalogue null means its search\s+wasn't ready in time/);
   } finally {
     if(saved===undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY=saved
   }
