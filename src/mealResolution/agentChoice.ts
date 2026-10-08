@@ -38,9 +38,9 @@ serving of that food as eaten (a shot of espresso, a mug of coffee, one piece of
 labelled serving (lockedProducts). An amount is never 0.
 A candidate with yourHistory is a food this user logged before (timesLogged meals in the last 180 days,
 timesLast30Days, lastLoggedOn, their usual serving) or marked favourite; yourUsual marks the one they log most for
-that mention. When it is the food mentioned, log it rather than a similar catalogue food, and with no amount given
-use their usual serving. "My usual", "the usual" or "my usual brand" means the yourUsual candidate. When the words
-name another brand or variant ("full fat", "whole milk", a brand), the words win.`
+that mention. A mention that doesn't name a brand or variant is the yourUsual food when there is one (otherwise the
+history food that fits it best), not a similar catalogue food, and with no amount given it gets their usual serving.
+Words that name another brand or variant ("full fat", "whole milk", a brand) win over any history.`
 
 // Claude's structured output doesn't enforce string lengths (Flash's does), so the limits are stated.
 export const CLAUDE_LIMITS = `

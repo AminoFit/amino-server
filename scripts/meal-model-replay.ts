@@ -73,7 +73,8 @@ async function replay(messageId: number, run: number) {
   const sources = createFoodSources({ userId: message.userId, messageId, signal: controller.signal, barcodes,
     discover: id => evidence.discover(id) }, { db: guardedDb as never, enqueue: async () => {} })
   const input = { userId: message.userId, operationId: "00000000-0000-4000-8000-00000000e002", messageId,
-    originalText: message.content ?? "", consumedOn: utc(message.consumedOn ?? message.createdAt).toISOString(),
+    // --text replays the meal with other words (same user, time and photos): how a wording changes the result.
+    originalText: arg("text") ?? message.content ?? "", consumedOn: utc(message.consumedOn ?? message.createdAt).toISOString(),
     submittedAt: utc(message.createdAt).toISOString(), timezone, locale: null, attachmentIds: photos.map(photo => photo.id),
     clarificationAllowed: false }
   // MEAL_AGENT=sonnet|flash runs the production agent choice instead of --model (FeatureFlag.meal_agent_sonnet).
@@ -90,7 +91,7 @@ async function replay(messageId: number, run: number) {
         throw error }) }) as typeof generateText } : {}) } : { model, generate }),
     onTool: (tool: string) => { tools.push(tool) } }
   const started = Date.now()
-  const base = { label, model: modelId, effort, variant, messageId, run, text: message.content,
+  const base = { label, model: modelId, effort, variant, messageId, run, text: arg("text") ?? message.content,
     kept: logged.map(item => `${item.foodItemId} ${name(item.FoodItem)} ${Math.round(item.grams)} g`) }
   try {
     const { value: { result, plan, retried }, run: recorded } = await withMealRun(async () => {

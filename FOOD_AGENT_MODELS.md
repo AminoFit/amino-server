@@ -44,6 +44,13 @@ kefir" is the Lifeway Lowfat Blueberry they log, espresso + Oatly now logs their
 15/15, photos 20/22 then the two re-run: 30318 passed 2/2, 30345 dropped the pita named in the words 2 times in 6, both
 when the first look didn't list it (photo meals check coverage against the first look, not the words: open).
 
+No phrase rule (owner): the prompt no longer says what "my usual" means; a mention that names no brand or variant is the
+yourUsual food (else the best-fitting history food), and words naming another brand or variant win. Same meal, other
+words (replay --text): "7g ghee", "7g ghee (my usual brand)" and "7 g de ghee (mi marca de siempre)" all 4th & Heart
+2/2; "a cup of kefir" (three kefirs tied at 4, no yourUsual) their Lifeway Lowfat Plain 2/2; "200 ml full fat kefir"
+not their lowfat one 2/2, but generic "kefir" 1488, which is lowfat by its numbers: the catalogue has no plain
+whole-milk kefir and Sonnet didn't add one (open). Text 17/17, history 15/15.
+
 Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
 to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
 AI Studio first, Vertex second (providerPreferences), for every Flash call.
