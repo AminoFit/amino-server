@@ -14,6 +14,25 @@ agent logged the parts (it passed in the earlier Sonnet run: run-to-run variance
 When Anthropic is down, OpenRouter falls back to Google Vertex, then Azure (global endpoints, same price, both with
 structured output; 4/4 text cases each, 71924d6). Bedrock and Claude on AWS lack structured output and are never used.
 
+## 8 October: Sonnet dropped the coffee, and Flash's Vertex stalls
+
+"Coffee / espresso with 1 cup fat free milk" (30557) logged only the milk. Replays: Sonnet dropped the coffee 2 times
+in 3 (once omitted, once not even listed), or logged "Coffee with Milk" or a latte next to the milk (the milk twice).
+The whole-sentence prefetch held lattes and milks, no espresso, and Sonnet answers from it in one step without
+searching; a prompt line alone ("never omit a food for having few calories") still dropped it 2 in 5. Flash got it
+right 3 in 3 (it searches) in 30-62 s.
+
+Fix (Sonnet text meals): mentionedFoods, the Flash text list (already made for the preview) with catalogue candidates
+per item, each searched as it streams in, waited for at most 3 s after the prefetch; the prompt prefers them, says
+"coffee with milk" is two items, logs low-calorie drinks (caffeine and micronutrients count) and gives a typical
+serving when no amount is stated (Sonnet wrote amount 0 for the espresso, which failed the schema 2 times in 3).
+30557: 4/5 right (espresso 60 g + milk; the miss ran out the 3 s), 30505 espresso + Oatly 3/3. Text 17/17 (median 5.8 s,
+was 3.1 s; max 7.7 s, was 7.3 s), history 15/15.
+
+Why the list was slow: Flash on Google Vertex stalled (139 s and 183 s on 2 of 4 pinned calls); OpenRouter fell back
+to AI Studio after about 10 s, so about half of all Flash calls took 11 s. AI Studio alone: 1.4-4.2 s. Flash now goes to
+AI Studio first, Vertex second (providerPreferences), for every Flash call.
+
 ---
 
 # Meal agent: Haiku 5.5, Sonnet 5.5 and a prompt fix — 7 October 2026

@@ -7,6 +7,7 @@
 // Claude models are pinned to Anthropic on OpenRouter, get the plan schema's oneOf as anyOf (Claude's structured output
 // rejects oneOf) and a prompt-cache marker on the system prompt. Prints one JSON line per run and a summary.
 import { appendFileSync } from "node:fs"
+import { generateText } from "ai"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { resolveMeal } from "@/mealResolution/resolve"
 import { compileCheckedMealPlan } from "@/mealResolution/historyCheck"
@@ -75,7 +76,13 @@ async function replay(messageId: number, run: number) {
     originalText: message.content ?? "", consumedOn: utc(message.consumedOn ?? message.createdAt).toISOString(),
     submittedAt: utc(message.createdAt).toISOString(), timezone, locale: null, attachmentIds: photos.map(photo => photo.id),
     clarificationAllowed: false }
-  const deps = { evidence, sources, barcodes, model, generate, fastRoute: false, photoFastRoute: false,
+  // MEAL_AGENT=sonnet|flash runs the production agent choice instead of --model (FeatureFlag.meal_agent_sonnet).
+  const deps = { evidence, sources, barcodes, fastRoute: false, photoFastRoute: false,
+    ...(process.env.MEAL_AGENT ? { agent: process.env.MEAL_AGENT as "sonnet" | "flash",
+      // DEBUG=1 prints what the model answered when its output fails the schema.
+      ...(process.env.DEBUG ? { generate: ((request: any) => generateText(request).catch((error: any) => {
+        console.error("generate_failed", String(error?.cause ?? "").slice(0, 1500), "\n--- text:", String(error?.text ?? "").slice(0, 4000))
+        throw error })) as typeof generateText } : {}) } : { model, generate }),
     onTool: (tool: string) => { tools.push(tool) } }
   const started = Date.now()
   const base = { label, model: modelId, effort, variant, messageId, run, text: message.content,
@@ -95,6 +102,9 @@ async function replay(messageId: number, run: number) {
     return { ...base, ms: Date.now() - started, steps: result.steps, toolCalls: result.toolCalls, retried, costUsd: totals.costUsd,
       tools, created,
       now: plan.items.map(item => `${item.foodId} ${name(evidence.foods.get(item.foodId))} ${Math.round(item.grams)} g`),
+      stages: Object.entries((result.timeline ?? []).reduce<Record<string, number>>((sum, t) => ({ ...sum, [t.stage]: (sum[t.stage] ?? 0) + t.ms }), {})).map(([k, v]) => `${k} ${v}`).join(", "),
+      // What the agent did with each mention: its items, or omitted (with why, in its evidence).
+      components: result.proposal.components.map(component => `${component.sourceText} -> ${component.omitted ? "omitted" : component.itemIndexes.join(",")}`),
       sameFoods: plan.items.length === keptIds.size && plan.items.every(item => keptIds.has(item.foodId)) }
   } catch (error) {
     return { ...base, ms: Date.now() - started, tools, error: error instanceof Error ? error.message.slice(0, 200) : "unknown" }
