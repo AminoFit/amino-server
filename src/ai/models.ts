@@ -12,6 +12,11 @@ export const LABEL_MODEL = "anthropic/claude-sonnet-5.5"
 export const CREATION_MODELS = ["anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"] as const
 export type CreationModel = typeof CREATION_MODELS[number]
 export const DEFAULT_CREATION_MODEL: CreationModel = "anthropic/claude-sonnet-5.5"
+// The meal agent and its first look at photos behind FeatureFlag.meal_agent_sonnet (FOOD_AGENT_MODELS.md, 7 October):
+// 22/22 photo cases, fewest steps, p90 28 s against Flash's 53 s.
+export const MEAL_AGENT_CLAUDE = "anthropic/claude-sonnet-5.5"
+// Claude on Anthropic's own endpoint only, so the prompt cache stays warm and structured output behaves as tested.
+export const ANTHROPIC_ONLY = { only: ["anthropic"], allow_fallbacks: false, require_parameters: true }
 
 export function foodModel(env: NodeJS.ProcessEnv = process.env): typeof FOOD_MODEL {
   const configured = env.FOOD_REASONING_MODEL

@@ -75,3 +75,64 @@ test('the meal resolver uses the central food model policy by default',async()=>
     if(saved.model!==undefined) process.env.FOOD_REASONING_MODEL=saved.model
   }
 })
+
+test('with the Sonnet agent the first look and the agent run on Sonnet, with a cached system message and anyOf schema',async()=>{
+  const saved=process.env.OPENROUTER_API_KEY
+  process.env.OPENROUTER_API_KEY='test-key'
+  let generated,looked
+  try {
+    const input={userId:owner,operationId:'00000000-0000-4000-8000-00000000000a',messageId:42,
+      originalText:'',consumedOn:'2026-09-24T18:00:00Z',submittedAt:'2026-09-24T18:00:00Z',
+      timezone:'America/New_York',locale:'en-US',attachmentIds:[7]};
+    const result=await resolveMeal(input,{agent:'sonnet',
+      evidence:{foods:new Map(),events:new Map()},
+      loadPhotos:async()=>[{id:7,url:new URL(signedUrl)}],
+      visible:async(_urls,_text,options)=>{looked=options;return []},
+      generate:async options=>{
+        generated=options;
+        return {output:{schemaVersion:1,outcome:'needs_clarification',
+          consumedOn:input.consumedOn,historyGroupSelections:[],items:[],components:[],claims:[],
+          clarification:'What food is shown?'}};
+      }
+    });
+    assert.equal(looked.model,'anthropic/claude-sonnet-5.5');
+    assert.equal(result.model,'anthropic/claude-sonnet-5.5');
+    assert.equal(result.agent,'sonnet');
+    assert.equal(generated.system,undefined);
+    const [system,user]=generated.messages;
+    assert.equal(system.role,'system');
+    assert.match(system.content,/go through originalText mention by mention/);
+    assert.match(system.content,/under 150 characters/);
+    assert.deepEqual(system.providerOptions.openrouter.cacheControl,{type:'ephemeral'});
+    assert.equal(user.content[1].type,'image');
+    const schema=JSON.stringify(await generated.output.responseFormat);
+    assert.ok(schema.includes('"anyOf"')&&!schema.includes('"oneOf"'));
+  } finally {
+    if(saved===undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY=saved
+  }
+});
+
+test('an injected model runs as Flash without reading the Sonnet flag',async()=>{
+  let generated,looked
+  const input={userId:owner,operationId:'00000000-0000-4000-8000-00000000000b',messageId:42,
+    originalText:'',consumedOn:'2026-09-24T18:00:00Z',submittedAt:'2026-09-24T18:00:00Z',
+    timezone:'America/New_York',locale:'en-US',attachmentIds:[7]};
+  const result=await resolveMeal(input,{
+    evidence:{foods:new Map(),events:new Map()},
+    loadPhotos:async()=>[{id:7,url:new URL(signedUrl)}],
+    model:()=>({id:'test',provider:'test',model:{}}),
+    visible:async(_urls,_text,options)=>{looked=options;return []},
+    generate:async options=>{
+      generated=options;
+      return {output:{schemaVersion:1,outcome:'needs_clarification',
+        consumedOn:input.consumedOn,historyGroupSelections:[],items:[],components:[],claims:[],
+        clarification:'What food is shown?'}};
+    }
+  });
+  assert.deepEqual(looked,{});
+  assert.equal(result.agent,'flash');
+  assert.match(generated.system,/You resolve one whole food-log operation/);
+  assert.ok(!generated.system.includes('mention by mention'));
+  assert.equal(generated.messages[0].role,'user');
+  assert.ok(JSON.stringify(await generated.output.responseFormat).includes('"oneOf"'));
+});

@@ -157,7 +157,9 @@ async function run(test: Case) {
     tools.push(line)
     if (process.argv.includes("--trace")) console.error(`[${test.messageId}] ${line}`)
   }
-  const deps = { evidence, sources, barcodes, generate, model: agentModel as never, onTool,
+  // MEAL_AGENT=sonnet|flash runs the production agent choice (FeatureFlag.meal_agent_sonnet) instead of a fixed model.
+  const deps = { evidence, sources, barcodes, generate, onTool,
+    ...(process.env.MEAL_AGENT ? { agent: process.env.MEAL_AGENT as "sonnet" | "flash" } : { model: agentModel as never }),
     photoFastRoute: process.env.EVAL_PHOTO_FAST === "1",
     onProgress: (stage: string, items?: { name: string; grams: number | null; kcal: number | null }[]) => {
       if (stage === "found") { preview = items; firstPreviewMs ??= Date.now() - started } } }

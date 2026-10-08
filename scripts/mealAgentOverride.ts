@@ -1,26 +1,19 @@
 // The meal agent on another model and/or with extra prompt text, for evals and replays (the production prompt and model
 // are unchanged). Claude models are pinned to Anthropic on OpenRouter, get the plan schema's oneOf as anyOf (Claude's
 // structured output rejects oneOf), the string limits stated (it doesn't enforce them) and a prompt-cache marker.
+// MEAL_AGENT=sonnet in the evals runs the production Sonnet path instead (FeatureFlag.meal_agent_sonnet).
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText, jsonSchema, Output, zodSchema } from "ai"
 import { allowingExpressions, evaluateAmounts } from "@/mealResolution/resolve"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
 import { providerPreferences } from "@/ai/models"
+import { CLAUDE_LIMITS, COVERAGE_TEXT, TWO_FOODS_RULE } from "@/mealResolution/agentChoice"
 
 // Prompt variants appended to the system prompt (the production prompt is unchanged).
 export const VARIANTS: Record<string, string> = {
   none: "",
-  // Claude answered too early (dropped the espresso next to a scanned Oatly); Flash read history and re-fetched foods.
-  coverage: `
-The words around a [barcode:] chip either describe that scanned product (its amount, or a generic name for it such as
-"oat milk") or name other foods eaten with it; those other foods are their own items, never omitted because of the chip.
-Before you answer, go through originalText mention by mention: every food named (including drinks such as an espresso
-or coffee, and each [barcode:] chip) needs its own component with an item, or an explicit omission. lockedProducts and
-prefetchedFoods are evidence for some of the meal, never the whole meal: a mention with no matching food still needs a
-findFood call. Do not answer while a mention is unaccounted for.
-Spend turns only on evidence you lack. Do not call listMealEvents or getMealEvent unless the words refer to a past meal
-("same as", "again", "yesterday's", "my usual"); recentMeals already shows what was eaten lately. Never fetch a food
-again that a tool already returned in this conversation: reuse it.`,
+  // The production text behind FeatureFlag.meal_agent_sonnet (src/mealResolution/agentChoice.ts).
+  coverage: COVERAGE_TEXT,
 }
 
 const withoutArrayBounds = (node: unknown): unknown => Array.isArray(node) ? node.map(withoutArrayBounds) :
@@ -34,15 +27,8 @@ const claudeOutput = Output.object({ schema: jsonSchema<MealProposal>(
   { validate: value => { const parsed = mealProposal.safeParse(evaluateAmounts(value))
     return parsed.success ? { success: true, value: parsed.data } : { success: false, error: parsed.error } } }) })
 
-// Claude's structured output doesn't enforce string lengths (Flash's does), so the limits are stated.
-const CLAUDE_LIMITS = `
-Keep each evidence string under 150 characters, a basis under 250 and a clarification under 250.`
-
-// The rule for the final comparison: a first-look entry naming two foods ("mango and cucumber mix") is covered only when
-// each is (30318 logged Cucumber Combo for it and passed).
-export const COMPARE_RULE = `
-A component that names two or more foods (for example "rice and beans" or "mango and cucumber mix") is covered only
-when the logged foods cover each of them: list each one that no logged food covers.`
+// The final comparison's two-foods rule (production behind FeatureFlag.meal_agent_sonnet).
+export const COMPARE_RULE = TWO_FOODS_RULE
 
 /** The vision helpers on another model, for evals: EVAL_FIRST_LOOK=<model> runs the first look there (Claude pinned to
  * Anthropic, minimal thinking as low), EVAL_COMPARE_RULE=1 adds COMPARE_RULE to the final comparison. Rewrites the

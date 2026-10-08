@@ -1,3 +1,20 @@
+# Meal agent moves to Sonnet 5.5 — 7 October 2026 (evening)
+
+Decision (owner): Sonnet 5.5 runs the meal agent and the first look at photos, behind FeatureFlag `meal_agent_sonnet`
+('all' from migration 20261015070000; 'off' or a user list switches back to Flash within 30 s, no deploy). With it on:
+the coverage text and Claude's string limits in a cached system message, the plan schema's oneOf as anyOf, Anthropic-only
+routing (`src/mealResolution/agentChoice.ts`), and the two-foods rule in the final comparison. The second look, scene
+check, barcode locator, text preview and fast routes stay on Flash/Jev.
+
+Production-path eval (`MEAL_AGENT=sonnet`, about $1.30): text 17/17 ($0.234, 1 step), history 15/15 (2 steps, 3-7 s),
+photos 21/22 (median 17.3 s, mean 18.2 s, $0.030 a case for the agent; no first plan rejected). The miss: 30344 with the
+front photo only, where this run's first look listed the sandwich's parts instead of "Baguette de arrachera" and the
+agent logged the parts (it passed in the earlier Sonnet run: run-to-run variance on a packaged product without its label).
+
+Not built: falling back to Flash when Anthropic is down (today the flag is the switch).
+
+---
+
 # Meal agent: Haiku 5.5, Sonnet 5.5 and a prompt fix — 7 October 2026
 
 Decision: Flash stays for now, Sonnet is the direction (owner, 7 October). A prompt fix helped every model, Flash included; Haiku 5.5 works at medium thinking or above

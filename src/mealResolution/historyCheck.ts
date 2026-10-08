@@ -84,7 +84,7 @@ export async function compileCheckedMealPlan(input: MealResolutionInput, result:
     })
     // With a first look at the photos, the check compares text (fast); otherwise it looks at the photos again.
     const missing = await (result.visibleFoods?.length
-      ? (deps.missingFromList ?? missingFromVisibleList)(result.visibleFoods, logged)
+      ? (deps.missingFromList ?? missingFromVisibleList)(result.visibleFoods, logged, { twoFoodsRule: result.agent === "sonnet" })
       : (deps.missing ?? missingVisibleFoods)(result.photoUrls, input.originalText, logged)).catch(() => [])
     if (missing.length) throw new Error(`missing_visible_food: ${missing.join(", ")}`)
   }

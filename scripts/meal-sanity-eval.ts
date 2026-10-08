@@ -75,7 +75,7 @@ async function evaluate(item:typeof cases[number]) {
     timezone:"UTC",locale:null,attachmentIds:[]}
   const started=Date.now()
   const {value:resolved,run}=await withMealRun(()=>resolveMeal(input,{evidence:evidence as any,sources:noSources as any,
-    loadPhotos:async()=>[],deadlineMs:45000,fastRoute:process.env.EVAL_FAST_ROUTE==="1",...override}))
+    loadPhotos:async()=>[],deadlineMs:45000,fastRoute:process.env.EVAL_FAST_ROUTE==="1",...override,...(process.env.MEAL_AGENT?{agent:process.env.MEAL_AGENT as "sonnet"|"flash"}:{})}))
   let plan,error:string|undefined
   try {plan=resolved.proposal.outcome==="resolved"?compileMealPlan(input,resolved):null} catch(e) {error=e instanceof Error?e.message:"invalid"}
   const ids=plan?.items.map(i=>i.foodId)??[]

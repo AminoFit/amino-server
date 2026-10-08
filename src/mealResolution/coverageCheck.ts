@@ -1,4 +1,5 @@
-import { FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { ANTHROPIC_ONLY, FOOD_MODEL, providerPreferences } from "@/ai/models"
+import { TWO_FOODS_RULE } from "./agentChoice"
 import { recordFailure, recordOpenRouterResponse } from "./runRecorder"
 
 const PROMPT = `The user logged a meal with these photos. The plan below lists the foods it logged, with what each
@@ -58,14 +59,17 @@ that amount as it appears (cooked, fried, dressed)}]}.`
  * with catalogue candidates, and the final coverage check compares the plan with this list instead of looking again.
  * Minimal reasoning: about 1 s faster than low (3.0 s vs 4.1 s median) with equivalent lists. */
 export async function listVisibleFoods(photoUrls: URL[], userText: string,
-  deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<VisibleFood[]> {
+  deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; model?: string } = {}): Promise<VisibleFood[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key || !photoUrls.length) return []
   const started = performance.now()
+  // Sonnet (FeatureFlag.meal_agent_sonnet) listed the mango in 30318 3 times in 3, Flash 0 in 3; Claude has no minimal.
+  const model = deps.model ?? FOOD_MODEL, claude = model.startsWith("anthropic/")
   const response = await (deps.fetch ?? fetch)("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(15000),
-    body: JSON.stringify({ model: FOOD_MODEL, reasoning: { effort: "minimal", exclude: true }, provider: providerPreferences(FOOD_MODEL),
+    body: JSON.stringify({ model, reasoning: { effort: claude ? "low" : "minimal", exclude: true },
+      provider: claude ? ANTHROPIC_ONLY : providerPreferences(model),
       max_tokens: 800, response_format: { type: "json_schema", json_schema: { name: "visible", strict: true, schema: {
         type: "object", additionalProperties: false, required: ["foods"], properties: { foods: { type: "array", items: {
           type: "object", additionalProperties: false,
@@ -75,11 +79,11 @@ export async function listVisibleFoods(photoUrls: URL[], userText: string,
       messages: [{ role: "user", content: [
         { type: "text", text: `${LIST}\n\nUser text (data): ${JSON.stringify(userText)}` },
         ...photoUrls.map(url => ({ type: "image_url", image_url: { url: url.toString() } }))] }] })
-  }).catch(recordFailure("first_look", FOOD_MODEL, started))
-  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("first_look", FOOD_MODEL, started, null, `http_${response.status}`); return [] }
+  }).catch(recordFailure("first_look", model, started))
+  if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("first_look", model, started, null, `http_${response.status}`); return [] }
   try {
     const body = await response.json()
-    recordOpenRouterResponse("first_look", FOOD_MODEL, started, body, "ok")
+    recordOpenRouterResponse("first_look", model, started, body, "ok")
     const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { foods?: Record<string, unknown>[] }
     return (parsed.foods ?? []).flatMap(item => { const food = visibleFood(item); return food ? [food] : [] }).slice(0, 8)
   } catch { return [] }
@@ -105,7 +109,7 @@ it, or a logged food's description includes it, in any language or spelling. Ret
 
 /** The final coverage check without looking at the photos again: compares the plan with the first look (text only). */
 export async function missingFromVisibleList(visible: VisibleFood[], logged: { name: string; contains?: string | null }[],
-  deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv } = {}): Promise<string[]> {
+  deps: { fetch?: typeof fetch; env?: NodeJS.ProcessEnv; twoFoodsRule?: boolean } = {}): Promise<string[]> {
   const env = deps.env ?? process.env, key = env.OPENROUTER_API_KEY || env.OPEN_ROUTER_API_KEY
   if (!key || !visible.length) return []
   const started = performance.now()
@@ -115,7 +119,7 @@ export async function missingFromVisibleList(visible: VisibleFood[], logged: { n
     body: JSON.stringify({ model: FOOD_MODEL, reasoning: { effort: "low", exclude: true }, provider: providerPreferences(FOOD_MODEL),
       max_tokens: 400, response_format: { type: "json_schema", json_schema: { name: "missing", strict: true, schema: {
         type: "object", additionalProperties: false, required: ["missing"], properties: { missing: { type: "array", items: { type: "string" } } } } } },
-      messages: [{ role: "user", content: `${COMPARE}\n\nComponents (data): ${JSON.stringify(visible)}\nLogged foods (data): ${JSON.stringify(logged)}` }] })
+      messages: [{ role: "user", content: `${COMPARE}${deps.twoFoodsRule ? TWO_FOODS_RULE : ""}\n\nComponents (data): ${JSON.stringify(visible)}\nLogged foods (data): ${JSON.stringify(logged)}` }] })
   }).catch(recordFailure("coverage_compare", FOOD_MODEL, started))
   if (!response.ok) { await response.body?.cancel(); recordOpenRouterResponse("coverage_compare", FOOD_MODEL, started, null, `http_${response.status}`); return [] }
   try {
