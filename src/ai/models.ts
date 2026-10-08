@@ -43,10 +43,11 @@ export function creationModel(env: NodeJS.ProcessEnv = process.env): CreationMod
   return configured as CreationModel
 }
 
-/** OpenRouter routing: Gemini prefers Google Vertex (the account's higher limits,
- * including a bring-your-own Vertex key) and falls back to Google AI Studio. */
+/** OpenRouter routing: Gemini on Google AI Studio first, then Google Vertex (the account's bring-your-own key). Vertex
+ * first stalled on 8 October 2026 (139 s and 183 s on 2 of 4 calls; OpenRouter fell back after about 10 s, so about half
+ * of all Flash calls took 11 s) while AI Studio answered in 1.4-4.2 s. */
 export function providerPreferences(model: string) {
   return model.startsWith("google/")
-    ? { order: ["google-vertex", "google-ai-studio"], allow_fallbacks: true, require_parameters: true }
+    ? { order: ["google-ai-studio", "google-vertex"], allow_fallbacks: true, require_parameters: true }
     : { require_parameters: true }
 }
