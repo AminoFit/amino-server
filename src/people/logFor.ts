@@ -43,7 +43,11 @@ export async function logFoodsFor(actor: string, input: z.infer<typeof logForInp
   agentName?: string | null } = {}, db: Db = createAdminSupabase()) {
   const ids = [...new Set(input.forUserIds ?? [actor])]
   if (ids.length === 1 && ids[0] === actor) {
-    return { status: "logged" as const, meals: [{ userId: actor, ...(await logFoodsAsMeal(actor, input.items, input.consumedOn, input.localId, db)) }] }
+    const meal = await logFoodsAsMeal(actor, input.items, input.consumedOn, input.localId, db)
+    // An agent's entry for the user alone (log_meals) is labelled like any other agent meal.
+    if (meal.created && options.agentClientId) await (db as any).from("Message").update({ agentClientId: options.agentClientId,
+      agentName: options.agentName ?? null }).eq("id", meal.messageId).eq("userId", actor)
+    return { status: "logged" as const, meals: [{ userId: actor, ...meal }] }
   }
   await requirePeople(actor, db)
   const priced = await priceItems(actor, input.items, db)
