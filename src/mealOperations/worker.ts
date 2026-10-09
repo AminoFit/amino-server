@@ -94,7 +94,9 @@ async function structuredPlan(claim:NonNullable<Awaited<ReturnType<typeof claimM
       if(!copied.items.length) throw new Error("delete_last_item_requires_meal_delete")
     } else copied.items=[]
   } else if(claim.action==="move") {
+    // A move also carries the meal's words: an edit saved without updating its foods ("Save text only").
     copied.consumedOn=String(input.consumedOn)
+    copied.originalText=String(input.originalText)
   } else if(claim.action==="portion") {
     const index=copied.items.findIndex(item=>item.logicalItemId===input.targetLogicalItemId)
     if(index<0) throw new Error("meal_item_unavailable")
