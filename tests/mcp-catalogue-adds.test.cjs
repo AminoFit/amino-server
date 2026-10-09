@@ -41,12 +41,11 @@ const food=(id,extra={})=>({id,name:'Popcorn',brand:'Skinny Pop',gtin:null,kcalP
   lastUpdated:'2026-10-01',bgeBaseEmbedding:'[0.1]',Serving:[{id:1,servingName:'cup',servingWeightGram:28}],FoodBarcode:[],
   Nutrient:[{nutrientName:'Iron',nutrientUnit:'mg',nutrientAmountPerDefaultServing:0.5}],...extra});
 const card=async(_db,_user,foodId,servingId)=>({id:foodId,...(servingId!=null?{barcodePackage:{servingId}}:{})});
-const on=async()=>true;
 const notCalled=name=>async()=>{throw new Error(`${name} should not be called`)};
 
 test('a barcode Amino already has is found without asking a source or counting against the limits',async()=>{
   const state={gtins:{[gtin]:15},changes:Array.from({length:60},()=>({}))};
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:notCalled('barcode lookup'),sources:notCalled('sources')});
   assert.deepEqual(result.data,{status:'found',food:{id:15}});
   assert.deepEqual(result.targets,[15]);
@@ -56,7 +55,7 @@ test('a barcode Amino already has is found without asking a source or counting a
 test('a new barcode is added from a database with the web off, and the addition is recorded with the agent',async()=>{
   const state={};
   let options;
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:async(_user,code,opts)=>{options=opts;assert.equal(code,gtin);
       return {status:'found',gtin,foodId:99,created:true,source:{kind:'Online',ref:`off:${gtin}`}}}});
   assert.equal(options.web,false,'an agent\'s digits never go to the web search');
@@ -67,7 +66,7 @@ test('a new barcode is added from a database with the web off, and the addition 
 
 test('an existing food that a barcode enriches keeps its state before, for repair',async()=>{
   const state={foods:{15:food(15)}};
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:async(_user,_code,{beforeChange})=>{
       await beforeChange(15);
       state.foods[15]=food(15,{gtin,lastUpdated:'2026-10-05',Serving:[...food(15).Serving,{id:2,servingName:'bag',servingWeightGram:126}]});
@@ -86,7 +85,7 @@ test('an existing food that a barcode enriches keeps its state before, for repai
 
 test('a barcode that only adds a package size is recorded as such',async()=>{
   const state={foods:{15:food(15,{gtin:'00856312002795'})}};
-  await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:async(_user,_code,{beforeChange})=>{
       await beforeChange(15);
       state.foods[15]={...state.foods[15],FoodBarcode:[{gtin,servingId:1,source:'Online'}]};
@@ -98,7 +97,7 @@ test('a barcode that only adds a package size is recorded as such',async()=>{
 
 test('a barcode no database knows adds nothing',async()=>{
   const state={};
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:async()=>({status:'unknown',gtin}),name:async()=>({status:'unknown',gtin})});
   assert.equal(result.data.status,'unknown');
   assert.equal(result.data.barcode,gtin);
@@ -108,12 +107,12 @@ test('a barcode no database knows adds nothing',async()=>{
 
 test('a USDA id: found when the catalogue has it, else added through the duplicate check',async()=>{
   const known={usda:{'2345678':40}};
-  const found=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:2345678},{db:fakeDb(known),flag:on,card,
+  const found=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:2345678},{db:fakeDb(known),card,
     sources:notCalled('sources')});
   assert.deepEqual(found.data,{status:'found',food:{id:40}});
 
   const state={},icons=[];
-  const added=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:111},{db:fakeDb(state),flag:on,card,
+  const added=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:111},{db:fakeDb(state),card,
     enqueueIcon:async id=>icons.push(id),sources:()=>({usdaSource:async id=>[{sourceId:`usda:${id}`}],
       createFoodFromSource:async sourceId=>{assert.equal(sourceId,'usda:111');return {status:'created',foodId:120}}})});
   assert.deepEqual(added.data,{status:'added',food:{id:120},source:'USDA FoodData Central 111'});
@@ -121,17 +120,17 @@ test('a USDA id: found when the catalogue has it, else added through the duplica
   assert.equal(state.changes[0].action,'created');
   assert.equal(state.changes[0].sourceRef,'111');
 
-  const unsure=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:112},{db:fakeDb({}),flag:on,card,
+  const unsure=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:112},{db:fakeDb({}),card,
     sources:()=>({usdaSource:async id=>[{sourceId:`usda:${id}`}],createFoodFromSource:async()=>({status:'possible_duplicates',candidates:[]})})});
   assert.equal(unsure.data.status,'unknown','an unsure duplicate check adds nothing');
-  const missing=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:113},{db:fakeDb({}),flag:on,card,
+  const missing=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:113},{db:fakeDb({}),card,
     sources:()=>({usdaSource:async()=>[],createFoodFromSource:notCalled('createFoodFromSource')})});
   assert.equal(missing.data.status,'unknown');
   assert.match(missing.data.note,/no usable record/);
 });
 
 test('limits: 5 changes a minute and 50 a day per user',async()=>{
-  const add=state=>addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),flag:on,card,
+  const add=state=>addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:async()=>({status:'found',gtin,foodId:99,created:true,source:{kind:'Online',ref:`off:${gtin}`}})});
   await assert.rejects(add({changes:Array.from({length:5},()=>({}))}),
     error=>error instanceof McpInputError&&/at most 5 a minute and 50 a day/.test(error.message));
@@ -140,11 +139,9 @@ test('limits: 5 changes a minute and 50 a day per user',async()=>{
   assert.equal((await add({changes:Array.from({length:49},()=>({at:hourAgo}))})).data.status,'added');
 });
 
-test('the rollout flag gates the tool; the user\'s "Let agents make changes" setting does not',async()=>{
-  await assert.rejects(addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb({}),flag:async()=>false,card}),
-    /can't add foods to Amino's catalogue yet/);
+test('the user\'s "Let agents make changes" setting does not gate catalogue adds',async()=>{
   // The fake database fails any AgentSettings read: the setting is never consulted.
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb({gtins:{[gtin]:15}}),flag:on,card});
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb({gtins:{[gtin]:15}}),card});
   assert.equal(result.data.status,'found');
 });
 
@@ -202,7 +199,7 @@ const catalogueHits=async(_user,query)=>{assert.equal(query,'fairlife Reduced Fa
 test('a barcode no database has goes on the food Amino has when its listings name that product',async()=>{
   const state={foods:{4355:food(4355,{name:'Reduced Fat Chocolate Ultra-Filtered Milk'}),4356:food(4356,{name:'Reduced Fat Strawberry Ultra-Filtered Milk'})}};
   const tried=[];
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),card,
     barcode:unknownInDatabases,name:listings,search:catalogueHits,
     attach:()=>({async attachBarcode(foodId,code,description){
       tried.push(foodId);assert.equal(code,fairlife);assert.match(description,/^fairlife /);
@@ -223,7 +220,7 @@ test('a barcode no database has goes on the food Amino has when its listings nam
 
 test('mistyped digits name another product, which no food is: nothing is attached',async()=>{
   const state={foods:{4356:food(4356)}};
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb(state),card,
     barcode:unknownInDatabases,name:async()=>({status:'identified',gtin:fairlife,name:'Hammermill Copy Paper',brand:null}),
     search:async()=>({results:[{id:4356,source:'catalogue',match:'meaning'}]}),
     attach:()=>({async attachBarcode(){return {status:'refused',reason:'not_the_same_product'}}})});
@@ -233,7 +230,7 @@ test('mistyped digits name another product, which no food is: nothing is attache
 });
 
 test('listings that say the barcode is not food',async()=>{
-  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb({}),flag:on,card,
+  const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb({}),card,
     barcode:unknownInDatabases,name:async()=>({status:'not_food',gtin:fairlife}),search:notCalled('search')});
   assert.equal(result.data.status,'unknown');
   assert.match(result.data.note,/isn't food/);

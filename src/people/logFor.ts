@@ -4,7 +4,7 @@ import { UserFoodError, describe, iconsFor, listsFoods, logFoodsAsMeal, priceIte
   utcWallClock } from "@/userFoods/userFoods"
 import { utcInstant, validTimezone, wallClockInZone } from "@/mealOperations/instant"
 import { notify } from "@/push/notify"
-import { SITE, logTargets, requirePeople, rpc } from "./people"
+import { SITE, logTargets, rpc } from "./people"
 
 // Logging meals for other people (20261015030000_log_for_others.sql): one meal per person, priced once, the actor's own
 // foods shared with them as needed. Same amounts for everyone; each person changes their own portion afterwards.
@@ -49,7 +49,6 @@ export async function logFoodsFor(actor: string, input: z.infer<typeof logForInp
       agentName: options.agentName ?? null }).eq("id", meal.messageId).eq("userId", actor)
     return { status: "logged" as const, meals: [{ userId: actor, ...meal }] }
   }
-  await requirePeople(actor, db)
   const priced = await priceItems(actor, input.items, db)
   const content = priced.map(entry => describe(entry.food, entry.item)).join(", ")
   const instants = await instantsFor(db, actor, ids, utcInstant(input.consumedOn), input.wallClock)
@@ -74,7 +73,6 @@ export const copyMealInput = z.object({ forUserIds: z.array(z.string().uuid()).m
 
 /** "Log for…" on a past meal: the same foods and numbers into other people's diaries, at the same time. */
 export async function copyMealTo(actor: string, messageId: number, input: z.infer<typeof copyMealInput>, db: Db = createAdminSupabase()) {
-  await requirePeople(actor, db)
   if (input.forUserIds.includes(actor)) throw new UserFoodError("invalid_meal", 422)
   const result = await rpc<{ status: string; duplicates?: Duplicate[]; meals?: { userId: string; messageId: number; created: boolean }[] }>(
     db, "copy_meal_to_people", { p_actor: actor, p_message_id: messageId,

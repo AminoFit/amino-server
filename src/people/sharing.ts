@@ -2,7 +2,7 @@ import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { UserFoodError, getUserFood } from "@/userFoods/userFoods"
 import { notify } from "@/push/notify"
-import { SITE, hashOf, newToken, requirePeople, rpc } from "./people"
+import { SITE, hashOf, newToken, rpc } from "./people"
 
 // Sharing foods: live with linked people (they follow the owner's edits), or as a copy link anyone can add to their own
 // foods. The rules live in SQL (20261015020000_people_and_sharing.sql).
@@ -20,7 +20,6 @@ async function ownFood(db: Db, userId: string, foodId: number) {
 
 /** The share sheet: linked people, and how each sees this food. */
 export async function foodSharing(userId: string, foodId: number, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const food = await ownFood(db, userId, foodId)
   const [people, sharedWith] = await Promise.all([rpc<{ linked: { id: string; name: string; kind: string;
     mine: { shareAllFoods: boolean } }[] }>(db, "people_list", { p_user_id: userId }),
@@ -37,7 +36,6 @@ export const shareInput = z.object({ recipientIds: z.array(z.string().uuid()).mi
 /** Shares (or stops sharing) one of the user's foods with linked people; tells those it's newly shared with. */
 export async function shareFood(userId: string, foodIds: number[], recipientIds: string[], on: boolean,
   options: { via?: "app" | "mcp"; agentClientId?: string | null } = {}, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const foods = await Promise.all(foodIds.map(id => ownFood(db, userId, id)))
   const before = on ? await (db as any).from("FoodAccess").select("recipientId,lineageId").eq("ownerId", userId)
     .in("recipientId", recipientIds).in("lineageId", foods.map(food => food.lineageId)).is("revokedAt", null) : { data: [] }
@@ -61,7 +59,6 @@ export async function shareFood(userId: string, foodIds: number[], recipientIds:
 
 /** A copy link for one of the user's foods. Anyone with it can add their own copy. */
 export async function createCopyLink(userId: string, foodId: number, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const { token, hash } = newToken()
   await rpc(db, "create_food_copy_link", { p_owner: userId, p_food_id: foodId, p_token_hash: hash })
   return { url: `${SITE}/f/${token}` }

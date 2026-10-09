@@ -3,7 +3,6 @@ import { verifyMcpToken } from "@/mcp/auth"
 import { bufferedReply, streamsUntilClosed } from "@/mcp/bufferedReply"
 import { RESOURCE_METADATA_PATH } from "@/mcp/metadata"
 import { MCP_INSTRUCTIONS, registerAminoTools } from "@/mcp/tools"
-import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 
 // The MCP server agents connect to (Streamable HTTP, stateless). Sign-in is OAuth through Supabase Auth; the
 // consent step happens at /oauth/consent. FeatureFlag mcp_server is the kill switch.
@@ -17,8 +16,7 @@ const mcp = createMcpHandler(registerAminoTools, {
 
 async function enabled(request: Request) {
   const userId = (request.auth?.extra as { userId?: string } | undefined)?.userId
-  if (!userId || !(await userFlagEnabled("mcp_server", userId)))
-    return Response.json({ error: "Amino's agent access is switched off right now." }, { status: 503 })
+  if (!userId) return Response.json({ error: "Sign in to Amino to use agent access." }, { status: 401 })
   const body = request.method === "POST" ? await request.clone().json().catch(() => undefined) : undefined
   if (body === undefined || streamsUntilClosed(body)) return mcp(request)
   const label = Array.isArray(body) ? "batch" : `${body?.method}${body?.params?.name ? ` ${body.params.name}` : ""}`

@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 import { UserFoodError } from "@/userFoods/userFoods"
 import { notify } from "@/push/notify"
 
@@ -30,11 +29,6 @@ export async function rpc<T>(db: Db, name: string, args: Record<string, unknown>
   return data as T
 }
 
-/** People is rolled out by FeatureFlag `people`. */
-export async function requirePeople(userId: string, db: Db = createAdminSupabase()) {
-  if (!(await userFlagEnabled("people", userId, db))) throw new UserFoodError("people_unavailable", 404)
-}
-
 const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex")
 /** An invite or copy link token: 192 random bits, URL-safe. Only its hash is stored. */
 export function newToken() {
@@ -48,7 +42,6 @@ const name = (db: Db, userId: string) => rpc<string | null>(db, "person_name", {
 export const kindInput = z.enum(["friend", "partner", "trainer", "client"])
 
 export async function listPeople(userId: string, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   return rpc(db, "people_list", { p_user_id: userId })
 }
 
@@ -56,7 +49,6 @@ export const inviteInput = z.object({ kind: kindInput, asksToLog: z.boolean().de
   channel: z.enum(["qr", "link"]) }).strict()
 
 export async function createInvite(userId: string, input: z.infer<typeof inviteInput>, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const { token, hash } = newToken()
   const invite = await rpc<{ id: string; expiresAt: string }>(db, "people_create_invite", { p_user_id: userId,
     p_token_hash: hash, p_kind: input.kind, p_asks_to_log: input.asksToLog, p_channel: input.channel })
@@ -69,7 +61,6 @@ const refArgs = (ref: z.infer<typeof inviteRef>) =>
   "token" in ref ? { p_token_hash: hashOf(ref.token), p_invite_id: null } : { p_token_hash: null, p_invite_id: ref.id }
 
 export async function previewInvite(userId: string, ref: z.infer<typeof inviteRef>, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   return rpc(db, "people_invite_preview", { p_user_id: userId, ...refArgs(ref) })
 }
 
@@ -77,7 +68,6 @@ export const respondInput = z.object({ invite: inviteRef, accept: z.boolean(), b
   canLogForMe: z.boolean().default(false), shareAllFoods: z.boolean().default(false) }).strict()
 
 export async function respondToInvite(userId: string, input: z.infer<typeof respondInput>, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const result = await rpc<{ status: string; otherId?: string }>(db, "people_respond", { p_user_id: userId,
     ...refArgs(input.invite), p_accept: input.accept, p_block: input.block, p_can_log: input.canLogForMe,
     p_share_all: input.shareAllFoods })
@@ -94,7 +84,6 @@ export const emailRequestInput = z.object({ email: z.string().trim().email().max
 
 /** Always answers the same, whether or not the email has an account. */
 export async function requestByEmail(userId: string, input: z.infer<typeof emailRequestInput>, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const target = await rpc<string | null>(db, "people_request_by_email", { p_user_id: userId, p_email: input.email,
     p_kind: input.kind, p_asks_to_log: input.asksToLog })
   if (target) {
@@ -108,25 +97,21 @@ export async function requestByEmail(userId: string, input: z.infer<typeof email
 export const grantInput = z.object({ canLogForMe: z.boolean().optional(), shareAllFoods: z.boolean().optional() }).strict()
 
 export async function setGrant(userId: string, other: string, input: z.infer<typeof grantInput>, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   return rpc(db, "people_set_grant", { p_user_id: userId, p_other: other, p_can_log: input.canLogForMe ?? null,
     p_share_all: input.shareAllFoods ?? null })
 }
 
 /** Silent: the other person isn't told (owner). */
 export async function endLink(userId: string, other: string, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   return { ended: await rpc<boolean>(db, "people_end_link", { p_user_id: userId, p_other: other }) }
 }
 
 export async function block(userId: string, other: string, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   await rpc(db, "people_block", { p_user_id: userId, p_other: other })
   return { blocked: true }
 }
 
 export async function unblock(userId: string, other: string, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   await rpc(db, "people_unblock", { p_user_id: userId, p_other: other })
   return { blocked: false }
 }
@@ -139,7 +124,6 @@ export const mealsPageInput = z.object({ before: z.string().datetime({ local: tr
  * cursor for the following page (null on the last). */
 export async function mealsLoggedFor(userId: string, other: string, page: z.input<typeof mealsPageInput> = {},
   db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const { before, beforeId, limit } = mealsPageInput.parse(page)
   const meals = await rpc<LoggedForMeal[]>(db, "meals_logged_for", { p_actor: userId, p_target: other, p_limit: limit,
     p_before: before ?? null, p_before_id: beforeId ?? null })
@@ -149,7 +133,6 @@ export async function mealsLoggedFor(userId: string, other: string, page: z.inpu
 
 /** Deletes a meal the user logged for someone (the owner can restore it from their log for 30 days). */
 export async function deleteMealLoggedFor(userId: string, messageId: number, db: Db = createAdminSupabase()) {
-  await requirePeople(userId, db)
   const target = await rpc<string | null>(db, "meal_logged_by", { p_actor: userId, p_message_id: messageId })
   if (!target) throw new UserFoodError("meal_unavailable", 404)
   await rpc(db, "agent_delete_meal", { p_user_id: target, p_message_id: messageId })

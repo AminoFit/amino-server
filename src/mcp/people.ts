@@ -12,7 +12,6 @@ import type { UserDatabase } from "./auth"
 // log for them (a trainer's whole roster). Linking, accepting and permissions stay in the app.
 
 const MESSAGES: Record<string, string> = {
-  people_unavailable: "People and sharing aren't turned on for this user yet.",
   not_linked: "The user isn't linked with that person: list_people shows who they are linked with.",
   not_allowed: "That person hasn't let the user log meals for them (they turn it on in the Amino app).",
   food_not_shareable: "A food in it belongs to someone else, who shared it only with the user, so it can't be passed on. " +

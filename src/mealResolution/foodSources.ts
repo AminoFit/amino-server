@@ -442,11 +442,11 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
   async function nearbyFacts(food:SourceFood):Promise<Facts[]> {
     const label=food.brand?`${food.name} - ${food.brand}`:food.name
     const [[vector],byName,byGtin]=await Promise.all([embed("BGE_BASE",[label]),
-      (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0,p_user_id:ctx.userId}).abortSignal(ctx.signal),
+      (db() as any).rpc("search_meal_food_catalogue",{p_query:food.name.slice(0,100),p_limit:5,p_offset:0,p_user_id:ctx.userId,p_include_recipes:true}).abortSignal(ctx.signal),
       food.gtin?Promise.all([db().from("FoodItem").select("id").eq("gtin",food.gtin).or(visible).is("archivedAt",null).limit(1).abortSignal(ctx.signal),
         (db() as any).from("FoodBarcode").select("id:foodItemId").eq("gtin",food.gtin).or(visible).limit(1).abortSignal(ctx.signal)])
         .then(([main,other])=>({data:[...(main.data??[]),...(other.data??[])],error:main.error??other.error})):Promise.resolve({data:[],error:null})])
-    const near=await (db() as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8,p_user_id:ctx.userId}).abortSignal(ctx.signal)
+    const near=await (db() as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:8,p_user_id:ctx.userId,p_include_recipes:true}).abortSignal(ctx.signal)
     if (near.error||byGtin.error) throw new Error("catalogue_unavailable")
     const ids=[...new Set([...(byGtin.data??[]),...(byName.error?[]:byName.data??[]),...(near.data??[])]
       .map(row=>(row as {id:number}).id))].slice(0,14)

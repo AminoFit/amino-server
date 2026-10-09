@@ -7,7 +7,6 @@ import { userFlagEnabled } from "./fastRouteFlag"
 import {catalogueOrOwnFilter,visibleFoodFilter} from "../userFoods/visibility"
 
 /** FeatureFlag that lets the agent and the fast route use the user's recipes (the recipe check gates each use). */
-export const RECIPES_FLAG = "recipes_in_agent"
 
 export type CatalogFood = {
   id:number;name:string;brand:string|null;lastUpdated:string;gtin?:string|null;description?:string|null;
@@ -119,10 +118,10 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       if (!text) return {status:"empty" as const,candidates:[],nextCursor:null}
       // The first page blends in the foods nearest by meaning (searchBlend.ts); later pages page the text search.
       const [result,near]=await Promise.all([
-        (db as any).rpc("search_meal_food_catalogue",{p_query:text,p_limit:20,p_offset:cursor,p_user_id:userId}).abortSignal(signal),
+        (db as any).rpc("search_meal_food_catalogue",{p_query:text,p_limit:20,p_offset:cursor,p_user_id:userId,p_include_recipes:true}).abortSignal(signal),
         cursor>0?Promise.resolve([] as SearchRow[]):getCachedOrFetchEmbeddings("BGE_BASE",[text.toLowerCase()])
           .then(([vector])=>(db as any).rpc("search_food_catalogue_nearest",{p_embedding_cache_id:vector.id,p_limit:12,
-            p_user_id:userId}).abortSignal(signal))
+            p_user_id:userId,p_include_recipes:true}).abortSignal(signal))
           .then((nearest:{data:SearchRow[]|null;error:unknown})=>nearest.error?[]:nearest.data??[])
           // Meaning is an improvement: without it the text search still answers.
           .catch(()=>[] as SearchRow[])])
@@ -150,7 +149,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       return ids.length?(await this.getFoodsAndServings(ids)).foods:[]
     },
     /** The user's own foods and recipes whose names appear in the meal text, read before the first model turn: the
-     * agent sees them only when relevant (recipes only behind RECIPES_FLAG, which search_own_foods applies). */
+     * agent sees them only when relevant (recipes included). */
     /** Foods this user logs out of habit (the last 180 days, and favourites) whose name and brand carry every word of
      * the mention (3+ letters, or a number), most logged first, each with its history: "blueberry kefir" is the Lifeway
      * Lowfat Blueberry Kefir they log, not another of the catalogue's kefirs; "full fat kefir" matches none of their
@@ -188,7 +187,7 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
       const query=text.trim().slice(0,500)
       if (!query) return []
       const [vector]=await getCachedOrFetchEmbeddings("BGE_BASE",[query])
-      const near=await (db as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:limit,p_user_id:userId}).abortSignal(signal)
+      const near=await (db as any).rpc("get_cosine_results",{p_embedding_cache_id:vector.id,amount_of_results:limit,p_user_id:userId,p_include_recipes:true}).abortSignal(signal)
       if (near.error) throw new Error("catalogue_unavailable")
       const ids=((near.data??[]) as {id:number}[]).map(row=>row.id)
       for (const id of ids) discovered.add(id)
@@ -227,15 +226,13 @@ export function createMealEvidence(userId:string, signal:AbortSignal,
      * similar variant ("core power vanilla" is the regular shake they log, not the Elite one). */
     async recentFoods() {
       const since=new Date(Date.now()-60*86400000).toISOString()
-      const [result,recipes]=await Promise.all([db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand,archivedAt,recipePortions)")
+      const [result]=await Promise.all([db.from("LoggedFoodItem").select("foodItemId,createdAt,FoodItem(name,brand,archivedAt,recipePortions)")
         .eq("userId",userId).is("deletedAt",null).gte("createdAt",since)
-        .order("createdAt",{ascending:false}).limit(400).abortSignal(signal),
-        userFlagEnabled(RECIPES_FLAG,userId,db).catch(()=>false)])
+        .order("createdAt",{ascending:false}).limit(400).abortSignal(signal)])
       if (result.error) throw new Error("history_unavailable")
-      // Archived versions are replaced by their newer version; recipes are candidates only behind RECIPES_FLAG (the
-      // recipe check then gates each use). Each food once, newest first, with how often it was logged.
-      const rows=((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt&&
-        (recipes||row.FoodItem.recipePortions==null))
+      // Archived versions are replaced by their newer version (the recipe check gates each use of a recipe). Each food
+      // once, newest first, with how often it was logged.
+      const rows=((result.data??[]) as any[]).filter(row=>row.foodItemId&&row.FoodItem&&!row.FoodItem.archivedAt)
       const logs=new Map<number,number>()
       for (const row of rows) logs.set(row.foodItemId,(logs.get(row.foodItemId)??0)+1)
       const seen=new Set<number>()

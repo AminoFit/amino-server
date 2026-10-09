@@ -1,5 +1,4 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 
 // The user's choice: may connected agents make changes (log, edit and delete meals, add their own foods and recipes)?
 // Off until the user turns it on in the app; only the app's own session changes it (AgentSettings is written by the
@@ -7,8 +6,6 @@ import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 
 export const WRITES_OFF = "Changes are off. Ask the user to turn on Let agents make changes in the Amino app: Settings › " +
   "Connected agents."
-export const WRITES_UNAVAILABLE = "Agents can't make changes in Amino right now."
-
 export async function agentWritesEnabled(userId: string) {
   const { data, error } = await (createAdminSupabase() as any).from("AgentSettings").select("writesEnabled")
     .eq("userId", userId).maybeSingle()
@@ -19,7 +16,6 @@ export async function agentWritesEnabled(userId: string) {
 /** Why an agent may not write for this user right now, or null when it may. Read on every call (no cache), so turning
  * the setting off applies to the next call. */
 export async function agentWriteRefusal(userId: string) {
-  if (!(await userFlagEnabled("mcp_writes", userId))) return WRITES_UNAVAILABLE
   return (await agentWritesEnabled(userId)) ? null : WRITES_OFF
 }
 

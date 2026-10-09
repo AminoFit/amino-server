@@ -1,7 +1,6 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { normalizeGtin } from "@/mealResolution/barcode"
 import { createFoodSources } from "@/mealResolution/foodSources"
-import { userFlagEnabled } from "@/mealResolution/fastRouteFlag"
 import { foodForBarcode } from "@/foodSearch/barcodeLookup"
 import { foodForGtin } from "@/foodSearch/packageBarcodes"
 import { nameBarcode } from "@/foodSearch/barcodeIdentity"
@@ -26,8 +25,6 @@ export type Agent = { clientId: string; name: string | null }
 
 export const ADDS_PER_MINUTE = 5, ADDS_PER_DAY = 50
 const LOOKUP_MS = 20_000
-export const ADDS_UNAVAILABLE = "Agents can't add foods to Amino's catalogue yet. Use create_food to save it as the " +
-  "user's own food."
 const URL_HELP = "Give a USDA FoodData Central page (fdc.nal.usda.gov/food-details/<id>) or an Open Food Facts product " +
   "page (world.openfoodfacts.org/product/<barcode>)."
 
@@ -98,7 +95,7 @@ export function changesBetween(before: Snapshot, after: Snapshot) {
   return { action, changes }
 }
 
-type Deps = { db?: Db; flag?: (userId: string) => Promise<boolean>
+type Deps = { db?: Db
   barcode?: typeof foodForBarcode; sources?: (beforeChange: (foodId: number) => Promise<unknown>) =>
     Pick<ReturnType<typeof createFoodSources>, "usdaSource" | "createFoodFromSource">
   name?: typeof nameBarcode; search?: typeof searchFoodsForUser
@@ -109,7 +106,6 @@ type SourceKind = "USDA" | "OpenFoodFacts" | "BarcodeName"
 /** Adds a USDA or Open Food Facts food to the shared catalogue (or finds the one already there) and returns its card. */
 export async function addCatalogueFood(userDb: UserDatabase, userId: string, agent: Agent, pointer: Pointer, deps: Deps = {}) {
   const db = deps.db ?? createAdminSupabase()
-  if (!(await (deps.flag ?? (id => userFlagEnabled("mcp_catalogue_adds", id, db)))(userId))) throw new McpInputError(ADDS_UNAVAILABLE)
   const card = (foodId: number, servingId?: number | null) => (deps.card ?? cardFor)(userDb, userId, foodId, servingId)
   const found = async (foodId: number, servingId?: number | null) => ({ status: "found" as const, food: await card(foodId, servingId) })
 

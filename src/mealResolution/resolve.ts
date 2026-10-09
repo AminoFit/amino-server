@@ -11,7 +11,6 @@ import { listVisibleFoods, missingVisibleFoods, sceneCheck, type VisibleFood } f
 import { buildPreview, type MealPreviewItem, type MealProgressStage } from "./progress"
 import { streamTextFoods } from "./textPreview"
 import { labelledServing, MAX_PHOTO_COMPONENTS, photoFastProposal, photoQuantity, textFastProposal } from "./textFastRoute"
-import { photoFastRouteEnabled, textFastRouteEnabled } from "./fastRouteFlag"
 import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
 import { kjToKcal } from "@/nutrition"
@@ -296,9 +295,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
   scene?:typeof sceneCheck;
   /** Decoded GTINs are pushed here; pass the same array to injected sources. */
   barcodes?:string[]
-  /** Overrides FeatureFlag.meal_text_fast_route for this meal (evals and tests). */
+  /** Turns the text fast route off for this meal (evals and tests). */
   fastRoute?:boolean
-  /** Overrides FeatureFlag.meal_photo_fast_route for this meal (evals and tests). */
+  /** Turns the photo fast route off for this meal (evals and tests). */
   photoFastRoute?:boolean
   /** Overrides FeatureFlag.meal_agent_sonnet (evals and tests); an injected model alone runs as Flash. */
   agent?:MealAgent
@@ -386,13 +385,13 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // A text meal's preview streams in item by item while the agent works; icons follow once the list is complete.
     const report=(preview:MealPreviewItem[])=>{Promise.resolve(deps.onProgress?.("found",preview)).catch(()=>{})}
     // A plain text meal can skip the agent: Jev matches the listed items while the agent starts, and a plan that
-    // passes the check wins the race (FeatureFlag.meal_text_fast_route).
+    // passes the check wins the race.
     // Words with scanned chips race too (meal 30505, "Espresso with oat milk" and the Oatly chip, took the agent 65 s):
     // the scanned products are locked items and Jev matches the rest of the words.
     const wordsOnly=!!scanned.text&&!input.attachmentIds.length&&!input.useExistingPhotos&&
       !input.validationErrorCode&&!input.answers?.length&&input.previousMeal==null
     const plainText=wordsOnly&&!scanned.gtins.length,chipText=wordsOnly&&scanned.gtins.length>0
-    const fastWanted=plainText||chipText?Promise.resolve().then(()=>deps.fastRoute??textFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false)
+    const fastWanted=plainText||chipText?Promise.resolve().then(()=>deps.fastRoute??true).catch(()=>false):Promise.resolve(false)
     // The preview's list of items (with the user's words and amounts) also feeds the fast route.
     // Each listed item is searched as soon as it streams in (0.3-1.6 s a search); mentionsSearched keeps the finished ones.
     const searches=new Map<string,Promise<VisibleFood&{catalogue:Candidate[]}>>()
@@ -573,14 +572,14 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       return finished=resolved
     }
     // A photo meal without text can skip the agent too: Jev matches the first look's components while the agent starts
-    // (FeatureFlag.meal_photo_fast_route). Photos with a barcode keep the barcode route or the agent.
+    // Photos with a barcode keep the barcode route or the agent.
     // With locked barcode products (route C), the fast route resolves only the leftovers and the plan adds the locked
     // products; any unidentified package or unresolved barcode leaves the meal to the agent.
     const leftoverPackages=visible.some(item=>/package/.test(item.detail))||unreadBoxes
     const plainPhoto=photosOnly&&photos.length>0&&visible.length>0&&visible.length<=MAX_PHOTO_COMPONENTS&&
       (!barcodes.length||(!!scene&&lockedFoods.length>0&&!unresolved.length&&!leftoverPackages&&lockedFoods.every(servingKnown)&&!labelDisagrees.length))
     const photoFastStarted=performance.now()
-    const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??photoFastRouteEnabled(input.userId)).catch(()=>false):Promise.resolve(false))
+    const photoFast=(plainPhoto?Promise.resolve().then(()=>deps.photoFastRoute??true).catch(()=>false):Promise.resolve(false))
       .then(async enabled=>{
         if (!enabled) return null
         const outcome=await photoFastProposal(input,visible,evidence,{signal:controller.signal})
