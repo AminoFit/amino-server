@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { listGrants } from "@/utils/supabase/oauthServer"
-import type { Agent, AgentUsage, Dashboard, Day, DayTotals, DayWithWeek, Goals } from "./types"
+import type { Agent, AgentUsage, Dashboard, Day, DayTotals, DayWithWeek, GoalChange, Goals } from "./types"
 import { shiftDay, weekStart } from "./dates"
 
 // Reads for the dashboard, as the signed-in user: the web_* functions check auth.uid() themselves, so a missing or
@@ -37,10 +37,27 @@ async function withPhotoUrls(day: Day): Promise<Day> {
     photos: meal.photos?.map(path => urls.get(path)).filter((url): url is string => !!url) })) }
 }
 
-/** The first page load: goals, the day (today when none is given), its week, 12 weeks of totals and stats. */
+type GoalHistoryRow = { effectiveOn: string; calorieGoal: number | null; proteinGoal: number | null; carbsGoal: number | null
+  fatGoal: number | null }
+
+/** The user's goal changes, oldest first (UserGoalHistory; its row policy returns only the signed-in user's). */
+async function goalHistory(db: Rpc, current: Goals): Promise<GoalChange[]> {
+  const { data, error } = await (db as any).from("UserGoalHistory")
+    .select("effectiveOn,calorieGoal,proteinGoal,carbsGoal,fatGoal").order("effectiveOn")
+  if (error) throw new Error(`UserGoalHistory: ${error.message}`)
+  return ((data ?? []) as GoalHistoryRow[]).map(row => ({ from: row.effectiveOn, goals: {
+    kcal: row.calorieGoal || current.kcal, proteinG: row.proteinGoal || current.proteinG,
+    carbG: row.carbsGoal || current.carbG, totalFatG: row.fatGoal || current.totalFatG } }))
+}
+
+/** The first page load: goals and their history, the day (today when none is given), its week, 12 weeks of totals and
+ * stats. */
 export async function loadDashboard(day: string | null, { photos = true } = {}): Promise<Dashboard> {
-  const raw = await call<Dashboard>(createClient(), "web_dashboard", { p_date: day })
-  return { ...raw, goals: goalsOf(raw.goals), day: photos ? await withPhotoUrls(raw.day) : raw.day }
+  const db = createClient()
+  const raw = await call<Dashboard>(db, "web_dashboard", { p_date: day })
+  const goals = goalsOf(raw.goals)
+  const [history, shownDay] = await Promise.all([goalHistory(db, goals), photos ? withPhotoUrls(raw.day) : raw.day])
+  return { ...raw, goals, goalHistory: history, day: shownDay }
 }
 
 export async function loadDay(day: string): Promise<DayWithWeek> {

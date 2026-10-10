@@ -5,7 +5,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { ChevronDownIcon } from "@heroicons/react/20/solid"
 import type { Dashboard, DayTotals, DayWithWeek } from "../_lib/types"
 import { dayTitle, format, isDay, shiftDay, weekOf } from "../_lib/dates"
-import { dayTotals, number } from "../_lib/stats"
+import { dayTotals, goalsOn, number, type GoalsOn } from "../_lib/stats"
 import { DayRing } from "./DayRing"
 import { GoalBars } from "./GoalBars"
 import { MealCard } from "./MealCard"
@@ -25,12 +25,12 @@ async function fetchDay(date: string): Promise<DayWithWeek> {
 
 const dayQuery = (date: string) => ({ queryKey: ["web-day", date], queryFn: () => fetchDay(date), staleTime: 60_000 })
 
-function WeekStrip({ day, today, kcalByDay, goal, onPick }: { day: string; today: string; kcalByDay: Map<string, number>;
-  goal: number; onPick: (day: string) => void }) {
+function WeekStrip({ day, today, kcalByDay, goalsOnDay, onPick }: { day: string; today: string; kcalByDay: Map<string, number>;
+  goalsOnDay: GoalsOn; onPick: (day: string) => void }) {
   return (
     <div className="grid grid-cols-7 gap-1">
       {weekOf(day).map(date => {
-        const selected = date === day, isToday = date === today, future = date > today
+        const selected = date === day, isToday = date === today, future = date > today, goal = goalsOnDay(date).kcal
         return (
           <button key={date} type="button" onClick={() => onPick(date)} aria-pressed={selected}
             aria-label={format(date, { weekday: "long", month: "long", day: "numeric" })}
@@ -52,7 +52,9 @@ function WeekStrip({ day, today, kcalByDay, goal, onPick }: { day: string; today
  * it shows; the day refetches at once when it's older than the query's minute. */
 export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: number }) {
   const queryClient = useQueryClient()
-  const { today, goals } = initial
+  const { today, goals, goalHistory } = initial
+  // Each day is judged against the goals it had, not today's.
+  const goalsOnDay: GoalsOn = date => goalsOn(goalHistory ?? [], date, goals)
   const [day, setDay] = useState(initial.day.date)
   const [direction, setDirection] = useState<"left" | "right" | null>(null)
 
@@ -133,9 +135,9 @@ export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: n
                 </button>
               )}
             </div>
-            <div className="mt-3 sm:mt-5"><WeekStrip day={day} today={today} kcalByDay={kcalByDay} goal={goals.kcal} onPick={go} /></div>
+            <div className="mt-3 sm:mt-5"><WeekStrip day={day} today={today} kcalByDay={kcalByDay} goalsOnDay={goalsOnDay} onPick={go} /></div>
             <div className={`mt-3 sm:mt-5 transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
-              <GoalBars totals={totals} goals={goals} />
+              <GoalBars totals={totals} goals={goalsOnDay(day)} />
               {totals.fiberG > 0 && <p className="mt-2.5 px-1 text-xs text-app-muted">{number(totals.fiberG, 1)} g fibre</p>}
             </div>
           </section>

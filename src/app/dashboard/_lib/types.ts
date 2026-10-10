@@ -2,6 +2,9 @@
 
 export type Goals = { kcal: number; proteinG: number; carbG: number; totalFatG: number }
 
+/** The goals from `from` (the user's local date) until the next change (UserGoalHistory), gaps filled from today's. */
+export type GoalChange = { from: string; goals: Goals }
+
 export type FoodRow = {
   id: number
   name?: string
@@ -37,7 +40,9 @@ export type TopFood = { id: number; name?: string; brand?: string; icon?: string
 export type Dashboard = {
   timezone: string
   today: string
+  /** Today's goals. A past day is judged against the goals it had: `goalsOn(goalHistory, day, goals)`. */
   goals: Goals
+  goalHistory: GoalChange[]
   name?: string
   email?: string
   day: Day

@@ -1,7 +1,7 @@
 import { FireIcon } from "@heroicons/react/20/solid"
 import type { Dashboard } from "../_lib/types"
 import { format, shiftDay } from "../_lib/dates"
-import { MACROS, averages, heatmap, number, targetDays, titleCase, type HeatCell } from "../_lib/stats"
+import { MACROS, averages, goalsOn, heatmap, number, targetDays, titleCase, type GoalsOn, type HeatCell } from "../_lib/stats"
 
 // The Stats page, from the last 12 weeks: streak and averages, days on target, calories per day, a calendar of
 // calories against the goal, the average day against the goals, and the foods logged most. Days link to the log.
@@ -18,6 +18,9 @@ export function Card({ title, subtitle, children, className = "", style }: { tit
     </section>
   )
 }
+
+/** Each day's goals: the ones it had (goal history), not today's. */
+const goalsOfDay = (data: Dashboard): GoalsOn => day => goalsOn(data.goalHistory ?? [], day, data.goals)
 
 const delay = (ms: number) => ({ "--delay": `${ms}ms` }) as React.CSSProperties
 const dayLink = (date: string) => `/log?day=${date}`
@@ -38,12 +41,13 @@ const HEAT: Record<HeatCell["level"], string> = {
 }
 
 function Overview({ data }: { data: Dashboard }) {
-  const { today, goals, recent } = data
-  const week = averages(recent, today, 7)
-  const month = averages(recent, today, 30)
-  const target = targetDays(recent, today, goals, 30)
+  const { today, recent } = data
+  const goalsOnDay = goalsOfDay(data)
+  const week = averages(recent, today, 7, goalsOnDay)
+  const month = averages(recent, today, 30, goalsOnDay)
+  const target = targetDays(recent, today, goalsOnDay, 30)
   const streak = data.stats.streak
-  const ofGoal = (kcal: number) => `${Math.round((100 * kcal) / goals.kcal)}% of goal`
+  const ofGoal = (kcal: number, goal: number) => `${Math.round((100 * kcal) / goal)}% of goal`
   return (
     <Card title="Overview" subtitle="Averages count the days you logged food" className="app-rise lg:col-span-2" style={delay(40)}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>*]:min-w-0">
@@ -55,9 +59,9 @@ function Overview({ data }: { data: Dashboard }) {
           <p className="mt-0.5 text-xs text-app-muted">{streak === 1 ? "day" : "days"} in a row</p>
         </div>
         <Tile label="7-day average" value={week.loggedDays ? number(week.kcal) : "—"} unit="kcal"
-          note={week.loggedDays ? ofGoal(week.kcal) : "Nothing logged"} />
+          note={week.loggedDays ? ofGoal(week.kcal, week.goals.kcal) : "Nothing logged"} />
         <Tile label="30-day average" value={month.loggedDays ? number(month.kcal) : "—"} unit="kcal"
-          note={month.loggedDays ? ofGoal(month.kcal) : "Nothing logged"} />
+          note={month.loggedDays ? ofGoal(month.kcal, month.goals.kcal) : "Nothing logged"} />
         <Tile label="Days logged" value={String(month.loggedDays)} unit="of 30" note="Last 30 days" />
       </div>
       <div className="mt-5">
@@ -85,24 +89,38 @@ function Overview({ data }: { data: Dashboard }) {
   )
 }
 
-/** Calories each day for 30 days, with the goal as a dashed line. */
+/** Calories each day for 30 days, with each day's goal as a dashed line (a step where the goal changed). */
 function CaloriesChart({ data }: { data: Dashboard }) {
-  const { today, goals, recent } = data
+  const { today, recent } = data
+  const goalsOnDay = goalsOfDay(data)
   const byDate = new Map(recent.map(day => [day.date, day.kcal]))
   const days = Array.from({ length: 30 }, (_, i) => shiftDay(today, i - 29))
-  const top = Math.max(goals.kcal * 1.3, ...days.map(day => byDate.get(day) ?? 0))
+  const goals = days.map(day => goalsOnDay(day).kcal)
+  const top = Math.max(Math.max(...goals) * 1.3, ...days.map(day => byDate.get(day) ?? 0))
+  // Runs of days with the same goal, each drawn over its own bars.
+  const runs: { start: number; length: number; goal: number }[] = []
+  goals.forEach((goal, index) => {
+    const last = runs[runs.length - 1]
+    if (last?.goal === goal) last.length++
+    else runs.push({ start: index, length: 1, goal })
+  })
   return (
     <Card title="Calories" subtitle="Last 30 days" className="app-rise" style={delay(100)}>
       <div className="relative h-44">
-        <div className="absolute inset-x-0 border-t border-dashed border-app-text/30" style={{ bottom: `${(100 * goals.kcal) / top}%` }}>
-          <span className="absolute -top-2.5 right-0 rounded bg-app-card px-1 text-[10px] tabular-nums text-app-muted">
-            goal {number(goals.kcal)}
-          </span>
-        </div>
+        {runs.map((run, index) => (
+          <div key={run.start} className="absolute border-t border-dashed border-app-text/30"
+            style={{ bottom: `${(100 * run.goal) / top}%`, left: `${(100 * run.start) / days.length}%`, width: `${(100 * run.length) / days.length}%` }}>
+            {index === runs.length - 1 && (
+              <span className="absolute -top-2.5 right-0 rounded bg-app-card px-1 text-[10px] tabular-nums text-app-muted">
+                goal {number(run.goal)}
+              </span>
+            )}
+          </div>
+        ))}
         <div className="flex h-full min-w-0 items-end gap-[2px] sm:gap-[3px]">
           {days.map((day, index) => {
             const kcal = byDate.get(day) ?? 0
-            const over = kcal > goals.kcal * 1.1
+            const over = kcal > goals[index] * 1.1
             return (
               <a key={day} href={dayLink(day)} title={`${format(day, { weekday: "short", month: "short", day: "numeric" })} · ${number(kcal)} kcal`}
                 className="group flex h-full min-w-0 flex-1 items-end rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-link">
@@ -121,7 +139,7 @@ function CaloriesChart({ data }: { data: Dashboard }) {
 }
 
 function Calendar({ data }: { data: Dashboard }) {
-  const weeks = heatmap(data.recent, data.today, data.goals.kcal)
+  const weeks = heatmap(data.recent, data.today, goalsOfDay(data))
   return (
     <Card title="Last 12 weeks" subtitle="Calories against your goal. Pick a day to open it." className="app-rise" style={delay(140)}>
       <div className="mx-auto flex min-w-0 max-w-md gap-[3px]">
@@ -147,14 +165,14 @@ function Calendar({ data }: { data: Dashboard }) {
   )
 }
 
-/** The average logged day in the last 30 days against the goals. */
+/** The average logged day in the last 30 days against the average of those days' goals. */
 function AverageDay({ data }: { data: Dashboard }) {
-  const month = averages(data.recent, data.today, 30)
+  const month = averages(data.recent, data.today, 30, goalsOfDay(data))
   return (
     <Card title="Your average day" subtitle="Last 30 days, against your goals" className="app-rise" style={delay(180)}>
       <ul className="space-y-4">
         {MACROS.map(({ key, label, unit }) => {
-          const value = month[key], goal = data.goals[key]
+          const value = month[key], goal = month.goals[key]
           const scale = Math.max(goal * 1.5, value)
           return (
             <li key={key}>
