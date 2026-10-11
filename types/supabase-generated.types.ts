@@ -1485,7 +1485,6 @@ export type Database = {
       UsdaFoodItemEmbedding: {
         Row: {
           bgeBaseEmbedding: string | null
-          bgeLargeEmbedding: string | null
           brandOwner: string | null
           fdcId: number
           foodBrand: string | null
@@ -1494,7 +1493,6 @@ export type Database = {
         }
         Insert: {
           bgeBaseEmbedding?: string | null
-          bgeLargeEmbedding?: string | null
           brandOwner?: string | null
           fdcId: number
           foodBrand?: string | null
@@ -1503,7 +1501,6 @@ export type Database = {
         }
         Update: {
           bgeBaseEmbedding?: string | null
-          bgeLargeEmbedding?: string | null
           brandOwner?: string | null
           fdcId?: number
           foodBrand?: string | null
