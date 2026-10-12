@@ -10,8 +10,6 @@ export const dynamic="force-dynamic"
 export const maxDuration=30
 
 export async function POST(request:NextRequest) {
-  if(process.env.MEAL_OPERATIONS_ENABLED!=="true")
-    return NextResponse.json({error:"meal_operations_unavailable"},{status:503})
   const {aminoUser}=await GetAminoUserOnRequest()
   if(!aminoUser) return NextResponse.json({error:"unauthorized"},{status:401})
   let raw:unknown
