@@ -15,6 +15,7 @@ import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrF
 import { SUPPLEMENT_FORMS, parseIconJob, supplementForm, type SupplementIconJob } from "./supplementIcon"
 import { vectorToSql } from "@/utils/pgvectorHelper"
 import { chooseFoodIcon } from "./chooseFoodIcon"
+import { iconPictures } from "./iconPictures"
 import { isCurrentStyle } from "./iconStyle"
 
 const BUCKET_NAME = "foodimages"
@@ -71,12 +72,16 @@ async function giveIcon(foodItem: NonNullable<Awaited<ReturnType<typeof getFoodI
     p_limit: 16
   })
   if (candidatesError) throw candidatesError
+  const shortlist = candidates.filter(row => isCurrentStyle(row.food_image_id)).slice(0, 8)
+  // Jev looks at the icons themselves; one that can't be read is offered by name.
+  const { data: images } = await supabase.from("FoodImage").select("id,pathToImage")
+    .in("id", shortlist.map(row => row.food_image_id))
+  const pictures = await iconPictures((images ?? []).map(image => ({ id: image.id, url: image.pathToImage })))
   const choice = await chooseFoodIcon(
     { name: foodItem.name, brand: foodItem.brand, category: foodItem.foodItemCategoryName,
       servingUnit: foodItem.Serving?.[0]?.servingName ?? null },
-    candidates.filter(row => isCurrentStyle(row.food_image_id)).slice(0, 8).map(row => ({
-      id: row.food_image_id, description: row.image_description, similarity: row.cosine_similarity
-    }))
+    shortlist.map(row => ({ id: row.food_image_id, description: row.image_description, similarity: row.cosine_similarity,
+      picture: pictures.get(row.food_image_id) }))
   )
   if (choice.kind === "reuse") {
     const { error: linkError } = await supabase.from("FoodItemImages")

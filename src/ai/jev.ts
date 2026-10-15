@@ -1,6 +1,10 @@
 import { decisionModel } from "@/ai/models"
 import { currentMealRun, recordModelCall } from "@/mealResolution/runRecorder"
-export type DecisionTask = {options:Record<string,unknown>;state:unknown;questions:{selection:{type:"choice";instructions:string;criteria:Record<string,string>}}}
+/** An image Jev can look at (OpenRouter's format): a base64 PNG or JPEG data URL, inside the state or a criterion. */
+export type ImagePart = {type:"image_url";image_url:{url:string}}
+/** A criterion is text, or text and pictures (["An icon drawn for: milk", picture]). */
+export type DecisionTask = {options:Record<string,unknown>;state:unknown;questions:{selection:{type:"choice";instructions:string;
+  criteria:Record<string,string | (string | ImagePart)[]>}}}
 export type JevResult = {status:"ok" | "unavailable" | "invalid_response"; choice?: string; confidence?: number;
   model:string; durationMs:number; promptTokens:number; completionTokens:number; costUsd?:number}
 const number = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0

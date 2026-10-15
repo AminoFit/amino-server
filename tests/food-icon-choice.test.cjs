@@ -16,7 +16,7 @@ function load(file,stubs={}){
   return module.exports
 }
 
-const icons=load('app/api/queues/generate-food-icon/chooseFoodIcon.ts',{'@/ai/jev':{}})
+const icons=load('app/api/queues/generate-food-icon/chooseFoodIcon.ts',{'@/ai/jev':{},'@/ai/models':{IMAGE_DECISION_MODEL:'typesafe/jev-1.14'}})
 const mushrooms={name:'Mixed Mushrooms',brand:'Wegmans'}
 const candidates=[
   {id:13356,description:'mixed vegetables',similarity:0.838},
@@ -95,4 +95,54 @@ test('a "none" with a strong name match gets the yes/no look; the serving unit g
     {select:async task=>task.options.yes?{status:'ok',choice:'no',confidence:0.9}:{status:'ok',choice:'none',confidence:0.8}})
   assert.equal(no.kind,'generate')
   assert.equal(no.reason,'none_fits')
+})
+
+test('icons with pictures are judged by Jev 1.14 looking at them; if that fails, by name as before',async()=>{
+  const picture={type:'image_url',image_url:{url:'data:image/jpeg;base64,AAAA'}}
+  const pictured=candidates.map(candidate=>({...candidate,picture}))
+  const calls=[]
+  const select=async(task,_signal,options)=>{
+    calls.push({task,model:options?.model})
+    return {status:'ok',model:options?.model??'default',durationMs:1,promptTokens:0,completionTokens:0,choice:'icon_13392',confidence:0.95}
+  }
+  const choice=await icons.chooseFoodIcon(mushrooms,pictured,{select})
+  assert.equal(choice.kind,'reuse')
+  assert.equal(calls[0].model,'typesafe/jev-1.14')
+  assert.equal(JSON.stringify(calls[0].task.questions.selection.criteria.icon_13392),JSON.stringify(['An icon drawn for: mushrooms',picture]))
+  assert.match(calls[0].task.questions.selection.instructions,/its picture is shown/)
+
+  const fallback=[]
+  const failing=async(task,_signal,options)=>{
+    fallback.push({task,model:options?.model})
+    return options?.model?{status:'unavailable',model:options.model,durationMs:1,promptTokens:0,completionTokens:0}
+      :{status:'ok',model:'default',durationMs:1,promptTokens:0,completionTokens:0,choice:'icon_13392',confidence:0.95}
+  }
+  assert.equal((await icons.chooseFoodIcon(mushrooms,pictured,{select:failing})).kind,'reuse')
+  assert.equal(JSON.stringify(fallback.map(call=>call.model??null)),JSON.stringify(['typesafe/jev-1.14',null]))
+  assert.equal(fallback[1].task.questions.selection.criteria.icon_13392,'An icon drawn for: mushrooms')
+})
+
+test('looking at the icons, an unsure pick is reused only if the strict picture check says yes (not the name check)',async()=>{
+  const picture={type:'image_url',image_url:{url:'data:image/jpeg;base64,AAAA'}}
+  const run=async(check)=>{
+    const calls=[]
+    const select=async(task,_signal,options)=>{
+      calls.push({kind:task.state.icon?'picture-check':'yes' in task.options?'name-check':'choice',model:options?.model})
+      if(task.state.icon)return {status:'ok',model:'x',durationMs:1,promptTokens:0,completionTokens:0,...check}
+      if('yes' in task.options)return {status:'ok',model:'x',durationMs:1,promptTokens:0,completionTokens:0,choice:'yes',confidence:0.98}
+      return {status:'ok',model:'x',durationMs:1,promptTokens:0,completionTokens:0,choice:'icon_13392',confidence:0.55}
+    }
+    const choice=await icons.chooseFoodIcon(mushrooms,candidates.map(candidate=>({...candidate,picture})),{select})
+    return {choice,calls}
+  }
+  const no=await run({choice:'no',confidence:1})
+  assert.equal(no.choice.kind,'generate')
+  assert.equal(JSON.stringify(no.calls.map(call=>call.kind)),JSON.stringify(['choice','picture-check']))
+  assert.equal(no.calls[1].model,'typesafe/jev-1.14')
+  const yes=await run({choice:'yes',confidence:0.85})
+  assert.equal(JSON.stringify(yes.choice),JSON.stringify({kind:'reuse',imageId:13392,similarity:0.828,confidence:0.85}))
+  const weak=await run({choice:'yes',confidence:0.6})
+  assert.equal(weak.choice.kind,'generate')
+  const none=async()=>({status:'ok',model:'x',durationMs:1,promptTokens:0,completionTokens:0,choice:'none',confidence:0.9})
+  assert.equal((await icons.chooseFoodIcon(mushrooms,candidates.map(candidate=>({...candidate,picture})),{select:none})).reason,'none_fits')
 })

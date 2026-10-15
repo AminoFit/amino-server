@@ -2,6 +2,10 @@
 // revive a retired provider through an environment override.
 export const FOOD_MODEL = "google/gemini-3.8-flash"
 export const DECISION_MODEL = "typesafe/jev-1.13"
+// Decisions that look at pictures (icon choice). Jev reads images through OpenRouter as image_url parts; on 274 replayed
+// icon choices (2026-10-15) pictures removed every wrong reuse text-only made (8, 5 shipped) and 1.14 missed fewest good
+// icons. Image input is an early TypeSafe feature, so callers fall back to the text decision on DECISION_MODEL.
+export const IMAGE_DECISION_MODEL = "typesafe/jev-1.14"
 export const IMAGE_MODEL = "openai/gpt-image-2.5-sunburst"
 export const EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 // Transcribing a nutrition label from a photo (often dark, blurry or sideways): Sonnet 5.5 read a rotated Mexican
