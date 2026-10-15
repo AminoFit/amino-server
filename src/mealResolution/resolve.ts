@@ -4,6 +4,7 @@ import { agentModel } from "@/foodResolution/agent/model"
 import { mealProposal, type MealProposal } from "@/mealOperations/contracts"
 import { asScanned, carries, createMealEvidence, foodSummary, type CatalogFood } from "./evidence"
 import { loadMealPhotos } from "./photos"
+import { finishPhotoShadow, loadShadowPhotos, startPhotoShadow } from "./photoShadow"
 import { createFoodSources, estimatedFood, labelFood } from "./foodSources"
 import { decodeBarcodes, locateBarcodesWithFlash, normalizeGtin } from "./barcode"
 import { compileCheckedMealPlan, refersToPastMeal } from "./historyCheck"
@@ -15,7 +16,7 @@ import { calculate } from "./calculate"
 import { labelSourceInput, readNutritionLabel } from "./labelReader"
 import { kjToKcal } from "@/nutrition"
 import { localTime } from "@/mealOperations/instant"
-import { recordModelStep, recordResolution, recordTool } from "./runRecorder"
+import { currentMealRun, recordModelStep, recordResolution, recordTool } from "./runRecorder"
 import { CLAUDE_LIMITS, COVERAGE_TEXT, mealAgentFor, sonnetAgentModel, type MealAgent } from "./agentChoice"
 import { MEAL_AGENT_CLAUDE } from "@/ai/models"
 
@@ -344,6 +345,9 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     // Barcode digits come only from the decoding library: every barcode in every photo, in parallel.
     const readOne=deps.readBarcode
     const readPhoto=deps.readBarcodes??(readOne?async(url:URL)=>{const gtin=await readOne(url);return {gtins:gtin?[gtin]:[],undecoded:0}}:readPhotoBarcodes)
+    // The Jev photo shadow (photoShadow.ts) prepares its copies of the photos alongside: real deliveries only (evals and
+    // scripts run outside a meal run), and a repair isn't measured again.
+    const shadowPhotos=!currentMealRun()||input.validationErrorCode?null:photosLoaded.then(list=>loadShadowPhotos(list.map(photo=>photo.url))).catch(()=>[])
     const decoded=photosLoaded.then(list=>Promise.all(list.map(async photo=>{
       const read=await readPhoto(photo.url).catch(()=>({gtins:[] as string[],undecoded:0}))
       return {photoId:photo.id,...read}}))).catch(()=>[] as {photoId:number;gtins:string[];undecoded:number}[])
@@ -571,6 +575,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
       Object.defineProperty(resolved,"photoUrls",{value:photos.map(photo=>photo.url),enumerable:false})
       return finished=resolved
     }
+    // Shadow test: Jev's pick among the same candidates, recorded next to the plan's choice (never waited for).
+    const shadow=shadowPhotos&&photos.length?startPhotoShadow(shadowPhotos,scanned.text,visibleFoods,started):null
     // A photo meal without text can skip the agent too: Jev matches the first look's components while the agent starts
     // Photos with a barcode keep the barcode route or the agent.
     // With locked barcode products (route C), the fast route resolves only the leftovers and the plan adds the locked
@@ -788,6 +794,8 @@ export async function resolveMeal(input:MealResolutionInput,deps:{
     const agentRun=agent()
     agentRun.catch(()=>{})
     const {result,fast:won}=await firstRoute(plainText||chipText?fast:photoFast,agentRun)
+    if (shadow) finishPhotoShadow(shadow,{operationId:input.operationId,messageId:input.messageId,userId:input.userId,
+      photoCount:photos.length},result,id=>evidence.foods.get(id))
     if (won) console.info(plainText||chipText?"meal_text_fast_route":"meal_photo_fast_route",{messageId:input.messageId,
       ms:Math.round(result.durationMs),foods:result.proposal.items.length})
     return finished=result

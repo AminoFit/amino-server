@@ -5,8 +5,9 @@ export type JevResult = {status:"ok" | "unavailable" | "invalid_response"; choic
   model:string; durationMs:number; promptTokens:number; completionTokens:number; costUsd?:number}
 const number = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0
 export async function selectWithJev(task: DecisionTask, signal: AbortSignal,
-  dependencies: {env?:NodeJS.ProcessEnv; fetch?:typeof fetch; timeoutMs?:number} = {}): Promise<JevResult> {
-  const env = dependencies.env ?? process.env, model = decisionModel(env)
+  dependencies: {env?:NodeJS.ProcessEnv; fetch?:typeof fetch; timeoutMs?:number; model?:string;
+    /** The run record's kind for this call ("jev" by default; the photo shadow is its own). */ kind?:string} = {}): Promise<JevResult> {
+  const env = dependencies.env ?? process.env, model = dependencies.model ?? decisionModel(env)
   const start = performance.now(), controller = new AbortController()
   const result: JevResult = {status:"unavailable",model,durationMs:0,promptTokens:0,completionTokens:0}
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -42,7 +43,7 @@ export async function selectWithJev(task: DecisionTask, signal: AbortSignal,
   } catch { /* Keep credentials, response bodies and provider errors out of telemetry. */ }
   finally {clearTimeout(timer);signal.removeEventListener("abort",abort);controller.abort();result.durationMs=performance.now()-start
     // The meal's debug record: what Jev was asked to choose between and what it chose.
-    if (currentMealRun()) recordModelCall({kind:"jev",model,startedAt:start,promptTokens:result.promptTokens,
+    if (currentMealRun()) recordModelCall({kind:dependencies.kind ?? "jev",model,startedAt:start,promptTokens:result.promptTokens,
       completionTokens:result.completionTokens,costUsd:result.costUsd??null,status:result.status,
       detail:task.questions?.selection?.instructions?.slice(0,80),
       output:{choice:result.choice??null,confidence:result.confidence??null,options:Object.keys(task.options??{}).slice(0,30)}})}
