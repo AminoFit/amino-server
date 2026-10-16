@@ -413,7 +413,9 @@ export function registerAminoTools(server: McpServer) {
     description: "Change one of the user's meals: when it was eaten (`eatenAt`), a food's amount (`foods`: the item id " +
       "from get_meals with a new servingId and amount, grams or portions; it stays the same food), or take foods out " +
       "(`removeFoods`: item ids; to remove the last food, delete the meal), or its `text` (the meal's words in the " +
-      "log; only when the user asks). To swap a food, remove it and add_to_meal the right one. A meal whose text only " +
+      "log; only when the user asks), or its `scans` (the products scanned for it, as get_meals shows them; pass the " +
+      "whole list to change it). Editing `text` keeps the scans, and editing `scans` keeps the words. To swap a food, " +
+      "remove it and add_to_meal the right one; for a scanned food, also put the right barcode in `scans`. A meal whose text only " +
       "lists its foods (\"Kefir (1 cup), …\") keeps that list up to date by itself. Returns the meal. Needs the user's " +
       "\"Let agents make changes\" setting.",
     inputSchema: z.object({
@@ -423,8 +425,13 @@ export function registerAminoTools(server: McpServer) {
         .refine(value => [value.servingId != null && value.amount != null, value.grams != null, value.portions != null]
           .filter(Boolean).length === 1, "Give one amount: servingId with amount, or grams, or portions")).max(50).optional(),
       removeFoods: z.array(z.number().int().positive()).max(50).optional(),
-      text: z.string().trim().min(1).max(500).optional().describe("The meal's new text, as the user wants it in the log")
-    }).refine(value => value.eatenAt || value.foods?.length || value.removeFoods?.length || value.text,
+      text: z.string().trim().min(1).max(500).optional()
+        .describe("The meal's new words, as the user wants them in the log (without its scanned products)"),
+      scans: z.array(z.object({
+        barcode: z.string().trim().min(6).max(20).describe("The product's EAN/UPC digits"),
+        count: z.number().int().min(1).max(20).optional().describe("How many were scanned (default 1)")
+      })).max(20).optional().describe("The meal's scanned products, replacing the current list ([] removes them all)")
+    }).refine(value => value.eatenAt || value.foods?.length || value.removeFoods?.length || value.text || value.scans,
       "Change at least one thing"),
     annotations: WRITE
   }, ({ mealId, ...change }, ctx) => run("update_meal", ctx.http?.authInfo, async ({ db, userId }) => {

@@ -5,6 +5,7 @@ import { listGrants } from "@/utils/supabase/oauthServer"
 import { UserFoodError, logFoodsAsMeal, priceItems, type QuantityInput } from "@/userFoods/userFoods"
 import type { UserDatabase } from "./auth"
 import { McpInputError, getMeals } from "./meals"
+import { cleanScans, joinMealText, splitMealText } from "./mealScans"
 
 // Meals logged and changed by agents (2026-10-03-mcp-food-search-and-writes-plan.md, phase 4). The agent matches the
 // foods itself (search_foods) and gives exact amounts: the server prices them, and Amino's meal agent never runs on
@@ -97,7 +98,7 @@ export async function logMeal(db: UserDatabase, userId: string, agent: { clientI
 /** A meal's text, as the log shows it. (A text that only lists the meal's foods follows them on its own:
  * 20261014100000_meal_text_lists_foods.sql.) */
 async function setMealText(userId: string, mealId: number, text: string) {
-  const { data, error } = await (createAdminSupabase() as any).from("Message").update({ content: text.slice(0, 500) })
+  const { data, error } = await (createAdminSupabase() as any).from("Message").update({ content: text })
     .eq("id", mealId).eq("userId", userId).is("deletedAt", null).select("id")
   // A meal Amino is still working on (guard_meal_message_write) can't be changed yet.
   if (error?.code === "55000") throw new McpInputError(`Meal ${mealId} is still being processed. Try again in a minute.`)
@@ -116,10 +117,30 @@ export async function addToMeal(db: UserDatabase, userId: string, mealId: number
 
 type LoggedRow = { id: number; messageId: number | null; foodItemId: number | null }
 
-/** Changes one of the user's meals: its time, foods' amounts, foods taken out, and its text. Each part is saved as it's
- * made. */
+/** The meal's new stored text from an agent's words and/or scans: whichever it leaves out stays as it was. */
+async function mealTextFor(userId: string, mealId: number, words: string | undefined,
+  scans: { barcode: string; count?: number }[] | undefined) {
+  const { data, error } = await (createAdminSupabase() as any).from("Message").select("content")
+    .eq("id", mealId).eq("userId", userId).is("deletedAt", null).maybeSingle()
+  if (error) throw error
+  if (!data) throw new McpInputError(`No meal ${mealId}. Use the ids list_meals shows.`)
+  const current = splitMealText(data.content ?? "")
+  let nextScans = current.scans
+  if (scans) {
+    const cleaned = cleanScans(scans)
+    if (cleaned.invalid) throw new McpInputError(`${cleaned.invalid} isn't a valid barcode: check its digits.`)
+    nextScans = cleaned.scans
+  }
+  const content = joinMealText(words ?? current.words, nextScans)
+  if (!content) throw new McpInputError("A meal needs some text or a scanned product.")
+  return content
+}
+
+/** Changes one of the user's meals: its time, foods' amounts, foods taken out, its words and its scans. Each part is
+ * saved as it's made. */
 export async function updateMeal(db: UserDatabase, userId: string, mealId: number, change: { eatenAt?: string
-  foods?: ({ id: number } & Partial<Record<keyof typeof amountFields, number>>)[]; removeFoods?: number[]; text?: string }) {
+  foods?: ({ id: number } & Partial<Record<keyof typeof amountFields, number>>)[]; removeFoods?: number[]; text?: string
+  scans?: { barcode: string; count?: number }[] }) {
   const loggedIds = [...(change.foods ?? []).map(food => food.id), ...(change.removeFoods ?? [])]
   const { data, error } = loggedIds.length ? await (createAdminSupabase() as any).from("LoggedFoodItem")
     .select("id,messageId,foodItemId").in("id", loggedIds).eq("userId", userId).is("deletedAt", null) : { data: [], error: null }
@@ -141,8 +162,9 @@ export async function updateMeal(db: UserDatabase, userId: string, mealId: numbe
   }
   for (const id of change.removeFoods ?? [])
     await rpc("agent_remove_meal_food", { p_user_id: userId, p_logged_food_item_id: id })
+  // The words and the scanned products are edited separately and stored the way the app writes them (mealScans.ts).
   const text = change.text?.trim()
-  if (text) await setMealText(userId, mealId, text)
+  if (text || change.scans) await setMealText(userId, mealId, await mealTextFor(userId, mealId, text || undefined, change.scans))
   const [meal] = await getMeals(db, [mealId])
   return { meal, targets: [mealId] }
 }
