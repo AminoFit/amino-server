@@ -55,3 +55,12 @@ test('the agent sees a recipe as yours and in portions',()=>{
   assert.deepEqual(summary.servings,[{id:91,unit:'portion',gramsPerUnit:250}]);
   assert.equal(foodSummary(pasta).recipe,undefined);
 });
+
+test('a Sonnet plan is not second-guessed: the guards check Flash and the fast route only',async()=>{
+  const text='Mission flour large burrito and my custom fajita recipe';
+  let asked=0;
+  const plan=await compileCheckedMealPlan(input(text),{...result(recipe,{kind:'serving',servingId:91,amount:1},text),agent:'sonnet'},
+    {jev:async()=>{asked++;return {status:'ok',choice:'no',confidence:0.97}}});
+  assert.equal(plan.items[0].foodId,9);
+  assert.equal(asked,0);
+});
