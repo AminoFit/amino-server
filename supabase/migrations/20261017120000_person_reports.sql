@@ -1,7 +1,7 @@
 -- Reporting a person (2026-10-17, App Review 1.2: apps with user-generated content let people report abusive users).
 -- The app reports someone it shows in People (by their id) or the person behind an invite it opened (QR code, link or
 -- email request), before linking. A report is only stored: blocking is a separate choice in the app. The owner reviews
--- reports on /admin/reports and acts within 24 hours (terms of service, section 4). Written by the server only.
+-- reports on /admin/reports and acts within 24 hours (terms of service, section 3.5). Written by the server only.
 SET lock_timeout = '3s';
 
 CREATE TABLE IF NOT EXISTS public."PersonReport" (
