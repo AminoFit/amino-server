@@ -284,6 +284,7 @@ function Faq() {
             </details>
           ))}
         </div>
+        <p className="app-reveal mt-8 text-center text-app-muted">Need help? Email <a href="mailto:info@amino.fit" className="font-medium text-app-link hover:underline">info@amino.fit</a> and we&apos;ll get back to you.</p>
       </div>
     </section>
   )
@@ -314,7 +315,6 @@ function SiteFooter() {
           <p className="text-xs text-app-muted">&copy; {new Date().getFullYear()} Hedge Labs. All rights reserved.</p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-app-muted" aria-label="Footer">
-          <a href="/pricing" className="hover:text-app-text">Pricing</a>
           <a href="/privacy-policy" className="hover:text-app-text">Privacy</a>
           <a href="/terms-of-service" className="hover:text-app-text">Terms</a>
           <a href="/login" className="hover:text-app-text">Log in</a>

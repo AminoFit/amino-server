@@ -10,9 +10,10 @@ const nextConfig = {
       },
     ],
   },
-  // The old admin pages were replaced by the /admin dashboard.
+  // The old admin pages were replaced by the /admin dashboard. The old pricing page described plans Amino no longer has.
   async redirects() {
     return [
+      { source: '/pricing', destination: '/', permanent: true },
       { source: '/admin/debug', destination: '/admin/meals', permanent: false },
       { source: '/admin/viewas', destination: '/admin/users', permanent: false },
       { source: '/admin/bad-icons', destination: '/admin/foods?filter=no_icon', permanent: false },
