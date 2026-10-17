@@ -116,6 +116,19 @@ export async function unblock(userId: string, other: string, db: Db = createAdmi
   return { blocked: false }
 }
 
+export const reportInput = z.object({ personId: z.string().uuid().optional(), invite: inviteRef.optional(),
+  reason: z.string().max(1000).optional() }).strict()
+  .refine(input => input.personId || input.invite, { message: "personId or invite is required" })
+
+/** Stores a report about a person, or the inviter behind an invite, for the owner to review (/admin/reports). It
+ * doesn't block them: the app offers that separately. */
+export async function report(userId: string, input: z.infer<typeof reportInput>, db: Db = createAdminSupabase()) {
+  const ref = input.personId ? { p_token_hash: null, p_invite_id: null } : refArgs(input.invite!)
+  await rpc(db, "people_report", { p_user_id: userId, p_person: input.personId ?? null, ...ref,
+    p_reason: input.reason ?? null })
+  return { ok: true }
+}
+
 type LoggedForMeal = { id: number; consumedOn: string }
 export const mealsPageInput = z.object({ before: z.string().datetime({ local: true }).optional(),
   beforeId: z.coerce.number().int().positive().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }).strict()

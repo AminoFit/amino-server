@@ -7,6 +7,9 @@ import { Badge, Card, Empty, Field, FilterForm, FoodIcon, Json, PageHeader, Page
 
 const PER_PAGE = 50
 
+// People reported from the app (App Review 1.2): review within 24 hours, as the terms of service promise.
+type PersonReport = { id: string; reporterId: string; reportedUserId: string; inviteId: string | null; reason: string | null; createdAt: string }
+
 type Bug = { id: number; bug_type: string | null; created_at: string; created_by_user: string; extra_details: string | null
   food_item_id: number | null; logged_food_id: number | null; message_id: number | null
   FoodItem: { name: string; brand: string | null } | null }
@@ -19,15 +22,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: Para
   let query = db.from("userSubmittedBug").select("*,FoodItem(name,brand)", { count: "exact" })
     .order("created_at", { ascending: false }).range((page - 1) * PER_PAGE, page * PER_PAGE - 1)
   if (type) query = query.eq("bug_type", type)
-  const [bugs, conflicts] = await Promise.all([
+  const [bugs, conflicts, people] = await Promise.all([
     query,
-    db.from("FoodItemConflict").select("id,foodItemId,source,existing,proposed,createdAt,FoodItem(name,brand)").order("id", { ascending: false }).limit(20)
+    db.from("FoodItemConflict").select("id,foodItemId,source,existing,proposed,createdAt,FoodItem(name,brand)").order("id", { ascending: false }).limit(20),
+    db.from("PersonReport").select("id,reporterId,reportedUserId,inviteId,reason,createdAt").order("createdAt", { ascending: false }).limit(50)
   ])
   const rows = must("userSubmittedBug", bugs) as unknown as Bug[], total = bugs.count ?? rows.length
   const conflictRows = must("FoodItemConflict", conflicts) as unknown as { id: number; foodItemId: number; source: string; existing: unknown
     proposed: unknown; createdAt: string; FoodItem: { name: string; brand: string | null } | null }[]
-  // created_by_user has no foreign key to User, so emails come from a second read.
-  const userIds = [...new Set(rows.map(row => row.created_by_user))]
+  const personRows = must("PersonReport", people) as unknown as PersonReport[]
+  // created_by_user has no foreign key to User, so emails come from a second read (with the people in person reports).
+  const userIds = [...new Set([...rows.map(row => row.created_by_user), ...personRows.flatMap(row => [row.reporterId, row.reportedUserId])])]
   const [icons, users] = await Promise.all([
     foodIcons(rows.flatMap(row => row.food_item_id ? [row.food_item_id] : [])),
     userIds.length ? db.from("User").select("id,email").in("id", userIds).then(result => must("User", result) as { id: string; email: string | null }[]) : []
@@ -35,11 +40,29 @@ export default async function ReportsPage({ searchParams }: { searchParams: Para
   const emails = new Map(users.map(user => [user.id, user.email]))
   return (
     <>
-      <PageHeader title="Reports" subtitle="What users flagged in the app (bad match, bad icon, bad nutrition), and catalogue conflicts between sources."
+      <PageHeader title="Reports" subtitle="People users reported, what they flagged in the app (bad match, bad icon, bad nutrition), and catalogue conflicts between sources."
         actions={<TextLink href="/admin/foods?filter=no_icon">Foods without an icon →</TextLink>} />
       <FilterForm action="/admin/reports">
         <Field label="Type"><Select name="type" value={type} options={[["", "All reports"], ["bad_match", "Bad match"], ["bad_food_icon", "Bad icon"], ["bad_food_info", "Bad nutrition"]]} /></Field>
       </FilterForm>
+      <Card className="mb-5" title="Reported people" padded={false}>
+        {personRows.length ? (
+          <Table>
+            <thead><tr><Th>When</Th><Th>Reported</Th><Th>Reason</Th><Th>By</Th><Th>From</Th></tr></thead>
+            <tbody>
+              {personRows.map(row => (
+                <tr key={row.id}>
+                  <Td className="text-xs text-zinc-500"><When value={row.createdAt} /></Td>
+                  <Td className="max-w-[12rem] truncate text-sm"><Link href={`/admin/users/${row.reportedUserId}`} className="font-medium hover:underline">{emails.get(row.reportedUserId) ?? row.reportedUserId.slice(0, 8)}</Link></Td>
+                  <Td className="max-w-[24rem] text-sm">{row.reason ?? <span className="text-zinc-400">—</span>}</Td>
+                  <Td className="max-w-[12rem] truncate text-xs"><Link href={`/admin/users/${row.reporterId}`} className="hover:underline">{emails.get(row.reporterId) ?? row.reporterId.slice(0, 8)}</Link></Td>
+                  <Td><Badge tone={row.inviteId ? "amber" : "red"}>{row.inviteId ? "invite" : "people"}</Badge></Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : <Empty>No people reported.</Empty>}
+      </Card>
       <Card title="User reports" padded={false}>
         {rows.length ? (
           <Table>
