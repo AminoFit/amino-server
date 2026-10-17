@@ -17,14 +17,17 @@ export default function TermsOfService() {
         <div className="container mx-auto relative bg-white px-6 py-24 sm:py-32 lg:px-8 gap-2">
           <p className="mb-3 text-center">Amino Terms of Use</p>
           <p className="mb-3">
-            <strong>Last revised on: February 19th, 2024</strong>
+            <strong>Last revised on: October 17, 2026. Effective date: October 17, 2026.</strong>
           </p>
           <p className="mb-3">
-            The website and application located at www.amino.fit (the &quot; <strong>Site</strong>&quot;) is a copyrighted work
-            belonging to Hedge Labs Inc. (&quot; <strong>Company</strong>&quot;, &quot; <strong>us</strong>&quot;, &quot; <strong>our</strong>&quot;,
-            and &quot; <strong>we</strong>&quot;). Certain features of the Site may be subject to additional guidelines, terms, or
+            The Amino website and web application located at www.amino.fit and amino.fit, and the Amino mobile application
+            for iOS (the &quot; <strong>App</strong>&quot;) (together, and including the services offered through them, the
+            &quot; <strong>Site</strong>&quot;), are copyrighted works belonging to Hedge Labs Inc. (&quot; <strong>Company</strong>&quot;,
+            &quot; <strong>us</strong>&quot;, &quot; <strong>our</strong>&quot;, and &quot; <strong>we</strong>&quot;). Certain features of the Site may be subject to additional guidelines, terms, or
             rules, which will be posted on the Site in connection with such features. All such additional terms,
-            guidelines, and rules are incorporated by reference into these Terms.
+            guidelines, and rules are incorporated by reference into these Terms. Our{" "}
+            <a href="/privacy-policy" className="underline">Privacy Policy</a> explains how we collect, use and share
+            information about you when you use the Site, and is incorporated into these Terms.
           </p>
           <p className="mb-3">
             THESE TERMS OF USE (THESE &quot; <strong>TERMS</strong>&quot;) SET FORTH THE LEGALLY BINDING TERMS AND CONDITIONS THAT
@@ -63,15 +66,15 @@ export default function TermsOfService() {
           <ol>
             <li>
               <p className="mb-3">
-                <strong>Accounts</strong>
+                <strong>Accounts and Subscriptions</strong>
               </p>
               <p className="mb-3">
                 <strong>1.1 Account Creation.</strong> In order to use certain features of the Site, you must register
                 for an account (&quot; <strong>Account</strong>&quot;) and provide certain information about yourself as prompted
                 by the account registration form. You represent and warrant that: (a) all required registration
                 information you submit is truthful and accurate; (b) you will maintain the accuracy of such information.
-                You may delete your Account at any time, for any reason, by following the instructions on the Site.
-                Company may suspend or terminate your Account in accordance with Section 8.
+                You may delete your Account at any time, for any reason, from the settings in the App or by emailing
+                info@amino.fit. Company may suspend or terminate your Account in accordance with Section 8.
               </p>
               <p className="mb-3">
                 <strong>1.2 Account Responsibilities.</strong> You are responsible for maintaining the confidentiality
@@ -79,6 +82,25 @@ export default function TermsOfService() {
                 Account. You agree to immediately notify Company of any unauthorized use, or suspected unauthorized use
                 of your Account or any other breach of security. Company cannot and will not be liable for any loss or
                 damage arising from your failure to comply with the above requirements.
+              </p>
+              <p className="mb-3">
+                <strong>1.3 Amino Pro Subscriptions.</strong> Some features of the Site, including logging meals after
+                your free trial ends, require a paid subscription (&quot; <strong>Amino Pro</strong>&quot;). Amino Pro is an
+                auto-renewing monthly subscription purchased in the App through Apple&apos;s App Store. The price is shown
+                in the App before you buy. Payment is charged to your Apple ID account when you confirm the purchase,
+                and all billing is handled by Apple. Your subscription renews automatically for another month at the
+                then-current price unless you cancel it at least 24 hours before the end of the current period; your
+                Apple ID account is charged for the renewal within the 24 hours before the current period ends. You can
+                manage or cancel your subscription at any time in your Apple ID account settings. Cancelling stops
+                future renewals, and you keep Amino Pro until the end of the period you have already paid for.
+                Deleting your Account or the App does not cancel your subscription. Refunds are handled by Apple
+                under its policies; Company cannot issue refunds for purchases made through the App Store.
+              </p>
+              <p className="mb-3">
+                <strong>1.4 Free Trial.</strong> New Accounts include a free trial of Amino Pro features, currently one
+                week, which begins the first time you log a meal. Each person may use the free trial only once. The
+                free trial does not turn into a paid subscription automatically: when it ends, you can subscribe to
+                Amino Pro in the App to keep logging meals.
               </p>
             </li>
             <li>
@@ -109,8 +131,9 @@ export default function TermsOfService() {
                 Site or any part thereof.
               </p>
               <p className="mb-3">
-                <strong>2.4 No Support or Maintenance.</strong> You acknowledge and agree that Company will have no
-                obligation to provide you with any support or maintenance in connection with the Site.
+                <strong>2.4 Support.</strong> For help with the Site, email info@amino.fit. Except as required by
+                applicable law or as stated in Section 10.9, Company has no obligation to provide any particular level
+                of support or maintenance in connection with the Site.
               </p>
               <p className="mb-3">
                 <strong>2.5 Ownership.</strong> Excluding any User Content that you may provide (defined below), you
@@ -129,6 +152,19 @@ export default function TermsOfService() {
                 and non-proprietary. You agree that you will not submit to Company any information or ideas that you
                 consider to be confidential or proprietary.
               </p>
+              <p className="mb-3">
+                <strong>2.7 AI Estimates; Not Medical Advice.</strong> The Site uses artificial intelligence, including
+                models provided by third parties as described in our Privacy Policy, to recognize foods and to estimate
+                portions, calories, macronutrients and other nutrients from your photos, voice recordings, text and
+                barcode scans. The Site also estimates figures such as energy expenditure and suggests goals. These
+                estimates may be wrong or incomplete, so please review your entries and correct them where needed. The
+                Site is a personal tracking tool that provides general information only. It is not medical,
+                nutritional or dietary advice, it is not a substitute for advice from a doctor, dietitian or other
+                qualified health professional, and it is not intended to diagnose, treat, cure or prevent any disease
+                or condition. Do not rely on the Site for information about allergens or ingredients you must avoid.
+                Talk to a qualified health professional before making significant changes to your diet, especially if
+                you have a medical condition, are pregnant or breastfeeding, or have a history of disordered eating.
+              </p>
             </li>
             <li>
               <p className="mb-3">
@@ -136,8 +172,8 @@ export default function TermsOfService() {
               </p>
               <p className="mb-3">
                 <strong>3.1 User Content.</strong>&quot; <strong>User Content</strong>&quot; means any and all information and
-                content that a user submits to, or uses with, the Site (e.g., content in the user&apos;s profile or
-                postings). You are solely responsible for your User Content. You assume all risks associated with use of
+                content that a user submits to, or uses with, the Site (e.g., the user&apos;s profile and display name,
+                meals, photos, voice recordings, and the foods and recipes the user creates or shares). You are solely responsible for your User Content. You assume all risks associated with use of
                 your User Content, including any reliance on its accuracy, completeness or usefulness by others, or any
                 disclosure of your User Content that personally identifies you or any third party. You hereby represent
                 and warrant that your User Content does not violate our Acceptable Use Policy (defined in Section 3.3).
@@ -196,6 +232,18 @@ export default function TermsOfService() {
                 these Terms or otherwise create liability for us or any other person. Such action may include removing
                 or modifying your User Content, terminating your Account in accordance with Section 8, and/or reporting
                 you to law enforcement authorities.
+              </p>
+              <p className="mb-3">
+                <strong>3.5 Shared Features; Zero Tolerance for Objectionable Content and Abusive Users.</strong> The
+                App lets you link with other users as friends, partners, trainers or clients, share foods and recipes
+                with them, see their display name, and log meals for people who allow it (&quot;{" "}
+                <strong>Shared Features</strong>&quot;). There is no tolerance for objectionable content or abusive users
+                in the Shared Features. You agree not to use them to share or send any User Content that violates the
+                Acceptable Use Policy, or to harass, bully, threaten, impersonate, spam or otherwise abuse any other
+                user. You can block a person and report a person from the App, and you can report any content or
+                user by emailing info@amino.fit. We review every report within 24 hours, and when content or conduct
+                violates these Terms we remove the content and suspend or terminate the Account of the user
+                responsible, in accordance with Sections 3.4 and 8.
               </p>
             </li>
           </ol>
@@ -295,7 +343,7 @@ export default function TermsOfService() {
             deletion of your User Content associated with your Account from our live databases. Company will not have
             any liability whatsoever to you for any termination of your rights under these Terms, including for
             termination of your Account or deletion of your User Content. Even after your rights under these Terms are
-            terminated, the following provisions of these Terms will remain in effect: Sections 2.2 through 2.6, Section
+            terminated, the following provisions of these Terms will remain in effect: Sections 2.2 through 2.7, Section
             3 and Sections 4 through 10.
           </p>
           <p className="mb-3">
@@ -599,7 +647,7 @@ export default function TermsOfService() {
             of the United States export laws or regulations.
           </p>
           <p className="mb-3">
-            <strong>10.4 Disclosures.</strong> Company is located at the address in Section 10.8. If you are a
+            <strong>10.4 Disclosures.</strong> You can contact Company using the details in Section 10.8. If you are a
             California resident, you may report complaints to the Complaint Assistance Unit of the Division of Consumer
             Product of the California Department of Consumer Affairs by contacting them in writing at 400 R Street,
             Sacramento, CA 95814, or by telephone at (800) 952-5210.
@@ -628,7 +676,7 @@ export default function TermsOfService() {
             conditions set forth in these Terms shall be binding upon assignees.
           </p>
           <p className="mb-3">
-            <strong>10.7 Copyright/Trademark Information</strong>. Copyright © 2023 Hedge Labs Inc. All rights reserved.
+            <strong>10.7 Copyright/Trademark Information</strong>. Copyright © 2026 Hedge Labs Inc. All rights reserved.
             All trademarks, logos and service marks (&quot; <strong>Marks</strong>&quot;) displayed on the Site are our property
             or the property of other third parties. You are not permitted to use these Marks without our prior written
             consent or the consent of such third party which may own the Marks.
@@ -637,7 +685,70 @@ export default function TermsOfService() {
             <strong>10.8 Contact Information:</strong>
           </p>
           <p className="mb-3">
-            Email:info@amino.fit
+            Hedge Labs Inc.
+            <br />
+            Email: info@amino.fit (questions, support, complaints, claims and reports about other users)
+          </p>
+          <p className="mb-3">
+            <strong>10.9 Apple App Store Terms.</strong> The following terms apply if you downloaded the App from
+            Apple&apos;s App Store:
+          </p>
+          <p className="mb-3">
+            <strong>(a) Acknowledgement.</strong> These Terms are concluded between you and Company only, and not with
+            Apple Inc. (&quot; <strong>Apple</strong>&quot;). Company, not Apple, is solely responsible for the App and its
+            content.
+          </p>
+          <p className="mb-3">
+            <strong>(b) Scope of License.</strong> The license granted to you for the App is limited to a
+            non-transferable license to use the App on any Apple-branded products that you own or control, and as
+            permitted by the Usage Rules set forth in the Apple Media Services Terms and Conditions, except that the App
+            may be accessed and used by other accounts associated with you through Family Sharing or volume purchasing.
+          </p>
+          <p className="mb-3">
+            <strong>(c) Maintenance and Support.</strong> Company is solely responsible for providing any maintenance and
+            support services for the App, as specified in these Terms or as required under applicable law. Apple has no
+            obligation whatsoever to furnish any maintenance and support services with respect to the App.
+          </p>
+          <p className="mb-3">
+            <strong>(d) Warranty.</strong> Company is solely responsible for any product warranties, whether express or
+            implied by law, to the extent not effectively disclaimed. In the event of any failure of the App to conform
+            to any applicable warranty, you may notify Apple, and Apple will refund the purchase price (if any) for the
+            App to you. To the maximum extent permitted by applicable law, Apple will have no other warranty obligation
+            whatsoever with respect to the App, and any other claims, losses, liabilities, damages, costs or expenses
+            attributable to any failure to conform to any warranty will be Company&apos;s sole responsibility, to the extent
+            not disclaimed in these Terms.
+          </p>
+          <p className="mb-3">
+            <strong>(e) Product Claims.</strong> Company, not Apple, is responsible for addressing any claims by you or
+            any third party relating to the App or your possession and use of the App, including: (i) product liability
+            claims; (ii) any claim that the App fails to conform to any applicable legal or regulatory requirement; and
+            (iii) claims arising under consumer protection, privacy, or similar legislation, including in connection
+            with the App&apos;s use of the HealthKit framework.
+          </p>
+          <p className="mb-3">
+            <strong>(f) Intellectual Property Rights.</strong> In the event of any third-party claim that the App or your
+            possession and use of the App infringes that third party&apos;s intellectual property rights, Company, not
+            Apple, will be solely responsible for the investigation, defense, settlement and discharge of any such
+            intellectual property infringement claim.
+          </p>
+          <p className="mb-3">
+            <strong>(g) Legal Compliance.</strong> You represent and warrant that (i) you are not located in a country
+            that is subject to a U.S. Government embargo, or that has been designated by the U.S. Government as a
+            &quot;terrorist supporting&quot; country; and (ii) you are not listed on any U.S. Government list of prohibited or
+            restricted parties.
+          </p>
+          <p className="mb-3">
+            <strong>(h) Developer Name and Contact.</strong> The App is provided by Hedge Labs Inc. Any questions,
+            complaints or claims about the App should be sent to the contact in Section 10.8.
+          </p>
+          <p className="mb-3">
+            <strong>(i) Third-Party Terms of Agreement.</strong> You must comply with applicable third-party terms of
+            agreement when using the App, such as your wireless data service agreement.
+          </p>
+          <p className="mb-3">
+            <strong>(j) Third-Party Beneficiary.</strong> Apple and Apple&apos;s subsidiaries are third-party beneficiaries
+            of these Terms, and upon your acceptance of these Terms, Apple will have the right (and will be deemed to
+            have accepted the right) to enforce these Terms against you as a third-party beneficiary thereof.
           </p>
         </div>
       </main>
