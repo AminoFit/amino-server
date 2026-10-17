@@ -14,12 +14,15 @@ export async function POST(request: NextRequest) {
 
   const authHeader = headersList.get("Authorization")
 
-  if (!authHeader) {
-    console.warn("Warning: Authorization header is missing in the webhook request.")
-    // Continue processing the webhook request
-  } else if (authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH_HEADER}`) {
-    console.log("Received Authorization Header:", authHeader)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // RevenueCat sends the Authorization value set in its webhook settings. When REVENUECAT_WEBHOOK_AUTH_HEADER is set,
+  // a request without it (or with another value) is refused. The value may be configured with or without "Bearer ".
+  if (REVENUECAT_WEBHOOK_AUTH_HEADER) {
+    if (authHeader !== REVENUECAT_WEBHOOK_AUTH_HEADER && authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH_HEADER}`) {
+      console.warn("RevenueCat webhook refused:", authHeader ? "wrong Authorization header" : "no Authorization header")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+  } else {
+    console.warn("Warning: REVENUECAT_WEBHOOK_AUTH_HEADER is not set, so RevenueCat webhooks are not authenticated.")
   }
 
   const webhook: RevenueCatWebhookEvent = await request.json()
