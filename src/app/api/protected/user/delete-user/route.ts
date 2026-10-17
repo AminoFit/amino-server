@@ -19,5 +19,6 @@ export async function POST(request: NextRequest) {
   // Perform the deletion process
   const deletionResult = await deleteUserAndData(aminoUser.id)
 
-  return NextResponse.json(deletionResult)
+  // A failure is an error status: the app shows "Account deleted" whenever the response is ok.
+  return NextResponse.json(deletionResult, { status: "error" in deletionResult ? 500 : 200 })
 }
