@@ -72,22 +72,44 @@ interface CustomerInfo {
   }
 
 
+  /** Stores the user's subscription from RevenueCat: the latest expiry of their subscriptions, and their entitlement.
+   * A manual grant (SubscriptionGrant, 20261017100000) is a floor, so Pro given by hand survives a sync; otherwise
+   * RevenueCat decides, including a refund or cancellation that ends access early. With nothing in RevenueCat (no
+   * purchase yet) the stored values stay: an ended free trial must stay ended, and a missing expiry would grant a
+   * new one (checkAndUpdateUserIsSubscribed). */
   export async function getAndUpdateRevenueCatForUser(userId: string) {
 	try {
 	  const supabase = createAdminSupabase();
-	  const customerInfo = await getSubscriptionFromRevenueCat(userId);
+	  const [customerInfo, stored, grant] = await Promise.all([
+		getSubscriptionFromRevenueCat(userId),
+		supabase.from("User").select("subscriptionExpiryDate, subscriptionType").eq("id", userId).maybeSingle(),
+		(supabase as any).from("SubscriptionGrant").select("grantedUntil").eq("userId", userId).maybeSingle()
+	  ]);
+	  if (stored.error) throw new Error(`Failed to read user subscription: ${stored.error.message}`);
+	  if (grant.error) throw new Error(`Failed to read subscription grant: ${grant.error.message}`);
+	  // A RevenueCat id with no account (anonymous, or deleted): nothing to update.
+	  if (!stored.data) {
+		console.log("No user for RevenueCat id", userId);
+		return;
+	  }
 	  const latestSubscription = Object.values(customerInfo.subscriber.subscriptions).sort(
 		(a, b) =>
 		  (b?.expires_date ? new Date(b.expires_date).getTime() : 0) -
 		  (a?.expires_date ? new Date(a.expires_date).getTime() : 0)
 	  )[0];
   
-	  let subscriptionExpiryDate: string | null = null;
-	  let subscriptionType: string | null = null;
+	  let subscriptionExpiryDate: string | null = stored.data.subscriptionExpiryDate;
+	  let subscriptionType: string | null = stored.data.subscriptionType;
   
 	  if (latestSubscription) {
 		subscriptionExpiryDate = latestSubscription.expires_date;
-		subscriptionType = Object.keys(customerInfo.subscriber.entitlements)[0];
+		subscriptionType = Object.keys(customerInfo.subscriber.entitlements)[0] ?? subscriptionType;
+	  }
+	  // Stored dates are UTC without a zone; RevenueCat's carry a Z.
+	  const time = (date: string | null) => date ? Date.parse(/Z|[+-]\d\d:?\d\d$/.test(date) ? date : `${date}Z`) : -Infinity;
+	  const grantedUntil: string | null = grant.data?.grantedUntil ?? null;
+	  if (grantedUntil && time(grantedUntil) > time(subscriptionExpiryDate)) {
+		subscriptionExpiryDate = grantedUntil;
 	  }
   
 	  if (DEBUG) {

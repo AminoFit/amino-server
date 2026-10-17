@@ -1,6 +1,9 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getAndUpdateRevenueCatForUser } from "@/subscription/getUserInfoFromRevenueCat"
 
+/** New accounts get a free week (the website and the app say so). */
+const FREE_TRIAL_DAYS = 7
+
 export async function checkAndUpdateUserIsSubscribed(userId: string): Promise<boolean> {
   const supabaseAdmin = createAdminSupabase();
 
@@ -46,9 +49,9 @@ export async function checkAndUpdateUserIsSubscribed(userId: string): Promise<bo
       return false;
     }
   } else {
-    // SubscriptionExpiryDate is null, offer a free trial
-    const freeTrialExpiryDate = new Date();
-    freeTrialExpiryDate.setDate(currentDateUTC.getDate() + 1);
+    // No expiry yet: a new account gets its free week. Only ever once: an ended trial keeps its date (the RevenueCat
+    // sync no longer clears it), and the null check makes concurrent first requests grant one trial.
+    const freeTrialExpiryDate = new Date(currentDateUTC.getTime() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
     const { error: updateError } = await supabaseAdmin
       .from("User")
@@ -56,7 +59,8 @@ export async function checkAndUpdateUserIsSubscribed(userId: string): Promise<bo
         subscriptionExpiryDate: freeTrialExpiryDate.toISOString(),
         subscriptionType: "FREE_TRIAL",
       })
-      .eq("id", userId);
+      .eq("id", userId)
+      .is("subscriptionExpiryDate", null);
 
     if (updateError) {
       console.error("Error updating user with free trial:", updateError);
