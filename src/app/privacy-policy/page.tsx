@@ -108,9 +108,7 @@ const THIRD_PARTIES: { service: string; purpose: string; data: string }[] = [
   {
     service: "Google Analytics for Firebase",
     purpose: "App analytics",
-    data:
-      "Your Amino account ID, app events and screens, device and app-instance identifiers; your device’s advertising " +
-      "identifier only if you allow tracking"
+    data: "Your Amino account ID, app events and screens, and device and app-instance identifiers (never the advertising identifier)"
   },
   {
     service: "Meta (Facebook SDK)",
@@ -346,7 +344,7 @@ export default function PrivacyPolicy() {
             <strong>If you allow tracking</strong>, the Meta (Facebook) SDK receives your Amino account ID, a sign-up
             event, the price of a subscription you buy, automatic app events (such as installs and app opens) and your
             device’s advertising identifier, so Meta can tell us which of our ads led to installs and subscriptions.
-            Google Analytics for Firebase may also receive your advertising identifier. We never send your email, meals,
+            We never send your email, meals,
             photos or health data to Meta or any ad network.
           </P>
           <P>
