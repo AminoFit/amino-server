@@ -5,7 +5,7 @@ import {
 } from "@heroicons/react/20/solid"
 import { AminoLogo } from "@/components/AminoLogo"
 import { SOCIAL } from "./Footer"
-import { AppStoreButton, CopyMcpUrl } from "./_home/ClientBits"
+import { AccountLink, AppStoreButton, CopyMcpUrl } from "./_home/ClientBits"
 import "./theme.css"
 
 // The public homepage. Static (re-rendered daily for the footer's year) and in the app's colours, following the
@@ -31,7 +31,7 @@ function Nav() {
           <a href="#faq" className="transition hover:text-app-text">FAQ</a>
         </div>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <a href="/login" className="rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-app-text/[0.06]">Log in</a>
+          <AccountLink signedOut="Log in" signedIn="Open your log" className="rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-app-text/[0.06]" />
           <div className="hidden sm:block"><AppStoreButton small /></div>
         </div>
       </nav>
@@ -299,7 +299,7 @@ function Closing() {
         <p className="relative mt-3 text-app-muted">Try Amino free for a week.</p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <AppStoreButton />
-          <a href="/login" className="inline-flex items-center gap-2 rounded-full border border-app-border px-6 py-3.5 text-[15px] font-semibold transition hover:-translate-y-0.5">Log in on the web</a>
+          <AccountLink signedOut="Log in on the web" signedIn="Open your log on the web" className="inline-flex items-center gap-2 rounded-full border border-app-border px-6 py-3.5 text-[15px] font-semibold transition hover:-translate-y-0.5" />
         </div>
       </div>
     </section>
@@ -317,7 +317,7 @@ function SiteFooter() {
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-app-muted" aria-label="Footer">
           <a href="/privacy-policy" className="hover:text-app-text">Privacy</a>
           <a href="/terms-of-service" className="hover:text-app-text">Terms</a>
-          <a href="/login" className="hover:text-app-text">Log in</a>
+          <AccountLink signedOut="Log in" signedIn="Your log" className="hover:text-app-text" />
           <a href="mailto:info@amino.fit" className="hover:text-app-text">Contact</a>
         </nav>
         <div className="flex gap-4">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { sendGAEvent } from "@next/third-parties/google"
 import { CheckIcon, ClipboardDocumentIcon } from "@heroicons/react/20/solid"
 
@@ -24,6 +24,24 @@ export function AppStoreButton({ small = false }: { small?: boolean }) {
       className={`inline-flex items-center gap-2.5 rounded-full bg-app-text font-semibold text-app-bg shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 ${small ? "px-4 py-2 text-sm" : "px-6 py-3.5 text-[15px]"}`}>
       <AppleLogo className={small ? "h-4 w-4" : "h-5 w-5"} />
       {small ? "Get the app" : "Download for iPhone"}
+    </a>
+  )
+}
+
+// The page is static, so whether the visitor is signed in is read in the browser: Supabase's session cookie
+// (sb-<ref>-auth-token, possibly in chunks) isn't httpOnly, and the middleware removes it when a refresh fails.
+const hasSession = () => /(?:^|;\s*)sb-[^=]+-auth-token(?:\.\d+)?=/.test(document.cookie)
+const noSubscription = () => () => {}
+
+/** "Log in" for visitors, a link straight to the log once signed in. Renders the signed-out label first. */
+export function AccountLink({ signedOut, signedIn, className, children }: {
+  signedOut: string; signedIn: string; className?: string; children?: React.ReactNode
+}) {
+  const signedInNow = useSyncExternalStore(noSubscription, hasSession, () => false)
+  return (
+    <a href={signedInNow ? "/log" : "/login"} className={className}>
+      {signedInNow ? signedIn : signedOut}
+      {children}
     </a>
   )
 }
