@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
-import { normalizeGtin } from "@/mealResolution/barcode"
+import { normalizeGtin } from "@/mealResolution/gtin"
 import { createFoodSources } from "@/mealResolution/foodSources"
 import { UserFoodError } from "@/userFoods/userFoods"
 import { anySignal } from "@/foodResolution/barcodePages"

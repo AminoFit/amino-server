@@ -7,8 +7,9 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { getCachedOrFetchEmbeddings } from "@/utils/embeddingsCache/getCachedOrFetchEmbeddings"
 import { COLUMN_NUTRIENTS, MICRO_KEYS, columnValues, nutrientRows, nutrientsAt, recipeValues, validNutrition,
   type Amounts, type FoodBasis, type PartialNutrients } from "@/nutrition"
-import { normalizeGtin } from "@/mealResolution/barcode"
+import { normalizeGtin } from "@/mealResolution/gtin"
 import {visibleFoodFilter} from "./visibility"
+import { afterReply } from "@/utils/afterReply"
 
 type Db = ReturnType<typeof createAdminSupabase>
 
@@ -125,7 +126,8 @@ async function save(db:Db,userId:string,foodId:number|null,food:Record<string,un
     p_servings:servings,p_nutrients:nutrients,p_ingredients:ingredients})
   if (error) rpcFailure(error)
   const row=(data as {food_id:number;created:boolean;versioned:boolean;previous_id:number|null}[])[0]
-  if (row.created||row.versioned) await enrich(db,row.food_id)
+  // A category and an icon are queued after the reply: the editor doesn't wait for them.
+  if (row.created||row.versioned) afterReply("user_food_enrich",()=>enrich(db,row.food_id))
   return {foodId:row.food_id,created:row.created,versioned:row.versioned,previousId:row.previous_id}
 }
 
@@ -179,8 +181,9 @@ export async function saveRecipe(userId:string,foodId:number|null,input:RecipeIn
   const saved=await save(db,userId,foodId,food,servings,nutrientRows(values.perPortion),priced.map(item=>({foodItemId:item.food.id,
     grams:item.grams,servingId:item.servingId,servingAmount:item.servingAmount,loggedUnit:item.loggedUnit})))
   await setPartialNutrients(db,saved.foodId,values.partial)
-  // Its page shows each ingredient's icon, so old ones are replaced as the recipe is saved, not only when it's logged.
-  await iconsFor(db,priced.map(item=>item.food.id))
+  // Its page shows each ingredient's icon, so old ones are replaced as the recipe is saved, not only when it's logged
+  // (queued after the reply).
+  afterReply("recipe_icons",()=>iconsFor(db,priced.map(item=>item.food.id)))
   return saved
 }
 
@@ -264,7 +267,8 @@ export async function logFoodAsMeal(userId:string,foodId:number,quantity:Quantit
     p_consumed_on:utcWallClock(consumedOn),p_content:describe(food!,item),p_item:item})
   if (error) rpcFailure(error)
   const row=(data as {message_id:number;logged_food_item_id:number;created:boolean}[])[0]
-  if (row.created) await Promise.all([iconsFor(db,[food!.id]),listsFoods(db,row.message_id)])
+  // After the reply: the app closes as soon as the meal exists.
+  if (row.created) afterReply("logged_food_followups",()=>Promise.all([iconsFor(db,[food!.id]),listsFoods(db,row.message_id)]))
   return {messageId:row.message_id,loggedFoodItemId:row.logged_food_item_id,created:row.created}
 }
 
@@ -291,7 +295,9 @@ export async function logFoodsAsMeal(userId:string,items:{foodItemId:number;quan
     p_items:priced.map(entry=>entry.item)})
   if (error) rpcFailure(error)
   const row=(data as {message_id:number;logged_food_item_ids:number[];created:boolean}[])[0]
-  if (row.created) await Promise.all([iconsFor(db,priced.map(entry=>entry.food.id)),listsFoods(db,row.message_id)])
+  // After the reply: the app closes as soon as the meal exists.
+  if (row.created) afterReply("logged_meal_followups",()=>Promise.all([iconsFor(db,priced.map(entry=>entry.food.id)),
+    listsFoods(db,row.message_id)]))
   return {messageId:row.message_id,loggedFoodItemIds:row.logged_food_item_ids,created:row.created}
 }
 

@@ -4,6 +4,7 @@ import { UserFoodError, describe, iconsFor, listsFoods, logFoodsAsMeal, priceIte
   utcWallClock } from "@/userFoods/userFoods"
 import { utcInstant, validTimezone, wallClockInZone } from "@/mealOperations/instant"
 import { notify } from "@/push/notify"
+import { afterReply } from "@/utils/afterReply"
 import { SITE, logTargets, rpc } from "./people"
 
 // Logging meals for other people (20261015030000_log_for_others.sql): one meal per person, priced once, the actor's own
@@ -59,11 +60,13 @@ export async function logFoodsFor(actor: string, input: z.infer<typeof logForInp
   if (result.status === "possible_duplicate") return result
   const created = (result.meals ?? []).filter(meal => meal.created)
   if (created.length) {
-    await Promise.all([iconsFor(db, priced.map(entry => entry.food.id)), ...created.map(meal => listsFoods(db, meal.messageId))])
+    // Icons, the meals' food-list flag and the push to the others go after the reply.
+    afterReply("logged_for_people_followups", () => Promise.all([iconsFor(db, priced.map(entry => entry.food.id)),
+      ...created.map(meal => listsFoods(db, meal.messageId))]))
     if (options.agentClientId) await (db as any).from("Message").update({ agentClientId: options.agentClientId,
       agentName: options.agentName ?? null }).in("id", created.map(meal => meal.messageId))
-    await notifyLogged(db, actor, created.filter(meal => meal.userId !== actor).map(meal => meal.userId), content,
-      priced.reduce((sum, entry) => sum + (entry.item.nutrition?.kcal ?? 0), 0), options.agentName)
+    afterReply("logged_for_people_push", () => notifyLogged(db, actor, created.filter(meal => meal.userId !== actor)
+      .map(meal => meal.userId), content, priced.reduce((sum, entry) => sum + (entry.item.nutrition?.kcal ?? 0), 0), options.agentName))
   }
   return result
 }

@@ -1,4 +1,4 @@
-import { normalizeGtin } from "@/mealResolution/barcode"
+import { normalizeGtin } from "@/mealResolution/gtin"
 
 // Scanned products travel in a meal's text as tokens after its words, "… 2 × [barcode:00099482430092]" (amino-mobile
 // common/barcode/draftBarcodes.ts withBarcodeChips), which the app shows as chips and the meal agent resolves. Agents

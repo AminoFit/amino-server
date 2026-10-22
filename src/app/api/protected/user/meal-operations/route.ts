@@ -5,6 +5,7 @@ import { operationRequest } from "@/mealOperations/contracts"
 import { acceptMealOperation } from "@/mealOperations/service"
 import { dispatchMealOperation } from "@/mealOperations/dispatch"
 import { mealOperationError } from "@/mealOperations/http"
+import { afterReply } from "@/utils/afterReply"
 
 export const dynamic="force-dynamic"
 export const maxDuration=30
@@ -23,13 +24,9 @@ export async function POST(request:NextRequest) {
   if(!isSubscribed) return NextResponse.json({error:"subscription_required"},{status:403})
   try {
     const accepted=await acceptMealOperation(aminoUser.id,input)
-    if(accepted.state==="queued") {
-      // Finish the queue handoff before returning from a serverless request.
-      // The committed outbox recovers dispatch failures independently.
-      try {await dispatchMealOperation(input.operationId)} catch(error) {
-        console.error("meal_initial_dispatch_failed",{operationId:input.operationId,error})
-      }
-    }
+    // The queue handoff runs after the reply (waitUntil keeps the function alive until it's done): the app only needs
+    // to know the operation was accepted. The committed outbox recovers dispatch failures independently.
+    if(accepted.state==="queued") afterReply("meal_initial_dispatch",()=>dispatchMealOperation(input.operationId))
     return NextResponse.json({...accepted,statusUrl:`/api/protected/user/meal-operations/${input.operationId}`},
       {status:["succeeded","failed","cancelled","conflicted"].includes(accepted.state)?200:202})
   } catch(error) {return mealOperationError(error)}

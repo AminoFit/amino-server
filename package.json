@@ -36,6 +36,7 @@
     "@types/react": "18.2.55",
     "@types/react-dom": "18.2.19",
     "@types/react-timeago": "^4.1.7",
+    "@vercel/functions": "3.9.11",
     "ai": "6.0.290",
     "ajv": "^8.17.1",
     "apexcharts": "^3.46.0",

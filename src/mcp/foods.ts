@@ -1,7 +1,7 @@
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
 import { COLUMN_NUTRIENTS, nutrientRound, nutrientsAt, type Amounts } from "@/nutrition"
-import { normalizeGtin } from "@/mealResolution/barcode"
+import { normalizeGtin } from "@/mealResolution/gtin"
 import { foodForGtin } from "@/foodSearch/packageBarcodes"
 import { searchFoodsForUser } from "@/foodSearch/searchFoods"
 import { searchUsda } from "@/foodSearch/usda"

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { MICRO_KEYS } from "@/nutrition"
-import { normalizeGtin } from "@/mealResolution/barcode"
+import { normalizeGtin } from "@/mealResolution/gtin"
 import { UserFoodError, archiveUserFood, customFoodInput, getUserFood, recipeInput, saveCustomFood, saveRecipe,
   type CustomFoodInput, type RecipeInput } from "@/userFoods/userFoods"
 import type { UserDatabase } from "./auth"
