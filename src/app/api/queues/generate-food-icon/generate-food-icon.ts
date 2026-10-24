@@ -166,17 +166,28 @@ export async function generateAndUploadIcon(foodName: string, foodId: number, lo
   return foodImageId
 }
 
-/** One simple subject per icon: the food alone, so it suits the food's variants and category. */
-export const iconPrompt = (foodName: string, look?: string) =>
-  `Generate on a transparent background a square image of ${foodName}, used as an icon for a food logging app. ` +
+/** The food's name as the image model should read it: notes in brackets ("(photo estimate)", "(United, 29 g)") are
+ * about the log entry, not what it looks like, and only add detail to draw. */
+export const drawnName = (foodName: string) => foodName.replace(/\s*\([^)]*\)/g, "").trim() || foodName
+
+/** One simple subject per icon: the food alone, so it suits the food's variants and category, and few enough shapes
+ * to read at 40 pt in the log. */
+export const iconPrompt = (foodName: string, look?: string) => {
+  const name = drawnName(foodName)
+  return `Generate on a transparent background a square image of ${name}, used as an icon for a food logging app. ` +
   (look ? `The real product looks like this; use its shape and colours only: ${look} ` : "") +
-  `Show only ${foodName} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it. ` +
+  `Show only ${name} itself: no side dishes, sauces, dips, garnishes, drinks, utensils or other foods next to it. ` +
   `Show it the way it is bought or used, so the kind of food is obvious at a glance: shredded cheese as a loose pile ` +
   `of shreds, sliced deli meat as folded slices, oil in a bottle. Use a bowl or plate only for a dish that is served ` +
   `in one (soup, cereal, salad, a stew, yogurt); never put an ingredient in a bowl. A plain drink, oil, spread or powder ` +
-  `that would look like others may show one small whole ingredient beside it (almonds for almond milk). Keep it simple so it stays useful ` +
+  `that would look like others may show one small whole ingredient beside it (almonds for almond milk). ` +
+  `Use as few pieces as make it recognisable, even when the name is plural: one whole item, or two or three small ` +
+  `ones (hazelnuts: two or three hazelnuts, not a pile; grapes: one small bunch). Keep it uncluttered: large simple ` +
+  `shapes, no crumbs, spills, scattered bits, leaves, scoops or decorations. A dish of several parts is one simple ` +
+  `serving with its main part in front, not every part laid out. Keep it simple so it stays useful ` +
   `for variants of this food and its category. Isometric view. 3D, simplistic, vibrant colours. A simple outline so ` +
   `it works in light and dark mode. No text, labels, logos or brand packaging: show a generic version of the food.`
+}
 
 // Icons go through OpenRouter's image endpoint like every other model call (same model, same transparent PNG).
 const requestIcon = (apiKey: string, foodName: string, look?: string) => fetch("https://openrouter.ai/api/v1/images", {

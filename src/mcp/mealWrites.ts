@@ -2,7 +2,8 @@ import { z } from "zod"
 import type { AuthInfo } from "@modelcontextprotocol/server"
 import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { listGrants } from "@/utils/supabase/oauthServer"
-import { UserFoodError, logFoodsAsMeal, priceItems, type QuantityInput } from "@/userFoods/userFoods"
+import { UserFoodError, iconsFor, logFoodsAsMeal, priceItems, type QuantityInput } from "@/userFoods/userFoods"
+import { afterReply } from "@/utils/afterReply"
 import type { UserDatabase } from "./auth"
 import { McpInputError, getMeals } from "./meals"
 import { cleanScans, joinMealText, splitMealText } from "./mealScans"
@@ -111,6 +112,9 @@ export async function addToMeal(db: UserDatabase, userId: string, mealId: number
   const priced = await priceItems(userId, foods.map(food => ({ foodItemId: food.foodId, quantity: quantityFrom(food) })))
     .catch(asInputError)
   await rpc("agent_add_meal_foods", { p_user_id: userId, p_message_id: mealId, p_items: priced.map(entry => entry.item) })
+  // As every other way of logging: a food without a current-style icon gets one (Hazelnuts, added to meal 30853 this
+  // way, kept its 2024 sticker).
+  afterReply("agent_meal_icons", () => iconsFor(createAdminSupabase(), foods.map(food => food.foodId)))
   const [meal] = await getMeals(db, [mealId])
   return { meal, targets: [mealId] }
 }
