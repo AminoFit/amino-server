@@ -176,7 +176,9 @@ export async function searchFoods(db: UserDatabase, userId: string, input: Searc
   const exact = cards.some(card => (card as { match?: string }).match === "name")
   return { foods: page, nextCursor, ...(at.search === 0 && !exact ? { exactMatch: false,
     note: `No food in Amino has every word of "${input.query!.trim()}" in its name or brand: these are similar foods, not ` +
-      "that product. Don't log one in its place: use the maker's published values with create_food, or tell the user." } : {}) }
+      "that product. Don't log one in its place: look for it in USDA (search_foods with scope \"usda\", then " +
+      "add_catalogue_food) or by its barcode; only when no database has it, use the maker's published values with " +
+      "create_food, or tell the user." } : {}) }
 }
 
 /** One food's card with the user's history; a barcode's package serving (one of the food's sizes) as `barcodePackage`. */

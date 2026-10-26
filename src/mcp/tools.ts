@@ -37,8 +37,10 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   meaning), or \`loose\` (a fuzzy text hit that is often a different food): never log a loose match without checking it
   is the same food.
 - A \`meaning\` match is a similar food, not the same product: for a branded or restaurant item ("NAYA toum", "Chipotle
-  bowl") log it only if its name and brand are that item. Otherwise use the restaurant's or maker's published values with
-  create_food (the user's own copy), or tell the user Amino has no record of it; never stand a lookalike in for it.
+  bowl") log it only if its name and brand are that item. Otherwise look for it in USDA (scope "usda") or by its
+  barcode and add it with add_catalogue_food; only when no database has it, use the restaurant's or maker's published
+  values with create_food (the user's own copy), or tell the user Amino has no record of it. Never stand a lookalike
+  in for it.
 - Where a food comes from, in this order: (1) a food Amino already has (search_foods; the user's own for their usual
   foods); (2) a database record added with add_catalogue_food: search_foods with scope "usda" finds USDA records (by
   usdaId), or give a product's barcode (from the package or the user, never a guess) or a USDA or Open Food Facts page;
