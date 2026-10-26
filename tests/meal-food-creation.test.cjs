@@ -9,7 +9,7 @@ const usdaFood={externalId:'2345',name:'Tuna Ceviche',brand:'Ocean Co',defaultSe
   sugarPerServing:4,satFatPerServing:1,isLiquid:false,Serving:[{servingName:'cup',servingWeightGram:140}]};
 const nearby=[{id:15293,name:'Tuna Ceviche',brand:null},{id:4439,name:'Ceviche',brand:null}];
 
-function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[],name,catalogueName,siblings}={}){
+function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,catalogue=null,byName=null,createRow={food_id:99001,created:true,enrichment:null},web,usdaSearch,off,pages,barcodes=[],name,catalogueName,siblings,catalogueOnly}={}){
   const calls={updates:[],inserts:[],create:[],enrich:[],supersede:[],discovered:[],enqueued:[],supplementIcons:[],web:[],jev:[],rpc:[],visibility:[]};
   const facts=(catalogue??near).map(f=>({gtin:null,defaultServingWeightGram:100,kcalPerServing:120,proteinPerServing:20,Serving:[],...f}));
   const db={from:()=>{let column=null,value=null;const q={select:()=>q,in:()=>q,limit:()=>q,or:filter=>{calls.visibility.push(filter);return q},is:()=>q,eq:(c,v)=>{column=c;value=v;return q},
@@ -28,7 +28,7 @@ function harness({enrichConflict=false,jev=null,usda=[usdaFood],near=nearby,cata
       {data:null,error:{message:'x'}};
     return {abortSignal:()=>Promise.resolve(result)};
   }};
-  const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes,
+  const sources=createFoodSources({userId:'00000000-0000-4000-8000-000000000001',messageId:1,barcodes,catalogueOnly,
     signal:new AbortController().signal,discover:id=>calls.discovered.push(id)},
     {db,embed:async (_model,texts)=>texts.map((text,i)=>({id:i+1,embedding:[0.1],text})),usda:async()=>usda,
       usdaSearch:usdaSearch??(async()=>[]),off:off??(async()=>null),pages:pages??(async()=>{throw new Error('search_unavailable')}),model:'anthropic/claude-sonnet-5.5',
@@ -350,6 +350,13 @@ test('duplicate candidates only come from shared foods and the user\'s own priva
   for (const name of ['search_meal_food_catalogue','get_cosine_results'])
     assert.equal(calls.rpc.find(([n])=>n===name)?.[1].p_user_id,user,name);
   assert.ok(calls.visibility.length>0&&calls.visibility.every(f=>f===`privateToUserId.is.null,privateToUserId.eq.${user}`));
+});
+
+test('an agent\'s catalogue add compares shared foods only: the user\'s own food is never its duplicate',async()=>{
+  const {sources,calls}=harness({jev:{status:'ok',choice:'none',confidence:0.95},catalogueOnly:true});
+  const [candidate]=(await sources.searchFoodSources('tuna ceviche')).candidates;
+  await sources.createFoodFromSource(candidate.sourceId);
+  assert.ok(calls.visibility.length>0&&calls.visibility.every(f=>f==='privateToUserId.is.null'));
 });
 
 test('a nutrition panel no one can name is saved for the user only; a named or barcoded one is shared',async()=>{

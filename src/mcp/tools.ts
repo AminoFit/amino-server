@@ -39,11 +39,18 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
 - A \`meaning\` match is a similar food, not the same product: for a branded or restaurant item ("NAYA toum", "Chipotle
   bowl") log it only if its name and brand are that item. Otherwise use the restaurant's or maker's published values with
   create_food (the user's own copy), or tell the user Amino has no record of it; never stand a lookalike in for it.
-- When Amino doesn't have a food, add it from a database before creating the user's own: search_foods with scope "usda"
-  finds USDA records (by usdaId), and add_catalogue_food adds one, or a product by its barcode (from USDA or Open Food
-  Facts), or a USDA or Open Food Facts page, to Amino's shared catalogue. Barcode digits must come from the package or the
-  user, never a guess; check the name and brand it returns are the product the user means. create_food is the last
-  resort, for foods no database has (homemade food, a label the user reads out).
+- Where a food comes from, in this order: (1) a food Amino already has (search_foods; the user's own for their usual
+  foods); (2) a database record added with add_catalogue_food: search_foods with scope "usda" finds USDA records (by
+  usdaId), or give a product's barcode (from the package or the user, never a guess) or a USDA or Open Food Facts page;
+  (3) create_food, only for foods no database has (homemade food, a label the user reads out). Never copy a database
+  record into create_food: the user's copy loses the record's servings and vitamins and minerals, and nobody else gets
+  it. Check the name and brand add_catalogue_food returns are the food the user means.
+- add_catalogue_food only adds to or returns Amino's shared catalogue; it never returns or changes the user's own foods.
+  Its \`changed\` says what it did. \`possible_duplicates\` means it wasn't sure whether a catalogue food is the
+  same: answer with sameAs (a candidate's id, or null when none is) rather than creating the food yourself. If the user
+  has their own copy of a food you added, log the catalogue food from now on and ask before deleting their copy.
+- When a call fails or adds nothing, tell the user what its reply says changed (usually nothing) and why, and follow
+  its \`next\`; don't work around it by hiding or deleting the user's foods.
 - To log a meal: find each food with search_foods (prefer the user's own foods, and recent_foods for usual meals) and
   log_meal with exact amounts. Amino doesn't interpret text: a note is only shown to the user. Meals and their foods
   have ids in list_meals/get_meals; meals you log show \`loggedBy\`.
@@ -80,7 +87,9 @@ const PLANNED_ENTRIES_PER_DAY = 2000
 const CHANGES_PER_MINUTE = 20, CHANGES_PER_DAY = 300
 
 type Call = { db: UserDatabase; userId: string; authInfo: AuthInfo }
-type Outcome = { data: object; rows?: number; targets?: number[] }
+/** `code`: why a call that succeeded changed nothing (add_catalogue_food's possible_duplicates), kept on its McpRequest
+ * row so an agent's "it didn't work" can be traced. */
+type Outcome = { data: object; rows?: number; targets?: number[]; code?: string }
 
 const result = (data: object): CallToolResult =>
   ({ content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data as Record<string, unknown> })
@@ -121,16 +130,19 @@ async function run(tool: string, authInfo: AuthInfo | undefined, work: (call: Ca
   }
   try {
     const outcome = await work({ db: userDatabase(authInfo.token), userId, authInfo })
-    await record(true, null, outcome.rows ?? null, outcome.targets)
+    await record(true, outcome.code ?? null, outcome.rows ?? null, outcome.targets)
     return result(outcome.data)
   } catch (error) {
     if (error instanceof McpInputError) {
-      await record(false, "invalid_input", null)
+      await record(false, error.code, null)
       return failure(error.message)
     }
     console.error("mcp_tool_failed", { tool, error })
     await record(false, "failed", null)
-    return failure("Amino couldn't complete that request. Try again shortly.")
+    // Unexpected: whether a change was made isn't known here, so the agent checks before retrying one.
+    return failure(`Couldn't complete ${tool}: something went wrong on Amino's side.` + (CHANGE_TOOLS.includes(tool) ||
+      tool === "add_catalogue_food" ? " It may or may not have taken effect: check (get_meals, get_food or search_foods) " +
+      "before trying again." : " Nothing was changed. Try again shortly."))
   }
 }
 
@@ -249,20 +261,28 @@ export function registerAminoTools(server: McpServer) {
       "and Open Food Facts; when neither has it, the barcode's product listings name the product and the barcode is added " +
       "to the food Amino already has that is surely that product), or a `url` of a USDA or Open Food Facts page. The " +
       "values come from a database or the food Amino has, never from you: don't look the barcode up yourself first. " +
-      "Returns `added` (new), `found` (Amino already had it) with the food as search_foods shows it, or `unknown` " +
-      "(nothing added). A barcode's food has the package it is (`barcodePackage`). Check the name and brand are the " +
-      "product the user means before logging it. At most 5 foods a minute and 50 a day.",
+      "Only the shared catalogue is compared and returned, never the user's own foods. Returns `added` (new) or " +
+      "`found` (the catalogue already had it, perhaps filled in from the record) with the food as search_foods shows " +
+      "it; `possible_duplicates` with `candidates` when the duplicate check is unsure (call again with `sameAs`); or " +
+      "`unknown` (nothing added). Every reply says what `changed`, and one that added nothing gives the `reason` and " +
+      "what to do `next`. A barcode's food has the package it is (`barcodePackage`). Check the name and brand are " +
+      "the product the user means before logging it. At most 5 foods a minute and 50 a day.",
     inputSchema: z.object({
       barcode: z.string().trim().min(6).max(20).optional().describe("The product's EAN/UPC digits, from the package or the user"),
       usdaId: z.number().int().positive().optional().describe("A USDA FoodData Central id (fdcId)"),
-      url: z.string().trim().max(500).optional().describe("A fdc.nal.usda.gov or openfoodfacts.org product page")
+      url: z.string().trim().max(500).optional().describe("A fdc.nal.usda.gov or openfoodfacts.org product page"),
+      sameAs: z.number().int().positive().nullable().optional()
+        .describe("Only after possible_duplicates, with the same usdaId: the candidate that is the same food, or null " +
+          "when none is")
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, (input, ctx) => run("add_catalogue_food", ctx.http?.authInfo, async ({ db, userId, authInfo }) => {
     const pointer = pointerFrom(input)
-    const { data, targets } = await addCatalogueFood(db, userId, { clientId: authInfo.clientId, name: await agentName(authInfo) },
+    const added = await addCatalogueFood(db, userId, { clientId: authInfo.clientId, name: await agentName(authInfo) },
       pointer)
-    return { data, rows: "food" in data && data.food ? 1 : 0, targets }
+    const { data } = added
+    return { data, rows: "food" in data && data.food ? 1 : 0, targets: "targets" in added ? added.targets : undefined,
+      code: "code" in added ? added.code : undefined }
   }))
 
   server.registerTool("get_food", {
@@ -305,9 +325,10 @@ export function registerAminoTools(server: McpServer) {
 
   server.registerTool("create_food", {
     title: "Create my food",
-    description: "Add a food to the user's own foods (private to them; Amino's shared catalogue can't be changed). Use " +
-      "it when search_foods has nothing that is the same food. Energy and macros are for `serving` (e.g. 1 bar = 45 g, " +
-      "as the label says). If the user already has this food (same name and brand, or barcode), nothing is created and " +
+    description: "Add a food to the user's own foods (private to them). Use it only when search_foods has nothing that " +
+      "is the same food and no database has it for add_catalogue_food (a USDA record, barcode or page): homemade food, " +
+      "a label the user reads out. Energy and macros are for `serving` (e.g. 1 bar = 45 g, as the label says); give " +
+      "every other nutrient the label or source lists in `nutrients`. If the user already has this food (same name and brand, or barcode), nothing is created and " +
       "the existing one is returned. Returns the food as get_food shows it. Needs the user's \"Let agents make changes\" " +
       "setting.",
     inputSchema: z.object(foodFields),

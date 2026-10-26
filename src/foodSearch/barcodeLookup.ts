@@ -21,17 +21,19 @@ export { catalogueFoodForGtin }
  * itself; `beforeChange` sees an existing food before it is enriched. */
 export async function foodForBarcode(userId:string,code:string,options:{db?:Db;signal?:AbortSignal;web?:boolean
   beforeChange?:(foodId:number)=>Promise<unknown>
+  /** The shared catalogue's food only: the user's own food with this barcode is neither returned nor enriched. */
+  catalogueOnly?:boolean
   sources?:Pick<ReturnType<typeof createFoodSources>,"barcodeSources"|"createFoodFromSource">&
     Partial<Pick<ReturnType<typeof createFoodSources>,"barcodeProduct">>;enqueueIcon?:(foodId:number)=>Promise<unknown>}={}) {
   const gtin=normalizeGtin(code)
   if (!gtin) throw new UserFoodError("invalid_barcode",422)
   const db=options.db??createAdminSupabase()
-  const known=await foodForGtin(db,userId,gtin)
+  const known=await foodForGtin(db,options.catalogueOnly?null:userId,gtin)
   // A package barcode opens the food at that package's serving (the 14 fl oz bottle).
   if (known) return {status:"found" as const,gtin,foodId:known.foodId,servingId:known.servingId,created:false}
   const signal=anySignal(options.signal,LOOKUP_MS)
   const sources=options.sources??createFoodSources({userId,messageId:null,signal,discover:()=>{},barcodes:[gtin],
-    beforeChange:options.beforeChange},{db})
+    beforeChange:options.beforeChange,catalogueOnly:options.catalogueOnly},{db})
   const lookup=sources.barcodeProduct&&options.web!==false?await sources.barcodeProduct(gtin)
     :{foods:await sources.barcodeSources(gtin),notFood:null}
   const [source]=lookup.foods

@@ -6,7 +6,10 @@ import type { UserDatabase } from "./auth"
 export type Meal = Record<string, unknown> & { id: number }
 type PageRow = { position: string; id: number; meal: Meal }
 
-export class McpInputError extends Error {}
+export class McpInputError extends Error {
+  /** Recorded on the call's McpRequest row. */
+  constructor(message: string, readonly code = "invalid_input") { super(message) }
+}
 
 /** Cursors are opaque to clients: the (timestamp, id) position of the last row returned, exactly as the database
  * printed it, so no precision is lost. The kind stops a list_meals cursor being passed to sync_meals. */

@@ -15,12 +15,16 @@ import { cardFor } from "./foods"
 // the barcode's listings (UPCitemdb, Brave) only name the product, and the barcode is attached to the food Amino
 // already has when Jev is sure that is the named product: mistyped digits name another product and attach nothing
 // (fairlife strawberry 14 fl oz, 2026-10-06: the agent looked the digits up itself). The duplicate check, enrichment and
-// barcode rules are the app's own (createFoodFromSource). Not behind the user's "Let agents make changes" setting: the
-// user's own data doesn't change, and logging the food still needs it. FeatureFlag mcp_catalogue_adds is the rollout and
-// kill switch. Every change is recorded with the user and the agent (CatalogueAgentChange) for repair.
+// barcode rules are the app's own (createFoodFromSource), comparing shared foods only: the user's own foods are never
+// returned, matched or enriched (a USDA Pinot Noir was answered with the user's own copy, which it then changed,
+// 2026-10-23). When the duplicate check is unsure it returns the candidates, and the agent answers with sameAs (one of
+// them, or null for none) instead of the add failing closed. Not behind the user's "Let agents make changes" setting:
+// the user's own data doesn't change, and logging the food still needs it. Every change is recorded with the user and
+// the agent (CatalogueAgentChange) for repair, and every reply says what changed and what to do next.
 
 type Db = ReturnType<typeof createAdminSupabase>
-export type Pointer = { kind: "barcode"; gtin: string } | { kind: "usda"; fdcId: number }
+/** sameAs answers possible_duplicates: the candidate that is this USDA record's food, or null for none of them. */
+export type Pointer = { kind: "barcode"; gtin: string } | { kind: "usda"; fdcId: number; sameAs?: number | null }
 export type Agent = { clientId: string; name: string | null }
 
 export const ADDS_PER_MINUTE = 5, ADDS_PER_DAY = 50
@@ -28,8 +32,16 @@ const LOOKUP_MS = 20_000
 const URL_HELP = "Give a USDA FoodData Central page (fdc.nal.usda.gov/food-details/<id>) or an Open Food Facts product " +
   "page (world.openfoodfacts.org/product/<barcode>)."
 
-/** The one pointer an agent gave: barcode digits, a USDA id, or a USDA or Open Food Facts page. */
-export function pointerFrom(input: { barcode?: string; usdaId?: number; url?: string }): Pointer {
+/** The one pointer an agent gave: barcode digits, a USDA id, or a USDA or Open Food Facts page (with sameAs for USDA). */
+export function pointerFrom(input: { barcode?: string; usdaId?: number; url?: string; sameAs?: number | null }): Pointer {
+  const pointer = onePointer(input)
+  if (input.sameAs === undefined) return pointer
+  if (pointer.kind !== "usda") throw new McpInputError("sameAs answers possible_duplicates for a USDA record: give it " +
+    "with the same usdaId (or USDA page). A barcode is never unsure.")
+  return { ...pointer, sameAs: input.sameAs }
+}
+
+function onePointer(input: { barcode?: string; usdaId?: number; url?: string }): Pointer {
   const given = [input.barcode, input.usdaId, input.url].filter(value => value != null && value !== "")
   if (given.length !== 1) throw new McpInputError("Give exactly one of barcode, usdaId or url.")
   if (input.usdaId != null) return { kind: "usda", fdcId: input.usdaId }
@@ -103,62 +115,138 @@ type Deps = { db?: Db
   enqueueIcon?: (foodId: number) => Promise<unknown>; card?: typeof cardFor }
 type SourceKind = "USDA" | "OpenFoodFacts" | "BarcodeName"
 
-/** Adds a USDA or Open Food Facts food to the shared catalogue (or finds the one already there) and returns its card. */
+const NOTHING = "Nothing was added or changed."
+type Outcome = { foodId: number; created: boolean; sourceKind: SourceKind; sourceRef: string; label?: string }
+
+/** Adds a USDA or Open Food Facts food to the shared catalogue (or finds the one already there) and returns its card,
+ * with what changed (`changed`) and, when nothing was added, why and what to do next. */
 export async function addCatalogueFood(userDb: UserDatabase, userId: string, agent: Agent, pointer: Pointer, deps: Deps = {}) {
   const db = deps.db ?? createAdminSupabase()
   const card = (foodId: number, servingId?: number | null) => (deps.card ?? cardFor)(userDb, userId, foodId, servingId)
-  const found = async (foodId: number, servingId?: number | null) => ({ status: "found" as const, food: await card(foodId, servingId) })
 
-  // Already in Amino: no source is asked and nothing is counted.
-  const known = pointer.kind === "barcode" ? await foodForGtin(db, userId, pointer.gtin) : await usdaFood(db, pointer.fdcId)
-  if (known) return { data: await found(known.foodId, known.servingId), targets: [known.foodId] }
+  // Already in Amino's catalogue: no source is asked and nothing is counted.
+  const already = async (foodId: number, servingId?: number | null) => ({ data: { status: "found" as const,
+    food: await card(foodId, servingId), changed: "Nothing: Amino's shared catalogue already has this food." },
+    targets: [foodId] })
+  const known = pointer.kind === "barcode" ? await foodForGtin(db, null, pointer.gtin) : await usdaFood(db, pointer.fdcId)
+  if (known) return already(known.foodId, known.servingId)
   await checkLimits(db, userId)
 
   // Existing foods as they were before this call changed them. (A food create_catalogue_food matches by identity after
   // the duplicate check found none is enriched with no before state, so no row records it: rare.)
   const befores = new Map<number, Snapshot | null>()
   const beforeChange = async (foodId: number) => { if (!befores.has(foodId)) befores.set(foodId, await snapshot(db, foodId)) }
+  let looked: Awaited<ReturnType<typeof lookUp>>
+  try {
+    looked = await lookUp(db, userId, pointer, beforeChange, deps)
+  } catch (error) {
+    if (error instanceof McpInputError) throw error
+    // A lookup that failed part way may already have filled in a food: that is recorded and said.
+    const changes = await record(db, userId, agent, null, pointer, befores).catch(() => [])
+    const changed = changes.length ? `Food ${changes.map(row => row.foodItemId).join(", ")} was partly filled in before ` +
+      "it stopped; nothing was added." : NOTHING
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+    console.error("catalogue_add_failed", { userId, pointer, error: error instanceof Error ? error.message : error })
+    throw new McpInputError(timedOut
+      ? `Couldn't add the food: ${pointer.kind === "usda" ? "USDA" : "USDA and Open Food Facts"} didn't answer within ` +
+        `${LOOKUP_MS / 1000} s. ${changed} Try again in a minute.`
+      : `Couldn't add the food: Amino's catalogue or the food database didn't respond. ${changed} Try again shortly; ` +
+        "if it keeps failing, use a similar food from search_foods and tell the user.", timedOut ? "source_timeout" : "unavailable")
+  }
+  if ("reply" in looked) return { data: looked.reply, code: looked.code }
+  if ("existing" in looked) return already(looked.existing)
+
+  const { outcome, note } = looked
+  const changes = await record(db, userId, agent, outcome, pointer, befores)
+  const servingId = pointer.kind === "barcode" ? (await foodForGtin(db, null, pointer.gtin))?.servingId : null
+  const source = outcome.sourceKind === "USDA" ? `USDA FoodData Central ${outcome.sourceRef}`
+    : outcome.sourceKind === "OpenFoodFacts" ? `Open Food Facts ${outcome.sourceRef}`
+    : `Barcode listings (${outcome.label}): the barcode was added to this food`
+  return { data: { status: outcome.created ? "added" as const : "found" as const, food: await card(outcome.foodId, servingId),
+    source, changed: describeChanges(outcome, changes), ...(note ? { note } : {}) }, targets: [outcome.foodId] }
+}
+
+/** The source's food, created or matched in the catalogue; or the reply when nothing was added. */
+async function lookUp(db: Db, userId: string, pointer: Pointer, beforeChange: (foodId: number) => Promise<unknown>,
+  deps: Deps): Promise<{ outcome: Outcome; note?: string } | { reply: object; code: string } | { existing: number }> {
   const signal = AbortSignal.timeout(LOOKUP_MS)
-  let outcome: { foodId: number; created: boolean; sourceKind: SourceKind; sourceRef: string; label?: string } | null = null
   if (pointer.kind === "barcode") {
     const result = await (deps.barcode ?? foodForBarcode)(userId, pointer.gtin, { db, signal, web: false, beforeChange,
-      ...(deps.enqueueIcon ? { enqueueIcon: deps.enqueueIcon } : {}) })
+      catalogueOnly: true, ...(deps.enqueueIcon ? { enqueueIcon: deps.enqueueIcon } : {}) })
     if (result.status === "found" && "source" in result && result.source) {
       const usda = result.source.kind === "USDA"
-      outcome = { foodId: result.foodId, created: result.created, sourceKind: usda ? "USDA" : "OpenFoodFacts",
-        sourceRef: usda ? String(result.source.ref) : pointer.gtin }
-    } else if (result.status === "found") return { data: await found(result.foodId), targets: [result.foodId] }
-    else {
-      const named = await attachByName(db, userId, pointer.gtin, signal, beforeChange, deps)
-      if (named === "not_food") return { data: unknown(pointer, "The barcode's listings say this product isn't food.") }
-      if (named) outcome = { foodId: named.foodId, created: false, sourceKind: "BarcodeName", sourceRef: pointer.gtin,
-        label: named.label }
+      return { outcome: { foodId: result.foodId, created: result.created, sourceKind: usda ? "USDA" : "OpenFoodFacts",
+        sourceRef: usda ? String(result.source.ref) : pointer.gtin } }
     }
-  } else {
-    const sources = deps.sources?.(beforeChange) ?? createFoodSources({ userId, messageId: null, signal, discover: () => {},
-      beforeChange }, { db })
-    const [source] = await sources.usdaSource(pointer.fdcId)
-    const added = source ? await sources.createFoodFromSource(source.sourceId) : null
-    if (added && (added.status === "created" || added.status === "existing")) {
-      outcome = { foodId: added.foodId, created: added.status === "created", sourceKind: "USDA", sourceRef: String(pointer.fdcId) }
-      // Outside a meal nothing else queues a new food's icon (its category was queued when it was created).
-      if (outcome.created) await (deps.enqueueIcon ?? enqueueIcon)(added.foodId)
-        .catch(() => console.error("Catalogue food added, but its icon could not be queued", { foodId: added.foodId }))
-    } else if (!source) return { data: unknown(pointer, "USDA has no usable record with that id: it needs energy, " +
-      "protein, carbs, fat and a weight.") }
+    // Another request added it meanwhile.
+    if (result.status === "found") return { existing: result.foodId }
+    const named = await attachByName(db, userId, pointer.gtin, signal, beforeChange, deps)
+    if (named === "not_food") return notAdded(pointer, "not_food", "The barcode's listings say this product isn't food.",
+      "Check the digits with the user.")
+    if (named) return { outcome: { foodId: named.foodId, created: false, sourceKind: "BarcodeName", sourceRef: pointer.gtin,
+      label: named.label } }
+    return notAdded(pointer, "no_record", "USDA and Open Food Facts don't have this barcode, and no food in Amino's " +
+      "catalogue is the product its listings name.", "Check the digits with the user, search_foods by the product's name, " +
+      "or, with the label's values, save it as the user's own food with create_food.")
   }
-  // No record, or the duplicate check couldn't tell whether the record is a food Amino already has (it fails closed).
-  if (!outcome) return { data: unknown(pointer, pointer.kind === "barcode" ? "USDA and Open Food Facts don't have this " +
-    "barcode, and no food in Amino is the product its listings name." : "Amino couldn't tell whether this USDA record " +
-    "is a food it already has.") }
 
-  await record(db, userId, agent, outcome, befores)
-  const servingId = pointer.kind === "barcode" ? (await foodForGtin(db, userId, pointer.gtin))?.servingId : null
-  return { data: { status: outcome.created ? "added" as const : "found" as const, food: await card(outcome.foodId, servingId),
-    source: outcome.sourceKind === "USDA" ? `USDA FoodData Central ${outcome.sourceRef}`
-      : outcome.sourceKind === "OpenFoodFacts" ? `Open Food Facts ${outcome.sourceRef}`
-      : `Barcode listings (${outcome.label}): the barcode was added to this food` },
-    targets: [outcome.foodId] }
+  const sources = deps.sources?.(beforeChange) ?? createFoodSources({ userId, messageId: null, signal, discover: () => {},
+    beforeChange, catalogueOnly: true }, { db })
+  const [source] = await sources.usdaSource(pointer.fdcId)
+  if (!source) return notAdded(pointer, "no_usable_record", "USDA has no usable record with that id: it needs energy, " +
+    "protein, carbs, fat and a weight.", "Check the id with search_foods (scope \"usda\"), or pick another USDA record.")
+  let added = await sources.createFoodFromSource(source.sourceId)
+  let note: string | undefined
+  if (added.status === "possible_duplicates" && pointer.sameAs !== undefined) {
+    const offered = added.candidates.map(candidate => candidate.id)
+    if (pointer.sameAs !== null && !offered.includes(pointer.sameAs))
+      return possibleDuplicates(pointer, source, added.candidates, `sameAs ${pointer.sameAs} isn't one of the candidates.`)
+    added = await sources.createFoodFromSource(source.sourceId, pointer.sameAs)
+  } else if (pointer.sameAs !== undefined) note = "The duplicate check decided this itself, so sameAs wasn't used."
+  if (added.status === "possible_duplicates") return possibleDuplicates(pointer, source, added.candidates)
+  if (added.status !== "created" && added.status !== "existing")
+    return notAdded(pointer, added.status, "Amino couldn't check this USDA record against its catalogue.", "Try again shortly.")
+  // Outside a meal nothing else queues a new food's icon (its category was queued when it was created).
+  if (added.status === "created") await (deps.enqueueIcon ?? enqueueIcon)(added.foodId)
+    .catch(() => console.error("Catalogue food added, but its icon could not be queued", { foodId: added.foodId }))
+  return { outcome: { foodId: added.foodId, created: added.status === "created", sourceKind: "USDA",
+    sourceRef: String(pointer.fdcId) }, note }
+}
+
+type Candidate = { id: number; name: string; brand: string | null; servingGrams: number | null; kcal: number | null
+  proteinG: number | null }
+
+/** The duplicate check was unsure which catalogue food, if any, this record is: the agent answers with sameAs. */
+function possibleDuplicates(pointer: Pointer & { kind: "usda" }, source: { name: string; servingGrams?: number
+  kcal?: number; proteinG?: number }, candidates: Candidate[], problem?: string) {
+  return { code: "possible_duplicates", reply: { status: "possible_duplicates" as const, usdaId: pointer.fdcId,
+    record: { name: source.name, servingGrams: source.servingGrams, kcal: source.kcal, proteinG: source.proteinG },
+    candidates, changed: NOTHING,
+    reason: `${problem ? `${problem} ` : ""}Amino's duplicate check couldn't tell whether one of these catalogue foods ` +
+      "is this record's food.",
+    next: `Call add_catalogue_food again with usdaId ${pointer.fdcId} and sameAs: the candidate's id when it is the ` +
+      "same food (same food, variety and state: raw or cooked), or null when none is (a more specific food, such as " +
+      "Pinot Noir among red wines, is not the same). Don't use create_food for it." } }
+}
+
+function notAdded(pointer: Pointer, code: string, reason: string, next: string) {
+  return { code, reply: { status: "unknown" as const,
+    ...(pointer.kind === "barcode" ? { barcode: pointer.gtin } : { usdaId: pointer.fdcId }), changed: NOTHING, reason, next } }
+}
+
+/** What a reply says changed, from the rows recorded. */
+function describeChanges(outcome: Outcome, changes: Awaited<ReturnType<typeof record>>) {
+  if (outcome.created) return "Added to Amino's shared catalogue."
+  const own = changes.find(row => row.foodItemId === outcome.foodId)
+  if (!own?.changes) return "Nothing: Amino's shared catalogue already has this food."
+  const { fields, servingsAdded, barcodesAdded, nutrientsChanged } = own.changes
+  const parts = [servingsAdded.length && `${servingsAdded.length} serving${servingsAdded.length === 1 ? "" : "s"}`,
+    nutrientsChanged.length && `${nutrientsChanged.length} nutrient${nutrientsChanged.length === 1 ? "" : "s"}`,
+    (barcodesAdded.length || "gtin" in fields) && "its barcode",
+    Object.keys(fields).filter(key => !/knownAs|gtin/.test(key)).length && "missing values"].filter(Boolean)
+  return own.action === "superseded" ? "Amino's shared catalogue had an estimate for this food: the source's values " +
+    "replaced it." : `Amino's shared catalogue already has this food; filled in from the source: ${parts.join(", ") ||
+    "its other names"}.`
 }
 
 /** A barcode no database has: its listings name the product, the catalogue is searched by that name, and the barcode
@@ -173,7 +261,8 @@ async function attachByName(db: Db, userId: string, gtin: string, signal: AbortS
   const label = brand && !named.name.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${named.name}` : named.name
   const found = await (deps.search ?? searchFoodsForUser)(userId, label, { mode: "ingredient", db, signal })
   const candidates = found.results.filter(result => result.source === "catalogue" && result.match !== "loose").slice(0, 3)
-  const sources = deps.attach?.() ?? createFoodSources({ userId, messageId: null, signal, discover: () => {}, barcodes: [gtin] }, { db })
+  const sources = deps.attach?.() ?? createFoodSources({ userId, messageId: null, signal, discover: () => {}, barcodes: [gtin],
+    catalogueOnly: true }, { db })
   for (const candidate of candidates) {
     await beforeChange(candidate.id)
     const attached = await sources.attachBarcode(candidate.id, gtin, label)
@@ -182,10 +271,6 @@ async function attachByName(db: Db, userId: string, gtin: string, signal: AbortS
   }
   return null
 }
-
-const unknown = (pointer: Pointer, reason: string) => ({ status: "unknown" as const,
-  ...(pointer.kind === "barcode" ? { barcode: pointer.gtin } : { usdaId: pointer.fdcId }), note: `${reason} Nothing was ` +
-  "added. Search by the product's name, ask the user, or save it as their own food with create_food." })
 
 /** The shared catalogue food made from this USDA record, if there is one. */
 async function usdaFood(db: Db, fdcId: number) {
@@ -206,20 +291,25 @@ async function checkLimits(db: Db, userId: string) {
     throw new McpInputError(`Too many foods added: at most ${ADDS_PER_MINUTE} a minute and ${ADDS_PER_DAY} a day.`)
 }
 
-/** One row per food created or changed, with the agent and, for an existing food, its state before. */
-async function record(db: Db, userId: string, agent: Agent, outcome: { foodId: number; created: boolean
-  sourceKind: string; sourceRef: string }, befores: Map<number, Snapshot | null>) {
-  const base = { userId, clientId: agent.clientId, agentName: agent.name, sourceKind: outcome.sourceKind, sourceRef: outcome.sourceRef }
-  const rows: Record<string, unknown>[] = outcome.created ? [{ ...base, foodItemId: outcome.foodId, action: "created" }] : []
+/** One row per food created or changed, with the agent and, for an existing food, its state before (also when a lookup
+ * failed part way, without an outcome). Returns the rows. */
+async function record(db: Db, userId: string, agent: Agent, outcome: Outcome | null, pointer: Pointer,
+  befores: Map<number, Snapshot | null>) {
+  const base = { userId, clientId: agent.clientId, agentName: agent.name,
+    sourceKind: outcome?.sourceKind ?? (pointer.kind === "usda" ? "USDA" : "OpenFoodFacts"),
+    sourceRef: outcome?.sourceRef ?? (pointer.kind === "usda" ? String(pointer.fdcId) : pointer.gtin) }
+  const rows: { foodItemId: number; action: string; changes?: NonNullable<ReturnType<typeof changesBetween>>["changes"]
+    [key: string]: unknown }[] = outcome?.created ? [{ ...base, foodItemId: outcome.foodId, action: "created" }] : []
   for (const [foodId, before] of befores) {
     const after = before ? await snapshot(db, foodId) : null
     const change = before && after ? changesBetween(before, after) : null
     if (change) rows.push({ ...base, foodItemId: foodId, action: change.action, changes: change.changes, before })
   }
-  if (!rows.length) return
+  if (!rows.length) return rows
   const { error } = await (db as any).from("CatalogueAgentChange").insert(rows)
   if (error) console.error("catalogue_agent_change_not_recorded", { userId, clientId: agent.clientId, foodIds: rows.map(row => row.foodItemId),
     error: error.message })
+  return rows
 }
 
 const enqueueIcon = async (foodId: number) =>

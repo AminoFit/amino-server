@@ -47,7 +47,7 @@ test('a barcode Amino already has is found without asking a source or counting a
   const state={gtins:{[gtin]:15},changes:Array.from({length:60},()=>({}))};
   const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin},{db:fakeDb(state),card,
     barcode:notCalled('barcode lookup'),sources:notCalled('sources')});
-  assert.deepEqual(result.data,{status:'found',food:{id:15}});
+  assert.deepEqual(result.data,{status:'found',food:{id:15},changed:"Nothing: Amino's shared catalogue already has this food."});
   assert.deepEqual(result.targets,[15]);
   assert.equal(state.changes.length,60,'no row written');
 });
@@ -59,7 +59,9 @@ test('a new barcode is added from a database with the web off, and the addition 
     barcode:async(_user,code,opts)=>{options=opts;assert.equal(code,gtin);
       return {status:'found',gtin,foodId:99,created:true,source:{kind:'Online',ref:`off:${gtin}`}}}});
   assert.equal(options.web,false,'an agent\'s digits never go to the web search');
-  assert.deepEqual(result.data,{status:'added',food:{id:99},source:`Open Food Facts ${gtin}`});
+  assert.equal(options.catalogueOnly,true,'the user\'s own food with the barcode is neither returned nor enriched');
+  assert.deepEqual(result.data,{status:'added',food:{id:99},source:`Open Food Facts ${gtin}`,
+    changed:"Added to Amino's shared catalogue."});
   assert.deepEqual(state.changes,[{userId:'u1',clientId:'client-1',agentName:'Claude',sourceKind:'OpenFoodFacts',
     sourceRef:gtin,foodItemId:99,action:'created'}]);
 });
@@ -72,7 +74,8 @@ test('an existing food that a barcode enriches keeps its state before, for repai
       state.foods[15]=food(15,{gtin,lastUpdated:'2026-10-05',Serving:[...food(15).Serving,{id:2,servingName:'bag',servingWeightGram:126}]});
       return {status:'found',gtin,foodId:15,created:false,source:{kind:'USDA',ref:'2345678'}};
     }});
-  assert.deepEqual(result.data,{status:'found',food:{id:15},source:'USDA FoodData Central 2345678'});
+  assert.deepEqual(result.data,{status:'found',food:{id:15},source:'USDA FoodData Central 2345678',
+    changed:"Amino's shared catalogue already has this food; filled in from the source: 1 serving, its barcode."});
   const [row]=state.changes;
   assert.equal(state.changes.length,1);
   assert.equal(row.action,'enriched');
@@ -101,7 +104,9 @@ test('a barcode no database knows adds nothing',async()=>{
     barcode:async()=>({status:'unknown',gtin}),name:async()=>({status:'unknown',gtin})});
   assert.equal(result.data.status,'unknown');
   assert.equal(result.data.barcode,gtin);
-  assert.match(result.data.note,/create_food/);
+  assert.equal(result.data.changed,'Nothing was added or changed.');
+  assert.match(result.data.next,/create_food/);
+  assert.equal(result.code,'no_record','kept on the McpRequest row');
   assert.equal(state.changes.length,0);
 });
 
@@ -109,24 +114,23 @@ test('a USDA id: found when the catalogue has it, else added through the duplica
   const known={usda:{'2345678':40}};
   const found=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:2345678},{db:fakeDb(known),card,
     sources:notCalled('sources')});
-  assert.deepEqual(found.data,{status:'found',food:{id:40}});
+  assert.deepEqual(found.data,{status:'found',food:{id:40},changed:"Nothing: Amino's shared catalogue already has this food."});
 
   const state={},icons=[];
   const added=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:111},{db:fakeDb(state),card,
     enqueueIcon:async id=>icons.push(id),sources:()=>({usdaSource:async id=>[{sourceId:`usda:${id}`}],
       createFoodFromSource:async sourceId=>{assert.equal(sourceId,'usda:111');return {status:'created',foodId:120}}})});
-  assert.deepEqual(added.data,{status:'added',food:{id:120},source:'USDA FoodData Central 111'});
+  assert.deepEqual(added.data,{status:'added',food:{id:120},source:'USDA FoodData Central 111',
+    changed:"Added to Amino's shared catalogue."});
   assert.deepEqual(icons,[120]);
   assert.equal(state.changes[0].action,'created');
   assert.equal(state.changes[0].sourceRef,'111');
 
-  const unsure=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:112},{db:fakeDb({}),card,
-    sources:()=>({usdaSource:async id=>[{sourceId:`usda:${id}`}],createFoodFromSource:async()=>({status:'possible_duplicates',candidates:[]})})});
-  assert.equal(unsure.data.status,'unknown','an unsure duplicate check adds nothing');
   const missing=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:113},{db:fakeDb({}),card,
     sources:()=>({usdaSource:async()=>[],createFoodFromSource:notCalled('createFoodFromSource')})});
   assert.equal(missing.data.status,'unknown');
-  assert.match(missing.data.note,/no usable record/);
+  assert.match(missing.data.reason,/no usable record/);
+  assert.equal(missing.data.changed,'Nothing was added or changed.');
 });
 
 test('limits: 5 changes a minute and 50 a day per user',async()=>{
@@ -225,7 +229,7 @@ test('mistyped digits name another product, which no food is: nothing is attache
     search:async()=>({results:[{id:4356,source:'catalogue',match:'meaning'}]}),
     attach:()=>({async attachBarcode(){return {status:'refused',reason:'not_the_same_product'}}})});
   assert.equal(result.data.status,'unknown');
-  assert.match(result.data.note,/no food in Amino is the product/);
+  assert.match(result.data.reason,/no food in Amino's catalogue is the product/);
   assert.equal(state.changes.length,0);
 });
 
@@ -233,5 +237,68 @@ test('listings that say the barcode is not food',async()=>{
   const result=await addCatalogueFood({},'u1',agent,{kind:'barcode',gtin:fairlife},{db:fakeDb({}),card,
     barcode:unknownInDatabases,name:async()=>({status:'not_food',gtin:fairlife}),search:notCalled('search')});
   assert.equal(result.data.status,'unknown');
-  assert.match(result.data.note,/isn't food/);
+  assert.match(result.data.reason,/isn't food/);
+});
+
+// USDA 174835 (Pinot Noir) on 2026-10-23: the duplicate check leaned to "Wine, Table, Red" at 0.4, and the add came back
+// unknown with nothing the agent could do but create its own copy.
+const pinot={sourceId:'usda:174835',name:'Alcoholic Beverage, Wine, Table, Red, Pinot Noir',servingGrams:100,kcal:82,proteinG:0.07};
+const redWines=[{id:326,name:'red wine',brand:null,servingGrams:147,kcal:124.95,proteinG:0.1},
+  {id:10697,name:'Wine, Table, Red',brand:'',servingGrams:100,kcal:85,proteinG:0.07}];
+const unsureSources=(calls,answer)=>()=>({usdaSource:async()=>[pinot],createFoodFromSource:async(sourceId,sameAs)=>{
+  calls.push([sourceId,sameAs]);
+  return sameAs===undefined?{status:'possible_duplicates',candidates:redWines}:answer(sameAs)}});
+
+test('an unsure duplicate check returns the candidates and changes nothing',async()=>{
+  const state={},calls=[];
+  const result=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835},{db:fakeDb(state),card,
+    sources:unsureSources(calls,notCalled('a second check'))});
+  assert.equal(result.data.status,'possible_duplicates');
+  assert.equal(result.code,'possible_duplicates');
+  assert.deepEqual(result.data.candidates.map(c=>c.id),[326,10697]);
+  assert.equal(result.data.record.name,pinot.name);
+  assert.equal(result.data.changed,'Nothing was added or changed.');
+  assert.match(result.data.next,/sameAs/);
+  assert.deepEqual(calls,[['usda:174835',undefined]]);
+  assert.equal(state.changes.length,0);
+});
+
+test('sameAs answers the check: null adds the record, a candidate is filled in from it',async()=>{
+  const icons=[],calls=[];
+  const none=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835,sameAs:null},{db:fakeDb({}),card,
+    enqueueIcon:async id=>icons.push(id),sources:unsureSources(calls,()=>({status:'created',foodId:15500}))});
+  assert.equal(none.data.status,'added');
+  assert.deepEqual(calls,[['usda:174835',undefined],['usda:174835',null]],'asked again, then answered');
+  assert.deepEqual(icons,[15500]);
+
+  const state={foods:{10697:food(10697)}};
+  const same=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835,sameAs:10697},{db:fakeDb(state),card,
+    sources:beforeChange=>unsureSources([],async foodId=>{await beforeChange(foodId);
+      state.foods[10697]=food(10697,{Nutrient:[...food(10697).Nutrient,{nutrientName:'alcohol',nutrientAmountPerDefaultServing:10.4}]});
+      return {status:'existing',foodId}})()});
+  assert.equal(same.data.status,'found');
+  assert.deepEqual(same.data.food,{id:10697});
+  assert.match(same.data.changed,/filled in from the source: 1 nutrient/);
+  assert.equal(state.changes[0].action,'enriched');
+
+  const wrong=await addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835,sameAs:15420},{db:fakeDb({}),card,
+    sources:unsureSources([],notCalled('an answer that is not a candidate'))});
+  assert.equal(wrong.data.status,'possible_duplicates');
+  assert.match(wrong.data.reason,/sameAs 15420 isn't one of the candidates/);
+});
+
+test('sameAs only goes with a USDA record',()=>{
+  assert.deepEqual(pointerFrom({usdaId:174835,sameAs:null}),{kind:'usda',fdcId:174835,sameAs:null});
+  assert.throws(()=>pointerFrom({barcode:'4809010272010',sameAs:5}),/sameAs answers possible_duplicates/);
+});
+
+test('a lookup that fails says nothing changed and what to do, with its own code',async()=>{
+  const timeout=Object.assign(new Error('The operation timed out.'),{name:'TimeoutError'});
+  await assert.rejects(addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835},{db:fakeDb({}),card,
+    sources:()=>({usdaSource:async()=>{throw timeout},createFoodFromSource:notCalled('createFoodFromSource')})}),
+    error=>error instanceof McpInputError&&error.code==='source_timeout'&&
+      /^Couldn't add the food: USDA didn't answer within 20 s\. Nothing was added or changed\. Try again/.test(error.message));
+  await assert.rejects(addCatalogueFood({},'u1',agent,{kind:'usda',fdcId:174835},{db:fakeDb({}),card,
+    sources:()=>({usdaSource:async()=>[pinot],createFoodFromSource:async()=>{throw new Error('catalogue_unavailable')}})}),
+    error=>error instanceof McpInputError&&error.code==='unavailable'&&/Nothing was added or changed/.test(error.message));
 });

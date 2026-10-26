@@ -45,7 +45,8 @@ Steps:
 Output, using the `search_foods` card shape (id, name, brand, servings, per-100 g and per-serving nutrition, `servingId` for a package barcode):
 - `found`: the food was already in Amino (it may have been enriched).
 - `added`: a new shared food.
-- `unknown`: no source has it, or the duplicate check wasn't sure (`possible_duplicates`, failing closed). The message tells the agent to search by name, ask the user, or use `create_food`.
+- `possible_duplicates` (changed 2026-10-25, was `unknown`): the duplicate check wasn't sure. The reply lists the candidates and the agent calls again with `sameAs` (a candidate, or null for none). USDA Pinot Noir dead-ended here on 2026-10-23 and the agent made a custom copy instead.
+- `unknown`: no source has it. Every reply says what `changed`; one that added nothing gives `reason` and `next`, and its code is kept in McpRequest.errorCode. Only shared foods are compared, returned or enriched (`catalogueOnly`): the user's own foods never are.
 - Invalid input (bad check digit, unrecognised URL, both or neither key) is an input error.
 
 Timeout 20 s. The tool is annotated as a non-destructive write.
@@ -108,7 +109,7 @@ Barcode digits must come from the package or the user, never guessed. Check the 
 - Open Food Facts only: `added`. A record with a different code, or a brand from another company, gives `unknown`.
 - The web lookup is never called (a `deps.web` that throws).
 - A bad check digit is an input error. Unrecognised URLs are refused. Both USDA URL forms and Open Food Facts URLs parse.
-- A USDA id already in the catalogue returns `found`. A new USDA id runs the duplicate check: an existing match is `enriched` (with `before`), and an unsure match is `unknown`.
+- A USDA id already in the catalogue returns `found`. A new USDA id runs the duplicate check: an existing match is `enriched` (with `before`), and an unsure match is `possible_duplicates`, answered with `sameAs`.
 - Limits: the 6th add in a minute and the 51st in a day are refused, and found-only lookups don't count.
 - With the flag off, the tool refuses. With the user's switch off, the tool works.
 - `search_foods` with `scope: "usda"` returns `usdaId`s and creates nothing.

@@ -221,7 +221,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
   /** Called before an existing food is enriched, superseded or given a package barcode (an agent's change keeps its
    * before state for repair). */ beforeChange?:(foodId:number)=>Promise<unknown>;
   /** GTINs decoded by the barcode library from this meal's photos; the only barcodes a source may carry. */
-  barcodes?:string[]},deps:Deps={}) {
+  barcodes?:string[];
+  /** Only shared catalogue foods can be duplicates (an agent adding to the catalogue): the user's own foods are never
+   * matched, enriched or given a barcode by it. */ catalogueOnly?:boolean},deps:Deps={}) {
   let client:ReturnType<typeof createAdminSupabase>|undefined
   const db=()=>client??=deps.db??createAdminSupabase(),embed=deps.embed??getCachedOrFetchEmbeddings
   const sources=new Map<string,SourceFood>()
@@ -230,8 +232,9 @@ export function createFoodSources(ctx:{userId:string;/** The meal being resolved
     return gtin&&(ctx.barcodes??[]).includes(gtin)?gtin:null}
   let counter=0
   // Server reads bypass row security: only catalogue foods and this user's own can be duplicates (not foods shared
-  // with them: those are someone else's).
-  const visible=catalogueOrOwnFilter(ctx.userId)
+  // with them: those are someone else's). A USDA import by an agent matched the user's own "Pinot Noir wine (USDA)",
+  // enriched it and returned it as the catalogue food (2026-10-23), so catalogue adds look at shared foods only.
+  const visible=catalogueOrOwnFilter(ctx.catalogueOnly?null:ctx.userId)
   const remember=(food:SourceFood)=>{food.servings=cleanServings(food.servings);sources.set(food.sourceId,food);return food}
   const summary=(food:SourceFood,label?:SourceFood)=>({sourceId:food.sourceId,kind:food.foodInfoSource,name:food.name,
     brand:food.brand,gtin:food.gtin,servingGrams:food.defaultServingWeightGram,kcal:food.kcal,proteinG:food.proteinG,

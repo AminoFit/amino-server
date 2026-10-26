@@ -60,8 +60,8 @@ export async function addPackageBarcode(db: Db, foodId: number, package_: Packag
 }
 
 /** The food (and, for a package barcode, its package serving) that answers a barcode for this user: their own food
- * first, else the shared catalogue's; the main barcode before a package one. */
-export async function foodForGtin(db: Db, userId: string, gtin: string) {
+ * first, else the shared catalogue's; the main barcode before a package one. Without a user, the catalogue's only. */
+export async function foodForGtin(db: Db, userId: string | null, gtin: string) {
   const visible = catalogueOrOwnFilter(userId)
   const [main, packages] = await Promise.all([
     db.from("FoodItem").select("id,privateToUserId").eq("gtin", gtin).is("archivedAt", null).or(visible)
