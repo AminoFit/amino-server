@@ -106,7 +106,7 @@ Also give "micronutrients": every vitamin and mineral line printed for that serv
 calcium, iron, magnesium, vitamins…) as [{"name","amount","unit"}] with the printed amount and unit, never the %DV.
 Never estimate. Return {"foods":[]} when no page's panel is this product's.`
 
-const DUPLICATE_POLICY=`Decide whether the new food is the SAME food as an existing catalogue food: same identity,
+export const DUPLICATE_POLICY=`Decide whether the new food is the SAME food as an existing catalogue food: same identity,
 brand, flavour, variant, form (for example a drink vs a cup of yogurt, a bar vs a powder) and preparation state
 (dry vs cooked, in oil vs in water, 2% vs whole). Names may differ in language, spelling, word order or punctuation.
 Use the serving units and sizes and the per-100 g energy and protein as evidence: very different values mean a

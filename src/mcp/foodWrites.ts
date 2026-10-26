@@ -7,6 +7,7 @@ import { UserFoodError, archiveUserFood, customFoodInput, getUserFood, recipeInp
 import type { UserDatabase } from "./auth"
 import { McpInputError } from "./meals"
 import { getFood, replacedVersions } from "./foods"
+import { databaseMatch } from "./databaseMatch"
 
 // The user's own foods and recipes, written by agents (2026-10-03-mcp-food-search-and-writes-plan.md, phase 3) through
 // the Foods tab's own functions: the server prices and validates, edits apply going forward (a food already logged gets
@@ -109,12 +110,25 @@ async function existingOwn(userId: string, match: { name?: string; brand?: strin
 
 /** Creates one of the user's own foods. One the user already has (same name and brand, or barcode) is returned instead,
  * so a retried call never makes a second copy. */
-export async function createFood(db: UserDatabase, userId: string, fields: FoodFields) {
+export async function createFood(db: UserDatabase, userId: string, fields: FoodFields,
+  options: { differsFromDatabase?: boolean; match?: typeof databaseMatch } = {}) {
   const input = await Promise.resolve().then(() => toCustomFood(fields)).catch(asInputError)
   const gtin = input.gtin ? normalizeGtin(input.gtin) : null
   const existing = await existingOwn(userId, { name: input.name, brand: input.brand, gtin })
   if (existing) return { created: false, note: "The user already has this food: nothing was created.",
     food: await getFood(db, userId, existing) }
+  // A food the shared catalogue or USDA already has is used or added from there (databaseMatch.ts).
+  const match = options.differsFromDatabase ? null : await (options.match ?? databaseMatch)(userId, { name: input.name,
+    brand: input.brand, gtin, kcal: input.kcal, proteinG: input.proteinG, servingGrams: input.serving.grams })
+  if (match) return { created: false, status: "database_match" as const, changed: "Nothing was created.",
+    match: match.kind === "catalogue" ? { foodId: match.foodId, name: match.name, brand: match.brand, in: "Amino's shared catalogue" }
+      : { usdaId: match.usdaId, name: match.name, brand: match.brand, in: "USDA FoodData Central" },
+    reason: `This looks like the same food as ${match.kind === "catalogue" ? `catalogue food ${match.foodId}` :
+      `USDA record ${match.usdaId}`} (${match.name}), which has its full nutrients and servings.`,
+    next: (match.kind === "catalogue" ? `Log food ${match.foodId} (get_food shows its servings).`
+      : `Add it with add_catalogue_food({ usdaId: ${match.usdaId} }) and log that.`) + " Only if it really is a " +
+      "different food (another product, or the user's label or the restaurant's values differ), call create_food " +
+      "again with differsFromDatabase: true." }
   const saved = await saveCustomFood(userId, null, input).catch(async error => {
     if (error instanceof UserFoodError && error.code === "name_taken") return null
     return asInputError(error)

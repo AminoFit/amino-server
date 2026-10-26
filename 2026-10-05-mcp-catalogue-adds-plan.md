@@ -135,3 +135,7 @@ listings), searches the catalogue by that name, and tries `attachBarcode` on the
 that the named package is exactly that food; a food with another barcode gets it as another package size). Mistyped
 digits name another product, which no food is, so nothing is attached. A new food is still never created from the web
 for an agent. Recorded as `sourceKind` `BarcodeName` (20261014110000).
+
+## create_food checks the databases first (2026-10-25)
+
+create_food asks the shared catalogue and USDA whether they already have the food (src/mcp/databaseMatch.ts: the meal agent's duplicate policy, Jev at 0.9 or more, same brand or both unbranded; a barcode the catalogue has decides outright). A match is returned as `database_match` with what to do instead, and nothing is created; `differsFromDatabase: true` overrides it. If the check can't answer, the food is created. On 16 foods agents created in October it named 5 (Pinot Noir and challah from USDA, three branded foods the catalogue had) and left every restaurant dish and estimate alone.

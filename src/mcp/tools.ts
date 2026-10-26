@@ -44,7 +44,8 @@ nutrition), daily totals, goals and body stats, and can update the goals and bod
   usdaId), or give a product's barcode (from the package or the user, never a guess) or a USDA or Open Food Facts page;
   (3) create_food, only for foods no database has (homemade food, a label the user reads out). Never copy a database
   record into create_food: the user's copy loses the record's servings and vitamins and minerals, and nobody else gets
-  it. Check the name and brand add_catalogue_food returns are the food the user means.
+  it (create_food answers \`database_match\` with the food to use instead). Check the name and brand
+  add_catalogue_food returns are the food the user means.
 - add_catalogue_food only adds to or returns Amino's shared catalogue; it never returns or changes the user's own foods.
   Its \`changed\` says what it did. \`possible_duplicates\` means it wasn't sure whether a catalogue food is the
   same: answer with sameAs (a candidate's id, or null when none is) rather than creating the food yourself. If the user
@@ -328,13 +329,17 @@ export function registerAminoTools(server: McpServer) {
     description: "Add a food to the user's own foods (private to them). Use it only when search_foods has nothing that " +
       "is the same food and no database has it for add_catalogue_food (a USDA record, barcode or page): homemade food, " +
       "a label the user reads out. Energy and macros are for `serving` (e.g. 1 bar = 45 g, as the label says); give " +
-      "every other nutrient the label or source lists in `nutrients`. If the user already has this food (same name and brand, or barcode), nothing is created and " +
+      "every other nutrient the label or source lists in `nutrients`. A food the shared catalogue or USDA already has " +
+      "isn't created: the reply names it (`database_match`) to use instead. If the user already has this food (same name and brand, or barcode), nothing is created and " +
       "the existing one is returned. Returns the food as get_food shows it. Needs the user's \"Let agents make changes\" " +
       "setting.",
-    inputSchema: z.object(foodFields),
+    inputSchema: z.object({ ...foodFields, differsFromDatabase: z.boolean().optional()
+      .describe("Only after create_food named a database match: true when that match is a different food") }),
     annotations: CREATE
-  }, (fields, ctx) => run("create_food", ctx.http?.authInfo, async ({ db, userId }) =>
-    ({ data: await createFood(db, userId, fields), rows: 1 })))
+  }, ({ differsFromDatabase, ...fields }, ctx) => run("create_food", ctx.http?.authInfo, async ({ db, userId }) => {
+    const data = await createFood(db, userId, fields, { differsFromDatabase })
+    return { data, rows: "food" in data ? 1 : 0, ...("status" in data ? { code: data.status } : {}) }
+  }))
 
   server.registerTool("create_recipe", {
     title: "Create my recipe",
