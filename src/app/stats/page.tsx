@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
-import { SignedOut, loadDashboard } from "@/app/dashboard/_lib/data"
+import { SignedOut, loadDashboard, loadWeight } from "@/app/dashboard/_lib/data"
 import type { Dashboard } from "@/app/dashboard/_lib/types"
+import type { WeightData } from "@/app/dashboard/_lib/weight"
 import { StatsView } from "@/app/dashboard/_components/StatsPanel"
 
-// Trends from the last 12 weeks of the log. Server-rendered: every day in the charts links to its log.
+// Trends from the last 12 weeks of the log, and the weight trend and expenditure. Server-rendered: every day in the
+// calorie charts links to its log.
 export const dynamic = "force-dynamic"
 
 export default async function StatsPage() {
@@ -19,5 +21,10 @@ export default async function StatsPage() {
     if (error instanceof SignedOut) redirect(`${signIn}&session=expired`)
     throw error
   }
-  return <StatsView data={data} />
+  // Weight is a card of its own: if it fails, the rest of the page still shows.
+  const weight: WeightData | null = await loadWeight(session.user.id, data.today).catch(error => {
+    console.error("stats_weight_failed", error)
+    return null
+  })
+  return <StatsView data={data} weight={weight} />
 }

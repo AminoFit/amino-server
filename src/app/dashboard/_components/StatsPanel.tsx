@@ -2,9 +2,12 @@ import { FireIcon } from "@heroicons/react/20/solid"
 import type { Dashboard } from "../_lib/types"
 import { format, shiftDay } from "../_lib/dates"
 import { MACROS, averages, goalsOn, heatmap, number, targetDays, titleCase, type GoalsOn, type HeatCell } from "../_lib/stats"
+import { shownWeight, signedWeight, smoothedSeries, weightUnit, type WeightData } from "../_lib/weight"
+import { ExpenditureChart, WeightChart } from "./WeightCharts"
 
-// The Stats page, from the last 12 weeks: streak and averages, days on target, calories per day, a calendar of
-// calories against the goal, the average day against the goals, and the foods logged most. Days link to the log.
+// The Stats page, from the last 12 weeks: streak and averages, days on target, the weight trend and expenditure (as the
+// app's Weight history and Expenditure pages show them), calories per day, a calendar of calories against the goal, the
+// average day against the goals, and the foods logged most. Days link to the log.
 
 export function Card({ title, subtitle, children, className = "", style }: { title: string; subtitle?: string;
   children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
@@ -85,6 +88,98 @@ function Overview({ data }: { data: Dashboard }) {
           })}
         </ul>
       </div>
+    </Card>
+  )
+}
+
+const pluralize = (count: number, one: string, other = `${one}s`) => `${number(count)} ${count === 1 ? one : other}`
+
+function Big({ label, value, unit }: { label: string; value: string; unit: string }) {
+  return (
+    <div>
+      <p className="text-xs text-app-muted">{label}</p>
+      <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-tight tracking-tight">{value}
+        <span className="text-xs font-normal text-app-muted"> {unit}</span></p>
+    </div>
+  )
+}
+
+/** The weight trend over 30 days: the trend now, its change, how far the goal is, and the chart with the goal line. */
+function WeightTrend({ weight }: { weight: WeightData | null }) {
+  const days = weight?.days ?? []
+  const first = days[0], last = days[days.length - 1]
+  const unit = weight?.unit, kg = weightUnit(unit)
+  return (
+    <Card title="Weight trend" subtitle="Last 30 days" className="app-rise" style={delay(70)}>
+      {!weight ? (
+        <p className="py-10 text-center text-sm text-app-muted">Couldn&apos;t load your weight. Reload the page to try again.</p>
+      ) : !last ? (
+        <div className="py-10 text-center">
+          <p className="font-medium">No weigh-ins yet</p>
+          <p className="mt-1 text-sm text-app-muted">Connect Apple Health in the Amino app, or tell a connected agent your weight.</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <Big label="Trend" value={shownWeight(last.trendKg, unit)} unit={kg} />
+            <Big label="In 30 days" value={first && first.day === weight.from ? signedWeight(last.trendKg - first.trendKg, unit) : "–"} unit={kg} />
+            {weight.goalKg != null && <Big label="To goal" value={signedWeight(weight.goalKg - last.trendKg, unit)} unit={kg} />}
+          </div>
+          <div className="mt-2"><WeightChart days={days} unit={unit} goalKg={weight.goalKg} /></div>
+          <div className="mt-1.5 flex justify-between text-[11px] text-app-muted">
+            <span>{format(days[0].day, { month: "short", day: "numeric" })}</span><span>Today</span>
+          </div>
+          <p className="mt-3 text-xs text-app-muted">Dots are weigh-ins; the line is the trend, which smooths out day-to-day water.</p>
+        </>
+      )}
+    </Card>
+  )
+}
+
+/** Estimated expenditure: the latest estimate with its likely range, the 7-day average of the daily estimates with the
+ * band, and what the estimate rests on, or what's still missing for one. */
+function Expenditure({ weight }: { weight: WeightData | null }) {
+  const estimate = weight?.estimate
+  const kcal = estimate?.kcalPerDay, plusMinus = estimate?.plusMinus ?? 0
+  const missing = estimate?.insufficient
+  const points = smoothedSeries(weight?.history ?? [])
+  const still = missing ? [missing.weighInsNeeded ? pluralize(missing.weighInsNeeded, "more weigh-in") : null,
+    missing.completeDaysNeeded ? pluralize(missing.completeDaysNeeded, "more logged day") : null].filter(Boolean).join(" and ") : null
+  return (
+    <Card title="Expenditure" subtitle="Estimate, last 28 days" className="app-rise" style={delay(90)}>
+      {!weight ? (
+        <p className="py-10 text-center text-sm text-app-muted">Couldn&apos;t load your expenditure. Reload the page to try again.</p>
+      ) : (
+        <>
+          <p className="text-[26px] font-semibold tabular-nums leading-tight tracking-tight">{kcal != null ? number(kcal) : "–"}
+            <span className="text-xs font-normal text-app-muted"> kcal a day</span></p>
+          <p className="mt-0.5 text-[13px] tabular-nums text-app-muted">
+            {kcal != null ? `± ${number(plusMinus)} · likely between ${number(kcal - plusMinus)} and ${number(kcal + plusMinus)}` : "Not enough data yet"}
+          </p>
+          {points.length ? (
+            <div className="mt-2"><ExpenditureChart points={points} from={weight.expenditureFrom} to={weight.expenditureTo} /></div>
+          ) : (
+            <p className="flex h-40 items-center justify-center px-6 text-center text-sm text-app-muted">
+              {missing ? "Your expenditure appears here once 28 days have enough weigh-ins and logged food." : "No estimates in the last 30 days."}
+            </p>
+          )}
+          {still && <p className="mt-3 rounded-xl bg-app-text/[0.04] px-3 py-2.5 text-sm text-app-muted">Still needed in the last 28 days: {still}.</p>}
+          {kcal != null && (
+            <dl className="mt-3 space-y-1.5 text-[13px]">
+              <div className="flex justify-between gap-3"><dt>Eaten, on average</dt>
+                <dd className="tabular-nums text-app-muted">{estimate?.meanIntakeKcal != null ? `${number(estimate.meanIntakeKcal)} kcal a day` : "–"}</dd></div>
+              <div className="flex justify-between gap-3"><dt>Weight trend</dt>
+                <dd className="tabular-nums text-app-muted">{estimate?.trendKgPerWeek != null ? `${signedWeight(estimate.trendKgPerWeek, weight.unit)} ${weightUnit(weight.unit)} a week` : "–"}</dd></div>
+              <div className="flex justify-between gap-3"><dt>Days counted</dt>
+                <dd className="text-right tabular-nums text-app-muted">{pluralize(estimate?.loggedDays ?? estimate?.completeDays ?? 0, "logged day")} · {pluralize(estimate?.weighings ?? 0, "weigh-in")}</dd></div>
+            </dl>
+          )}
+          <p className="mt-3 text-xs text-app-muted">
+            Each estimate comes from 28 days of weigh-ins and the food you logged. The line is the average of the last 7 days&apos;
+            estimates; the band is the likely range, about a 2-in-3 chance.
+          </p>
+        </>
+      )}
     </Card>
   )
 }
@@ -216,12 +311,15 @@ function TopFoods({ data }: { data: Dashboard }) {
   )
 }
 
-export function StatsView({ data }: { data: Dashboard }) {
+/** `weight` is null when it couldn't be loaded: its cards say so and the rest of the page still shows. */
+export function StatsView({ data, weight }: { data: Dashboard; weight: WeightData | null }) {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:pt-8">
       <h1 className="app-rise mb-4 px-1 text-2xl font-semibold tracking-tight sm:text-3xl">Stats</h1>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Overview data={data} />
+        <WeightTrend weight={weight} />
+        <Expenditure weight={weight} />
         <CaloriesChart data={data} />
         <Calendar data={data} />
         <AverageDay data={data} />

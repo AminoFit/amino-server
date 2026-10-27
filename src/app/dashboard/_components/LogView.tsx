@@ -7,7 +7,7 @@ import type { Dashboard, DayTotals, DayWithWeek } from "../_lib/types"
 import { dayTitle, format, isDay, shiftDay, weekOf } from "../_lib/dates"
 import { dayTotals, goalsOn, number, type GoalsOn } from "../_lib/stats"
 import { DayRing } from "./DayRing"
-import { GoalBars } from "./GoalBars"
+import { DayBars } from "./DayBars"
 import { MealCard } from "./MealCard"
 
 // The web log: pick a day (arrows, the week strip, the calendar, or ← → and T on the keyboard) and see its goals and
@@ -105,6 +105,8 @@ export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: n
   const meals = shown.day.meals
   const totals = dayTotals(meals)
   const mealCount = meals.filter(meal => meal.items.length).length
+  // The day's latest meal of several foods starts open, as in the app; the others start closed.
+  const latestMeal = meals.findLast(meal => meal.items.length > 1)?.id
   const firstShow = direction === null
   const slide = direction === "right" ? "app-from-right" : direction === "left" ? "app-from-left" : ""
 
@@ -137,7 +139,7 @@ export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: n
             </div>
             <div className="mt-3 sm:mt-5"><WeekStrip day={day} today={today} kcalByDay={kcalByDay} goalsOnDay={goalsOnDay} onPick={go} /></div>
             <div className={`mt-3 sm:mt-5 transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
-              <GoalBars totals={totals} goals={goalsOnDay(day)} />
+              <DayBars totals={totals} goals={goalsOnDay(day)} />
               {totals.fiberG > 0 && <p className="mt-2.5 px-1 text-xs text-app-muted">{number(totals.fiberG, 1)} g fibre</p>}
             </div>
           </section>
@@ -149,7 +151,7 @@ export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: n
             </p>
           </div>
 
-          <div key={shown.day.date} className={`space-y-3 transition-opacity duration-200 ${loading ? "opacity-50" : ""} ${slide}`} aria-busy={loading}>
+          <div key={shown.day.date} className={`space-y-2 transition-opacity duration-200 ${loading ? "opacity-50" : ""} ${slide}`} aria-busy={loading}>
             {query.isError && !loading && shown.day.date !== day ? (
               <div className="rounded-3xl border border-app-border/70 bg-app-card px-6 py-10 text-center">
                 <p className="text-sm text-app-muted">This day couldn&apos;t be loaded.</p>
@@ -161,7 +163,7 @@ export function LogView({ initial, loadedAt }: { initial: Dashboard; loadedAt: n
                 <p className="mt-1 text-sm text-app-muted">Meals you log in the Amino app show up here.</p>
               </div>
             ) : meals.map((meal, index) => (
-              <MealCard key={meal.id} meal={meal} className={firstShow ? "app-rise" : ""}
+              <MealCard key={meal.id} meal={meal} startsOpen={meal.id === latestMeal} className={firstShow ? "app-rise" : ""}
                 style={firstShow ? { "--delay": `${120 + Math.min(index, 8) * 50}ms` } as React.CSSProperties : undefined} />
             ))}
           </div>

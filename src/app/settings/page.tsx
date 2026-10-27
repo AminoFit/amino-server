@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { THEME_COOKIE, themeFrom } from "@/utils/appTheme"
 import { loadAgents } from "@/app/dashboard/_lib/data"
 import { MACROS, initials, number } from "@/app/dashboard/_lib/stats"
+import { shownWeight, weightUnit, type UnitPreference } from "@/app/dashboard/_lib/weight"
 import { dayIn } from "@/app/admin/_lib/format"
 import { AgentsPanel } from "@/app/dashboard/_components/AgentsPanel"
 import { Card } from "@/app/dashboard/_components/StatsPanel"
@@ -16,7 +17,7 @@ import { logout } from "@/app/login/actions"
 export const dynamic = "force-dynamic"
 
 const GOAL_COLUMNS = { kcal: "calorieGoal", carbG: "carbsGoal", proteinG: "proteinGoal", totalFatG: "fatGoal" } as const
-const GOAL_TEXT = { kcal: "text-app-kcal", carbG: "text-app-carb", proteinG: "text-app-protein", totalFatG: "text-app-fat" }
+const GOAL_TEXT = { kcal: "text-app-kcal", proteinG: "text-app-protein", carbG: "text-app-carb", totalFatG: "text-app-fat" }
 
 export default async function SettingsPage() {
   const supabase = createClient()
@@ -24,12 +25,14 @@ export default async function SettingsPage() {
   if (!session) redirect("/login?next=/settings")
 
   const [profile, agents] = await Promise.all([
-    supabase.from("User").select("fullName, email, tzIdentifier, calorieGoal, proteinGoal, carbsGoal, fatGoal").eq("id", session.user.id)
+    supabase.from("User").select("fullName, email, tzIdentifier, calorieGoal, proteinGoal, carbsGoal, fatGoal, goalWeightKg, unitPreference").eq("id", session.user.id)
       .maybeSingle().then(({ data }) => data),
     loadAgents(session.access_token).catch(error => { console.error("settings_agents_failed", error); return null })
   ])
   const name = profile?.fullName ?? undefined
   const email = profile?.email ?? session.user.email ?? undefined
+  const unit = profile?.unitPreference as UnitPreference
+  const goalWeight = profile?.goalWeightKg != null ? Number(profile.goalWeightKg) : null
   // The agents' daily calls are counted in the user's time zone.
   let today = new Date().toISOString().slice(0, 10)
   try { today = dayIn(new Date(), profile?.tzIdentifier ?? "UTC") } catch {}
@@ -72,6 +75,12 @@ export default async function SettingsPage() {
               )
             })}
           </dl>
+          <div className="mt-3 flex items-baseline justify-between gap-3 rounded-xl bg-app-text/[0.04] px-3 py-2.5 sm:rounded-2xl">
+            <span className="text-sm text-app-muted">Goal weight</span>
+            <span className="text-sm font-semibold tabular-nums">
+              {goalWeight != null ? <>{shownWeight(goalWeight, unit)}<span className="ml-1 font-normal text-app-muted">{weightUnit(unit)}</span></> : "Not set"}
+            </span>
+          </div>
         </Card>
 
         <Card title="Appearance" subtitle="For this browser." className="app-rise" style={{ "--delay": "120ms" } as React.CSSProperties}>

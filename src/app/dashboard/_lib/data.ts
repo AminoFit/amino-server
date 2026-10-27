@@ -3,6 +3,7 @@ import { createAdminSupabase } from "@/utils/supabase/serverAdmin"
 import { listGrants } from "@/utils/supabase/oauthServer"
 import type { Agent, AgentUsage, Dashboard, Day, DayTotals, DayWithWeek, GoalChange, Goals } from "./types"
 import { shiftDay, weekStart } from "./dates"
+import type { ExpenditureEstimate, ExpenditurePoint, UnitPreference, WeightData, WeightDay } from "./weight"
 
 // Reads for the dashboard, as the signed-in user: the web_* functions check auth.uid() themselves, so a missing or
 // expired session fails the call rather than returning someone else's rows.
@@ -75,4 +76,30 @@ export async function loadAgents(accessToken: string): Promise<Agent[]> {
   const byClient = new Map(usage.map(row => [row.clientId, row]))
   return grants.map(grant => ({ ...grant.client, grantedAt: grant.grantedAt, usage: byClient.get(grant.client.id) ?? null }))
     .sort((a, b) => (b.usage?.lastUsedAt ?? b.grantedAt).localeCompare(a.usage?.lastUsedAt ?? a.grantedAt))
+}
+
+/** Weight and expenditure for /stats: the trend over the 31 days ending today (so the change spans 30), the estimate
+ * from the last 28 days and the daily estimates over the 30 days ending yesterday, with the goal weight and units. The
+ * server functions check auth.uid() themselves (weight_trend, energy_expenditure, energy_expenditure_history). */
+export async function loadWeight(userId: string, today: string): Promise<WeightData> {
+  const db = createClient()
+  const from = shiftDay(today, -30), yesterday = shiftDay(today, -1), expenditureFrom = shiftDay(yesterday, -29)
+  const [profile, days, estimate, history] = await Promise.all([
+    (db as any).from("User").select("goalWeightKg, unitPreference").eq("id", userId).maybeSingle()
+      .then(({ data, error }: { data: { goalWeightKg: number | string | null; unitPreference: string | null } | null; error: { message: string } | null }) => {
+        if (error) throw new Error(`User: ${error.message}`)
+        return data
+      }),
+    call<WeightDay[]>(db, "weight_trend", { p_from: from, p_to: today }),
+    call<ExpenditureEstimate | null>(db, "energy_expenditure", { p_days: 28 }),
+    call<ExpenditurePoint[] | null>(db, "energy_expenditure_history", { p_from: expenditureFrom, p_to: yesterday, p_step: 1, p_days: 28 })
+  ])
+  const toNumber = (value: unknown) => value == null ? null : Number(value)
+  return {
+    unit: (profile?.unitPreference ?? "METRIC") as UnitPreference,
+    goalKg: toNumber(profile?.goalWeightKg),
+    days: (days ?? []).map(day => ({ day: day.day, weightKg: toNumber(day.weightKg), bodyFatPct: toNumber(day.bodyFatPct),
+      trendKg: Number(day.trendKg) })),
+    from, expenditureFrom, expenditureTo: yesterday, estimate, history: history ?? []
+  }
 }

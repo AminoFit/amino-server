@@ -3,11 +3,13 @@ import { shiftDay, weekStart } from "./dates"
 
 export type MacroKey = keyof Goals
 
+// Calories, protein, carbs, fat: the app's order (amino-mobile common/nutrition/macros.ts). Every pill, bar and goal
+// takes its order from here. `short` is the word in a pill or bar ("30 Pro", "90 / 217 Carb").
 export const MACROS: { key: MacroKey; label: string; short: string; unit: string }[] = [
-  { key: "kcal", label: "Calories", short: "cal", unit: "kcal" },
-  { key: "carbG", label: "Carbs", short: "carb", unit: "g" },
-  { key: "proteinG", label: "Protein", short: "pro", unit: "g" },
-  { key: "totalFatG", label: "Fat", short: "fat", unit: "g" }
+  { key: "kcal", label: "Calories", short: "Calories", unit: "kcal" },
+  { key: "proteinG", label: "Protein", short: "Pro", unit: "g" },
+  { key: "carbG", label: "Carbs", short: "Carb", unit: "g" },
+  { key: "totalFatG", label: "Fat", short: "Fat", unit: "g" }
 ]
 
 export type Totals = Record<MacroKey | "fiberG", number>
@@ -84,8 +86,8 @@ export const number = (value: number, digits = 0) =>
 /** "Greek yogurt, plain" → "Greek Yogurt, Plain", as the app shows food names. */
 export const titleCase = (text: string) => text.replace(/(^|[\s(/-])(\p{Ll})/gu, (_, before, letter) => before + letter.toUpperCase())
 
-// Serving text as the app shows it (amino-mobile common/foodPortions.ts formatPortion and FoodItemRow's
-// formatServingAmount): "150g", "2 Bottle (660g)", "2 × 240 mL (480g)".
+// An amount as the app's log shows it (amino-mobile common/amount/amount.ts quantityText and withWeight): "150 g",
+// "2 Bottle · 660 g", "2 × 240 mL · 480 g".
 const MEASURES: Record<string, string> = {
   ml: "mL", l: "L", g: "g", kg: "kg", mg: "mg", oz: "oz", oza: "fl oz", floz: "fl oz", lb: "lb", lbs: "lb",
   onz: "oz", grm: "g", mlt: "mL", ltr: "L", kgm: "kg", mgm: "mg", lbr: "lb", tbsp: "tbsp", tsp: "tsp", cup: "cup", cups: "cups"
@@ -100,7 +102,7 @@ const servingName = (name: string) => name.trim().split(/\s+/).map(word => {
 }).join(" ").replace(/\bfl\.? oz\b/gi, "fl oz")
 
 function portion(amount: number, rawUnit: string) {
-  const shown = Number(amount.toFixed(2)).toString()
+  const shown = number(amount, 2)
   const unit = rawUnit.trim().replace(/^\.(\d)/, "0.$1")
   const match = unit.match(LEADING_QUANTITY)
   if (!match || !match[2]) return `${shown} ${servingName(unit)}`
@@ -108,11 +110,14 @@ function portion(amount: number, rawUnit: string) {
   return amount === 1 ? servingName(unit) : `${shown} × ${servingName(unit)}`
 }
 
-export function serving(item: FoodRow) {
-  const unit = item.unit?.toLowerCase() ?? ""
-  const grams = item.grams ?? 0
-  if (!unit || unit === "g" || unit === "gram" || unit === "grams") return `${grams.toFixed(0)}g`
-  return `${portion(item.amount ?? 0, item.unit!)} (${grams.toFixed(0)}g)`
+const sameText = (a: string, b: string) => a.replace(/[\s,]/g, "").toLowerCase() === b.replace(/[\s,]/g, "").toLowerCase()
+
+export function amountText(item: FoodRow) {
+  const unit = item.unit?.trim() ?? ""
+  const weight = item.grams ? `${number(item.grams, 1)} g` : null
+  const amount = unit && !/^(g|grams?)\.?$/i.test(unit) && item.amount ? portion(item.amount, unit) : null
+  if (!amount) return weight
+  return !weight || sameText(amount, weight) ? amount : `${amount} · ${weight}`
 }
 
 /** "13:05" → "1:05 PM". */
