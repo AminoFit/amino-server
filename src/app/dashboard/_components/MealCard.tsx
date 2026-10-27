@@ -4,7 +4,7 @@ import { useId, useState } from "react"
 import { ChevronDownIcon, ExclamationTriangleIcon, FireIcon } from "@heroicons/react/20/solid"
 import type { FoodRow, Meal } from "../_lib/types"
 import { MACROS, amountText, clock, number, sumItems, titleCase, type MacroKey } from "../_lib/stats"
-import { biggestFoods, mealTitle, mealWords } from "../_lib/meal"
+import { biggestFoods, mealTitle, mealWords, pendingTitle } from "../_lib/meal"
 import { macroText } from "./DayBars"
 
 // A meal as the app's log shows it (amino-mobile components/FoodLog/MealCard.tsx and FoodItemRow.tsx MealFoodRowBody),
@@ -104,7 +104,7 @@ function PendingMeal({ meal }: { meal: Meal }) {
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-start gap-2">
           <p className="min-w-0 flex-1 truncate text-[15px] font-medium leading-snug">
-            {said ?? (meal.input === "photo" ? "Photo" : "Meal")}
+            {said ?? pendingTitle(meal)}
           </p>
           <TimeChip time={meal.time} />
         </div>

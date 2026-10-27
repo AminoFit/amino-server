@@ -2,7 +2,7 @@ require('ts-node/register/transpile-only');
 require('tsconfig-paths/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {mealTitle,mealWords,biggestFoods}=require('../src/app/dashboard/_lib/meal.ts');
+const {mealTitle,mealWords,biggestFoods,pendingTitle}=require('../src/app/dashboard/_lib/meal.ts');
 const {MACROS,amountText}=require('../src/app/dashboard/_lib/stats.ts');
 const {smoothedSeries,runs,signedWeight,shownWeight}=require('../src/app/dashboard/_lib/weight.ts');
 
@@ -27,6 +27,13 @@ test('the words under a meal are what the user said, never an Add Food list of i
   assert.equal(mealWords(meal({items,text:'banana and apples after the gym'})),'banana and apples after the gym');
   assert.equal(mealWords(meal({items,text:'two eggs [barcode:0123456789012] and toast'})),'two eggs and toast');
   assert.equal(mealWords(meal({items:[],text:'Small donut'})),'Small donut');
+});
+
+test('a meal still being worked out is named by its scans, as in the app',()=>{
+  assert.equal(pendingTitle(meal({text:'[barcode:0123456789012]',status:'processing'})),'Scanned product');
+  assert.equal(pendingTitle(meal({text:'[barcode:123456789012] [barcode:0123456789012] [barcode:5000112637922]'})),'2 scanned products');
+  assert.equal(pendingTitle(meal({input:'photo'})),'Photo');
+  assert.equal(pendingTitle(meal({})),'Meal');
 });
 
 test('amounts read as in the app: the serving, then its weight',()=>{

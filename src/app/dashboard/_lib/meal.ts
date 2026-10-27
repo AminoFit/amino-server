@@ -21,6 +21,14 @@ export function mealTitle(items: readonly FoodRow[]): string {
 const CHIP = /\[barcode:\s*(\d{6,14})\]/gi
 const words = (text: string | undefined) => (text ?? "").replace(CHIP, " ").replace(/\s+/g, " ").trim()
 
+/** What a meal without words or foods yet is called: its scans ("Scanned product", "3 scanned products"), else how it
+ * was logged. */
+export function pendingTitle(meal: Meal): string {
+  const scans = new Set([...(meal.text ?? "").matchAll(CHIP)].map(match => match[1].replace(/^0+/, ""))).size
+  if (scans) return scans === 1 ? "Scanned product" : `${scans} scanned products`
+  return meal.input === "photo" ? "Photo" : "Meal"
+}
+
 /** An Add Food entry's text only lists its foods ("Banana (1 large), Peeled Apples (57 g)"): every comma-separated part
  * is one of the meal's own foods, by name, with or without its amount. */
 function listsOwnFoods(text: string, items: readonly FoodRow[]) {
