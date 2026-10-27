@@ -2,7 +2,7 @@ require('ts-node/register/transpile-only');
 require('tsconfig-paths/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {mealTitle,mealSubline,agentNote,biggestFoods}=require('../src/app/dashboard/_lib/meal.ts');
+const {mealTitle,mealWords,biggestFoods}=require('../src/app/dashboard/_lib/meal.ts');
 const {MACROS,amountText}=require('../src/app/dashboard/_lib/stats.ts');
 const {smoothedSeries,runs,signedWeight,shownWeight}=require('../src/app/dashboard/_lib/weight.ts');
 
@@ -20,13 +20,13 @@ test('a meal is titled by its two biggest foods and how many more',()=>{
   assert.deepEqual(biggestFoods(items,4).map(item=>item.id),[2,1,4,3]);
 });
 
-test('the subline says who logged a meal, else the words, never an Add Food list',()=>{
-  assert.deepEqual(mealSubline(meal({agent:'ChatGPT',text:'Estimated from the photo'})),{kind:'loggedBy',text:'Logged by ChatGPT'});
-  assert.deepEqual(mealSubline(meal({loggedBy:'Sam',agent:'Claude'})),{kind:'loggedBy',text:'Logged by Sam via Claude'});
-  assert.equal(mealSubline(meal({listsFoods:true,text:'Banana (1 large)'})),null);
-  assert.deepEqual(mealSubline(meal({text:'two eggs [barcode:0123456789012] and toast'})),{kind:'said',text:'two eggs and toast'});
-  assert.equal(agentNote(meal({agent:'ChatGPT',text:'Estimated from the photo'})),'Estimated from the photo');
-  assert.equal(agentNote(meal({text:'two eggs'})),null);
+test('the words under a meal are what the user said, never an Add Food list of its foods',()=>{
+  const items=[food(1,'chiquita banana',210),food(2,'Peeled Apples',45)];
+  assert.equal(mealWords(meal({items,text:'chiquita banana (2 medium (7" to 7-7/8" long)), Peeled Apples (57 g)'})),null);
+  assert.equal(mealWords(meal({items,text:'Peeled Apples'})),null);
+  assert.equal(mealWords(meal({items,text:'banana and apples after the gym'})),'banana and apples after the gym');
+  assert.equal(mealWords(meal({items,text:'two eggs [barcode:0123456789012] and toast'})),'two eggs and toast');
+  assert.equal(mealWords(meal({items:[],text:'Small donut'})),'Small donut');
 });
 
 test('amounts read as in the app: the serving, then its weight',()=>{

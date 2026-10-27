@@ -1,22 +1,21 @@
 "use client"
 
 import { useId, useState } from "react"
-import { ChevronDownIcon, ExclamationTriangleIcon, FireIcon, SparklesIcon } from "@heroicons/react/20/solid"
+import { ChevronDownIcon, ExclamationTriangleIcon, FireIcon } from "@heroicons/react/20/solid"
 import type { FoodRow, Meal } from "../_lib/types"
-import { MACROS, amountText, clock, initials, number, sumItems, titleCase, type MacroKey } from "../_lib/stats"
-import { agentNote, biggestFoods, mealSubline, mealTitle } from "../_lib/meal"
+import { MACROS, amountText, clock, number, sumItems, titleCase, type MacroKey } from "../_lib/stats"
+import { biggestFoods, mealTitle, mealWords } from "../_lib/meal"
 import { macroText } from "./DayBars"
 
 // A meal as the app's log shows it (amino-mobile components/FoodLog/MealCard.tsx and FoodItemRow.tsx MealFoodRowBody),
 // on one grid for meals and foods: the card's padding, the icon column and the gap after it, so names, time chips and
 // pills line up down the log. A meal of several foods is a header (a plate of its biggest foods, a title from them, the
-// time, who logged it or the user's words, its totals) that opens to its foods; a meal of one food is just its row.
+// time, the user's words, its totals) that opens to its foods; a meal of one food is just its row. Who logged a meal
+// (an agent, someone linked) isn't shown yet: web_day doesn't return it.
 
 /** The log's grid: 12 px padding, a 46 px icon column, a 12 px gap. */
 const ROW = "flex gap-3 px-3 py-2.5"
 const ICON_BOX = "grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[10px] bg-app-text/10"
-/** The content column, for an open meal's extras under its foods' names. */
-const CONTENT_INSET = "pl-[70px] pr-3"
 const PLATE_ICONS = 4
 /** Opening and closing: quick and flat, no spring (the app's MEAL_OPEN_TIMING). */
 const OPEN_EASE = "duration-[260ms] ease-[cubic-bezier(0.2,0,0,1)]"
@@ -48,17 +47,6 @@ function TimeChip({ time }: { time: string }) {
   return <span className="shrink-0 rounded-[10px] bg-app-text/10 px-1.5 py-0.5 text-xs tabular-nums text-app-text/80">{clock(time)}</span>
 }
 
-/** Who logged a meal: a linked person's initials, or an agent's sparkles. */
-function LoggedByBadge({ meal }: { meal: Meal }) {
-  if (meal.loggedBy) return (
-    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-app-primary text-[8px] font-semibold text-white" aria-hidden>
-      {initials(meal.loggedBy)}
-    </span>
-  )
-  if (meal.agent) return <SparklesIcon className="h-3.5 w-3.5 shrink-0 text-app-text/80" aria-hidden />
-  return null
-}
-
 /** The meal's photos, small, each opening full size. */
 function Photos({ meal }: { meal: Meal }) {
   if (!meal.photos?.length) return null
@@ -80,8 +68,8 @@ function FoodIcon({ item, size }: { item: FoodRow; size: number }) {
   return size > 24 ? <span className="text-base font-semibold text-app-muted">{item.name?.[0]?.toUpperCase() ?? "?"}</span> : null
 }
 
-/** A food's row: the icon, the name (with a one-food meal's time chip at the top right), the brand and amount (after
- * who logged a one-food meal), and the pill. Inside an open meal it sits a shade deeper than the meal's card. */
+/** A food's row: the icon, the name (with a one-food meal's time chip at the top right), the brand and amount, and
+ * the pill. Inside an open meal it sits a shade deeper than the meal's card. */
 function FoodRowBody({ item, meal, inset = false }: { item: FoodRow; meal?: Meal; inset?: boolean }) {
   const details = [item.brand ? titleCase(item.brand) : null, amountText(item)].filter(Boolean).join(" · ")
   return (
@@ -92,9 +80,8 @@ function FoodRowBody({ item, meal, inset = false }: { item: FoodRow; meal?: Meal
           <p className="line-clamp-2 min-w-0 flex-1 text-[15px] font-medium leading-snug">{titleCase(item.name ?? "Unknown food")}</p>
           {meal && <TimeChip time={meal.time} />}
         </div>
-        {(details || meal) && (
+        {(details || !!meal?.photos?.length) && (
           <div className="flex min-h-5 items-center gap-1.5 text-[13px] text-app-muted">
-            {meal && <LoggedByBadge meal={meal} />}
             <span className="truncate">{details}</span>
             {meal && <Photos meal={meal} />}
           </div>
@@ -108,7 +95,7 @@ function FoodRowBody({ item, meal, inset = false }: { item: FoodRow; meal?: Meal
 /** A meal without foods yet: still being worked out, or one that found none. */
 function PendingMeal({ meal }: { meal: Meal }) {
   const processing = meal.status === "processing"
-  const said = mealSubline({ ...meal, agent: undefined, loggedBy: undefined })
+  const said = mealWords(meal)
   return (
     <div className={ROW}>
       <div className={processing ? `${ICON_BOX} app-shimmer` : ICON_BOX}>
@@ -117,7 +104,7 @@ function PendingMeal({ meal }: { meal: Meal }) {
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-start gap-2">
           <p className="min-w-0 flex-1 truncate text-[15px] font-medium leading-snug">
-            {said ? `“${said.text}”` : meal.input === "photo" ? "Photo" : "Meal"}
+            {said ?? (meal.input === "photo" ? "Photo" : "Meal")}
           </p>
           <TimeChip time={meal.time} />
         </div>
@@ -134,8 +121,8 @@ function OpenableMeal({ meal, startsOpen }: { meal: Meal; startsOpen: boolean })
   const [open, setOpen] = useState(startsOpen)
   const rowsId = useId()
   const title = mealTitle(meal.items)
-  const subline = mealSubline(meal)
-  const note = agentNote(meal)
+  // Unquoted: without who logged it, an agent's note can't be told from the user's own words.
+  const said = mealWords(meal)
   const count = `${meal.items.length} foods`
   return (
     <>
@@ -157,10 +144,9 @@ function OpenableMeal({ meal, startsOpen }: { meal: Meal; startsOpen: boolean })
           <div className="flex min-h-5 items-center gap-1 text-[13px]">
             <span className="shrink-0 text-app-text/80">{count}</span>
             <ChevronDownIcon className={`h-3.5 w-3.5 shrink-0 text-app-text/80 transition-transform ${OPEN_EASE} ${open ? "rotate-180" : ""}`} aria-hidden />
-            {(subline || meal.agent || meal.loggedBy) && <>
+            {said && <>
               <span className="text-app-muted/70">·</span>
-              <LoggedByBadge meal={meal} />
-              {subline && <span className="truncate text-app-muted">{subline.kind === "said" ? `“${subline.text}”` : subline.text}</span>}
+              <span className="truncate text-app-muted">{said}</span>
             </>}
             <span className="pointer-events-auto ml-auto flex"><Photos meal={meal} /></span>
           </div>
@@ -171,12 +157,6 @@ function OpenableMeal({ meal, startsOpen }: { meal: Meal; startsOpen: boolean })
       <div id={rowsId} className={`grid transition-[grid-template-rows] ${OPEN_EASE} ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
         aria-hidden={!open}>
         <div className="min-h-0 overflow-hidden">
-          {note && (
-            <div className={`flex gap-2 border-t border-app-text/10 bg-black/[0.07] py-2 ${CONTENT_INSET} text-[13px] text-app-muted`}>
-              <SparklesIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <p className="min-w-0 flex-1">{note}</p>
-            </div>
-          )}
           {meal.items.map((item, index) => (
             <div key={item.id} className={`transition ${OPEN_EASE} ${open ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"}`}
               style={{ transitionDelay: open ? `${Math.min(index * 21, 104)}ms` : "0ms" }}>

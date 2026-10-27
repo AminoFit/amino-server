@@ -1,5 +1,4 @@
-// Shapes returned by the web_* functions (supabase/migrations/20261003000000_web_dashboard.sql; web_day:
-// 20261026120000_web_day_who_logged.sql).
+// Shapes returned by the web_* functions (supabase/migrations/20261003000000_web_dashboard.sql).
 
 export type Goals = { kcal: number; proteinG: number; carbG: number; totalFatG: number }
 
@@ -27,12 +26,6 @@ export type Meal = {
   text?: string
   input: "photo" | "voice" | "text"
   status: "logged" | "failed" | "processing"
-  /** The agent that logged it ("an AI agent" without a name). */
-  agent?: string
-  /** The person who logged it for the user ("someone" without a name); names only, never their id. */
-  loggedBy?: string
-  /** An Add Food entry: its text only lists its foods. */
-  listsFoods?: boolean
   photos?: string[]
   items: FoodRow[]
 }
