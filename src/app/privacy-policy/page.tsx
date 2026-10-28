@@ -18,67 +18,22 @@ const Mail = () => (
   </a>
 )
 
-/** Every outside service that receives personal data, what for, and what it gets. */
+/** Who receives personal data from Amino, by kind of service, what for, and what they get. */
 const THIRD_PARTIES: { service: string; purpose: string; data: string }[] = [
   {
-    service: "Supabase",
-    purpose: "Database, sign-in and file storage",
-    data: "Everything in your account: profile, meals, photos, weigh-ins and the rest of your log"
+    service: "Cloud hosting and storage providers",
+    purpose: "Run our servers, database, sign-in and file storage",
+    data: "Everything in your account, and the requests the app and website make to our servers, including your IP address"
   },
   {
-    service: "Vercel",
-    purpose: "Hosts amino.fit and the Amino API",
-    data: "Every request the app or website makes to our servers, including your IP address"
+    service: "AI services (listed under AI processing)",
+    purpose: "Work out the foods in a meal and turn voice recordings into text",
+    data: "What’s described under AI processing"
   },
   {
-    service: "OpenRouter",
-    purpose: "Routes our AI requests to the model providers below",
-    data: "Meal text, meal and label photos, and the meal context described under AI processing"
-  },
-  {
-    service: "Anthropic (Claude)",
-    purpose: "Reads meals, photos and nutrition labels",
-    data: "Meal text, photos and meal context"
-  },
-  {
-    service: "Google (Gemini, through Google AI Studio or Vertex AI)",
-    purpose: "Reads meals and photos; Vertex AI can also host Claude when Anthropic is unavailable",
-    data: "Meal text, photos and meal context"
-  },
-  {
-    service: "Microsoft Azure",
-    purpose: "Can host Claude when Anthropic is unavailable",
-    data: "Meal text, photos and meal context"
-  },
-  {
-    service: "TypeSafe (Jev models)",
-    purpose: "Picks the matching food from a short list of candidates",
-    data: "Meal text, candidate foods and, for photo meals, the photos"
-  },
-  {
-    service: "OpenAI (image model, through OpenRouter)",
-    purpose: "Draws the small icon shown next to each food",
-    data: "A food’s name only"
-  },
-  {
-    service: "Deepgram",
-    purpose: "Turns voice recordings into text",
-    data: "Your voice recording, sent straight from your phone"
-  },
-  {
-    service: "Exa",
-    purpose: "Web search for nutrition facts about a food",
-    data: "Search terms about a food or product, never your account details"
-  },
-  {
-    service: "Cloudflare and DeepInfra",
-    purpose: "Food search (turns text into search vectors)",
-    data: "Food names and the text you type into food search"
-  },
-  {
-    service: "Brave Search, UPCitemdb, Open Food Facts and USDA FoodData Central",
-    purpose: "Look up packaged products and nutrition data",
-    data: "Barcode numbers and food names, sent from our servers with no account details"
+    service: "Food data and search services",
+    purpose: "Look up packaged products and nutrition facts, and power food search",
+    data: "Barcode numbers, food names and food search text, never your account details"
   },
   {
     service: "Apple",
@@ -86,37 +41,27 @@ const THIRD_PARTIES: { service: string; purpose: string; data: string }[] = [
     data: "What you share with Sign in with Apple (name, email or a private relay address), purchases and notification text"
   },
   {
-    service: "Google Sign-In",
+    service: "Google",
     purpose: "Sign in with Google",
     data: "Google tells us your name and email; Google learns that you signed in to Amino"
   },
   {
-    service: "RevenueCat",
-    purpose: "Manages subscriptions",
-    data: "Your Amino account ID, purchase history and basic device information"
+    service: "Subscription and notification services",
+    purpose: "Manage subscriptions and deliver push notifications and app updates",
+    data: "Your Amino account ID, purchase history, push token, notification text, and device and app information"
   },
   {
-    service: "Expo",
-    purpose: "Delivers push notifications and app updates",
-    data: "Your device’s push token, notification text and app version"
+    service: "Analytics providers",
+    purpose: "Help us understand how the app is used",
+    data: "Your Amino account ID, app events and screens, and device and app information (never the advertising identifier)"
   },
   {
-    service: "Amplitude",
-    purpose: "Product analytics",
-    data: "Your Amino account ID, app events such as signing in, and device and app information"
-  },
-  {
-    service: "Google Analytics for Firebase",
-    purpose: "App analytics",
-    data: "Your Amino account ID, app events and screens, and device and app-instance identifiers (never the advertising identifier)"
-  },
-  {
-    service: "Meta (Facebook SDK)",
+    service: "Meta",
     purpose: "Ad measurement, only if you allow tracking",
     data: "See Tracking and ads"
   },
   {
-    service: "Google tag (website only)",
+    service: "Google (website only)",
     purpose: "Website analytics and ad conversion measurement on amino.fit",
     data: "Cookies, pages visited, clicks such as App Store link taps, and device and browser information"
   },
@@ -167,8 +112,8 @@ export default function PrivacyPolicy() {
               custom foods and recipes you create, your favourites, and any problem you report about a logged food.
             </li>
             <li>
-              <strong>Voice recordings:</strong> recorded on your phone and sent from your phone directly to Deepgram to
-              be turned into text. We keep the text as your meal. The audio is not stored on our servers, and the app
+              <strong>Voice recordings:</strong> recorded on your phone and sent from your phone directly to our
+              speech-to-text provider to be turned into text. We keep the text as your meal. The audio is not stored on our servers, and the app
               deletes its copy once transcription succeeds.
             </li>
             <li>
@@ -190,20 +135,19 @@ export default function PrivacyPolicy() {
           <H3>Information collected automatically</H3>
           <List>
             <li>
-              <strong>Purchases:</strong> your subscription status and history from Apple, through RevenueCat. We never
-              see your card or payment details.
+              <strong>Purchases:</strong> your subscription status and history from Apple, through our subscription
+              provider. We never see your card or payment details.
             </li>
             <li>
               <strong>Device and usage:</strong> your push notification token, app version, device model and operating
               system, IP address in server logs, and app usage events sent to our analytics providers.
             </li>
             <li>
-              <strong>Meal processing records:</strong> for each meal, a record of how it was worked out (which models
-              and lookups ran, what they returned and how long they took). These are deleted after 60 days.
+              <strong>Meal processing records:</strong> for each meal, a technical record of how it was worked out.
+              These are deleted after 60 days.
             </li>
             <li>
-              <strong>Website:</strong> amino.fit uses a Google tag, which sets cookies to measure visits and App Store
-              link taps.
+              <strong>Website:</strong> amino.fit uses cookies to measure visits and App Store link taps.
             </li>
           </List>
 
@@ -242,41 +186,12 @@ export default function PrivacyPolicy() {
             <li>when you ate, your timezone and language;</li>
             <li>your recent meals and your own foods, so the AI can recognise what you usually eat.</li>
           </List>
+          <P>We don’t send your name, email or Apple Health data with meals.</P>
           <P>
-            We don’t send your name, email or Apple Health data with meals. Photos are sent as the image itself or
-            through links that expire after a few minutes.
+            The AI services that receive meals are Anthropic (Claude) and Google (Gemini), which we reach through
+            OpenRouter, TypeSafe, and Deepgram for voice recordings. Their models may run on major cloud platforms.
+            Other services may receive a food’s name or search terms about a food, never details about you.
           </P>
-          <P>The AI services we use are:</P>
-          <List>
-            <li>
-              <strong>OpenRouter</strong>, which routes our requests to the model providers below.
-            </li>
-            <li>
-              <strong>Anthropic</strong> (Claude). Claude normally runs on Anthropic’s own service; if that is
-              unavailable, the same request can be served by Google Cloud Vertex AI or Microsoft Azure.
-            </li>
-            <li>
-              <strong>Google</strong> (Gemini), through Google AI Studio or Google Cloud Vertex AI.
-            </li>
-            <li>
-              <strong>TypeSafe</strong> (Jev models), which picks the matching food from a short list and may look at
-              meal photos to do so.
-            </li>
-            <li>
-              <strong>Deepgram</strong>, which turns voice recordings into text.
-            </li>
-            <li>
-              <strong>OpenAI</strong> image model, through OpenRouter, which draws food icons from a food’s name only.
-            </li>
-            <li>
-              <strong>Exa</strong>, which runs web searches for a food’s nutrition facts. The search terms describe the
-              food, not you.
-            </li>
-            <li>
-              <strong>Cloudflare</strong> and <strong>DeepInfra</strong>, which turn food names and food search text
-              into vectors for search.
-            </li>
-          </List>
           <P>
             Each provider processes what we send under its API terms and privacy policy. We don’t send it to them for
             advertising, and we don’t sell it to them. AI estimates can be wrong, so check your log and edit anything
@@ -301,15 +216,15 @@ export default function PrivacyPolicy() {
             <li>We never sell it.</li>
             <li>We never send it to advertising or analytics providers, or to the AI services that read your meals.</li>
             <li>
-              We don’t share it with third parties, except the infrastructure providers that store it for us (Supabase
-              and Vercel), and an AI assistant you choose to connect (see Connected AI assistants).
+              We don’t share it with third parties, except the hosting providers that store it for us and an AI
+              assistant you choose to connect (see Connected AI assistants).
             </li>
             <li>We don’t store it in iCloud.</li>
           </List>
           <P>People you link with in Amino don’t see your weight, body stats or goals.</P>
 
           <H2>Third parties</H2>
-          <P>These services receive personal data from Amino:</P>
+          <P>These kinds of services receive personal data from Amino, each only for the purpose shown:</P>
           <div className="mb-3 overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
@@ -341,15 +256,14 @@ export default function PrivacyPolicy() {
             any time in iOS Settings › Privacy &amp; Security › Tracking.
           </P>
           <P>
-            <strong>If you allow tracking</strong>, the Meta (Facebook) SDK receives your Amino account ID, a sign-up
-            event, the price of a subscription you buy, automatic app events (such as installs and app opens) and your
-            device’s advertising identifier, so Meta can tell us which of our ads led to installs and subscriptions.
-            We never send your email, meals,
-            photos or health data to Meta or any ad network.
+            <strong>If you allow tracking</strong>, Meta receives your Amino account ID, app events (such as installs,
+            sign-ups and subscriptions) and your device’s advertising identifier, so it can tell us which of our ads
+            led to installs and subscriptions. We never send your email, meals, photos or health data to Meta or any ad
+            network.
           </P>
           <P>
             <strong>If you don’t allow tracking</strong>, we don’t send Meta any events about you, and no advertising
-            identifier is collected. Amplitude and Firebase still receive the app analytics described above, which we
+            identifier is collected. Our analytics providers still receive the app analytics described above, which we
             use to understand and improve Amino.
           </P>
 
@@ -393,8 +307,8 @@ export default function PrivacyPolicy() {
             </li>
             <li>
               Copies may remain in our providers’ encrypted backups for a limited time before they are overwritten.
-              Analytics events already sent to Amplitude or Firebase, and purchase records held by Apple and RevenueCat,
-              are kept under those services’ own retention settings. Email us if you want us to ask them to delete yours.
+              Analytics events already sent to our analytics providers, and purchase records held by Apple and our
+              subscription provider, are kept under those services’ own retention settings. Email us if you want us to ask them to delete yours.
             </li>
           </List>
 
@@ -433,9 +347,8 @@ export default function PrivacyPolicy() {
 
           <H2>Security</H2>
           <P>
-            Data travels over encrypted connections (HTTPS) and is stored with Supabase, which encrypts it at rest. Access
-            to your data is limited by account-level database rules, meal photos are kept in private storage, and only
-            our team can see data in our admin tools. No system is perfectly secure; if a breach affects your data, we
+            Data travels over encrypted connections and is encrypted at rest. Access to your data is limited to your
+            account and to our team, and meal photos are kept in private storage. No system is perfectly secure; if a breach affects your data, we
             will tell you as the law requires.
           </P>
 
