@@ -23,7 +23,7 @@ const fail=(code:string,status:number):never=>{throw new UserFoodError(code,stat
 /** Database errors from the user-food functions, by SQLSTATE. */
 function rpcFailure(error:{code?:string;message?:string}):never {
   const known:Record<string,[string,number]>={"22023":["invalid_food",422],P0002:[error.message??"food_unavailable",404],
-    "23505":["name_taken",409],"42501":["ingredient_unavailable",422],"40001":["meal_changed",409],"55000":["meal_busy",409]}
+    "23505":["name_taken",409],"42501":["ingredient_unavailable",422],PT409:["meal_changed",409],"55000":["meal_busy",409]}
   const hit=error.code?known[error.code]:undefined
   if (hit) fail(hit[0],hit[1])
   throw new Error(`user_food_write_failed: ${error.message??"unknown"}`)
